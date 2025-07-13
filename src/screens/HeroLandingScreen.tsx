@@ -189,6 +189,10 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         title="Numina"
         showMenuButton={true}
         onMenuPress={handleToggleDarkMode}
+        onTitlePress={() => {
+          // Already on Hero screen - could scroll to top or refresh animations
+          console.log('Numina title pressed on Hero screen');
+        }}
       />
 
       {/* Main Content */}
@@ -211,15 +215,15 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           ]}
         >
           <Text style={[styles.welcomeText, { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600] }]}>
-            Your emotional forecast has arrived. Welcome to,
+            <Text style={{ color: isDarkMode ? '#B8E6B8' : NuminaColors.darkMode[600] }}>Track</Text>, <Text style={{ color: isDarkMode ? '#E6F3FF' : NuminaColors.darkMode[600] }}>analyze</Text>, and experience <Text style={{ color: isDarkMode ? '#FFF9C4' : NuminaColors.darkMode[600] }}>change</Text>.
           </Text>
             <Text style={[
               styles.brandText,
               { 
-                color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
-                fontSize: 48,
+                color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                fontSize: 68,
                 fontWeight: 'bold',
-                fontFamily: 'Nunito_700Bold',
+                fontFamily: 'CrimsonPro_700Bold',
                 letterSpacing: -4.5,
                 textAlign: 'center',
                 marginTop: 8,
@@ -228,22 +232,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             ]}>Numina</Text>
         </Animated.View>
 
-        {/* Character Image - with your animation style */}
-        <Animated.View
-          style={[
-            styles.characterContainer,
-            {
-              opacity: characterOpacity,
-              transform: [{ scale: scaleAnim }],
-            },
-          ]}
-        >
-          <Image
-            source={isDarkMode ? numinaMoonImage : numinaSmileImage}
-            style={styles.characterImage}
-            resizeMode="contain"
-          />
-        </Animated.View>
+    
 
         {/* Action Buttons - styled exactly like your web version */}
         <Animated.View
@@ -347,22 +336,22 @@ const styles = StyleSheet.create({
     marginBottom: 48,
   },
   welcomeText: {
-    fontSize: width < 350 ? 10 : width < 400 ? 12 : 13,
-    fontWeight: '600',
+    fontSize: width < 350 ? 10 : width < 400 ? 14 : 16,
+    fontWeight: '400',
     textAlign: 'center',
     lineHeight: width < 350 ? 14 : width < 400 ? 16 : 17,
     letterSpacing: -1.2,
     opacity: 0.8,  
     paddingHorizontal: 24,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_400Regular',
   },
   brandText: {
-    fontSize: width < 350 ? 36 : width < 400 ? 42 : 47,
+    fontSize: width < 350 ? 42 : width < 400 ? 48 : 54,
     fontWeight: 'bold',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'CrimsonPro_700Bold',
     letterSpacing: -4.5,
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   characterContainer: {
     marginBottom: 64,
@@ -378,7 +367,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   primaryButtonContainer: {
     width: '100%',
@@ -391,16 +380,16 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    paddingVertical: 9.2, // Increased by 15% from 8
-    paddingHorizontal: 100.4, // Increased by 15% from 96
+    paddingVertical: 9.2,
+    paddingHorizontal: 100.4,
     borderRadius: 6,
     alignItems: 'center',
   },
   primaryButtonText: {
-    fontSize: 14.2, // Increased by 15% from 12
-    fontWeight: '600',
-    letterSpacing: -0.8,
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: -0.5,
+    fontFamily: 'Nunito_500Medium',
   },
 
 });

@@ -146,6 +146,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const isInputEmpty = !value.trim();
 
+
   return (
     <View style={styles.container}>
       {/* Character Count */}
@@ -200,13 +201,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 styles.textInput,
                 {
                   height: Math.max(36, Math.min(80, inputHeight)),
-                  color: isDarkMode ? NuminaColors.darkMode[50] : NuminaColors.darkMode[50],
+                  color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
                 }
               ]}
               value={value}
               onChangeText={onChangeText}
               placeholder="Ask, brainstorm, or share your thoughts..."
-              placeholderTextColor={'rgba(150, 150, 150, 1)'}
+              placeholderTextColor={'#646464'}
               multiline
               maxLength={maxLength}
               onFocus={handleInputFocus}
@@ -230,19 +231,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               styles.sendButton,
               {
                 backgroundColor: (!isInputEmpty && !isLoading)
-                  ? '#86efac'
-                  : 'transparent',
+                  ? (isDarkMode ? '#6ec5ff' : '#6ec5ff')
+                  : (isDarkMode ? '#8acbff' : '#acdcff'),
                 borderColor: 'transparent',
                 transform: [{ scale: sendButtonScale }],
               }
             ]}>
               <FontAwesome5
                 name={isLoading ? "circle-notch" : "arrow-up"}
-                size={20}
-                color={(!isInputEmpty && !isLoading) 
-                  ? '#000000' 
-                  : '#86efac'
-                }
+                size={18}
+                color={isDarkMode ? '#ffffff' : '#616161'}
                 style={isLoading ? { transform: [{ rotate: '45deg' }] } : {}}
               />
             </Animated.View>
@@ -358,10 +356,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 5,
-    borderWidth: 0,
+    width: 45,
+    height: 45,
+    borderRadius: 16,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },

@@ -6,7 +6,9 @@ import {
   Animated,
   TouchableOpacity,
   Image,
+  Easing,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { HeaderMenu } from './HeaderMenu';
@@ -19,6 +21,7 @@ interface HeaderProps {
   showMenuButton?: boolean;
   onBackPress?: () => void;
   onMenuPress?: (key: string) => void;
+  onTitlePress?: () => void;
   title?: string;
   subtitle?: string;
 }
@@ -28,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
   showMenuButton = false,
   onBackPress,
   onMenuPress,
+  onTitlePress,
   title,
   subtitle,
 }) => {
@@ -60,15 +64,23 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleMenuButtonPress = (event: any) => {
+    // Haptic feedback for premium feel
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Elegant press animation with better timing and easing
     Animated.sequence([
+      // Press down with smooth easing
       Animated.timing(menuButtonScale, {
-        toValue: 0.95,
-        duration: 100,
+        toValue: 0.92,
+        duration: 120,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
+      // Spring back with satisfying bounce
       Animated.timing(menuButtonScale, {
         toValue: 1,
-        duration: 100,
+        duration: 200,
+        easing: Easing.out(Easing.back(1.4)),
         useNativeDriver: true,
       }),
     ]).start();
@@ -92,7 +104,12 @@ export const Header: React.FC<HeaderProps> = ({
         ]}
       >
         <View style={styles.leftSection}>
-          <View style={styles.logoContainer}>
+          <TouchableOpacity 
+            style={styles.logoContainer}
+            onPress={onTitlePress}
+            activeOpacity={onTitlePress ? 0.7 : 1}
+            disabled={!onTitlePress}
+          >
             <OptimizedImage 
               source={numinaLogo} 
               style={styles.logo}
@@ -108,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
             ]}>
               {title || 'Numina'}
             </Text>
-          </View>
+          </TouchableOpacity>
           
           {subtitle && (
             <Text style={[
@@ -218,9 +235,9 @@ const styles = StyleSheet.create({
   },
   numinaText: {
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -1.5,
-    fontFamily: 'Nunito_800ExtraBold',
+    fontFamily: 'CrimsonPro_700Bold',
     textAlign: 'left',
   },
   headerSubtitle: {

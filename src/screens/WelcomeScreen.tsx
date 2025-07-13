@@ -146,7 +146,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           showBackButton={true}
           showMenuButton={true}
           onBackPress={() => {
-            ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+            ScreenTransitions.slideOutRight(slideAnim, () => {
               onNavigateBack();
             });
           }}
@@ -159,7 +159,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           styles.content,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            transform: [{ translateX: slideAnim }],
           },
         ]}
       >
@@ -188,8 +188,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <View style={[
                 styles.characterFrame,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                  borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255, 255, 255, 0.952)',
+                  borderColor: isDarkMode ? '#23272b' : 'rgb(231, 231, 231)',
                 }
               ]}>
                 <Image
@@ -206,7 +206,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 TextStyles.h1,
                 styles.title,
                 {
-                  color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
+                  color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
                   letterSpacing: -1.2,
                   transform: [{ scale: scaleAnim }],
                 },
@@ -235,7 +235,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 style={[
                   styles.primaryButton,
                   {
-                    backgroundColor: isDarkMode ? '#ffffff' : '#000000',
+                    backgroundColor: isDarkMode ? '#ffffff' : '#383838',
+                    borderColor: isDarkMode ? '#23272b' : 'rgb(238, 238, 238)',
                   }
                 ]}
                 onPress={handleSignUpPress}
@@ -256,8 +257,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 style={[
                   styles.secondaryButton,
                   {
-                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                    borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255, 255, 255, 0.952)',
+                    borderColor: isDarkMode ? '#23272b' : 'rgb(231, 231, 231)',
                   }
                 ]}
                 onPress={handleSignInPress}
@@ -301,12 +302,12 @@ const styles = StyleSheet.create({
   welcomeWrapper: {
     position: 'relative',
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 400,
   },
   welcomeCard: {
     width: '100%',
     borderRadius: 16,
-    padding: 32,
+    padding: 40,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -341,9 +342,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: '#88c6ff',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.95,
     shadowRadius: 4,
   },
   characterImage: {
@@ -352,19 +353,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   title: {
-    fontSize: 21,
+    fontSize: 30,
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'CrimsonPro_700Bold',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 16,
     textAlign: 'center',
-    lineHeight: 14,
+    lineHeight: 20,
     fontWeight: '400',
     width: '85%',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   buttonsContainer: {
     width: '100%',
@@ -388,7 +389,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.2,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_500Medium',
   },
   secondaryButton: {
     width: '100%',
@@ -407,7 +408,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: -0.2,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   backButton: {
     paddingHorizontal: 16,
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: -0.3,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_500Medium',
   },
 
 });

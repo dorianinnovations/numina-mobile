@@ -75,7 +75,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   };
 
   const toggleTheme = async () => {
-    // Legacy toggle function - cycles through light -> dark -> system
     const nextMode: ThemeMode = 
       themeMode === 'light' ? 'dark' : 
       themeMode === 'dark' ? 'system' : 'light';

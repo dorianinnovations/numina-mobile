@@ -24,6 +24,16 @@ import {
   OpenSans_700Bold,
   OpenSans_800ExtraBold,
 } from '@expo-google-fonts/open-sans';
+import {
+  CrimsonPro_200ExtraLight,
+  CrimsonPro_300Light,
+  CrimsonPro_400Regular,
+  CrimsonPro_500Medium,
+  CrimsonPro_600SemiBold,
+  CrimsonPro_700Bold,
+  CrimsonPro_800ExtraBold,
+  CrimsonPro_900Black,
+} from '@expo-google-fonts/crimson-pro';
 
 /**
  * Font System for Numina React Native
@@ -54,11 +64,11 @@ export const FontFamilies = {
     default: 'Open Sans',
   }),
   
-  // Body font - system fallback for general text
+  // Body font - Nunito for gummy style
   body: Platform.select({
-    ios: 'SF Pro Text', // San Francisco
-    android: 'Roboto',
-    default: 'System',
+    ios: 'Nunito',
+    android: 'nunito',
+    default: 'Nunito',
   }),
   
   // Fallback system fonts
@@ -133,6 +143,14 @@ export const TextStyles = {
     letterSpacing: LetterSpacing.normal,
   },
   
+  // Brand title style (Crimson Pro for editorial elegance)
+  brandTitle: {
+    fontFamily: 'CrimsonPro_700Bold',
+    fontSize: FontSizes['4xl'],
+    lineHeight: FontSizes['4xl'] * LineHeights.tight,
+    letterSpacing: LetterSpacing.tight,
+  },
+  
   // Heading styles (all use Nunito with semibold weight)
   h1: {
     fontFamily: 'Nunito_600SemiBold',
@@ -176,16 +194,16 @@ export const TextStyles = {
     letterSpacing: LetterSpacing.normal,
   },
   
-  // Body text styles (system fonts)
+  // Body text styles (Nunito for gummy style)
   body: {
-    fontFamily: FontFamilies.body, // System font
+    fontFamily: 'Nunito_400Regular',
     fontSize: FontSizes.base,
     lineHeight: FontSizes.base * LineHeights.normal,
     letterSpacing: LetterSpacing.normal,
   },
   
   bodyLarge: {
-    fontFamily: FontFamilies.body, // System font
+    fontFamily: 'Nunito_400Regular',
     fontSize: FontSizes.lg,
     lineHeight: FontSizes.lg * LineHeights.relaxed,
     letterSpacing: LetterSpacing.normal,
@@ -293,6 +311,16 @@ export const fontAssets = {
   OpenSans_600SemiBold,
   OpenSans_700Bold,
   OpenSans_800ExtraBold,
+  
+  // Crimson Pro family (body text) - editorial elegance
+  CrimsonPro_200ExtraLight,
+  CrimsonPro_300Light,
+  CrimsonPro_400Regular,
+  CrimsonPro_500Medium,
+  CrimsonPro_600SemiBold,
+  CrimsonPro_700Bold,
+  CrimsonPro_800ExtraBold,
+  CrimsonPro_900Black,
 };
 
 // Load fonts function
@@ -308,7 +336,8 @@ export const loadFonts = async (): Promise<void> => {
 export const areFontsLoaded = (): boolean => {
   return Font.isLoaded('Nunito_400Regular') && 
          Font.isLoaded('Inter_400Regular') && 
-         Font.isLoaded('OpenSans_400Regular');
+         Font.isLoaded('OpenSans_400Regular') &&
+         Font.isLoaded('CrimsonPro_400Regular');
 };
 
 // Utility function to get font family with weight (Google Fonts naming)
@@ -350,6 +379,18 @@ export const getFontFamily = (
       case 'bold': return 'OpenSans_700Bold';
       case 'extrabold': return 'OpenSans_800ExtraBold';
       default: return 'OpenSans_400Regular';
+    }
+  }
+  
+  if (family === 'body') {
+    switch (weight) {
+      case 'light': return 'Nunito_300Light';
+      case 'normal': return 'Nunito_400Regular';
+      case 'medium': return 'Nunito_500Medium';
+      case 'semibold': return 'Nunito_600SemiBold';
+      case 'bold': return 'Nunito_700Bold';
+      case 'extrabold': return 'Nunito_800ExtraBold';
+      default: return 'Nunito_400Regular';
     }
   }
   

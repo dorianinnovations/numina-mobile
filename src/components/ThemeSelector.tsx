@@ -13,7 +13,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ style }) => {
 
   const options: { mode: ThemeMode; label: string; icon: string }[] = [
     { mode: 'light', label: 'Light', icon: 'sun' },
-    { mode: 'system', label: 'System', icon: 'monitor' },
+    { mode: 'system', label: 'Auto', icon: 'monitor' },
     { mode: 'dark', label: 'Dark', icon: 'moon' },
   ];
 

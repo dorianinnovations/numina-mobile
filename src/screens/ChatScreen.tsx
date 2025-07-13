@@ -22,7 +22,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { NuminaColors } from '../utils/colors';
 import { ChatInput } from '../components/chat/ChatInput';
 import { MessageBubble } from '../components/chat/MessageBubble';
-import { QuickActions } from '../components/chat/QuickActions';
 import ConversationStorageService, { Message, Conversation } from '../services/conversationStorage';
 import ChatService from '../services/chatService';
 import { ConversationHistory } from '../components/ConversationHistory';
@@ -201,25 +200,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   // Removed generateAIResponse - now using real backend responses
 
-  const handleQuickAction = async (action: string) => {
-    const actionPrompts = {
-      breathing: "I'd like to do a breathing exercise to help me feel more centered and calm.",
-      gratitude: "Help me think about what I'm grateful for today, even the small things.",
-      mood_checkin: "I'd like to check in with my mood and emotions right now.",
-      affirmations: "I could use some positive affirmations to boost my confidence and self-worth.",
-      feeling_processing: "I want to explore and process what I'm feeling right now.",
-      energy_boost: "I need an energy boost and motivation to feel more accomplished.",
-      stress_relief: "I'm feeling stressed and need help finding ways to calm down and relax.",
-      goal_setting: "Help me set a small, achievable goal for today and break it down into steps.",
-      mindfulness: "Guide me through a mindfulness exercise to help me stay present.",
-      sleep_prep: "I want to prepare for better sleep and create a peaceful bedtime routine.",
-    };
-
-    const actionText = actionPrompts[action as keyof typeof actionPrompts] || 
-      "I'm looking for support and guidance. What would be most helpful for me right now?";
-
-    setInputText(actionText);
-  };
 
   const handleVoiceStart = () => {
     setIsVoiceActive(true);
@@ -337,12 +317,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           />
         </KeyboardAvoidingView>
 
-        {/* Quick Actions */}
-        <QuickActions
-          onActionSelect={handleQuickAction}
-          messageCount={conversation.messages.length}
-          isPremiumUser={false} // TODO: Add premium status to UserData type
-        />
+
       </Animated.View>
 
       {/* Conversation History */}
@@ -364,7 +339,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 120 : 100, // Space for persistent header
+    paddingTop: Platform.OS === 'ios' ? 120 : 100, 
   },
   loadingScreen: {
     flex: 1,
@@ -373,11 +348,11 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    paddingHorizontal: 0,
+    paddingHorizontal: 5,
   },
   messagesList: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: 5,
   },
   messagesContent: {
     paddingTop: 20,

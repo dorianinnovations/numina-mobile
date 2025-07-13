@@ -19,90 +19,90 @@ import { NuminaColors } from '../utils/colors';
 import { ScreenTransitions, NuminaAnimations, NuminaEasing } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
-import { OptimizedImage } from '../components/OptimizedImage';
-import { imagePreloader } from '../utils/imagePreloader';
+// Removed OptimizedImage for simpler rendering
 
 const { width, height } = Dimensions.get('window');
 
-// Animation constants for consistency
+// Elegant opacity-based animation constants
 const ANIMATION_TIMING = {
-  QUICK: 200,
-  NORMAL: 300,
-  SLOW: 600,
-  ENTRANCE: 800,
+  INSTANT: 120,
+  FAST: 200,
+  SMOOTH: 300,
+  ENTRANCE: 400,
 };
 
 const EASING_PRESETS = {
-  entrance: NuminaEasing.neumorphicEntrance,
-  exit: NuminaEasing.neumorphicPress,
-  smooth: NuminaEasing.smooth,
+  entrance: NuminaEasing.smooth,
+  exit: NuminaEasing.smooth,
+  elegant: NuminaEasing.neumorphicEntrance,
   bounce: NuminaEasing.neumorphicBounce,
 };
 
-// Import character images
+// Import character images for each tutorial step
 const happyNuminaImage = require('../assets/images/happynumina.png');
+const numinaPuzzledImage = require('../assets/images/numinapuzzled.png');
 const numinaContentImage = require('../assets/images/numinacontent.png');
 const numinaShadesImage = require('../assets/images/numinashades.png');
 
 // Preload all tutorial images
-const tutorialImages = [happyNuminaImage, numinaContentImage, numinaShadesImage];
+const tutorialImages = [happyNuminaImage, numinaPuzzledImage, numinaContentImage, numinaShadesImage];
 
 const tutorialSteps = [
   {
     id: 1,
     title: "Hi, I'm Numina",
-    description: "I recognize shifts in your mood before you do. I track subtle changes in your emotions—even the ones you might miss. When something shifts, I surface it with just enough context to help you understand it before it affects your focus, your energy, or your decisions. Quiet. Consistent. Always here when it matters.",
+    description: "I help you catch the emotional shifts you usually miss. Those subtle changes in mood and energy that slip by throughout your day? I notice them and bring them to your attention with just enough context to help you understand what's happening before it affects your focus or decisions.",
     image: happyNuminaImage,
     character: "Intro Numina",
     features: [
-      { text: "Track mood patterns", icon: "zap" },
-      { text: "Behavior-based insight", icon: "bar-chart-2" },
-      { text: "Signal, not noise", icon: "bell" }
+      { text: "Catch subtle mood shifts", icon: "zap" },
+      { text: "Understand your patterns", icon: "bar-chart-2" },
+      { text: "Stay ahead of your emotions", icon: "bell" }
     ],
     progress: { current: 1, total: 4 }
   },
   {
     id: 2,
-    title: "Patience is my Job",
-    description: "I don't ping you every morning. I patiently wait until I see something worth saying. When patterns emerge across your week, I deliver a focused emotional report — honest, grounded, and built from real signals that I identify.",
-    image: happyNuminaImage,
-    character: "Patient Numina",
+    title: "I Focus on What Matters",
+    description: "Instead of daily check-ins that become routine, I wait for meaningful patterns to emerge. When there's a real insight about your emotional landscape—something that could genuinely help you—that's when I reach out. Every notification earns its place.",
+    image: numinaPuzzledImage,
+    character: "Focused Numina",
     features: [
-      { text: "Pattern-based insights", icon: "target" },
-      { text: "Real signal reports", icon: "bar-chart-2" },
-      { text: "Meaningful notifications", icon: "shield" }
+      { text: "Meaningful insights only", icon: "target" },
+      { text: "Pattern-driven notifications", icon: "bar-chart-2" },
+      { text: "Respect for your attention", icon: "shield" }
     ],
     progress: { current: 2, total: 4 }
   },
   {
     id: 3,
-    title: "Blips are our Link",
-    description: "Blips are my pulses sent to you, well-timed check-ins that deepen your mood log without interrupting your flow.",
+    title: "Blips: Effortless Emotional Check-ins",
+    description: "Blips solve the biggest problem with mood tracking—actually doing it consistently. These gentle, well-timed moments capture your emotional state without interrupting your flow. No daily homework, just natural moments that build a complete picture over time.",
     image: numinaContentImage,
     character: "Gentle Numina",
     features: [
-      { text: "Simple and concise", icon: "zap" },
-      { text: "Randomized check-ins for added depth", icon: "clock" },
-      { text: "Effortless emotion logging", icon: "heart" }
+      { text: "Perfectly timed check-ins", icon: "zap" },
+      { text: "No interruption to your flow", icon: "clock" },
+      { text: "Consistent without effort", icon: "heart" }
     ],
     progress: { current: 3, total: 4 }
   },
   {
     id: 4,
-    title: "Chat",
-    description: "Chat is where I turn signals into strategy. It's how I learn your context, help you reflect, and support your next move. You can log directly, talk it out, or switch modes anytime—whatever fits your mood.",
+    title: "Stratosphere: Where Insights Live",
+    description: "This is where your emotional data becomes personal wisdom. Stratosphere transforms patterns into insights you can act on, provides conversations that help you reflect and grow, and offers support when you need it most. Think of it as your space for deeper self-understanding.",
     image: numinaShadesImage,
-    character: "Supportive Numina",
+    character: "Wise Numina",
     features: [
-      { text: "Insightful conversations", icon: "message-circle" },
-      { text: "Personalized strategies", icon: "trending-up" },
-      { text: "Flexible interaction", icon: "settings" },
-      { text: "Critical support when you need it most", icon: "message-circle" }
+      { text: "Actionable insights", icon: "trending-up" },
+      { text: "Reflective conversations", icon: "message-circle" },
+      { text: "Support when needed", icon: "shield" },
+      { text: "Your space for growth", icon: "settings" }
     ],
     progress: { current: 4, total: 4 },
-    interface: "chat"
+    interface: "stratosphere"
   },
-];
+ ];
 
 interface TutorialScreenProps {
   onNavigateHome: () => void;
@@ -117,68 +117,92 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   const [currentStep, setCurrentStep] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Primary animation values - optimized set
+  // Elegant opacity-based animation values
   const masterFadeAnim = useRef(new Animated.Value(0)).current;
-  const contentSlideAnim = useRef(new Animated.Value(50)).current;
-  const characterAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const contentOpacityAnim = useRef(new Animated.Value(0)).current;
+  const characterOpacityAnim = useRef(new Animated.Value(0)).current;
+  const characterScaleAnim = useRef(new Animated.Value(0.95)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
   
-  // Feature animations - single value for staggered effect
-  const featuresAnim = useRef(new Animated.Value(0)).current;
+  // Individual bullet point animations - staggered roll-in from bottom
+  const bulletPoint1Opacity = useRef(new Animated.Value(0)).current;
+  const bulletPoint1Transform = useRef(new Animated.Value(20)).current;
+  const bulletPoint2Opacity = useRef(new Animated.Value(0)).current;
+  const bulletPoint2Transform = useRef(new Animated.Value(20)).current;
+  const bulletPoint3Opacity = useRef(new Animated.Value(0)).current;
+  const bulletPoint3Transform = useRef(new Animated.Value(20)).current;
+  const bulletPoint4Opacity = useRef(new Animated.Value(0)).current;
+  const bulletPoint4Transform = useRef(new Animated.Value(20)).current;
   
-  // Navigation button animations
+  // Feature animations - elegant stagger with opacity only
+  const featuresOpacityAnim = useRef(new Animated.Value(0)).current;
+  
+  // Navigation button animations - subtle scale only
   const prevButtonScale = useRef(new Animated.Value(1)).current;
   const nextButtonScale = useRef(new Animated.Value(1)).current;
+  
+  // Content transform for subtle movement (maximum 8px)
+  const contentTransformAnim = useRef(new Animated.Value(0)).current;
 
-  // Preload images on mount for instant loading
-  useEffect(() => {
-    imagePreloader.preloadImages(tutorialImages);
-  }, []);
+  // Removed complex image preloading for simpler approach
 
-  // Optimized entrance animation
+  // Elegant entrance animation - pure opacity with minimal scale
   useEffect(() => {
     const entranceSequence = Animated.sequence([
-      // Initial fade and slide
+      // Master fade in
+      Animated.timing(masterFadeAnim, {
+        toValue: 1,
+        duration: ANIMATION_TIMING.ENTRANCE,
+        useNativeDriver: true,
+        easing: EASING_PRESETS.entrance,
+      }),
+      
+      // Content opacity with subtle scale
       Animated.parallel([
-        Animated.timing(masterFadeAnim, {
+        Animated.timing(contentOpacityAnim, {
           toValue: 1,
-          duration: ANIMATION_TIMING.ENTRANCE,
+          duration: ANIMATION_TIMING.FAST,
           useNativeDriver: true,
-          easing: EASING_PRESETS.entrance,
+          easing: EASING_PRESETS.elegant,
         }),
-        Animated.timing(contentSlideAnim, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.ENTRANCE,
+        Animated.timing(contentTransformAnim, {
+          toValue: 1,
+          duration: ANIMATION_TIMING.FAST,
           useNativeDriver: true,
-          easing: EASING_PRESETS.entrance,
+          easing: EASING_PRESETS.elegant,
         }),
       ]),
       
-      // Character entrance with bounce
-      Animated.timing(characterAnim, {
-        toValue: 1,
-        duration: ANIMATION_TIMING.SLOW,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.bounce,
-      }),
+      // Character elegant appearance
+      Animated.parallel([
+        Animated.timing(characterOpacityAnim, {
+          toValue: 1,
+          duration: ANIMATION_TIMING.SMOOTH,
+          useNativeDriver: true,
+          easing: EASING_PRESETS.elegant,
+        }),
+        Animated.timing(characterScaleAnim, {
+          toValue: 1,
+          duration: ANIMATION_TIMING.SMOOTH,
+          useNativeDriver: true,
+          easing: EASING_PRESETS.elegant,
+        }),
+      ]),
       
-      // Features staggered entrance
-      Animated.timing(featuresAnim, {
-        toValue: 1,
-        duration: ANIMATION_TIMING.SLOW,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.smooth,
-      }),
     ]);
 
-    entranceSequence.start();
+    entranceSequence.start(() => {
+      // Start bullet point animations after main content is visible
+      animateBulletPoints(tutorialSteps[currentStep]).start();
+    });
 
-    // Progress bar animation (separate as it uses different interpolation)
+    // Progress bar animation
     Animated.timing(progressAnim, {
       toValue: (currentStep + 1) / tutorialSteps.length,
-      duration: ANIMATION_TIMING.SLOW,
-      useNativeDriver: false, // Width interpolation requires layout
-      easing: EASING_PRESETS.smooth,
+      duration: ANIMATION_TIMING.SMOOTH,
+      useNativeDriver: false,
+      easing: EASING_PRESETS.elegant,
     }).start();
 
     return () => {
@@ -186,114 +210,201 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     };
   }, []);
 
-  // Update progress when step changes
+  // Staggered bullet point animations - roll in from bottom with 600ms duration
+  const animateBulletPoints = useCallback((step: any) => {
+    const bulletAnims = [
+      { opacity: bulletPoint1Opacity, transform: bulletPoint1Transform },
+      { opacity: bulletPoint2Opacity, transform: bulletPoint2Transform },
+      { opacity: bulletPoint3Opacity, transform: bulletPoint3Transform },
+      { opacity: bulletPoint4Opacity, transform: bulletPoint4Transform },
+    ];
+
+    // Reset all bullet points
+    bulletAnims.forEach(anim => {
+      anim.opacity.setValue(0);
+      anim.transform.setValue(20);
+    });
+
+    // Create staggered animations for each bullet point
+    const staggeredAnimations = step.features.map((_: any, index: number) => {
+      if (index < bulletAnims.length) {
+        return Animated.parallel([
+          Animated.timing(bulletAnims[index].opacity, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+          Animated.timing(bulletAnims[index].transform, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+        ]);
+      }
+      return null;
+    }).filter(Boolean);
+
+    // Stagger the animations with 150ms delay between each
+    return Animated.stagger(150, staggeredAnimations);
+  }, [bulletPoint1Opacity, bulletPoint1Transform, bulletPoint2Opacity, bulletPoint2Transform,
+      bulletPoint3Opacity, bulletPoint3Transform, bulletPoint4Opacity, bulletPoint4Transform]);
+
+  // Update progress when step changes - smooth and elegant
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: (currentStep + 1) / tutorialSteps.length,
-      duration: ANIMATION_TIMING.NORMAL,
+      duration: ANIMATION_TIMING.FAST,
       useNativeDriver: false,
-      easing: EASING_PRESETS.smooth,
+      easing: EASING_PRESETS.elegant,
     }).start();
   }, [currentStep]);
 
-  // Optimized step transition animation
+  // Elegant step transition - pure opacity crossfade with minimal movement
   const animateStepTransition = useCallback((direction: number) => {
     if (isTransitioning) return;
     
     setIsTransitioning(true);
     NuminaAnimations.haptic.light();
 
-    const exitDistance = direction > 0 ? -50 : 50;
-    const enterDistance = direction > 0 ? 50 : -50;
-
+    // Elegant exit - fade out with subtle scale
     const exitSequence = Animated.parallel([
-      Animated.timing(characterAnim, {
+      Animated.timing(contentOpacityAnim, {
         toValue: 0,
-        duration: ANIMATION_TIMING.QUICK,
+        duration: ANIMATION_TIMING.FAST,
         useNativeDriver: true,
-        easing: EASING_PRESETS.exit,
+        easing: EASING_PRESETS.elegant,
       }),
-      Animated.timing(contentSlideAnim, {
-        toValue: exitDistance,
-        duration: ANIMATION_TIMING.NORMAL,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.exit,
-      }),
-      Animated.timing(featuresAnim, {
+      Animated.timing(characterOpacityAnim, {
         toValue: 0,
-        duration: ANIMATION_TIMING.QUICK,
+        duration: ANIMATION_TIMING.FAST,
         useNativeDriver: true,
-        easing: EASING_PRESETS.exit,
+        easing: EASING_PRESETS.elegant,
       }),
+      Animated.timing(characterScaleAnim, {
+        toValue: 0.95,
+        duration: ANIMATION_TIMING.FAST,
+        useNativeDriver: true,
+        easing: EASING_PRESETS.elegant,
+      }),
+      Animated.timing(featuresOpacityAnim, {
+        toValue: 0,
+        duration: ANIMATION_TIMING.INSTANT,
+        useNativeDriver: true,
+        easing: EASING_PRESETS.elegant,
+      }),
+      // Subtle content movement (max 8px)
+      Animated.timing(contentTransformAnim, {
+        toValue: direction > 0 ? -0.2 : 1.2,
+        duration: ANIMATION_TIMING.FAST,
+        useNativeDriver: true,
+        easing: EASING_PRESETS.elegant,
+      }),
+      // Reset all bullet points to hidden immediately
+      Animated.parallel([
+        Animated.timing(bulletPoint1Opacity, {
+          toValue: 0,
+          duration: ANIMATION_TIMING.INSTANT,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bulletPoint2Opacity, {
+          toValue: 0,
+          duration: ANIMATION_TIMING.INSTANT,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bulletPoint3Opacity, {
+          toValue: 0,
+          duration: ANIMATION_TIMING.INSTANT,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bulletPoint4Opacity, {
+          toValue: 0,
+          duration: ANIMATION_TIMING.INSTANT,
+          useNativeDriver: true,
+        }),
+      ]),
     ]);
 
     exitSequence.start(() => {
       // Update step
       setCurrentStep(prev => prev + direction);
       
-      // Reset positions for entrance
-      contentSlideAnim.setValue(enterDistance);
-      characterAnim.setValue(0);
-      featuresAnim.setValue(0);
+      // Reset for entrance
+      contentTransformAnim.setValue(direction > 0 ? 1.2 : -0.2);
       
-      // Entrance sequence with staggered timing
+      // Elegant entrance - staggered opacity with smooth scale
       const entranceSequence = Animated.sequence([
-        // Content slides in first
-        Animated.timing(contentSlideAnim, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.NORMAL,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.entrance,
-        }),
+        // Content fades in with smooth transform
+        Animated.parallel([
+          Animated.timing(contentOpacityAnim, {
+            toValue: 1,
+            duration: ANIMATION_TIMING.SMOOTH,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+          Animated.timing(contentTransformAnim, {
+            toValue: 1,
+            duration: ANIMATION_TIMING.SMOOTH,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+        ]),
         
-        // Character bounces in
-        Animated.timing(characterAnim, {
-          toValue: 1,
-          duration: ANIMATION_TIMING.SLOW,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.bounce,
-        }),
+        // Character elegant appearance
+        Animated.parallel([
+          Animated.timing(characterOpacityAnim, {
+            toValue: 1,
+            duration: ANIMATION_TIMING.SMOOTH,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+          Animated.timing(characterScaleAnim, {
+            toValue: 1,
+            duration: ANIMATION_TIMING.SMOOTH,
+            useNativeDriver: true,
+            easing: EASING_PRESETS.elegant,
+          }),
+        ]),
       ]);
 
-      // Features animate in parallel after character starts
-      const featuresSequence = Animated.timing(featuresAnim, {
+      // Features elegant fade in
+      const featuresSequence = Animated.timing(featuresOpacityAnim, {
         toValue: 1,
-        duration: ANIMATION_TIMING.SLOW,
+        duration: ANIMATION_TIMING.SMOOTH,
         useNativeDriver: true,
-        easing: EASING_PRESETS.smooth,
+        easing: EASING_PRESETS.elegant,
       });
 
-      entranceSequence.start();
-      
-      // Start features animation with slight delay
-      setTimeout(() => {
-        featuresSequence.start(() => {
+      entranceSequence.start(() => {
+        // Start bullet point animations after main content transitions
+        animateBulletPoints(tutorialSteps[currentStep]).start(() => {
           setIsTransitioning(false);
         });
-      }, ANIMATION_TIMING.QUICK);
+      });
     });
   }, [isTransitioning, currentStep]);
 
-  // Enhanced button press animations
+  // Elegant button press animations
   const handleButtonPress = useCallback((button: 'prev' | 'next', action: () => void) => {
     const scaleAnim = button === 'prev' ? prevButtonScale : nextButtonScale;
     
     // Haptic feedback
-    NuminaAnimations.haptic.medium();
+    NuminaAnimations.haptic.light();
     
-    // Press animation
+    // Elegant press animation
     Animated.sequence([
       Animated.timing(scaleAnim, {
-        toValue: 0.94,
-        duration: 100,
+        toValue: 0.96,
+        duration: ANIMATION_TIMING.INSTANT,
         useNativeDriver: true,
-        easing: EASING_PRESETS.exit,
+        easing: EASING_PRESETS.elegant,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 200,
+        duration: ANIMATION_TIMING.FAST,
         useNativeDriver: true,
-        easing: EASING_PRESETS.bounce,
+        easing: EASING_PRESETS.elegant,
       }),
     ]).start();
 
@@ -317,30 +428,59 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
 
   const handleFinishTutorial = useCallback(() => {
     NuminaAnimations.haptic.success();
-    ScreenTransitions.fadeOutScale(masterFadeAnim, contentSlideAnim, () => {
+    ScreenTransitions.fadeOutScale(masterFadeAnim, characterScaleAnim, () => {
       onStartChat();
     });
-  }, [masterFadeAnim, contentSlideAnim, onStartChat]);
+  }, [masterFadeAnim, characterScaleAnim, onStartChat]);
 
   const step = tutorialSteps[currentStep];
 
-  // Animation interpolations
+  // Elegant animation interpolations - pure opacity with minimal scale
   const characterTransforms = {
-    opacity: characterAnim,
+    opacity: characterOpacityAnim,
     transform: [
       {
-        scale: characterAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0.8, 1],
-        }),
+        scale: characterScaleAnim,
       },
+    ],
+  };
+  
+  // Content transforms with subtle movement (max 8px)
+  const contentTransforms = {
+    opacity: contentOpacityAnim,
+    transform: [
       {
-        translateY: characterAnim.interpolate({
+        translateY: contentTransformAnim.interpolate({
           inputRange: [0, 1],
-          outputRange: [20, 0],
+          outputRange: [8, 0],
         }),
       },
     ],
+  };
+  
+  // Individual bullet point transforms - staggered roll-in from bottom
+  const getBulletPointTransforms = (index: number) => {
+    const bulletAnims = [
+      { opacity: bulletPoint1Opacity, transform: bulletPoint1Transform },
+      { opacity: bulletPoint2Opacity, transform: bulletPoint2Transform },
+      { opacity: bulletPoint3Opacity, transform: bulletPoint3Transform },
+      { opacity: bulletPoint4Opacity, transform: bulletPoint4Transform },
+    ];
+    
+    const anim = bulletAnims[index];
+    if (!anim) return { 
+      opacity: 0,
+      transform: [{ translateY: 20 }],
+    };
+    
+    return {
+      opacity: anim.opacity,
+      transform: [
+        {
+          translateY: anim.transform,
+        },
+      ],
+    };
   };
 
   const progressWidth = progressAnim.interpolate({
@@ -363,10 +503,11 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         showBackButton={true}
         showMenuButton={true}
         onBackPress={() => {
-          ScreenTransitions.fadeOutScale(masterFadeAnim, contentSlideAnim, () => {
+          ScreenTransitions.slideOutRight(slideAnim, () => {
             onNavigateHome();
           });
         }}
+        onTitlePress={onNavigateHome}
         onMenuPress={() => {}}
       />
 
@@ -406,7 +547,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
             styles.content,
             {
               opacity: masterFadeAnim,
-              transform: [{ translateY: contentSlideAnim }],
+              transform: [{ translateX: slideAnim }],
             },
           ]}
         >
@@ -442,72 +583,44 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               </Animated.View>
             </View>
 
-            {/* Step Content */}
-            <View style={styles.stepContent}>
+            {/* Step Content with elegant animations */}
+            <Animated.View style={[styles.stepContent, contentTransforms]}>
               {/* Enhanced Character Animation */}
               <Animated.View
                 style={[styles.characterContainer, characterTransforms]}
               >
-                <OptimizedImage
+                <Image
                   source={step.image}
                   style={styles.characterImage}
                   resizeMode="contain"
-                  showLoader={true}
-                  preload={true}
-                />
-                <Animated.View 
-                  style={[
-                    styles.characterGlow,
-                    { 
-                      backgroundColor: NuminaColors.chatYellow[200] + '1A',
-                      opacity: characterAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, 1],
-                      }),
-                    }
-                  ]} 
                 />
               </Animated.View>
 
               {/* Text Content */}
               <View style={styles.textContent}>
-                <Animated.Text 
+                <Text 
                   style={[
                     styles.stepTitle, 
                     { 
                       color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
-                      opacity: masterFadeAnim,
-                      transform: [{
-                        translateY: masterFadeAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [20, 0],
-                        }),
-                      }],
                     }
                   ]}
                 >
                   {step.title}
-                </Animated.Text>
+                </Text>
 
-                <Animated.Text 
+                <Text 
                   style={[
                     styles.stepDescription, 
                     { 
                       color: isDarkMode ? '#999999' : NuminaColors.darkMode[400],
-                      opacity: masterFadeAnim,
-                      transform: [{
-                        translateY: masterFadeAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [30, 0],
-                        }),
-                      }],
                     }
                   ]}
                 >
                   {step.description}
-                </Animated.Text>
+                </Text>
 
-                {/* Enhanced Features List with Staggered Animation */}
+                {/* Elegant Features List with individual staggered animations */}
                 <View style={styles.featuresList}>
                   {step.features.map((feature, index) => (
                     <Animated.View
@@ -521,34 +634,17 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                           borderColor: isDarkMode 
                             ? 'rgba(50, 50, 50, 1)'
                             : 'rgba(255, 255, 255, 0.6)',
-                          opacity: featuresAnim,
-                          transform: [{
-                            translateY: featuresAnim.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [30, 0],
-                            }),
-                          }, {
-                            scale: featuresAnim.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0.9, 1],
-                            }),
-                          }],
                         },
+                        getBulletPointTransforms(index),
                       ]}
                     >
-                      <Animated.View 
+                      <View 
                         style={[
                           styles.featureFeather, 
                           { 
                             backgroundColor: isDarkMode 
                               ? NuminaColors.chatYellow[300] + '1A'
                               : NuminaColors.chatYellow[400] + '1A',
-                            transform: [{
-                              rotate: featuresAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: ['-10deg', '0deg'],
-                              }),
-                            }],
                           }
                         ]}
                       >
@@ -557,7 +653,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                           size={16} 
                           color={isDarkMode ? NuminaColors.chatYellow[300] : NuminaColors.chatYellow[400]} 
                         />
-                      </Animated.View>
+                      </View>
                       <Text style={[
                         styles.featureText, 
                         { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[700] }
@@ -568,33 +664,82 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                   ))}
                 </View>
               </View>
-            </View>
+            </Animated.View>
+          </View>
 
-            {/* Enhanced Navigation Controls */}
-            <View style={styles.navigation}>
-              <LinearGradient
-                colors={isDarkMode 
-                  ? [NuminaColors.chatYellow[200], NuminaColors.chatBlue[200]]
-                  : ['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 1)']
-                }
-                style={styles.navigationContainer}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                {/* Enhanced Previous Button */}
-                <Animated.View style={{ transform: [{ scale: prevButtonScale }] }}>
+          {/* Navigation Controls  */}
+          <View style={styles.navigation}>
+            <LinearGradient
+              colors={isDarkMode 
+                ? [NuminaColors.chatYellow[200], NuminaColors.chatBlue[200]]
+                : ['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 1)']
+              }
+              style={styles.navigationContainer}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              {/* Enhanced Previous Button */}
+              <Animated.View style={{ transform: [{ scale: prevButtonScale }] }}>
+                <TouchableOpacity
+                  style={[
+                    styles.navButton,
+                    styles.prevButton,
+                    { opacity: currentStep === 0 ? 0.5 : 1 },
+                  ]}
+                  onPress={() => handleButtonPress('prev', prevStep)}
+                  disabled={currentStep === 0 || isTransitioning}
+                  activeOpacity={0.7}
+                >
+                  <Feather 
+                    name="chevron-left" 
+                    size={20} 
+                    color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
+                  />
+                  <Text style={[
+                    styles.navButtonText, 
+                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
+                  ]}>
+                    Previous
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* Divider */}
+              <View style={[
+                styles.navDivider, 
+                { backgroundColor: isDarkMode ? 'rgba(128, 128, 128, 0.527)' : NuminaColors.darkMode[300] }
+              ]} />
+
+              {/* Next/Finish Button */}
+              <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
+                {currentStep < tutorialSteps.length - 1 ? (
                   <TouchableOpacity
-                    style={[
-                      styles.navButton,
-                      styles.prevButton,
-                      { opacity: currentStep === 0 ? 0.5 : 1 },
-                    ]}
-                    onPress={() => handleButtonPress('prev', prevStep)}
-                    disabled={currentStep === 0 || isTransitioning}
+                    style={[styles.navButton, styles.nextButton]}
+                    onPress={() => handleButtonPress('next', nextStep)}
+                    disabled={isTransitioning}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[
+                      styles.navButtonText, 
+                      { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
+                    ]}>
+                      Next
+                    </Text>
+                    <Feather 
+                      name="chevron-right" 
+                      size={20} 
+                      color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={[styles.navButton, styles.nextButton]}
+                    onPress={() => handleButtonPress('next', handleFinishTutorial)}
+                    disabled={isTransitioning}
                     activeOpacity={0.7}
                   >
                     <Feather 
-                      name="chevron-left" 
+                      name="message-circle" 
                       size={20} 
                       color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
                     />
@@ -602,61 +747,12 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                       styles.navButtonText, 
                       { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
                     ]}>
-                      Previous
+                      Start Chat
                     </Text>
                   </TouchableOpacity>
-                </Animated.View>
-
-                {/* Divider */}
-                <View style={[
-                  styles.navDivider, 
-                  { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.2)' : NuminaColors.darkMode[300] }
-                ]} />
-
-                {/* Enhanced Next/Finish Button */}
-                <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                  {currentStep < tutorialSteps.length - 1 ? (
-                    <TouchableOpacity
-                      style={[styles.navButton, styles.nextButton]}
-                      onPress={() => handleButtonPress('next', nextStep)}
-                      disabled={isTransitioning}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.navButtonText, 
-                        { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
-                      ]}>
-                        Next
-                      </Text>
-                      <Feather 
-                        name="chevron-right" 
-                        size={20} 
-                        color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.navButton, styles.nextButton]}
-                      onPress={() => handleButtonPress('next', handleFinishTutorial)}
-                      disabled={isTransitioning}
-                      activeOpacity={0.7}
-                    >
-                      <Feather 
-                        name="message-circle" 
-                        size={20} 
-                        color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
-                      />
-                      <Text style={[
-                        styles.navButtonText, 
-                        { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
-                      ]}>
-                        Start Chat
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </Animated.View>
-              </LinearGradient>
-            </View>
+                )}
+              </Animated.View>
+            </LinearGradient>
           </View>
         </Animated.View>
       </ScrollView>
@@ -708,8 +804,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 24,
-    marginBottom: 32,
+    marginBottom: 24, 
     borderWidth: 1,
+    height: 600, 
   },
   progressBarContainer: {
     height: 4,
@@ -727,8 +824,9 @@ const styles = StyleSheet.create({
   },
   stepContent: {
     padding: 32,
-    minHeight: 450,
+    height: 596, 
     alignItems: 'center',
+    justifyContent: 'flex-start',
   },
   characterContainer: {
     marginBottom: 32,
@@ -743,88 +841,86 @@ const styles = StyleSheet.create({
     height: 100,
     zIndex: 2,
   },
-  characterGlow: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    transform: [{ translateX: -60 }, { translateY: -60 }],
-    zIndex: 1,
-  },
   textContent: {
     width: '100%',
     alignItems: 'center',
+    flex: 1,
+    maxHeight: 380, 
   },
   stepTitle: {
-    fontSize: 20,
+    fontSize: 28, 
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 20, 
     textAlign: 'center',
     letterSpacing: -0.5,
-    fontFamily: 'Nunito_700Bold',
+    fontFamily: 'CrimsonPro_700Bold',
   },
   stepDescription: {
-    fontSize: 12.5,
-    lineHeight: 20,
+    fontSize: 17.5, 
+    lineHeight: 28, 
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32, 
     maxWidth: width * 0.8,
     fontWeight: '400',
     letterSpacing: -0.3,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'CrimsonPro_400Regular',
+    maxHeight: 160, 
+    overflow: 'hidden', 
   },
   featuresList: {
     width: '100%',
     gap: 12,
+    maxHeight: 200, 
+    overflow: 'hidden', 
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    gap: 12,
+    paddingVertical: 6, 
+    paddingHorizontal: 8, 
+    borderRadius: 8, 
+    gap: 6, 
     borderWidth: 1,
   },
   featureFeather: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 16, // Reduced from 32 by 50%
+    height: 16, // Reduced from 32 by 50%
+    borderRadius: 4, // Reduced from 8 by 50%
     justifyContent: 'center',
     alignItems: 'center',
   },
   featureText: {
-    fontSize: 10,
+    fontSize: 12.5, // Increased from original 10 by 25%
     fontWeight: '500',
     flex: 1,
     letterSpacing: -0.3,
     fontFamily: 'Inter_500Medium',
   },
   navigation: {
-    paddingTop: 32,
+    paddingTop: 16,
     paddingBottom: 16,
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    width: '100%',
   },
   navigationContainer: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: 'hidden',
-    elevation: 4,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    minHeight: 56, // Increased height for better visibility
   },
   navButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 32,
-    gap: 8,
+    paddingVertical: 16, // Increased from 8
+    paddingHorizontal: 40, // Increased from 32
+    gap: 12, // Increased from 8
+    flex: 1, // Make buttons take equal space
+    justifyContent: 'center', // Center content
   },
   prevButton: {},
   nextButton: {},
@@ -833,7 +929,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   navButtonText: {
-    fontSize: 10,
+    fontSize: 14, // Increased from 10
     fontWeight: '600',
     letterSpacing: -0.3,
     fontFamily: 'Inter_600SemiBold',

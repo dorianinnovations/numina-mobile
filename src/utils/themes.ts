@@ -42,9 +42,9 @@ export const lightTheme: Theme = {
     
     chat: {
       userMessage: {
-        background: NuminaColors.chatGreen[200],
+        background: '#E3F2FD',
         text: '#1a1a1a',
-        shadow: '4px 4px 12px rgba(153, 255, 153, 0.2), -2px -2px 8px #ffffff',
+        shadow: '4px 4px 12px rgba(227, 242, 253, 0.3), -2px -2px 8px #ffffff',
       },
       aiMessage: {
         background: '#ffffff',
@@ -108,8 +108,8 @@ export const darkTheme: Theme = {
     
     chat: {
       userMessage: {
-        background: NuminaColors.chatGreen[200],
-        text: '#1a1a1a',
+        background: '#90CAF9',
+        text: '#ffffff',
         shadow: '4px 4px 12px rgba(0, 0, 0, 0.5), -2px -2px 8px #1a1a1a',
       },
       aiMessage: {

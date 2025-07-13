@@ -426,7 +426,7 @@ export const NuminaEasing = {
 
 // Screen transition animations
 export const ScreenTransitions = {
-  // Slide in from right
+  // Slide in from right (forward navigation)
   slideInRight: (value: Animated.Value, callback?: () => void) => {
     value.setValue(100);
     Animated.timing(value, {
@@ -437,10 +437,31 @@ export const ScreenTransitions = {
     }).start(callback);
   },
 
-  // Slide out to left
+  // Slide in from left (back navigation)
+  slideInLeft: (value: Animated.Value, callback?: () => void) => {
+    value.setValue(-100);
+    Animated.timing(value, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+    }).start(callback);
+  },
+
+  // Slide out to left (forward navigation)
   slideOutLeft: (value: Animated.Value, callback?: () => void) => {
     Animated.timing(value, {
       toValue: -100,
+      duration: 250,
+      useNativeDriver: true,
+      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+    }).start(callback);
+  },
+
+  // Slide out to right (back navigation)
+  slideOutRight: (value: Animated.Value, callback?: () => void) => {
+    Animated.timing(value, {
+      toValue: 100,
       duration: 250,
       useNativeDriver: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),

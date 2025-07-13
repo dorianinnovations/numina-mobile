@@ -37,14 +37,14 @@ interface MessageBubbleProps {
 const BotMessageContent: React.FC<{
   text: string;
   previousLength: number;
-  newContentOpacity: Animated.AnimatedAddition;
+  newContentOpacity: Animated.Value;
   isStreaming?: boolean;
   theme: any;
 }> = ({ text, previousLength, newContentOpacity, isStreaming, theme }) => {
   
   const renderFormattedText = (content: string) => {
     const lines = content.split('\n');
-    const elements: JSX.Element[] = [];
+    const elements: React.ReactElement[] = [];
     
     lines.forEach((line, index) => {
       if (line.trim() === '') {
@@ -125,7 +125,7 @@ const BotMessageContent: React.FC<{
       // Bold text **text**
       else if (line.includes('**')) {
         const parts = line.split('**');
-        const textElements: JSX.Element[] = [];
+        const textElements: React.ReactElement[] = [];
         parts.forEach((part, partIndex) => {
           if (partIndex % 2 === 0) {
             // Normal text
@@ -187,7 +187,7 @@ const BotMessageContent: React.FC<{
       
       {isStreaming && (
         <Text style={[styles.streamingCursor, {
-          color: '#86efac',
+          color: '#86c0ef',
         }]}>|</Text>
       )}
     </View>
@@ -351,7 +351,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                 {
                   color: theme.colors.chat.userMessage.text,
                   letterSpacing: -0.3,
-                  fontFamily: 'Inter_400Regular',
+                  fontFamily: 'Nunito_400Regular',
                 }
               ]}>
                 {displayedText}
@@ -359,7 +359,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </View>
           </View>
         ) : (
-          /* Bot Message - No Bubble, Full Width with Formatting */
+          /* Bot Message*/
+
           <View style={styles.botMessageContainer}>
             <BotMessageContent 
               text={displayedText}
@@ -376,8 +377,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           TextStyles.timestamp,
           styles.timestamp,
           isUser ? styles.userTimestamp : styles.aiTimestamp,
+          isAI && styles.aiTimestampWithAvatar,
           {
-            color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500],
+            color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[200],
           }
         ]}>
           {formatTime(message.timestamp)}
@@ -389,7 +391,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <View style={styles.statusContainer}>
           <View style={[
             styles.statusDot,
-            { backgroundColor: NuminaColors.chatGreen[200] }
+            { backgroundColor: NuminaColors.chatBlue[200] }
           ]} />
         </View>
       )}
@@ -401,13 +403,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           {
             backgroundColor: isDarkMode 
               ? NuminaColors.darkMode[600] 
-              : NuminaColors.darkMode[200],
+              : NuminaColors.darkMode[100],
           }
         ]}>
           <FontAwesome5
-            name="brain"
-            size={12}
-            color={isDarkMode ? '#86efac' : '#10b981'}
+            name="seedling"
+            size={17}
+            color={isDarkMode ? '#7ccbff' : '#7ccbff'}
           />
         </View>
       )}
@@ -417,21 +419,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
-    marginHorizontal: 16,
+    marginVertical: 1,
+    marginHorizontal: 1,
   },
   userContainer: {
     alignItems: 'flex-end',
   },
   aiContainer: {
     alignItems: 'flex-start',
-    paddingLeft: 16, // Reduced padding for avatar
+    paddingLeft: 15, 
   },
   messageWrapper: {
-    maxWidth: width * 0.75,
+    maxWidth: width * 0.95,
   },
   userMessageWrapper: {
-    maxWidth: width * 0.93,
+    maxWidth: width * 0.95,
   },
   botMessageContainer: {
     width: '100%',
@@ -440,13 +442,12 @@ const styles = StyleSheet.create({
   botTextContainer: {
     width: '100%',
   },
-  // Typography styles for bot messages
   h1Text: {
     fontSize: 24,
     fontWeight: '700',
     lineHeight: 32,
     marginBottom: 12,
-    fontFamily: 'Inter_700Bold',
+    fontFamily: 'Nunito_700Bold',
   },
   h2Text: {
     fontSize: 20,
@@ -454,7 +455,7 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginBottom: 10,
     marginTop: 8,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   h3Text: {
     fontSize: 18,
@@ -462,20 +463,20 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: 8,
     marginTop: 6,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   regularText: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '400',
     marginBottom: 8,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   boldText: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   bulletContainer: {
     flexDirection: 'row',
@@ -489,14 +490,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginRight: 8,
     width: 20,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   bulletText: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '400',
     flex: 1,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   inlineTextContainer: {
     flexDirection: 'row',
@@ -507,12 +508,11 @@ const styles = StyleSheet.create({
     height: 12,
   },
   messageBubble: {
-    borderRadius: 5,
+    borderRadius: 15,
     overflow: 'hidden',
     position: 'relative',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    // Neumorphic shadow effects
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 2 },
@@ -520,10 +520,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   userBubble: {
-    borderBottomRightRadius: 5,
+    borderBottomRightRadius: 15,
   },
   aiBubble: {
-    borderBottomLeftRadius: 5,
+    borderBottomLeftRadius: 15,
   },
   bubbleGradient: {
     padding: 16,
@@ -550,7 +550,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageText: {
-    fontSize: 19.2,
+    fontSize: 15.2,
     lineHeight: 26.4,
     fontWeight: '400',
   },
@@ -575,6 +575,9 @@ const styles = StyleSheet.create({
   aiTimestamp: {
     textAlign: 'left',
   },
+  aiTimestampWithAvatar: {
+    marginLeft: 6,
+  },
   statusContainer: {
     position: 'absolute',
     bottom: 8,
@@ -587,17 +590,18 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: -12,
-    width: 24,
-    height: 24,
-    borderRadius: 5,
+    bottom: 12,
+    left: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 2,
+    opacity: 0.6,
+    elevation: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 0.5 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
 });

@@ -103,7 +103,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   <FontAwesome5 
                     name={section.icon as any} 
                     size={16} 
-                    color={isDarkMode ? '#86efac' : '#10b981'} 
+                    color={isDarkMode ? '#86baef' : '#6ac2f2'} 
                   />
                 </View>
                 <View style={styles.sectionText}>

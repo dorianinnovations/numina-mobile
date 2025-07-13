@@ -36,6 +36,9 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
       case 'analytics':
         navigation.navigate('Analytics');
         break;
+      case 'cloud':
+        navigation.navigate('Cloud');
+        break;
       case 'stratosphere':
         navigation.navigate('Stratosphere');
         break;

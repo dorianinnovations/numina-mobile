@@ -1,260 +1,338 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ApiService from './api';
+import NetInfo from '@react-native-community/netinfo';
+import { offlineEmotionStorage } from './offlineEmotionStorage';
+import { userDataSync } from './userDataSync';
+import SecureStorageService from './secureStorage';
+
+const getBaseApiUrl = () => {
+  return 'https://server-a7od.onrender.com';
+};
+
+const createAuthHeaders = async (token?: string) => {
+  const authToken = token || await SecureStorageService.getToken();
+  // Only log if there's no token
+  if (!authToken) {
+    console.log('[emotionalAnalyticsAPI] Creating auth headers with token: No token found');
+  }
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${authToken}`,
+    'Accept': 'application/json'
+  };
+};
+
+const getAuthToken = async () => {
+  const token = await SecureStorageService.getToken();
+  // Only log if there's no token
+  if (!token) {
+    console.log('[emotionalAnalyticsAPI] Retrieved auth token: No token found');
+  }
+  return token;
+};
+
+const handleApiResponse = async (response: Response) => {
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.message || 
+      `API request failed: Server responded with status ${response.status}`
+    );
+  }
+  const data = await response.json();
+  // The API always returns { success: boolean, data: any } format
+  return data;
+};
+
+// Check if online and have valid auth
+const canUseOnlineAPI = async () => {
+  const netInfo = await NetInfo.fetch();
+  const token = await getAuthToken();
+  const canUse = netInfo.isConnected && !!token;
+  // Only log if there's an issue
+  if (!canUse) {
+    console.log('[emotionalAnalyticsAPI] Can use online API:', { isConnected: netInfo.isConnected, hasToken: !!token, canUse });
+  }
+  return canUse;
+};
+
+// Helper function to generate weekly report from emotions
+const generateWeeklyReportFromEmotions = (emotions: any[]) => {
+  const now = new Date();
+  const weekStart = new Date(now.getTime() - (now.getDay() * 24 * 60 * 60 * 1000));
+  const weekEnd = new Date(weekStart.getTime() + (6 * 24 * 60 * 60 * 1000));
+  
+  const weekEmotions = emotions.filter((emotion: any) => {
+    const emotionDate = new Date(emotion.timestamp);
+    return emotionDate >= weekStart && emotionDate <= weekEnd;
+  });
+  
+  // Calculate weekly stats
+  const totalEmotions = weekEmotions.length;
+  const averageIntensity = weekEmotions.length > 0 
+    ? weekEmotions.reduce((sum: number, emotion: any) => sum + emotion.intensity, 0) / weekEmotions.length 
+    : 0;
+  
+  // Group by emotion type
+  const emotionCounts: { [key: string]: number } = {};
+  weekEmotions.forEach((emotion: any) => {
+    emotionCounts[emotion.emotion] = (emotionCounts[emotion.emotion] || 0) + 1;
+  });
+  
+  const mostFrequentEmotion = Object.keys(emotionCounts).reduce((a, b) => 
+    emotionCounts[a] > emotionCounts[b] ? a : b, '');
+  
+  return {
+    totalEmotions,
+    averageIntensity: Math.round(averageIntensity * 10) / 10,
+    mostFrequentEmotion,
+    emotionBreakdown: emotionCounts,
+    weekStart: weekStart.toISOString(),
+    weekEnd: weekEnd.toISOString(),
+    emotions: weekEmotions
+  };
+};
 
 /**
- * Emotional Analytics API for React Native
- * Matches web app implementation exactly with offline-first approach
- * Handles user isolation, automatic sync, and LLM-powered analytics
+ * EMOTIONAL ANALYTICS API ENDPOINTS
+ * Matches backend structure with offline support
  */
 
-export interface EmotionEntry {
-  id: string;
-  emotion: string;
-  intensity: number;
-  description?: string;
-  timestamp: string;
-  userId: string;
-  mood?: string;
-  tags?: string[];
-  context?: {
-    location?: string;
-    activity?: string;
-    people?: string[];
-  };
-}
+// Submit emotional entry - ALWAYS works offline, tries online sync
+export const submitEmotionalEntry = async (emotionData: any) => {
+  try {
+    // ALWAYS store locally first (guarantees it works offline/online)
+    const localResult = await offlineEmotionStorage.storeEmotion(emotionData);
+    console.log('✅ Emotion stored locally:', localResult.id);
 
-export interface EmotionMetadata {
-  totalEntries: number;
-  lastSyncTime: string | null;
-  pendingSync: number;
-  userId: string;
-}
-
-class EmotionalAnalyticsAPI {
-  // Storage keys with user isolation - exactly like web app
-  private static getStorageKeys(userId?: string) {
-    const currentUserId = userId || 'guest';
-    
-    return {
-      EMOTIONS: `numina_emotions_v2_${currentUserId}`,
-      METADATA: `numina_emotion_metadata_v2_${currentUserId}`,
-      ANALYTICS: `numina_analytics_cache_${currentUserId}`,
-      SYNC_QUEUE: `numina_sync_queue_${currentUserId}`,
-    };
-  }
-
-  // Submit emotional entry - offline-first approach like web app
-  static async submitEmotionalEntry(emotionData: Omit<EmotionEntry, 'id' | 'timestamp' | 'userId'>): Promise<{
-    success: boolean;
-    entry: EmotionEntry;
-    onlineSync: boolean;
-    error?: string;
-  }> {
-    try {
-      // Get current user ID
-      const userData = await AsyncStorage.getItem('userData');
-      const userId = userData ? JSON.parse(userData).id : 'guest';
-      
-      // Create complete emotion entry
-      const emotionEntry: EmotionEntry = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        userId,
-        ...emotionData,
-      };
-
-      // ALWAYS store locally first (works offline/online) - exactly like web app
-      const localResult = await this.storeEmotionLocally(emotionEntry);
-      
-      if (!localResult.success) {
-        return {
-          success: false,
-          entry: emotionEntry,
-          onlineSync: false,
-          error: 'Failed to store emotion locally',
-        };
-      }
-
-      // Try online sync if available
-      let onlineSync = false;
-      if (await this.canUseOnlineAPI()) {
-        try {
-          const syncResult = await this.syncEmotionToServer(emotionEntry);
-          onlineSync = syncResult.success;
-        } catch (onlineError) {
-          // Don't fail - local storage succeeded
-        }
-      }
-
-      return {
-        success: true,
-        entry: emotionEntry,
-        onlineSync,
-      };
-    } catch (error: any) {
-      console.error('Submit emotional entry error:', error);
-      return {
-        success: false,
-        entry: { ...emotionData } as EmotionEntry,
-        onlineSync: false,
-        error: error.message,
-      };
-    }
-  }
-
-  // Store emotion locally with user isolation
-  private static async storeEmotionLocally(emotion: EmotionEntry): Promise<{ success: boolean; error?: string }> {
-    try {
-      const keys = this.getStorageKeys(emotion.userId);
-      
-      // Load existing emotions
-      const existing = await AsyncStorage.getItem(keys.EMOTIONS);
-      const emotions: EmotionEntry[] = existing ? JSON.parse(existing) : [];
-      
-      // Add new emotion
-      emotions.unshift(emotion);
-      
-      // Limit to recent entries (performance)
-      const limitedEmotions = emotions.slice(0, 1000);
-      
-      // Save updated emotions
-      await AsyncStorage.setItem(keys.EMOTIONS, JSON.stringify(limitedEmotions));
-      
-      // Update metadata
-      await this.updateMetadata(emotion.userId, {
-        totalEntries: limitedEmotions.length,
-        pendingSync: 1, // Increment pending sync
+    // Attempt online sync if possible
+    const canSync = await canUseOnlineAPI();
+    if (!canSync) {
+      const token = await getAuthToken();
+      console.log('📡 Online sync not possible:', {
+        hasToken: !!token,
+        reason: !token ? 'Not authenticated - please log in to sync' : 'No network connection'
       });
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('Store emotion locally error:', error);
-      return { success: false, error: error.message };
     }
-  }
+    if (canSync) {
+      try {
+        // Validate emotion data before sending
+        if (!emotionData.mood || emotionData.mood.trim() === '') {
+          throw new Error('Emotion mood is required and cannot be empty');
+        }
 
-  // Sync emotion to server
-  private static async syncEmotionToServer(emotion: EmotionEntry): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await ApiService.saveEmotion(emotion);
-      
-      if (response.success) {
-        // Update sync metadata
-        await this.updateMetadata(emotion.userId, {
-          lastSyncTime: new Date().toISOString(),
-          pendingSync: -1, // Decrement pending sync
+        const userData = await SecureStorageService.getUserData();
+        const userId = userData?.id || 'guest';
+
+        const response = await fetch(`${getBaseApiUrl()}/emotions`, {
+          method: 'POST',
+          headers: await createAuthHeaders(),
+          body: JSON.stringify({
+            mood: emotionData.mood.trim(),
+            intensity: emotionData.intensity,
+            notes: emotionData.notes || '',
+            date: emotionData.date
+          })
         });
         
-        return { success: true };
-      } else {
-        return { success: false, error: response.error };
+        const result = await handleApiResponse(response);
+        console.log('✅ Emotion synced online successfully!', {
+          mood: emotionData.mood,
+          intensity: emotionData.intensity,
+          timestamp: new Date().toISOString(),
+          syncedToServer: true
+        });
+        
+        // Mark as synced
+        await offlineEmotionStorage.markAsSynced(localResult.id);
+        
+        return { ...result, local: false };
+      } catch (onlineError) {
+        console.warn('⚠️ Online sync failed, data saved locally:', onlineError);
       }
-    } catch (error: any) {
-      console.error('Sync emotion to server error:', error);
-      return { success: false, error: error.message };
     }
+    
+    return { ...localResult, local: true };
+  } catch (error) {
+    console.error('❌ Failed to submit emotional entry:', error);
+    throw error;
   }
+};
 
-  // Update metadata
-  private static async updateMetadata(userId: string, updates: Partial<EmotionMetadata>): Promise<void> {
-    try {
-      const keys = this.getStorageKeys(userId);
-      const existing = await AsyncStorage.getItem(keys.METADATA);
-      const metadata: EmotionMetadata = existing 
-        ? JSON.parse(existing)
-        : {
-            totalEntries: 0,
-            lastSyncTime: null,
-            pendingSync: 0,
-            userId,
-          };
-      
-      // Apply updates
-      Object.assign(metadata, updates);
-      
-      // Handle relative updates for pendingSync
-      if (updates.pendingSync !== undefined) {
-        if (updates.pendingSync > 0) {
-          metadata.pendingSync += updates.pendingSync;
-        } else {
-          metadata.pendingSync = Math.max(0, metadata.pendingSync + updates.pendingSync);
-        }
-      }
-      
-      await AsyncStorage.setItem(keys.METADATA, JSON.stringify(metadata));
-    } catch (error) {
-      console.error('Update metadata error:', error);
-    }
-  }
-
-  // Check if online API is available
-  private static async canUseOnlineAPI(): Promise<boolean> {
-    try {
-      return await ApiService.checkConnection();
-    } catch (error) {
-      return false;
-    }
-  }
-
-  // Sync all pending emotions (called on app start/network reconnection)
-  static async syncPendingEmotions(userId: string): Promise<{
-    synced: number;
-    failed: number;
-    error?: string;
-  }> {
-    try {
-      const keys = this.getStorageKeys(userId);
-      const emotions = await AsyncStorage.getItem(keys.EMOTIONS);
-      
-      if (!emotions) {
-        return { synced: 0, failed: 0 };
-      }
-      
-      const emotionList: EmotionEntry[] = JSON.parse(emotions);
-      let synced = 0;
-      let failed = 0;
-      
-      // Sync recent emotions that might not be synced
-      const recentEmotions = emotionList.slice(0, 10);
-      
-      for (const emotion of recentEmotions) {
-        try {
-          const result = await this.syncEmotionToServer(emotion);
-          if (result.success) {
-            synced++;
-          } else {
-            failed++;
-          }
-        } catch (error) {
-          failed++;
-        }
-      }
-      
-      return { synced, failed };
-    } catch (error: any) {
-      console.error('Sync pending emotions error:', error);
+// Get current session - tries online first, falls back to local
+export const getCurrentSession = async (refresh = false) => {
+  try {
+    if (await canUseOnlineAPI()) {
+      const response = await fetch(`${getBaseApiUrl()}/emotions`, {
+        headers: await createAuthHeaders()
+      });
+      const result = await handleApiResponse(response);
+      // Transform API response to match expected format
       return {
-        synced: 0,
-        failed: 0,
-        error: error.message,
+        recentEmotions: result.data || [],
+        totalCount: result.data?.length || 0
       };
     }
+    
+    // Fallback to local data
+    return await offlineEmotionStorage.getCurrentSession();
+  } catch (error) {
+    console.error('❌ Failed to get current session:', error);
+    // Always return local data on error
+    return await offlineEmotionStorage.getCurrentSession();
   }
+};
 
-  // Clear user data (for logout)
-  static async clearUserData(userId: string): Promise<void> {
-    try {
-      const keys = this.getStorageKeys(userId);
-      await Promise.all([
-        AsyncStorage.removeItem(keys.EMOTIONS),
-        AsyncStorage.removeItem(keys.METADATA),
-        AsyncStorage.removeItem(keys.ANALYTICS),
-        AsyncStorage.removeItem(keys.SYNC_QUEUE),
-      ]);
-    } catch (error) {
-      console.error('Clear user data error:', error);
+// Get day insights
+export const getDayInsights = async (day: string) => {
+  try {
+    if (await canUseOnlineAPI()) {
+      const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
+        headers: await createAuthHeaders()
+      });
+      const result = await handleApiResponse(response);
+      // Filter emotions for the specific day
+      const dayEmotions = (result.data || []).filter((emotion: any) => {
+        const emotionDate = new Date(emotion.timestamp).toLocaleDateString();
+        return emotionDate === day;
+      });
+      return dayEmotions;
     }
+    
+    // Fallback to local generation
+    return await offlineEmotionStorage.generateDayInsights(day);
+  } catch (error) {
+    console.error('❌ Failed to get day insights:', error);
+    return await offlineEmotionStorage.generateDayInsights(day);
   }
-}
+};
 
-export default EmotionalAnalyticsAPI;
+// Get weekly report
+export const getWeeklyReport = async () => {
+  try {
+    if (await canUseOnlineAPI()) {
+      const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
+        headers: await createAuthHeaders()
+      });
+      const result = await handleApiResponse(response);
+      // Generate weekly report from emotion history
+      const emotions = result.data || [];
+      const weeklyData = generateWeeklyReportFromEmotions(emotions);
+      return weeklyData;
+    }
+    
+    // Fallback to local generation
+    return await offlineEmotionStorage.generateWeeklyReport();
+  } catch (error) {
+    console.error('❌ Failed to get weekly report:', error);
+    return await offlineEmotionStorage.generateWeeklyReport();
+  }
+};
+
+// Get session history
+export const getSessionHistory = async (limit = 50, offset = 0) => {
+  try {
+    if (await canUseOnlineAPI()) {
+      const response = await fetch(
+        `${getBaseApiUrl()}/emotion-history`,
+        { headers: await createAuthHeaders() }
+      );
+      const result = await handleApiResponse(response);
+      // Apply limit and offset to the response
+      const emotions = result.data || [];
+      const paginatedEmotions = emotions.slice(offset, offset + limit);
+      return {
+        sessions: paginatedEmotions,
+        totalCount: emotions.length
+      };
+    }
+    
+    return await offlineEmotionStorage.getSessionHistory(limit, offset);
+  } catch (error) {
+    console.error('❌ Failed to get session history:', error);
+    return await offlineEmotionStorage.getSessionHistory(limit, offset);
+  }
+};
+
+// Sync offline data when back online
+export const syncOfflineData = async () => {
+  if (!(await canUseOnlineAPI())) {
+    return { synced: 0, failed: 0 };
+  }
+  
+  try {
+    const userData = await SecureStorageService.getUserData();
+    const userId = userData?.id || 'guest';
+    
+    // Start sync
+    const canSync = await userDataSync.startSync(userId);
+    if (!canSync) {
+      return { synced: 0, failed: 0 };
+    }
+    
+    const unsyncedEmotions = await offlineEmotionStorage.getUnsyncedEmotions();
+    
+    // Filter out invalid emotions before syncing
+    const validEmotions = unsyncedEmotions.filter(emotion => {
+      const isValid = emotion.mood && emotion.mood.trim() !== '';
+      if (!isValid) {
+        console.warn('Filtering out invalid emotion:', emotion.id, 'mood:', emotion.mood);
+      }
+      return isValid;
+    });
+    
+    // Only log if there's actually data to sync
+    if (validEmotions.length > 0) {
+      console.log(`[emotionalAnalyticsAPI] Found ${unsyncedEmotions.length} unsynced emotions, ${validEmotions.length} valid`);
+    }
+    
+    let synced = 0;
+    let failed = 0;
+    
+    for (const emotion of validEmotions) {
+      try {
+
+        const response = await fetch(`${getBaseApiUrl()}/emotions`, {
+          method: 'POST',
+          headers: await createAuthHeaders(),
+          body: JSON.stringify({
+            mood: emotion.mood.trim(),
+            intensity: emotion.intensity,
+            notes: emotion.notes || '',
+            date: emotion.timestamp
+          })
+        });
+        
+        await handleApiResponse(response);
+        await offlineEmotionStorage.markAsSynced(emotion.id);
+        synced++;
+      } catch (error) {
+        console.error('Failed to sync emotion:', emotion.id, error);
+        failed++;
+      }
+    }
+    
+    // Update sync status
+    await userDataSync.updateSyncStatus({
+      lastSync: new Date().toISOString(),
+      pending: unsyncedEmotions.length - synced, // Use original count for pending
+      failed: failed
+    }, userId);
+    
+    userDataSync.endSync();
+    
+    return { synced, failed };
+  } catch (error) {
+    console.error('❌ Sync failed:', error);
+    userDataSync.endSync();
+    throw error;
+  }
+};
+
+export const emotionalAnalyticsAPI = {
+  submitEmotionalEntry,
+  getCurrentSession,
+  getDayInsights,
+  getWeeklyReport,
+  getSessionHistory,
+  syncOfflineData
+};

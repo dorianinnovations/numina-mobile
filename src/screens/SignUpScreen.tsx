@@ -62,24 +62,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Entry animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: false,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: false,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: false,
-      }),
-    ]).start();
+    // Entry animation - slide in from right for forward navigation
+    fadeAnim.setValue(1);
+    scaleAnim.setValue(1);
+    ScreenTransitions.slideInRight(slideAnim);
   }, []);
 
   const handleSubmit = async () => {
@@ -181,7 +167,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         showBackButton={true}
         showMenuButton={true}
         onBackPress={() => {
-          ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+          ScreenTransitions.slideOutRight(slideAnim, () => {
             onNavigateBack();
           });
         }}
@@ -199,7 +185,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             {
               opacity: fadeAnim,
               transform: [
-                { translateY: slideAnim },
+                { translateX: slideAnim },
                 { scale: scaleAnim },
               ],
             },
@@ -223,18 +209,18 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       color: isDarkMode ? '#ffffff' : '#000000',
                       transform: [{ translateX: slideAnim.interpolate({
                         inputRange: [-30, 0],
-                        outputRange: [-40, 0],
+                        outputRange: [-15, 0],
                       })}],
                     },
                   ]}
                 >
-                  Sign Up
+                  Ready to Begin?
                 </Animated.Text>
                 <Text style={[
                   styles.subtitle, 
                   { color: isDarkMode ? '#888888' : '#666666' }
                 ]}>
-                  Create your Numina account
+                  Create your Numina account for free
                 </Text>
               </View>
 
@@ -368,7 +354,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   style={[
                     styles.primaryButton,
                     {
-                      backgroundColor: isDarkMode ? '#ffffff' : '#000000',
+                      backgroundColor: isDarkMode ? '#add5fa' : '#add5fa',
                       opacity: loading ? 0.7 : 1,
                     }
                   ]}
@@ -389,7 +375,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() => {
-                  ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+                  ScreenTransitions.slideOutRight(slideAnim, () => {
                     onNavigateToSignIn();
                   });
                 }}
@@ -399,7 +385,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   styles.linkText, 
                   { color: isDarkMode ? '#ffffff' : '#000000' }
                 ]}>
-                  Already have an account? <Text style={styles.linkTextBold}>Sign in</Text>
+                  Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#B8E6B8' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#B8E6B8' : '#000000' }]}>in</Text>
                 </Text>
               </TouchableOpacity>
 
@@ -491,17 +477,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 35,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -1,
+    fontFamily: 'CrimsonPro_700Bold',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
   },
   formContent: {
     gap: 24,
@@ -517,6 +505,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     height: 38,
+    fontFamily: 'Nunito_400Regular',
   },
   primaryButton: {
     paddingVertical: 8,
@@ -534,6 +523,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.3,
+    fontFamily: 'Nunito_500Medium',
   },
   linkButton: {
     paddingVertical: 12,
@@ -543,9 +533,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     textAlign: 'center',
+    fontFamily: 'Nunito_400Regular',
   },
   linkTextBold: {
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   messageContainer: {
     marginTop: 16,
@@ -555,6 +547,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     fontSize: 14,
+    fontFamily: 'Nunito_500Medium',
   },
   successContent: {
     flexDirection: 'row',
@@ -566,6 +559,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     fontSize: 14,
+    fontFamily: 'Nunito_500Medium',
   },
   loadingContainer: {
     flex: 1,
@@ -576,5 +570,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
   },
 });

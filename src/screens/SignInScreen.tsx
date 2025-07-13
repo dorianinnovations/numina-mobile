@@ -25,12 +25,14 @@ interface SignInScreenProps {
   onNavigateBack: () => void;
   onSignInSuccess: () => void;
   onNavigateToSignUp: () => void;
+  onNavigateToHero?: () => void;
 }
 
 export const SignInScreen: React.FC<SignInScreenProps> = ({
   onNavigateBack,
   onSignInSuccess,
   onNavigateToSignUp,
+  onNavigateToHero,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const { login, loading: authLoading } = useAuth();
@@ -57,24 +59,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Entry animation
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: false,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 800,
-        useNativeDriver: false,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: false,
-      }),
-    ]).start();
+    // Entry animation - slide in from right for forward navigation
+    fadeAnim.setValue(1);
+    scaleAnim.setValue(1);
+    ScreenTransitions.slideInRight(slideAnim);
   }, []);
 
   const handleSubmit = async () => {
@@ -114,7 +102,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setIsSignInSuccess(true);
         
         setTimeout(() => {
-          ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+          ScreenTransitions.slideOutLeft(slideAnim, () => {
             onSignInSuccess();
           });
         }, 800);
@@ -145,10 +133,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         showBackButton={true}
         showMenuButton={true}
         onBackPress={() => {
-          ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+          ScreenTransitions.slideOutRight(slideAnim, () => {
             onNavigateBack();
           });
         }}
+        onTitlePress={onNavigateToHero}
         onMenuPress={() => {}}
       />
 
@@ -163,7 +152,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             {
               opacity: fadeAnim,
               transform: [
-                { translateY: slideAnim },
+                { translateX: slideAnim },
                 { scale: scaleAnim },
               ],
             },
@@ -178,7 +167,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 borderColor: '#222222',
               } : styles.glassmorphic
             ]}>
-              {/* Clean header */}
+              {/*  header */}
               <View style={styles.header}>
                 <Animated.Text
                   style={[
@@ -188,7 +177,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                       transform: [{ 
                         translateX: slideAnim.interpolate({
                           inputRange: [-30, 0],
-                          outputRange: [-40, 0],
+                          outputRange: [-15, 0],
                         }) 
                       }],
                     },
@@ -296,7 +285,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                   style={[
                     styles.primaryButton,
                     {
-                      backgroundColor: isDarkMode ? '#ffffff' : '#000000',
+                      backgroundColor: isDarkMode ? '#ffffff' : '#add5fa',
                       opacity: (loading || isSignInSuccess) ? 0.7 : 1,
                     }
                   ]}
@@ -317,7 +306,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
               <TouchableOpacity
                 style={styles.linkButton}
                 onPress={() => {
-                  ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
+                  ScreenTransitions.slideOutLeft(slideAnim, () => {
                     onNavigateToSignUp();
                   });
                 }}
@@ -327,7 +316,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                   styles.linkText, 
                   { color: isDarkMode ? '#ffffff' : '#000000' }
                 ]}>
-                  Don't have an account? <Text style={styles.linkTextBold}>Sign up</Text>
+                  Don't have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#80c1ff' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#80c1ff' : '#000000' }]}>up</Text>
                 </Text>
               </TouchableOpacity>
 
@@ -399,17 +388,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 28,
+    fontSize: 40,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
-    letterSpacing: -0.5,
+    letterSpacing: -1,
+    fontFamily: 'CrimsonPro_700Bold',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
     fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
   },
   formContent: {
     gap: 24,
@@ -425,6 +416,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     height: 38,
+    fontFamily: 'Nunito_400Regular',
   },
   primaryButton: {
     paddingVertical: 8,
@@ -442,6 +434,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.3,
+    fontFamily: 'Nunito_500Medium',
   },
   linkButton: {
     paddingVertical: 12,
@@ -451,9 +444,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     textAlign: 'center',
+    fontFamily: 'Nunito_400Regular',
   },
   linkTextBold: {
     fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
   errorContainer: {
     marginTop: 16,
@@ -463,5 +458,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
     fontSize: 14,
+    fontFamily: 'Nunito_500Medium',
   },
 });

@@ -66,7 +66,7 @@ export const FontProvider: React.FC<FontProviderProps> = ({ children }) => {
           textAlign: 'center',
           marginTop: 8,
         }}>
-          Nunito • Inter • Open Sans
+          Nunito • Inter • Crimson Pro • Open Sans
         </Text>
       </View>
     );

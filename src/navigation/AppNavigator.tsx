@@ -15,6 +15,7 @@ import { StratosphereScreen } from "../screens/StratosphereScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { AboutScreen } from "../screens/AboutScreen";
+import { CloudScreen } from "../screens/CloudScreen";
 
 // Contexts
 import { useTheme } from "../contexts/ThemeContext";
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Chat: undefined;
   Analytics: undefined;
+  Cloud: undefined;
   Stratosphere: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -129,6 +131,7 @@ export const AppNavigator: React.FC = () => {
               onNavigateBack={() => navigation.navigate("Welcome")}
               onSignInSuccess={() => navigation.navigate("Chat")}
               onNavigateToSignUp={() => navigation.navigate("SignUp")}
+              onNavigateToHero={() => navigation.navigate("Hero")}
             />
           )}
         </Stack.Screen>
@@ -157,7 +160,7 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <TutorialScreen
               onNavigateHome={() => navigation.navigate("Hero")}
-              onStartChat={() => navigation.navigate("SignIn")}
+              onStartChat={() => navigation.navigate("SignUp")}
             />
           )}
         </Stack.Screen>
@@ -182,6 +185,17 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <AnalyticsScreen onNavigateBack={() => navigation.goBack()} />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Cloud"
+          options={{
+            ...slideTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <CloudScreen onNavigateBack={() => navigation.goBack()} />
           )}
         </Stack.Screen>
 

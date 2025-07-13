@@ -1,5 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NuminaColors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -10,6 +11,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const getMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat' },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics' },
+  { icon: <Feather name="cloud" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Cloud', key: 'cloud' },
   { icon: <MaterialCommunityIcons name="earth" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Stratosphere', key: 'stratosphere' },
   { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile' },
   { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings' },
@@ -107,16 +109,30 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     }
   }, [visible]);
 
+  // Double haptic feedback function
+  const triggerDoubleHaptic = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTimeout(() => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }, 50); // 50ms delay for quick succession
+  };
+
+  // Handle menu button press with double haptic
+  const handleMenuButtonPress = (actionKey: string) => {
+    triggerDoubleHaptic();
+    onAction(actionKey);
+  };
+
   if (!visible) return null;
 
   // Calculate position based on menu button
   const menuWidth = 280;
   const menuHeight = 280;
-  const rightMargin = 1; // Same as header right margin
-  const topMargin = 70; // Same as header top margin
+  const rightMargin = 1;
+  const topMargin = 70;
   
-  const menuRight = rightMargin + 34; // 34 is menu button width
-  const menuTop = topMargin + 34; // 34 is menu button height
+  const menuRight = rightMargin + 34;
+  const menuTop = topMargin + 34;
 
   return (
     <View style={styles.overlay}>
@@ -198,7 +214,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
                     : 'rgba(0, 0, 0, 0.05)',
                 }
               ]}
-              onPress={() => onAction(action.key)}
+              onPress={() => handleMenuButtonPress(action.key)}
               activeOpacity={0.7}
             >
               <View style={styles.iconContainer}>{action.icon}</View>
