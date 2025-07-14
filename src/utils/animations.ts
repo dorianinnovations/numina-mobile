@@ -55,7 +55,7 @@ export class NuminaAnimations {
       if (Platform.OS === 'ios') {
         Haptics.selectionAsync();
       } else {
-        Vibration.vibrate(5);
+        Vibration.vibrate(25);
       }
     },
   };
@@ -127,7 +127,7 @@ export class NuminaAnimations {
   // Enhanced fade in animation
   static fadeIn(
     animatedValue: Animated.Value,
-    duration: number = 600,
+    duration: number = 100,
     delay: number = 0,
     callback?: () => void
   ) {
@@ -144,7 +144,7 @@ export class NuminaAnimations {
   static slideIn(
     animatedValue: Animated.Value,
     fromValue: number = 50,
-    duration: number = 600,
+    duration: number = 60,
     delay: number = 0,
     callback?: () => void
   ) {
@@ -162,7 +162,7 @@ export class NuminaAnimations {
   static scaleIn(
     animatedValue: Animated.Value,
     fromValue: number = 0.8,
-    duration: number = 500,
+    duration: number = 100,
     delay: number = 0,
     callback?: () => void
   ) {
@@ -190,13 +190,13 @@ export class NuminaAnimations {
       
       switch (anim.type) {
         case 'fade':
-          return () => this.fadeIn(anim.value, 600, delay);
+          return () => this.fadeIn(anim.value, 100, delay);
         case 'slide':
-          return () => this.slideIn(anim.value, 30, 600, delay);
+          return () => this.slideIn(anim.value, 30, 100, delay);
         case 'scale':
-          return () => this.scaleIn(anim.value, 0.9, 500, delay);
+          return () => this.scaleIn(anim.value, 0.9, 100, delay);
         default:
-          return () => this.fadeIn(anim.value, 600, delay);
+          return () => this.fadeIn(anim.value, 100, delay);
       }
     });
 
@@ -431,7 +431,7 @@ export const ScreenTransitions = {
     value.setValue(100);
     Animated.timing(value, {
       toValue: 0,
-      duration: 300,
+      duration: 60,
       useNativeDriver: true,
       easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
     }).start(callback);
@@ -442,7 +442,7 @@ export const ScreenTransitions = {
     value.setValue(-100);
     Animated.timing(value, {
       toValue: 0,
-      duration: 300,
+      duration: 60,
       useNativeDriver: true,
       easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
     }).start(callback);
@@ -452,7 +452,7 @@ export const ScreenTransitions = {
   slideOutLeft: (value: Animated.Value, callback?: () => void) => {
     Animated.timing(value, {
       toValue: -100,
-      duration: 250,
+      duration: 60,
       useNativeDriver: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
     }).start(callback);
@@ -462,7 +462,7 @@ export const ScreenTransitions = {
   slideOutRight: (value: Animated.Value, callback?: () => void) => {
     Animated.timing(value, {
       toValue: 100,
-      duration: 250,
+      duration: 30,
       useNativeDriver: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
     }).start(callback);
@@ -507,13 +507,13 @@ export const ScreenTransitions = {
   },
 
   // Staggered entrance for multiple elements
-  staggeredEntrance: (elements: Array<{ value: Animated.Value; delay: number }>, staggerDelay: number = 100) => {
+  staggeredEntrance: (elements: Array<{ value: Animated.Value; delay: number }>, staggerDelay: number = 60) => {
     elements.forEach((element, index) => {
       setTimeout(() => {
         element.value.setValue(0);
         Animated.timing(element.value, {
           toValue: 1,
-          duration: 300,
+          duration: 180,
           useNativeDriver: true,
           easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
         }).start();
@@ -525,7 +525,7 @@ export const ScreenTransitions = {
   exitWithCallback: (value: Animated.Value, callback: () => void) => {
     Animated.timing(value, {
       toValue: 0,
-      duration: 200,
+      duration: 120,
       useNativeDriver: true,
       easing: (t: number) => 1 - Math.pow(1 - t, 3),
     }).start(callback);

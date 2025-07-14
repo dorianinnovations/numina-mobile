@@ -6,7 +6,13 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build:android": "npx eas-cli build --platform android",
+    "build:ios": "npx eas-cli build --platform ios",
+    "build:preview": "npx eas-cli build --profile preview",
+    "build:production": "npx eas-cli build --profile production",
+    "submit:android": "npx eas-cli submit --platform android",
+    "submit:ios": "npx eas-cli submit --platform ios"
   },
   "dependencies": {
     "@expo-google-fonts/crimson-pro": "^0.4.1",

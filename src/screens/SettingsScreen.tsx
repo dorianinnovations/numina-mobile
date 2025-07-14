@@ -14,6 +14,7 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { PageBackground } from '../components/PageBackground';
+import { Header } from '../components/Header';
 import SettingsService, { UserSettings } from '../services/settingsService';
 import { NuminaAnimations } from '../utils/animations';
 
@@ -404,6 +405,11 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           translucent={true}
         />
         
+        <Header
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+          title="Settings"
+        />
 
         <ScrollView 
           style={styles.content}
@@ -434,7 +440,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 120,
+    paddingTop: 60,
   },
   contentContainer: {
     padding: 24,
@@ -466,7 +472,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     padding: 16,
-    height: 38 * 1.8, // Thin brick style
+    height: 38 * 1.8, 
   },
   settingIcon: {
     width: 32,

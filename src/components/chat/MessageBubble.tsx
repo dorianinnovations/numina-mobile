@@ -24,6 +24,19 @@ interface Message {
   timestamp: string;
   mood?: string;
   isStreaming?: boolean;
+  // AI Personality Features
+  personalityContext?: {
+    communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+    emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
+    adaptedResponse: boolean;
+    userMoodDetected?: string;
+    responsePersonalization?: string;
+  };
+  aiInsight?: {
+    pattern: string;
+    suggestion: string;
+    confidence: number;
+  };
 }
 
 interface MessageBubbleProps {
@@ -31,6 +44,12 @@ interface MessageBubbleProps {
   index: number;
   onLongPress?: (message: Message) => void;
   onSpeakMessage?: (text: string) => void;
+  userEmotionalState?: {
+    mood: string;
+    intensity: number;
+    recentPatterns: string[];
+  };
+  onPersonalityFeedback?: (feedback: 'helpful' | 'not_helpful' | 'love_it') => void;
 }
 
 // Component for rendering formatted bot messages
@@ -199,11 +218,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   index,
   onLongPress,
   onSpeakMessage,
+  userEmotionalState,
+  onPersonalityFeedback,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isPressed, setIsPressed] = useState(false);
   const [displayedText, setDisplayedText] = useState('');
   const [previousLength, setPreviousLength] = useState(0);
+  const [showPersonalityIndicator, setShowPersonalityIndicator] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState(false);
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -315,6 +338,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     });
   };
 
+  const getPersonalityColor = (style: string) => {
+    switch (style) {
+      case 'empathetic': return '#FF6B9D';
+      case 'direct': return '#4DABF7';
+      case 'collaborative': return '#6BCF7F';
+      case 'encouraging': return '#FFD93D';
+      default: return '#8E8E93';
+    }
+  };
+
+  const getPersonalityIcon = (style: string) => {
+    switch (style) {
+      case 'empathetic': return 'heart';
+      case 'direct': return 'bullseye';
+      case 'collaborative': return 'users';
+      case 'encouraging': return 'star';
+      default: return 'comment';
+    }
+  };
+
+  const getPersonalityLabel = (style: string) => {
+    switch (style) {
+      case 'empathetic': return 'Empathetic Mode';
+      case 'direct': return 'Direct Mode';
+      case 'collaborative': return 'Collaborative Mode';
+      case 'encouraging': return 'Encouraging Mode';
+      default: return 'Standard Mode';
+    }
+  };
+
   return (
     <Animated.View
       style={[
@@ -359,9 +412,42 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </View>
           </View>
         ) : (
-          /* Bot Message*/
-
+          /* Bot Message with AI Personality Features */
           <View style={styles.botMessageContainer}>
+            {/* Personality Context Header */}
+            {message.personalityContext && (
+              <View style={[
+                styles.personalityHeader,
+                {
+                  backgroundColor: getPersonalityColor(message.personalityContext.communicationStyle) + '15',
+                  borderColor: getPersonalityColor(message.personalityContext.communicationStyle) + '30',
+                }
+              ]}>
+                <FontAwesome5
+                  name={getPersonalityIcon(message.personalityContext.communicationStyle)}
+                  size={12}
+                  color={getPersonalityColor(message.personalityContext.communicationStyle)}
+                />
+                <Text style={[
+                  styles.personalityText,
+                  { color: getPersonalityColor(message.personalityContext.communicationStyle) }
+                ]}>
+                  {getPersonalityLabel(message.personalityContext.communicationStyle)}
+                  {message.personalityContext.adaptedResponse && ' • Adapted for you'}
+                </Text>
+                {message.personalityContext.userMoodDetected && (
+                  <View style={[
+                    styles.moodDetectedIndicator,
+                    { backgroundColor: getMoodColor(message.personalityContext.userMoodDetected) }
+                  ]}>
+                    <Text style={styles.moodDetectedText}>
+                      {message.personalityContext.userMoodDetected}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            
             <BotMessageContent 
               text={displayedText}
               previousLength={previousLength}
@@ -369,6 +455,76 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               isStreaming={message.isStreaming}
               theme={theme}
             />
+            
+            {/* AI Insight Section */}
+            {message.aiInsight && (
+              <View style={[
+                styles.aiInsightContainer,
+                {
+                  backgroundColor: isDarkMode ? '#1a1a2e' : '#f8f9ff',
+                  borderColor: isDarkMode ? '#4a4a6a' : '#e0e7ff',
+                }
+              ]}>
+                <View style={styles.insightHeader}>
+                  <FontAwesome5
+                    name="lightbulb"
+                    size={12}
+                    color="#FFD93D"
+                  />
+                  <Text style={[
+                    styles.insightTitle,
+                    { color: isDarkMode ? '#ffd93d' : '#8b5a00' }
+                  ]}>
+                    Pattern Insight ({Math.round(message.aiInsight.confidence * 100)}%)
+                  </Text>
+                </View>
+                <Text style={[
+                  styles.insightPattern,
+                  { color: isDarkMode ? '#ccc' : '#666' }
+                ]}>
+                  {message.aiInsight.pattern}
+                </Text>
+                <Text style={[
+                  styles.insightSuggestion,
+                  { color: isDarkMode ? '#a7f3d0' : '#065f46' }
+                ]}>
+                  💡 {message.aiInsight.suggestion}
+                </Text>
+              </View>
+            )}
+            
+            {/* Personality Feedback */}
+            {isAI && !message.isStreaming && !feedbackGiven && (
+              <View style={styles.feedbackContainer}>
+                <TouchableOpacity
+                  style={[styles.feedbackButton, { backgroundColor: '#10b98120' }]}
+                  onPress={() => {
+                    onPersonalityFeedback?.('helpful');
+                    setFeedbackGiven(true);
+                  }}
+                >
+                  <FontAwesome5 name="thumbs-up" size={12} color="#10b981" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.feedbackButton, { backgroundColor: '#ef444420' }]}
+                  onPress={() => {
+                    onPersonalityFeedback?.('not_helpful');
+                    setFeedbackGiven(true);
+                  }}
+                >
+                  <FontAwesome5 name="thumbs-down" size={12} color="#ef4444" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.feedbackButton, { backgroundColor: '#ff6b9d20' }]}
+                  onPress={() => {
+                    onPersonalityFeedback?.('love_it');
+                    setFeedbackGiven(true);
+                  }}
+                >
+                  <FontAwesome5 name="heart" size={12} color="#ff6b9d" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
 
@@ -386,15 +542,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </Text>
       </TouchableOpacity>
 
-      {/* Message Status Indicator */}
-      {isUser && (
-        <View style={styles.statusContainer}>
-          <View style={[
-            styles.statusDot,
-            { backgroundColor: NuminaColors.chatBlue[200] }
-          ]} />
-        </View>
-      )}
+
 
       {/* AI Avatar */}
       {isAI && (
@@ -419,7 +567,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 1,
+    marginVertical: 8,
     marginHorizontal: 1,
   },
   userContainer: {
@@ -427,7 +575,7 @@ const styles = StyleSheet.create({
   },
   aiContainer: {
     alignItems: 'flex-start',
-    paddingLeft: 15, 
+    paddingLeft: 10, 
   },
   messageWrapper: {
     maxWidth: width * 0.95,
@@ -437,7 +585,7 @@ const styles = StyleSheet.create({
   },
   botMessageContainer: {
     width: '100%',
-    paddingHorizontal: 0,
+    paddingHorizontal: 2,
   },
   botTextContainer: {
     width: '100%',
@@ -467,9 +615,9 @@ const styles = StyleSheet.create({
   },
   regularText: {
     fontSize: 16,
-    lineHeight: 24,
+    lineHeight: 26,
     fontWeight: '400',
-    marginBottom: 8,
+    marginBottom: 12,
     fontFamily: 'Nunito_400Regular',
   },
   boldText: {
@@ -578,22 +726,13 @@ const styles = StyleSheet.create({
   aiTimestampWithAvatar: {
     marginLeft: 6,
   },
-  statusContainer: {
-    position: 'absolute',
-    bottom: 8,
-    right: -8,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 5,
-  },
+
   avatarContainer: {
     position: 'absolute',
-    bottom: 12,
-    left: 2,
-    width: 20,
-    height: 20,
+    bottom: 1,
+    left: 64,
+    width: 15,
+    height: 15,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
@@ -603,5 +742,74 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0.5 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
+  },
+  // AI Personality Styles
+  personalityHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  personalityText: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    flex: 1,
+  },
+  moodDetectedIndicator: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  moodDetectedText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#fff',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  aiInsightContainer: {
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  insightHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  insightTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  insightPattern: {
+    fontSize: 13,
+    fontFamily: 'Nunito_400Regular',
+    marginBottom: 4,
+    fontStyle: 'italic',
+  },
+  insightSuggestion: {
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  feedbackContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 8,
+    gap: 8,
+  },
+  feedbackButton: {
+    padding: 8,
+    borderRadius: 16,
+    minWidth: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

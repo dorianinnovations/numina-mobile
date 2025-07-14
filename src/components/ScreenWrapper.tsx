@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Header } from './Header';
@@ -29,30 +29,73 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   const { logout } = useAuth();
 
   const handleMenuAction = (key: string) => {
+    const currentRoute = navigation.getState()?.routes[navigation.getState().index]?.name;
+    
     switch (key) {
       case 'chat':
-        navigation.navigate('Chat');
+        if (currentRoute !== 'Chat') {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Chat' }],
+          });
+        }
         break;
       case 'analytics':
-        navigation.navigate('Analytics');
+        if (currentRoute !== 'Analytics') {
+          navigation.push('Analytics');
+        }
         break;
       case 'cloud':
-        navigation.navigate('Cloud');
+        if (currentRoute !== 'Cloud') {
+          navigation.push('Cloud');
+        }
         break;
       case 'stratosphere':
-        navigation.navigate('Stratosphere');
+        if (currentRoute !== 'Stratosphere') {
+          navigation.push('Stratosphere');
+        }
+        break;
+      case 'collective':
+        if (currentRoute !== 'Collective') {
+          navigation.push('Collective');
+        }
         break;
       case 'profile':
-        navigation.navigate('Profile');
+        if (currentRoute !== 'Profile') {
+          navigation.push('Profile');
+        }
         break;
       case 'settings':
-        navigation.navigate('Settings');
+        if (currentRoute !== 'Settings') {
+          navigation.push('Settings');
+        }
         break;
       case 'about':
-        navigation.navigate('About');
+        if (currentRoute !== 'About') {
+          navigation.push('About');
+        }
         break;
       case 'signout':
-        logout();
+        Alert.alert(
+          'Sign Out',
+          'Are you sure you want to sign out?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Sign Out', 
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await logout();
+                  // The AppNavigator will automatically redirect to Hero screen
+                  // when isAuthenticated becomes false
+                } catch (error) {
+                  console.error('Logout error:', error);
+                }
+              }
+            }
+          ]
+        );
         break;
       default:
         break;

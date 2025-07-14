@@ -42,9 +42,9 @@ export const lightTheme: Theme = {
     
     chat: {
       userMessage: {
-        background: '#E3F2FD',
+        background: '#fafbfc',
         text: '#1a1a1a',
-        shadow: '4px 4px 12px rgba(227, 242, 253, 0.3), -2px -2px 8px #ffffff',
+        shadow: '4px 4px 12px rgba(250, 251, 252, 0.3), -2px -2px 8px #ffffff',
       },
       aiMessage: {
         background: '#ffffff',

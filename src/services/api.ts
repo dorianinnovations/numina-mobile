@@ -6,30 +6,14 @@ import SecureStorageService from './secureStorage';
  * Handles authentication, token management, chat completion, and data sync
  */
 
-// API Configuration - with development support
+// API Configuration - always use production server
 const getApiBaseUrl = () => {
-  const isDevelopment = __DEV__;
-  
-  // In development, try to use local IP address for better testing
-  // You can set this environment variable in your .env file or replace with your computer's IP
-  const LOCAL_IP = process.env.EXPO_PUBLIC_LOCAL_IP || '192.168.1.100'; // Replace with your IP
-  const LOCAL_PORT = process.env.EXPO_PUBLIC_LOCAL_PORT || '3000';
-  
-  if (isDevelopment && process.env.EXPO_PUBLIC_USE_LOCAL_API === 'true') {
-    return `http://${LOCAL_IP}:${LOCAL_PORT}`;
-  }
-  
-  // Default to production server
+  // Always use production server for simplicity
   return 'https://server-a7od.onrender.com';
 };
 
-// Chat API configuration - with development support
+// Chat API configuration
 export const CHAT_API_CONFIG = {
-  getLocalUrl: () => {
-    const LOCAL_IP = process.env.EXPO_PUBLIC_LOCAL_IP || '192.168.1.100';
-    const LOCAL_PORT = process.env.EXPO_PUBLIC_LOCAL_PORT || '5000';
-    return `http://${LOCAL_IP}:${LOCAL_PORT}/completion`;
-  },
   PRODUCTION_URL: 'https://server-a7od.onrender.com/completion',
   REQUEST_DEFAULTS: {
     stream: true,
@@ -87,6 +71,51 @@ interface EmotionData {
   userId: string;
 }
 
+// AI Personality and Cloud Matching Interfaces
+interface PersonalityContext {
+  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+  emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
+  adaptedResponse: boolean;
+  userMoodDetected?: string;
+  responsePersonalization?: string;
+}
+
+interface UserEmotionalState {
+  mood: string;
+  intensity: number;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  recentInteractions: string[];
+  patterns: string[];
+}
+
+interface CloudEvent {
+  id: string;
+  title: string;
+  description: string;
+  type: string;
+  date: string;
+  time: string;
+  location?: string;
+  maxParticipants: number;
+  currentParticipants: number;
+  hostId: string;
+  hostName: string;
+  aiMatchScore?: number;
+  emotionalCompatibility?: 'high' | 'medium' | 'low';
+  personalizedReason?: string;
+  moodBoostPotential?: number;
+  communityVibe?: string;
+  suggestedConnections?: string[];
+}
+
+interface CompatibilityAnalysis {
+  score: number;
+  reasoning: string;
+  sharedInterests: string[];
+  complementaryTraits: string[];
+  potentialChallenges: string[];
+}
+
 
 class ApiService {
   private static baseURL = API_BASE_URL;
@@ -136,6 +165,19 @@ class ApiService {
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+          
+          // Handle authentication errors - but don't clear auth on these endpoints
+          if (response.status === 401 && 
+              !endpoint.includes('/login') && 
+              !endpoint.includes('/signup') &&
+              !endpoint.includes('/collective-data') &&  // Don't logout on collective data errors
+              !endpoint.includes('/analytics/llm')) {    // Don't logout on LLM errors
+            // Import dynamically to avoid circular dependency
+            const { default: SecureStorageService } = await import('./secureStorage');
+            await SecureStorageService.clearUserData();
+            // The auth context will handle the state change
+            throw new Error('Authentication expired');
+          }
           
           if (response.status >= 400 && response.status < 500) {
             throw new Error(errorData.message || `HTTP ${response.status}`);
@@ -268,10 +310,8 @@ class ApiService {
   ): Promise<string> {
     const token = await SecureStorageService.getToken();
     
-    // Use local URL in development if configured
-    const isDevelopment = __DEV__;
-    const useLocal = isDevelopment && process.env.EXPO_PUBLIC_USE_LOCAL_API === 'true';
-    const chatUrl = useLocal ? CHAT_API_CONFIG.getLocalUrl() : CHAT_API_CONFIG.PRODUCTION_URL;
+    // Always use production URL
+    const chatUrl = CHAT_API_CONFIG.PRODUCTION_URL;
 
 
     return new Promise((resolve, reject) => {
@@ -383,9 +423,367 @@ class ApiService {
     });
   }
 
+  // Collective data endpoints
+  static async getCollectiveInsights(): Promise<ApiResponse<any>> {
+    try {
+      return await this.apiRequest('/collective-data/insights');
+    } catch (error: any) {
+      // If endpoint doesn't exist yet, return empty data instead of failing
+      if (error.message?.includes('404') || error.message?.includes('Cannot GET')) {
+        return {
+          success: false,
+          error: 'No data available yet'
+        };
+      }
+      throw error;
+    }
+  }
+
+  static async getAggregatedEmotionalData(options?: {
+    timeRange?: string;
+    groupBy?: string;
+    includeIntensity?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const params = new URLSearchParams();
+    if (options?.timeRange) params.append('timeRange', options.timeRange);
+    if (options?.groupBy) params.append('groupBy', options.groupBy);
+    if (options?.includeIntensity !== undefined) params.append('includeIntensity', String(options.includeIntensity));
+    
+    return this.apiRequest(`/collective-data/aggregated?${params.toString()}`);
+  }
+
+  static async getDemographicPatterns(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/collective-data/demographics');
+  }
+
+  static async getRealTimeInsights(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/collective-data/realtime');
+  }
+
   // Collective snapshots - matching web app
   static async getCollectiveSnapshots(timeRange: string = '10m'): Promise<ApiResponse<any>> {
     return this.apiRequest(`/collective-snapshots?timeRange=${timeRange}`);
+  }
+
+  // LLM Analytics endpoints
+  static async generateLLMInsights(options: {
+    days?: number;
+    focus?: string;
+  } = {}): Promise<ApiResponse<any>> {
+    try {
+      return await this.apiRequest('/analytics/llm/insights', {
+        method: 'POST',
+        body: JSON.stringify({
+          timeRange: `${options.days || 30}d`,
+          focus: options.focus || 'general',
+          model: 'openai/gpt-4o-mini',
+          maxTokens: 1500,
+          temperature: 0.7
+        }),
+      });
+    } catch (error: any) {
+      // If endpoint doesn't exist yet, return empty data instead of failing
+      if (error.message?.includes('404') || error.message?.includes('Cannot POST')) {
+        return {
+          success: false,
+          error: 'LLM analytics not available yet'
+        };
+      }
+      throw error;
+    }
+  }
+
+  // AI Personality & Adaptive Chat Features
+  static async analyzeUserEmotionalState(options: {
+    recentEmotions?: any[];
+    conversationHistory?: any[];
+    timeContext?: string;
+  } = {}): Promise<ApiResponse<UserEmotionalState>> {
+    return this.apiRequest('/ai/emotional-state', {
+      method: 'POST',
+      body: JSON.stringify({
+        recentEmotions: options.recentEmotions || [],
+        conversationHistory: options.conversationHistory || [],
+        timeContext: options.timeContext || new Date().toISOString(),
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 800,
+        temperature: 0.3
+      }),
+    });
+  }
+
+  static async getPersonalityRecommendations(emotionalState: UserEmotionalState): Promise<ApiResponse<{
+    communicationStyle: string;
+    suggestedPrompts: string[];
+    contextualHints: string[];
+  }>> {
+    return this.apiRequest('/ai/personality-recommendations', {
+      method: 'POST',
+      body: JSON.stringify({
+        emotionalState,
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 1000,
+        temperature: 0.4
+      }),
+    });
+  }
+
+  static async sendAdaptiveChatMessage(
+    message: ChatMessage & {
+      emotionalContext?: UserEmotionalState;
+      personalityStyle?: string;
+    },
+    onChunk: (chunk: string, context?: PersonalityContext) => void
+  ): Promise<{ content: string; personalityContext: PersonalityContext }> {
+    const token = await SecureStorageService.getToken();
+    const chatUrl = `${this.baseURL}/ai/adaptive-chat`;
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let lastProcessedIndex = 0;
+      let fullContent = '';
+      let personalityContext: PersonalityContext | null = null;
+      
+      xhr.open('POST', chatUrl, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
+          const currentLength = xhr.responseText.length;
+          const newText = xhr.responseText.slice(lastProcessedIndex);
+          
+          if (newText) {
+            lastProcessedIndex = currentLength;
+            const lines = newText.split('\n');
+            
+            for (const line of lines) {
+              if (line.trim() && line.startsWith('data: ')) {
+                const content = line.substring(6).trim();
+                if (content !== '[DONE]') {
+                  try {
+                    const parsed = JSON.parse(content);
+                    if (parsed.content) {
+                      fullContent += parsed.content;
+                      onChunk(fullContent, personalityContext || undefined);
+                    }
+                    if (parsed.personalityContext) {
+                      personalityContext = parsed.personalityContext;
+                    }
+                  } catch {
+                    if (content) {
+                      fullContent += content;
+                      onChunk(fullContent, personalityContext || undefined);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+      
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({
+            content: fullContent,
+            personalityContext: personalityContext || {
+              communicationStyle: 'empathetic',
+              emotionalTone: 'supportive',
+              adaptedResponse: false
+            }
+          });
+        } else {
+          reject(new Error(`Adaptive chat request failed: ${xhr.status}`));
+        }
+      };
+      
+      xhr.onerror = () => reject(new Error('Network error'));
+      
+      xhr.send(JSON.stringify({
+        ...CHAT_API_CONFIG.REQUEST_DEFAULTS,
+        ...message,
+        adaptiveFeatures: true
+      }));
+    });
+  }
+
+  static async submitPersonalityFeedback(feedback: {
+    messageId: string;
+    feedbackType: 'helpful' | 'not_helpful' | 'love_it';
+    personalityStyle: string;
+    userEmotionalState: UserEmotionalState;
+  }): Promise<ApiResponse<any>> {
+    return this.apiRequest('/ai/personality-feedback', {
+      method: 'POST',
+      body: JSON.stringify(feedback),
+    });
+  }
+
+  static async generateWeeklyDigest(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/analytics/llm/weekly-digest', {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 2000,
+        temperature: 0.7
+      }),
+    });
+  }
+
+  static async generateRecommendations(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/analytics/llm/recommendations', {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 1500,
+        temperature: 0.8,
+        personalized: true
+      }),
+    });
+  }
+
+  static async getPatternAnalysis(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/analytics/llm/patterns', {
+      method: 'POST',
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 1500,
+        temperature: 0.6,
+        depth: 'detailed'
+      }),
+    });
+  }
+
+  // Cloud Events & Social Matching
+  static async getCloudEvents(options: {
+    filter?: string;
+    userEmotionalState?: UserEmotionalState;
+    includeMatching?: boolean;
+  } = {}): Promise<ApiResponse<CloudEvent[]>> {
+    const params = new URLSearchParams();
+    if (options.filter) params.append('filter', options.filter);
+    if (options.includeMatching) params.append('includeMatching', 'true');
+    
+    return this.apiRequest(`/cloud/events?${params.toString()}`, {
+      method: options.userEmotionalState ? 'POST' : 'GET',
+      ...(options.userEmotionalState && {
+        body: JSON.stringify({
+          emotionalState: options.userEmotionalState,
+          model: 'openai/gpt-4o-mini',
+          maxTokens: 2000,
+          temperature: 0.6
+        })
+      })
+    });
+  }
+
+  static async analyzeEventCompatibility(eventId: string, userEmotionalState: UserEmotionalState): Promise<ApiResponse<{
+    aiMatchScore: number;
+    emotionalCompatibility: 'high' | 'medium' | 'low';
+    personalizedReason: string;
+    moodBoostPotential: number;
+    suggestedConnections: string[];
+    communityVibe: string;
+    aiInsights: string;
+    growthOpportunity: string;
+  }>> {
+    return this.apiRequest(`/cloud/events/${eventId}/compatibility`, {
+      method: 'POST',
+      body: JSON.stringify({
+        emotionalState: userEmotionalState,
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 1500,
+        temperature: 0.5
+      }),
+    });
+  }
+
+  static async findCompatibleUsers(options: {
+    eventId?: string;
+    emotionalState: UserEmotionalState;
+    interests: string[];
+    maxResults?: number;
+  }): Promise<ApiResponse<{
+    users: Array<{
+      id: string;
+      name: string;
+      compatibilityScore: number;
+      sharedInterests: string[];
+      emotionalCompatibility: string;
+      connectionReason: string;
+    }>;
+  }>> {
+    return this.apiRequest('/cloud/compatibility/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...options,
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 2000,
+        temperature: 0.4
+      }),
+    });
+  }
+
+  static async createCloudEvent(eventData: {
+    title: string;
+    description: string;
+    type: string;
+    date: string;
+    time: string;
+    location?: string;
+    maxParticipants: number;
+    duration?: string;
+  }): Promise<ApiResponse<CloudEvent>> {
+    return this.apiRequest('/cloud/events', {
+      method: 'POST',
+      body: JSON.stringify(eventData),
+    });
+  }
+
+  static async joinEvent(eventId: string): Promise<ApiResponse<any>> {
+    return this.apiRequest(`/cloud/events/${eventId}/join`, {
+      method: 'POST',
+    });
+  }
+
+  static async leaveEvent(eventId: string): Promise<ApiResponse<any>> {
+    return this.apiRequest(`/cloud/events/${eventId}/leave`, {
+      method: 'POST',
+    });
+  }
+
+  // Real-time Insights & Pattern Analysis
+  static async getPersonalizedInsights(options: {
+    timeRange?: string;
+    emotionalState?: UserEmotionalState;
+    includeCloudRecommendations?: boolean;
+  } = {}): Promise<ApiResponse<{
+    insights: any[];
+    cloudRecommendations: CloudEvent[];
+    personalityAdaptations: any[];
+  }>> {
+    return this.apiRequest('/ai/personalized-insights', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...options,
+        model: 'openai/gpt-4o-mini',
+        maxTokens: 2500,
+        temperature: 0.6
+      }),
+    });
+  }
+
+  static async updateUserEmotionalProfile(updates: {
+    recentMoods: string[];
+    interactionPreferences: any;
+    personalityFeedback: any[];
+  }): Promise<ApiResponse<any>> {
+    return this.apiRequest('/user/emotional-profile', {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
   }
 
   // Network status check

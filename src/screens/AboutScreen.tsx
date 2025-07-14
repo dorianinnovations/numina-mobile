@@ -12,15 +12,26 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { PageBackground } from '../components/PageBackground';
+import { Header } from '../components/Header';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface AboutScreenProps {
   onNavigateBack: () => void;
 }
 
+type AboutScreenNavigationProp = StackNavigationProp<RootStackParamList, 'About'>;
+
 export const AboutScreen: React.FC<AboutScreenProps> = ({
   onNavigateBack,
 }) => {
   const { isDarkMode } = useTheme();
+  const navigation = useNavigation<AboutScreenNavigationProp>();
+
+  const onTitlePress = () => {
+    navigation.navigate('Chat');
+  };
 
   const aboutSections = [
     {
@@ -136,11 +147,10 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
           backgroundColor="transparent"
           translucent={true}
         />
-        
-
         <ScrollView 
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
         >
           {/* App Header */}
           <View style={[

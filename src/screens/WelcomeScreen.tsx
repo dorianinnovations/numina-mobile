@@ -150,7 +150,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               onNavigateBack();
             });
           }}
-          onMenuPress={() => {}}
+          onMenuPress={(key: string) => {}}
         />
       
       {/* Main Content */}

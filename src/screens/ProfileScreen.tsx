@@ -12,6 +12,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { PageBackground } from '../components/PageBackground';
+import { Header } from '../components/Header';
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
@@ -24,12 +25,42 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const { userData } = useAuth();
 
   const profileSections = [
-    { icon: 'user', title: 'Personal Information', desc: 'Manage your account details' },
-    { icon: 'chart-line', title: 'Activity Summary', desc: 'View your usage statistics' },
-    { icon: 'heart', title: 'Wellness Goals', desc: 'Set and track your goals' },
-    { icon: 'shield-alt', title: 'Privacy Settings', desc: 'Control your data sharing' },
-    { icon: 'bell', title: 'Notifications', desc: 'Manage your preferences' },
-    { icon: 'download', title: 'Export Data', desc: 'Download your information' },
+    { 
+      icon: 'user', 
+      title: 'Personal Information', 
+      desc: 'Manage your account details',
+      onPress: () => console.log('Personal Info')
+    },
+    { 
+      icon: 'chart-line', 
+      title: 'Activity Summary', 
+      desc: 'View your usage statistics',
+      onPress: () => console.log('Activity Summary')
+    },
+    { 
+      icon: 'heart', 
+      title: 'Wellness Goals', 
+      desc: 'Set and track your goals',
+      onPress: () => console.log('Wellness Goals')
+    },
+    { 
+      icon: 'shield-alt', 
+      title: 'Privacy Settings', 
+      desc: 'Control your data sharing',
+      onPress: () => console.log('Privacy Settings')
+    },
+    { 
+      icon: 'bell', 
+      title: 'Notifications', 
+      desc: 'Manage your preferences',
+      onPress: () => console.log('Notifications')
+    },
+    { 
+      icon: 'download', 
+      title: 'Export Data', 
+      desc: 'Download your information',
+      onPress: () => console.log('Export Data')
+    },
   ];
 
   return (
@@ -41,10 +72,19 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           translucent={true}
         />
         
+        {/* Header */}
+        <Header 
+          title="Profile"
+          showBackButton={true}
+          showMenuButton={true}
+          onBackPress={onNavigateBack}
+          onMenuPress={(key: string) => {}}
+        />
 
         <ScrollView 
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
           {/* Profile Header */}
           <View style={[
@@ -62,7 +102,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             ]}>
               <FontAwesome5 
                 name="user" 
-                size={32} 
+                size={24} 
                 color="#ffffff" 
               />
             </View>
@@ -92,6 +132,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                     borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
                   }
                 ]}
+                onPress={section.onPress}
                 activeOpacity={0.7}
               >
                 <View style={[
@@ -102,7 +143,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 ]}>
                   <FontAwesome5 
                     name={section.icon as any} 
-                    size={16} 
+                    size={12} 
                     color={isDarkMode ? '#86baef' : '#6ac2f2'} 
                   />
                 </View>
@@ -122,7 +163,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </View>
                 <FontAwesome5 
                   name="chevron-right" 
-                  size={12} 
+                  size={10} 
                   color={isDarkMode ? '#666666' : '#999999'} 
                 />
               </TouchableOpacity>
@@ -138,31 +179,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingTop: 120,
   },
-  contentContainer: {
+  scrollContent: {
     padding: 24,
+    paddingTop: 60,
     paddingBottom: 40,
   },
   profileHeader: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 32,
+    padding: 24,
     alignItems: 'center',
     marginBottom: 24,
   },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
     marginBottom: 4,
@@ -180,14 +221,14 @@ const styles = StyleSheet.create({
   sectionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     padding: 16,
-    height: 38 * 1.8, // Thin brick style
+    minHeight: 60,
   },
   sectionIcon: {
-    width: 32,
-    height: 32,
+    width: 28,
+    height: 28,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
@@ -197,13 +238,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
     marginBottom: 2,
   },
   sectionDesc: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '400',
     fontFamily: 'Inter_400Regular',
   },

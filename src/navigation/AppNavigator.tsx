@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { StatusBar, View, Text, ActivityIndicator } from "react-native";
@@ -16,6 +16,7 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { AboutScreen } from "../screens/AboutScreen";
 import { CloudScreen } from "../screens/CloudScreen";
+import { CollectiveScreen } from "../screens/CollectiveScreen";
 
 // Contexts
 import { useTheme } from "../contexts/ThemeContext";
@@ -32,6 +33,7 @@ export type RootStackParamList = {
   Analytics: undefined;
   Cloud: undefined;
   Stratosphere: undefined;
+  Collective: undefined;
   Profile: undefined;
   Settings: undefined;
   About: undefined;
@@ -43,11 +45,60 @@ const Stack = createStackNavigator<RootStackParamList>();
 const slideTransition = {
   gestureEnabled: true,
   gestureDirection: "horizontal" as const,
+  gestureResponseDistance: {
+    horizontal: 25, // Lower value for quicker response
+  },
+  gestureVelocityImpact: 0.3, // Smooth velocity handling
+  transitionSpec: {
+    open: {
+      animation: 'spring',
+      config: {
+        stiffness: 1000,
+        damping: 500,
+        mass: 3,
+        overshootClamping: true,
+        restDisplacementThreshold: 0.01,
+        restSpeedThreshold: 0.01,
+      },
+    },
+    close: {
+      animation: 'spring',
+      config: {
+        stiffness: 1000,
+        damping: 500,
+        mass: 3,
+        overshootClamping: true,
+        restDisplacementThreshold: 0.01,
+        restSpeedThreshold: 0.01,
+      },
+    },
+  },
 };
 
 export const AppNavigator: React.FC = () => {
   const { isDarkMode } = useTheme();
   const { isAuthenticated, isInitializing } = useAuth();
+  const navigationRef = useRef<any>(null);
+  const routeNameRef = useRef<string>('');
+
+  // Handle authentication state changes
+  useEffect(() => {
+    if (!isInitializing && navigationRef.current) {
+      if (!isAuthenticated) {
+        // User signed out, navigate to Hero
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Hero' }],
+        });
+      } else if (isAuthenticated && routeNameRef.current === 'Hero') {
+        // User signed in from Hero, navigate to Chat
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Chat' }],
+        });
+      }
+    }
+  }, [isAuthenticated, isInitializing]);
 
   // Show loading screen while checking authentication
   if (isInitializing) {
@@ -78,7 +129,15 @@ export const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer
+      ref={navigationRef}
+      onReady={() => {
+        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name || '';
+      }}
+      onStateChange={() => {
+        routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name || '';
+      }}
+    >
       <StatusBar
         barStyle={isDarkMode ? "light-content" : "dark-content"}
         backgroundColor="transparent"
@@ -169,7 +228,6 @@ export const AppNavigator: React.FC = () => {
           name="Chat"
           options={{
             ...slideTransition,
-            gestureEnabled: false, // Disable gesture for chat screen
           }}
         >
           {({ navigation }) => (
@@ -207,6 +265,17 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <StratosphereScreen onNavigateBack={() => navigation.goBack()} />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Collective"
+          options={{
+            ...slideTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <CollectiveScreen onNavigateBack={() => navigation.goBack()} />
           )}
         </Stack.Screen>
 

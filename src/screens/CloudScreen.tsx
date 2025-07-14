@@ -17,6 +17,7 @@ import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
+import { NuminaAnimations } from '../utils/animations';
 import { TextStyles } from '../utils/fonts';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -27,7 +28,7 @@ interface Event {
   id: string;
   title: string;
   description: string;
-  type: 'mindfulness' | 'group_therapy' | 'workshop' | 'social';
+  type: 'food_dining' | 'tech_learning' | 'outdoor_activity' | 'creative_arts' | 'fitness_wellness' | 'professional_networking' | 'hobby_interest' | 'cultural_exploration';
   date: string;
   time: string;
   participants: number;
@@ -38,6 +39,15 @@ interface Event {
   fullDescription?: string;
   location?: string;
   duration?: string;
+  // AI Enhancement Features
+  aiMatchScore?: number;
+  emotionalCompatibility?: 'high' | 'medium' | 'low';
+  personalizedReason?: string;
+  suggestedConnections?: string[];
+  moodBoostPotential?: number;
+  communityVibe?: 'energetic' | 'calm' | 'creative' | 'supportive' | 'adventurous';
+  aiInsights?: string;
+  growthOpportunity?: string;
 }
 
 interface CloudScreenProps {
@@ -53,131 +63,170 @@ interface SearchFilters {
   location: string;
 }
 
+// AI-Enhanced Sample Events with Personalization
 const SAMPLE_EVENTS: Event[] = [
   {
     id: '1',
-    title: 'Morning Mindfulness Circle',
-    description: 'Start your day with guided meditation and positive intentions',
-    type: 'mindfulness',
+    title: 'Taco Tuesday at El Mariachi',
+    description: 'Join fellow foodies for authentic Mexican cuisine and great conversation',
+    type: 'food_dining',
     date: 'Today',
-    time: '8:00 AM',
-    participants: 12,
-    maxParticipants: 20,
-    host: 'Sarah Chen',
+    time: '7:00 PM',
+    participants: 8,
+    maxParticipants: 15,
+    host: 'Maria Garcia',
     isJoined: true,
     photos: ['https://picsum.photos/400/300?random=1', 'https://picsum.photos/400/300?random=2'],
-    fullDescription: 'Join us for a peaceful morning session focused on mindfulness and meditation. We\'ll practice breathing techniques, guided visualization, and set positive intentions for the day ahead. Perfect for beginners and experienced practitioners alike.',
-    location: 'Zen Garden, Building A',
-    duration: '45 minutes',
+    fullDescription: 'Looking for people who love authentic Mexican food! We\'ll be trying the best tacos in town at El Mariachi. Great opportunity to meet fellow food enthusiasts, share restaurant recommendations, and enjoy delicious cuisine together. All skill levels welcome - just bring your appetite!',
+    location: 'El Mariachi Restaurant, Downtown',
+    duration: '2 hours',
+    // AI Enhancement Data
+    aiMatchScore: 0.92,
+    emotionalCompatibility: 'high',
+    personalizedReason: 'Your stress levels drop 34% after social dining experiences',
+    suggestedConnections: ['Alex (fellow foodie)', 'Sam (meditation buddy)'],
+    moodBoostPotential: 8.5,
+    communityVibe: 'supportive',
+    aiInsights: 'Perfect for your Tuesday evening energy pattern',
+    growthOpportunity: 'Build social confidence through shared interests'
   },
   {
     id: '2',
-    title: 'Anxiety Support Group',
-    description: 'Safe space to share experiences and coping strategies',
-    type: 'group_therapy',
+    title: 'Linux Command Line Workshop',
+    description: 'Learn terminal basics with experienced developers',
+    type: 'tech_learning',
     date: 'Tomorrow',
     time: '6:00 PM',
-    participants: 8,
-    maxParticipants: 15,
-    host: 'Dr. Maya Patel',
+    participants: 12,
+    maxParticipants: 20,
+    host: 'David Chen',
     isJoined: false,
     photos: ['https://picsum.photos/400/300?random=3', 'https://picsum.photos/400/300?random=4'],
-    fullDescription: 'A supportive community for individuals dealing with anxiety. Share your experiences, learn from others, and discover practical coping strategies in a judgment-free environment. Led by licensed therapist Dr. Maya Patel with over 10 years of experience in anxiety disorders.',
-    location: 'Therapy Room B, Second Floor',
-    duration: '60 minutes',
+    fullDescription: 'Perfect for beginners and intermediate users! Learn essential Linux commands, file navigation, and basic scripting. Bring your laptop and questions. We\'ll cover practical examples and real-world scenarios. Great networking opportunity for tech professionals.',
+    location: 'Tech Hub, Innovation Center',
+    duration: '3 hours',
+    // AI Enhancement Data
+    aiMatchScore: 0.78,
+    emotionalCompatibility: 'medium',
+    personalizedReason: 'Learning new skills typically increases your confidence by 23%',
+    suggestedConnections: ['Riley (coding enthusiast)', 'Jordan (career mentor)'],
+    moodBoostPotential: 7.2,
+    communityVibe: 'energetic',
+    aiInsights: 'Challenges spark your growth mindset - perfect timing!',
+    growthOpportunity: 'Expand technical confidence and professional network'
   },
   {
     id: '3',
-    title: 'Creative Expression Workshop',
-    description: 'Art therapy session for emotional processing',
-    type: 'workshop',
+    title: 'Sunset Hiking at Eagle Peak',
+    description: 'Moderate hike with stunning sunset views',
+    type: 'outdoor_activity',
     date: 'Dec 16',
-    time: '3:00 PM',
-    participants: 15,
-    maxParticipants: 25,
-    host: 'Alex Rivera',
+    time: '4:00 PM',
+    participants: 6,
+    maxParticipants: 12,
+    host: 'Alex Thompson',
     isJoined: false,
-    photos: ['https://picsum.photos/400/300?random=5', 'https://picsum.photos/400/300?random=6', 'https://picsum.photos/400/300?random=7'],
-    fullDescription: 'Explore your emotions through creative expression in this hands-on art therapy workshop. No artistic experience required - just bring your willingness to explore and express. We\'ll use various mediums including painting, drawing, and collage to process feelings and discover new insights about yourself.',
-    location: 'Art Studio, Creative Wing',
-    duration: '90 minutes',
+    photos: ['https://picsum.photos/400/300?random=5', 'https://picsum.photos/400/300?random=6'],
+    fullDescription: 'Join us for a beautiful sunset hike! Moderate difficulty, 3-mile round trip with 800ft elevation gain. Perfect for nature lovers and photography enthusiasts. We\'ll take breaks to enjoy the views and get to know each other. Bring water, snacks, and good hiking shoes.',
+    location: 'Eagle Peak Trailhead',
+    duration: '3 hours',
+    // AI Enhancement Data
+    aiMatchScore: 0.95,
+    emotionalCompatibility: 'high',
+    personalizedReason: 'Nature activities create 89% improvement in your mood balance',
+    suggestedConnections: ['Maya (mindfulness guide)', 'Chris (adventure buddy)'],
+    moodBoostPotential: 9.1,
+    communityVibe: 'adventurous',
+    aiInsights: 'Golden hour perfectly matches your energy peaks!',
+    growthOpportunity: 'Connect with nature while building meaningful friendships'
   },
   {
     id: '4',
-    title: 'Coffee & Connection',
-    description: 'Casual social meetup for community building',
-    type: 'social',
+    title: 'Watercolor Painting Meetup',
+    description: 'Create beautiful landscapes with fellow artists',
+    type: 'creative_arts',
     date: 'Dec 18',
-    time: '10:00 AM',
-    participants: 6,
-    maxParticipants: 12,
-    host: 'Community Team',
+    time: '2:00 PM',
+    participants: 8,
+    maxParticipants: 15,
+    host: 'Sophie Williams',
     isJoined: true,
-    photos: ['https://picsum.photos/400/300?random=8'],
-    fullDescription: 'Join us for a relaxed morning of coffee, conversation, and connection. This informal gathering is perfect for meeting new people, sharing stories, and building meaningful relationships within our community. Light refreshments provided.',
-    location: 'Community Lounge, Main Building',
-    duration: '2 hours',
+    photos: ['https://picsum.photos/400/300?random=7'],
+    fullDescription: 'All skill levels welcome! We\'ll be painting landscapes inspired by local scenery. Materials provided for beginners. Great way to meet fellow artists, share techniques, and create something beautiful together. Coffee and snacks included.',
+    location: 'Art Studio, Creative District',
+    duration: '2.5 hours',
+    // AI Enhancement Data
+    aiMatchScore: 0.88,
+    emotionalCompatibility: 'high',
+    personalizedReason: 'Creative expression reduces your anxiety by 42%',
+    suggestedConnections: ['Emma (fellow creator)', 'Kai (mindful artist)'],
+    moodBoostPotential: 8.7,
+    communityVibe: 'creative',
+    aiInsights: 'Perfect afternoon flow activity for your creative soul',
+    growthOpportunity: 'Express emotions through art while connecting with kindred spirits'
   },
   {
     id: '5',
-    title: 'Evening Yoga & Reflection',
-    description: 'Gentle yoga practice followed by group reflection',
-    type: 'mindfulness',
+    title: 'Morning CrossFit & Coffee',
+    description: 'High-intensity workout followed by coffee and networking',
+    type: 'fitness_wellness',
     date: 'Dec 17',
-    time: '7:30 PM',
-    participants: 18,
-    maxParticipants: 25,
-    host: 'Luna Martinez',
+    time: '7:00 AM',
+    participants: 10,
+    maxParticipants: 20,
+    host: 'Mike Rodriguez',
     isJoined: false,
-    photos: ['https://picsum.photos/400/300?random=9', 'https://picsum.photos/400/300?random=10'],
-    fullDescription: 'Unwind after a long day with gentle yoga movements designed to release tension and promote relaxation. The session concludes with guided reflection and group sharing in a supportive environment. Suitable for all levels, mats provided.',
-    location: 'Wellness Studio, Garden Level',
-    duration: '75 minutes',
+    photos: ['https://picsum.photos/400/300?random=8'],
+    fullDescription: 'Start your day with energy! 45-minute CrossFit session suitable for all fitness levels, followed by coffee and conversation. Great for meeting health-conscious professionals and fitness enthusiasts. Workout modifications available.',
+    location: 'CrossFit Downtown',
+    duration: '1.5 hours',
   },
   {
     id: '6',
-    title: 'Stress Management Workshop',
-    description: 'Learn practical techniques for managing daily stress',
-    type: 'workshop',
+    title: 'Startup Networking Mixer',
+    description: 'Connect with entrepreneurs and investors',
+    type: 'professional_networking',
     date: 'Dec 19',
-    time: '2:00 PM',
-    participants: 22,
-    maxParticipants: 30,
-    host: 'Dr. James Wilson',
+    time: '6:30 PM',
+    participants: 25,
+    maxParticipants: 40,
+    host: 'Sarah Johnson',
     isJoined: false,
   },
   {
     id: '7',
-    title: 'Depression Support Circle',
-    description: 'Peer support for those dealing with depression',
-    type: 'group_therapy',
+    title: 'Board Game Night',
+    description: 'Strategic games and friendly competition',
+    type: 'hobby_interest',
     date: 'Dec 20',
-    time: '11:00 AM',
-    participants: 9,
+    time: '7:00 PM',
+    participants: 8,
     maxParticipants: 12,
-    host: 'Michelle Roberts',
+    host: 'Chris Lee',
     isJoined: true,
   },
   {
     id: '8',
-    title: 'Digital Detox Challenge',
-    description: 'Group challenge to reduce screen time mindfully',
-    type: 'social',
+    title: 'International Food Festival',
+    description: 'Explore global cuisines and cultures',
+    type: 'cultural_exploration',
     date: 'Dec 21',
-    time: '4:00 PM',
-    participants: 14,
-    maxParticipants: 20,
-    host: 'Tech Wellness Team',
+    time: '5:00 PM',
+    participants: 18,
+    maxParticipants: 30,
+    host: 'Cultural Exchange Team',
     isJoined: false,
   },
 ];
 
 export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [activeFilter, setActiveFilter] = useState<string>('ai-matched');
   const [events, setEvents] = useState(SAMPLE_EVENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showAIInsights, setShowAIInsights] = useState(true);
+  const [exploreMode, setExploreMode] = useState<'matched' | 'discover' | 'grow'>('matched');
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     timeOfDay: [],
     eventType: [],
@@ -189,6 +238,21 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showDetailedModal, setShowDetailedModal] = useState(false);
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [createEventForm, setCreateEventForm] = useState({
+    title: '',
+    description: '',
+    type: 'food_dining' as Event['type'],
+    date: '',
+    time: '',
+    location: '',
+    duration: '',
+    maxParticipants: 10,
+  });
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -211,14 +275,22 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
 
   const getEventTypeIcon = (type: Event['type']) => {
     switch (type) {
-      case 'mindfulness':
-        return 'brain';
-      case 'group_therapy':
-        return 'users';
-      case 'workshop':
-        return 'tools';
-      case 'social':
-        return 'coffee';
+      case 'food_dining':
+        return 'utensils';
+      case 'tech_learning':
+        return 'laptop-code';
+      case 'outdoor_activity':
+        return 'mountain';
+      case 'creative_arts':
+        return 'palette';
+      case 'fitness_wellness':
+        return 'dumbbell';
+      case 'professional_networking':
+        return 'briefcase';
+      case 'hobby_interest':
+        return 'gamepad';
+      case 'cultural_exploration':
+        return 'globe';
       default:
         return 'calendar';
     }
@@ -226,20 +298,76 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
 
   const getEventTypeColor = (type: Event['type']) => {
     switch (type) {
-      case 'mindfulness':
-        return isDarkMode ? '#B8E6B8' : '#10b981';
-      case 'group_therapy':
-        return isDarkMode ? '#E6F3FF' : '#3b82f6';
-      case 'workshop':
-        return isDarkMode ? '#FFF9C4' : '#f59e0b';
-      case 'social':
+      case 'food_dining':
         return isDarkMode ? '#FFE4E1' : '#ef4444';
+      case 'tech_learning':
+        return isDarkMode ? '#E6F3FF' : '#3b82f6';
+      case 'outdoor_activity':
+        return isDarkMode ? '#B8E6B8' : '#10b981';
+      case 'creative_arts':
+        return isDarkMode ? '#FFF9C4' : '#f59e0b';
+      case 'fitness_wellness':
+        return isDarkMode ? '#FFB6C1' : '#ec4899';
+      case 'professional_networking':
+        return isDarkMode ? '#E6E6FA' : '#8b5cf6';
+      case 'hobby_interest':
+        return isDarkMode ? '#FFD700' : '#fbbf24';
+      case 'cultural_exploration':
+        return isDarkMode ? '#98FB98' : '#22c55e';
       default:
         return isDarkMode ? '#90CAF9' : '#6366f1';
     }
   };
 
+  const getVibeColor = (vibe: string) => {
+    switch (vibe) {
+      case 'energetic': return '#FF6B9D';
+      case 'calm': return '#6BCF7F';
+      case 'creative': return '#AF52DE';
+      case 'supportive': return '#4DABF7';
+      case 'adventurous': return '#FFD93D';
+      default: return '#8E8E93';
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      month: 'short', 
+      day: 'numeric',
+      weekday: 'short'
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatTime = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleTimeString('en-US', options);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setSelectedDate(date);
+    setCreateEventForm(prev => ({ 
+      ...prev, 
+      date: formatDate(date) 
+    }));
+    setShowDatePicker(false);
+  };
+
+  const handleTimeSelect = (date: Date) => {
+    setSelectedTime(date);
+    setCreateEventForm(prev => ({ 
+      ...prev, 
+      time: formatTime(date) 
+    }));
+    setShowTimePicker(false);
+  };
+
   const handleJoinEvent = (eventId: string) => {
+    NuminaAnimations.haptic.medium();
     setEvents(prevEvents =>
       prevEvents.map(event =>
         event.id === eventId
@@ -249,8 +377,22 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     );
   };
 
-  // Advanced filtering logic
+  // AI-Enhanced filtering logic
   const filteredEvents = events.filter(event => {
+    // AI-powered smart filters
+    if (activeFilter === 'ai-matched') {
+      return event.aiMatchScore && event.aiMatchScore > 0.8;
+    }
+    if (activeFilter === 'mood-boost') {
+      return event.moodBoostPotential && event.moodBoostPotential > 8.0;
+    }
+    if (activeFilter === 'growth') {
+      return event.growthOpportunity && event.growthOpportunity.length > 0;
+    }
+    if (activeFilter === 'connections') {
+      return event.suggestedConnections && event.suggestedConnections.length > 0;
+    }
+    
     // Basic type filter
     if (activeFilter !== 'all' && event.type !== activeFilter) {
       return false;
@@ -301,12 +443,15 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   });
 
   const handleEventPress = (event: Event) => {
+    NuminaAnimations.haptic.light();
     setSelectedEvent(event);
     setShowEventModal(true);
   };
 
   const handleEventAction = (action: 'like' | 'share' | 'save' | 'more') => {
     if (!selectedEvent) return;
+    
+    NuminaAnimations.haptic.selection();
     
     switch (action) {
       case 'like':
@@ -339,96 +484,174 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
         opacity: fadeAnim,
       }
     ]}>
-      {/* Host Header */}
-      <View style={styles.feedHeader}>
-        <View style={styles.hostInfo}>
-          <View style={[
-            styles.hostAvatar,
-            { backgroundColor: getEventTypeColor(event.type) }
-          ]}>
-            <Text style={styles.hostInitial}>
-              {event.host.charAt(0)}
-            </Text>
-          </View>
-          <View style={styles.hostDetails}>
-            <Text style={[
-              styles.hostName,
-              { color: isDarkMode ? '#fff' : '#000' }
+      <TouchableOpacity
+        onPress={() => handleEventPress(event)}
+        activeOpacity={0.7}
+        style={styles.feedItemTouchable}
+      >
+        {/* Host Header */}
+        <View style={styles.feedHeader}>
+          <View style={styles.hostInfo}>
+            <View style={[
+              styles.hostAvatar,
+              { backgroundColor: getEventTypeColor(event.type) }
             ]}>
-              {event.host}
-            </Text>
+              <Text style={styles.hostInitial}>
+                {event.host.charAt(0)}
+              </Text>
+            </View>
+            <View style={styles.hostDetails}>
+              <Text style={[
+                styles.hostName,
+                { color: isDarkMode ? '#fff' : '#000' }
+              ]}>
+                {event.host}
+              </Text>
+              <Text style={[
+                styles.postTime,
+                { color: isDarkMode ? '#888' : '#666' }
+              ]}>
+                {event.date} • {event.time}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Event Content */}
+        <View style={styles.feedContent}>
+          <Text style={[
+            styles.feedEventTitle,
+            { color: isDarkMode ? '#fff' : '#000' }
+          ]}>
+            {event.title}
+          </Text>
+          <Text style={[
+            styles.feedDescription,
+            { color: isDarkMode ? '#ccc' : '#555' }
+          ]}>
+            {event.description}
+          </Text>
+          
+          {/* AI Insights Section */}
+          {event.aiMatchScore && event.aiMatchScore > 0.8 && (
+            <View style={styles.aiInsightsContainer}>
+              <View style={styles.aiMatchHeader}>
+                <MaterialCommunityIcons
+                  name="brain"
+                  size={14}
+                  color="#FF6B9D"
+                />
+                <Text style={[
+                  styles.aiMatchScore,
+                  { color: '#FF6B9D' }
+                ]}>
+                  {Math.round(event.aiMatchScore * 100)}% Match
+                </Text>
+                {event.emotionalCompatibility === 'high' && (
+                  <View style={styles.compatibilityBadge}>
+                    <Text style={styles.compatibilityText}>High Compatibility</Text>
+                  </View>
+                )}
+              </View>
+              
+              {event.personalizedReason && (
+                <Text style={[
+                  styles.personalizedReason,
+                  { color: isDarkMode ? '#e1bee7' : '#7b1fa2' }
+                ]}>
+                  ✨ {event.personalizedReason}
+                </Text>
+              )}
+              
+              {event.moodBoostPotential && event.moodBoostPotential > 8 && (
+                <View style={styles.moodBoostIndicator}>
+                  <MaterialCommunityIcons
+                    name="emoticon-happy"
+                    size={12}
+                    color="#FFD93D"
+                  />
+                  <Text style={[styles.moodBoostText, { color: '#FFD93D' }]}>
+                    +{event.moodBoostPotential}/10 Mood Boost
+                  </Text>
+                </View>
+              )}
+              
+              {event.suggestedConnections && event.suggestedConnections.length > 0 && (
+                <View style={styles.connectionsPreview}>
+                  <MaterialCommunityIcons
+                    name="account-heart"
+                    size={12}
+                    color="#4DABF7"
+                  />
+                  <Text style={[styles.connectionsText, { color: '#4DABF7' }]}>
+                    Connect with {event.suggestedConnections[0]}
+                    {event.suggestedConnections.length > 1 && ` +${event.suggestedConnections.length - 1} more`}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Event Tags */}
+          <View style={styles.eventTags}>
+            <View style={[
+              styles.eventTag,
+              { backgroundColor: getEventTypeColor(event.type) + '20' }
+            ]}>
+              <FontAwesome5
+                name={getEventTypeIcon(event.type)}
+                size={12}
+                color={getEventTypeColor(event.type)}
+              />
+              <Text style={[
+                styles.eventTagText,
+                { color: getEventTypeColor(event.type) }
+              ]}>
+                {event.type.replace('_', ' ')}
+              </Text>
+            </View>
+            
+            {/* Community Vibe Indicator */}
+            {event.communityVibe && (
+              <View style={[
+                styles.vibeTag,
+                { backgroundColor: getVibeColor(event.communityVibe) + '20' }
+              ]}>
+                <Text style={[
+                  styles.vibeText,
+                  { color: getVibeColor(event.communityVibe) }
+                ]}>
+                  {event.communityVibe}
+                </Text>
+              </View>
+            )}
+            
             <Text style={[
-              styles.postTime,
+              styles.participantCount,
               { color: isDarkMode ? '#888' : '#666' }
             ]}>
-              {event.date} • {event.time}
+              {event.participants} going
             </Text>
           </View>
         </View>
-        <TouchableOpacity
-          onPress={() => handleEventPress(event)}
-          style={styles.moreButton}
-        >
-          <FontAwesome5
-            name="ellipsis-h"
-            size={16}
-            color={isDarkMode ? '#888' : '#666'}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Event Content */}
-      <View style={styles.feedContent}>
-        <Text style={[
-          styles.feedEventTitle,
-          { color: isDarkMode ? '#fff' : '#000' }
-        ]}>
-          {event.title}
-        </Text>
-        <Text style={[
-          styles.feedDescription,
-          { color: isDarkMode ? '#ccc' : '#555' }
-        ]}>
-          {event.description}
-        </Text>
-        
-        {/* Event Tags */}
-        <View style={styles.eventTags}>
-          <View style={[
-            styles.eventTag,
-            { backgroundColor: getEventTypeColor(event.type) + '20' }
-          ]}>
-            <FontAwesome5
-              name={getEventTypeIcon(event.type)}
-              size={12}
-              color={getEventTypeColor(event.type)}
-            />
-            <Text style={[
-              styles.eventTagText,
-              { color: getEventTypeColor(event.type) }
-            ]}>
-              {event.type.replace('_', ' ')}
-            </Text>
-          </View>
-          <Text style={[
-            styles.participantCount,
-            { color: isDarkMode ? '#888' : '#666' }
-          ]}>
-            {event.participants} going
-          </Text>
-        </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Action Bar */}
       <View style={styles.feedActions}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => NuminaAnimations.haptic.selection()}
+        >
           <FontAwesome5
             name="heart"
             size={18}
             color={isDarkMode ? '#888' : '#666'}
           />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity 
+          style={styles.actionButton}
+          onPress={() => NuminaAnimations.haptic.selection()}
+        >
           <FontAwesome5
             name="comment"
             size={18}
@@ -471,12 +694,49 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   );
 
   const filterOptions = [
-    { key: 'all', label: 'All', icon: 'th-large' },
-    { key: 'mindfulness', label: 'Mindfulness', icon: 'brain' },
-    { key: 'group_therapy', label: 'Support', icon: 'users' },
-    { key: 'workshop', label: 'Workshops', icon: 'tools' },
-    { key: 'social', label: 'Social', icon: 'coffee' },
+    { key: 'ai-matched', label: '✨ AI Matched', icon: 'brain', color: '#FF6B9D' },
+    { key: 'mood-boost', label: '⚡ Mood Boost', icon: 'zap', color: '#FFD93D' },
+    { key: 'growth', label: '🌱 Growth', icon: 'trending-up', color: '#6BCF7F' },
+    { key: 'connections', label: '🤝 Connections', icon: 'users', color: '#4DABF7' },
+    { key: 'all', label: 'All', icon: 'th-large', color: '#8E8E93' },
+    { key: 'food_dining', label: 'Food & Dining', icon: 'utensils', color: '#FF9500' },
+    { key: 'tech_learning', label: 'Tech & Learning', icon: 'laptop-code', color: '#007AFF' },
+    { key: 'outdoor_activity', label: 'Outdoor & Adventure', icon: 'mountain', color: '#34C759' },
+    { key: 'creative_arts', label: 'Creative Arts', icon: 'palette', color: '#AF52DE' },
+    { key: 'fitness_wellness', label: 'Fitness & Wellness', icon: 'dumbbell', color: '#FF3B30' },
+    { key: 'professional_networking', label: 'Professional', icon: 'briefcase', color: '#5856D6' },
+    { key: 'hobby_interest', label: 'Hobbies & Games', icon: 'gamepad', color: '#FF9500' },
+    { key: 'cultural_exploration', label: 'Cultural', icon: 'globe', color: '#30B0C7' },
   ];
+
+  const floatingStyles = {
+    floatingSearchBar: {
+      position: 'absolute' as const,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      paddingBottom: 10,
+      paddingHorizontal: 10,
+      backgroundColor: 'transparent',
+      zIndex: 1001,
+    },
+    floatingSearchContainer: {
+      flexDirection: 'row' as const,
+      alignItems: 'center' as const,
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    floatingFilterChipsContainer: {
+      maxHeight: 40,
+      marginBottom: 6,
+    },
+  };
 
   return (
     <ScreenWrapper
@@ -501,204 +761,124 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
               transform: [{ translateX: slideAnim }],
             }
           ]}>
-            {/* Header Section */}
-            <View style={styles.headerSection}>
-              <View style={[
-                styles.statsCard,
-                {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                }
-              ]}>
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <MaterialCommunityIcons
-                      name="account-group"
-                      size={15}
-                      color={isDarkMode ? '#90CAF9' : '#3b82f6'}
-                    />
-                    <Text style={[
-                      styles.statNumber,
-                      { color: isDarkMode ? '#ffffff' : '#1a1a1a' }
-                    ]}>
-                      47
-                    </Text>
-                    <Text style={[
-                      styles.statLabel,
-                      { color: isDarkMode ? '#888' : '#666' }
-                    ]}>
-                      Active Members
-                    </Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <MaterialCommunityIcons
-                      name="calendar-heart"
-                      size={15}
-                      color={isDarkMode ? '#B8E6B8' : '#10b981'}
-                    />
-                    <Text style={[
-                      styles.statNumber,
-                      { color: isDarkMode ? '#ffffff' : '#1a1a1a' }
-                    ]}>
-                      12
-                    </Text>
-                    <Text style={[
-                      styles.statLabel,
-                      { color: isDarkMode ? '#888' : '#666' }
-                    ]}>
-                      Events This Week
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
 
-            {/* Search Section */}
-            <View style={styles.searchSection}>
-              <View style={[
-                styles.searchContainer,
-                {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                }
+            {/* AI Exploration Modes */}
+            <View style={styles.exploreModesSection}>
+              <Text style={[
+                styles.exploreModeTitle,
+                { color: isDarkMode ? '#fff' : '#000' }
               ]}>
-                <FontAwesome5
-                  name="search"
-                  size={16}
-                  color={isDarkMode ? '#888' : '#666'}
-                  style={styles.searchIcon}
-                />
-                <TextInput
-                  style={[
-                    styles.searchInput,
-                    { color: isDarkMode ? '#ffffff' : '#1a1a1a' }
-                  ]}
-                  placeholder="Search events, hosts, or topics..."
-                  placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                />
+                🎆 Explore Your World
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.exploreModeContainer}
+              >
                 <TouchableOpacity
                   style={[
-                    styles.filterToggle,
+                    styles.exploreModeCard,
                     {
-                      backgroundColor: showFilters
-                        ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                        : 'transparent',
+                      backgroundColor: exploreMode === 'matched' 
+                        ? '#FF6B9D20' 
+                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
+                      borderColor: exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#333' : '#e5e7eb'),
                     }
                   ]}
-                  onPress={() => setShowFilters(!showFilters)}
-                  activeOpacity={0.8}
+                  onPress={() => {
+                    setExploreMode('matched');
+                    setActiveFilter('ai-matched');
+                  }}
                 >
-                  <FontAwesome5
-                    name="sliders-h"
-                    size={14}
-                    color={showFilters
-                      ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                      : (isDarkMode ? '#888' : '#666')
-                    }
+                  <MaterialCommunityIcons
+                    name="brain"
+                    size={24}
+                    color={exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#888' : '#666')}
                   />
+                  <Text style={[
+                    styles.exploreModeText,
+                    { color: exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#888' : '#666') }
+                  ]}>
+                    AI Matched
+                  </Text>
+                  <Text style={[
+                    styles.exploreModeSubtext,
+                    { color: isDarkMode ? '#666' : '#999' }
+                  ]}>
+                    Perfect for you
+                  </Text>
                 </TouchableOpacity>
-              </View>
-
-              {/* Active Filters Chips */}
-              {(searchFilters.eventType.length > 0 || searchFilters.timeOfDay.length > 0 || searchFilters.participantRange !== 'any') && (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.filterChipsContainer}
-                  contentContainerStyle={styles.filterChipsContent}
+                
+                <TouchableOpacity
+                  style={[
+                    styles.exploreModeCard,
+                    {
+                      backgroundColor: exploreMode === 'discover' 
+                        ? '#FFD93D20' 
+                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
+                      borderColor: exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#333' : '#e5e7eb'),
+                    }
+                  ]}
+                  onPress={() => {
+                    setExploreMode('discover');
+                    setActiveFilter('mood-boost');
+                  }}
                 >
-                  {searchFilters.eventType.map((type) => (
-                    <View key={type} style={[
-                      styles.filterChip,
-                      { backgroundColor: isDarkMode ? '#333' : '#f3f4f6' }
-                    ]}>
-                      <Text style={[
-                        styles.filterChipText,
-                        { color: isDarkMode ? '#fff' : '#374151' }
-                      ]}>
-                        {type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            eventType: prev.eventType.filter(t => t !== type)
-                          }));
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <FontAwesome5
-                          name="times"
-                          size={10}
-                          color={isDarkMode ? '#888' : '#666'}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  {searchFilters.timeOfDay.map((time) => (
-                    <View key={time} style={[
-                      styles.filterChip,
-                      { backgroundColor: isDarkMode ? '#333' : '#f3f4f6' }
-                    ]}>
-                      <Text style={[
-                        styles.filterChipText,
-                        { color: isDarkMode ? '#fff' : '#374151' }
-                      ]}>
-                        {time.charAt(0).toUpperCase() + time.slice(1)}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            timeOfDay: prev.timeOfDay.filter(t => t !== time)
-                          }));
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <FontAwesome5
-                          name="times"
-                          size={10}
-                          color={isDarkMode ? '#888' : '#666'}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                  {searchFilters.participantRange !== 'any' && (
-                    <View style={[
-                      styles.filterChip,
-                      { backgroundColor: isDarkMode ? '#333' : '#f3f4f6' }
-                    ]}>
-                      <Text style={[
-                        styles.filterChipText,
-                        { color: isDarkMode ? '#fff' : '#374151' }
-                      ]}>
-                        {searchFilters.participantRange.charAt(0).toUpperCase() + searchFilters.participantRange.slice(1)} group
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            participantRange: 'any'
-                          }));
-                        }}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      >
-                        <FontAwesome5
-                          name="times"
-                          size={10}
-                          color={isDarkMode ? '#888' : '#666'}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </ScrollView>
-              )}
+                  <MaterialCommunityIcons
+                    name="compass"
+                    size={24}
+                    color={exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#888' : '#666')}
+                  />
+                  <Text style={[
+                    styles.exploreModeText,
+                    { color: exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#888' : '#666') }
+                  ]}>
+                    Discover
+                  </Text>
+                  <Text style={[
+                    styles.exploreModeSubtext,
+                    { color: isDarkMode ? '#666' : '#999' }
+                  ]}>
+                    New adventures
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[
+                    styles.exploreModeCard,
+                    {
+                      backgroundColor: exploreMode === 'grow' 
+                        ? '#6BCF7F20' 
+                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
+                      borderColor: exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#333' : '#e5e7eb'),
+                    }
+                  ]}
+                  onPress={() => {
+                    setExploreMode('grow');
+                    setActiveFilter('growth');
+                  }}
+                >
+                  <MaterialCommunityIcons
+                    name="trending-up"
+                    size={24}
+                    color={exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#888' : '#666')}
+                  />
+                  <Text style={[
+                    styles.exploreModeText,
+                    { color: exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#888' : '#666') }
+                  ]}>
+                    Grow
+                  </Text>
+                  <Text style={[
+                    styles.exploreModeSubtext,
+                    { color: isDarkMode ? '#666' : '#999' }
+                  ]}>
+                    Level up yourself
+                  </Text>
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
+            
             {/* Filter Section */}
             <View style={styles.filterSection}>
               <ScrollView
@@ -713,19 +893,24 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                       styles.filterButton,
                       {
                         backgroundColor: activeFilter === filter.key
-                          ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
+                          ? (filter.color ? filter.color + '20' : (isDarkMode ? '#90CAF9' : '#E3F2FD'))
                           : 'transparent',
-                        borderColor: isDarkMode ? '#333' : '#e5e7eb',
+                        borderColor: activeFilter === filter.key 
+                          ? (filter.color || (isDarkMode ? '#90CAF9' : '#3b82f6')) 
+                          : (isDarkMode ? '#333' : '#e5e7eb'),
                       }
                     ]}
-                    onPress={() => setActiveFilter(filter.key)}
+                    onPress={() => {
+                  NuminaAnimations.haptic.selection();
+                  setActiveFilter(filter.key);
+                }}
                     activeOpacity={0.8}
                   >
                     <FontAwesome5
                       name={filter.icon}
                       size={14}
                       color={activeFilter === filter.key
-                        ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
+                        ? (filter.color || (isDarkMode ? '#1a1a1a' : '#1a1a1a'))
                         : (isDarkMode ? '#888' : '#666')
                       }
                     />
@@ -733,7 +918,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                       styles.filterButtonText,
                       {
                         color: activeFilter === filter.key
-                          ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
+                          ? (filter.color || (isDarkMode ? '#1a1a1a' : '#1a1a1a'))
                           : (isDarkMode ? '#888' : '#666')
                       }
                     ]}>
@@ -755,564 +940,27 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
             />
           </Animated.View>
 
-          {/* Filter Modal */}
-          <Modal
-            visible={showFilters}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={() => setShowFilters(false)}
+          {/* Floating Create Event Button */}
+          <TouchableOpacity
+            style={[
+              styles.floatingCreateButton,
+              {
+                backgroundColor: isDarkMode ? '#6ec5ff' : '#83b2ff',
+                shadowColor: isDarkMode ? '#6ec5ff' : '#7eafff',
+              }
+            ]}
+            onPress={() => {
+              NuminaAnimations.haptic.medium();
+              setShowCreateEventModal(true);
+            }}
+            activeOpacity={0.8}
           >
-            <View style={[
-              styles.modalContainer,
-              { backgroundColor: isDarkMode ? '#111' : '#fff' }
-            ]}>
-              <View style={styles.modalHeader}>
-                <Text style={[
-                  styles.modalTitle,
-                  { color: isDarkMode ? '#fff' : '#000' }
-                ]}>
-                  Filter Events
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowFilters(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <FontAwesome5
-                    name="times"
-                    size={18}
-                    color={isDarkMode ? '#888' : '#666'}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.modalContent}>
-                {/* Event Type Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={[
-                    styles.filterGroupTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}>
-                    Event Type
-                  </Text>
-                  <View style={styles.filterOptions}>
-                    {['mindfulness', 'group_therapy', 'workshop', 'social'].map((type) => (
-                      <TouchableOpacity
-                        key={type}
-                        style={[
-                          styles.filterOption,
-                          {
-                            backgroundColor: searchFilters.eventType.includes(type)
-                              ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                              : (isDarkMode ? '#222' : '#f9fafb'),
-                            borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                          }
-                        ]}
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            eventType: prev.eventType.includes(type)
-                              ? prev.eventType.filter(t => t !== type)
-                              : [...prev.eventType, type]
-                          }));
-                        }}
-                      >
-                        <Text style={[
-                          styles.filterOptionText,
-                          {
-                            color: searchFilters.eventType.includes(type)
-                              ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                              : (isDarkMode ? '#fff' : '#374151')
-                          }
-                        ]}>
-                          {type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ')}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Time of Day Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={[
-                    styles.filterGroupTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}>
-                    Time of Day
-                  </Text>
-                  <View style={styles.filterOptions}>
-                    {['morning', 'afternoon', 'evening'].map((time) => (
-                      <TouchableOpacity
-                        key={time}
-                        style={[
-                          styles.filterOption,
-                          {
-                            backgroundColor: searchFilters.timeOfDay.includes(time)
-                              ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                              : (isDarkMode ? '#222' : '#f9fafb'),
-                            borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                          }
-                        ]}
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            timeOfDay: prev.timeOfDay.includes(time)
-                              ? prev.timeOfDay.filter(t => t !== time)
-                              : [...prev.timeOfDay, time]
-                          }));
-                        }}
-                      >
-                        <Text style={[
-                          styles.filterOptionText,
-                          {
-                            color: searchFilters.timeOfDay.includes(time)
-                              ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                              : (isDarkMode ? '#fff' : '#374151')
-                          }
-                        ]}>
-                          {time.charAt(0).toUpperCase() + time.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Group Size Filter */}
-                <View style={styles.filterGroup}>
-                  <Text style={[
-                    styles.filterGroupTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}>
-                    Group Size
-                  </Text>
-                  <View style={styles.filterOptions}>
-                    {[
-                      { key: 'any', label: 'Any Size' },
-                      { key: 'small', label: 'Small (1-10)' },
-                      { key: 'medium', label: 'Medium (11-20)' },
-                      { key: 'large', label: 'Large (21+)' }
-                    ].map((size) => (
-                      <TouchableOpacity
-                        key={size.key}
-                        style={[
-                          styles.filterOption,
-                          {
-                            backgroundColor: searchFilters.participantRange === size.key
-                              ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                              : (isDarkMode ? '#222' : '#f9fafb'),
-                            borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                          }
-                        ]}
-                        onPress={() => {
-                          setSearchFilters(prev => ({
-                            ...prev,
-                            participantRange: size.key
-                          }));
-                        }}
-                      >
-                        <Text style={[
-                          styles.filterOptionText,
-                          {
-                            color: searchFilters.participantRange === size.key
-                              ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                              : (isDarkMode ? '#fff' : '#374151')
-                          }
-                        ]}>
-                          {size.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* Suggested Searches */}
-                <View style={styles.filterGroup}>
-                  <Text style={[
-                    styles.filterGroupTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}>
-                    Suggested Searches
-                  </Text>
-                  <View style={styles.filterOptions}>
-                    {[
-                      'meditation',
-                      'anxiety support',
-                      'stress relief',
-                      'depression help',
-                      'mindful breathing',
-                      'art therapy',
-                      'peer support',
-                      'wellness workshop'
-                    ].map((suggestion) => (
-                      <TouchableOpacity
-                        key={suggestion}
-                        style={[
-                          styles.suggestionChip,
-                          {
-                            backgroundColor: isDarkMode ? '#222' : '#f9fafb',
-                            borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                          }
-                        ]}
-                        onPress={() => {
-                          setSearchQuery(suggestion);
-                          setShowFilters(false);
-                        }}
-                      >
-                        <FontAwesome5
-                          name="search"
-                          size={12}
-                          color={isDarkMode ? '#888' : '#666'}
-                        />
-                        <Text style={[
-                          styles.suggestionText,
-                          { color: isDarkMode ? '#fff' : '#374151' }
-                        ]}>
-                          {suggestion}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View style={[
-                styles.modalFooter,
-                { borderTopColor: isDarkMode ? '#333' : '#e5e7eb' }
-              ]}>
-                <TouchableOpacity
-                  style={[
-                    styles.clearFiltersButton,
-                    {
-                      backgroundColor: isDarkMode ? '#333' : '#f3f4f6',
-                    }
-                  ]}
-                  onPress={() => {
-                    setSearchFilters({
-                      timeOfDay: [],
-                      eventType: [],
-                      participantRange: 'any',
-                      dateRange: 'any',
-                      difficulty: [],
-                      location: 'any',
-                    });
-                    setSearchQuery('');
-                  }}
-                >
-                  <Text style={[
-                    styles.clearFiltersText,
-                    { color: isDarkMode ? '#fff' : '#374151' }
-                  ]}>
-                    Clear All
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.applyFiltersButton,
-                    { backgroundColor: isDarkMode ? '#90CAF9' : '#3b82f6' }
-                  ]}
-                  onPress={() => setShowFilters(false)}
-                >
-                  <Text style={[
-                    styles.applyFiltersText,
-                    { color: isDarkMode ? '#1a1a1a' : '#fff' }
-                  ]}>
-                    Apply Filters
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-
-          {/* Event Quick Actions Modal */}
-          <Modal
-            visible={showEventModal}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setShowEventModal(false)}
-          >
-            <TouchableOpacity 
-              style={styles.eventModalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowEventModal(false)}
-            >
-              <View style={[
-                styles.eventQuickCard,
-                {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                }
-              ]}>
-                {selectedEvent && (
-                  <>
-                    {/* Event Preview */}
-                    <View style={styles.eventQuickHeader}>
-                      <View style={[
-                        styles.eventQuickTypeIcon,
-                        { backgroundColor: getEventTypeColor(selectedEvent.type) + '20' }
-                      ]}>
-                        <FontAwesome5
-                          name={getEventTypeIcon(selectedEvent.type)}
-                          size={16}
-                          color={getEventTypeColor(selectedEvent.type)}
-                        />
-                      </View>
-                      <View style={styles.eventQuickInfo}>
-                        <Text style={[
-                          styles.eventQuickTitle,
-                          { color: isDarkMode ? '#fff' : '#000' }
-                        ]}>
-                          {selectedEvent.title}
-                        </Text>
-                        <Text style={[
-                          styles.eventQuickMeta,
-                          { color: isDarkMode ? '#888' : '#666' }
-                        ]}>
-                          {selectedEvent.date} • {selectedEvent.time}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Quick Actions */}
-                    <View style={styles.eventQuickActions}>
-                      <TouchableOpacity
-                        style={styles.eventQuickActionButton}
-                        onPress={() => handleEventAction('like')}
-                      >
-                        <FontAwesome5
-                          name="heart"
-                          size={18}
-                          color={isDarkMode ? '#FFE4E1' : '#ef4444'}
-                        />
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.eventQuickActionButton}
-                        onPress={() => handleEventAction('save')}
-                      >
-                        <FontAwesome5
-                          name="bookmark"
-                          size={18}
-                          color={isDarkMode ? '#FFF9C4' : '#f59e0b'}
-                        />
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.eventQuickActionButton}
-                        onPress={() => handleEventAction('share')}
-                      >
-                        <FontAwesome5
-                          name="share"
-                          size={18}
-                          color={isDarkMode ? '#90CAF9' : '#3b82f6'}
-                        />
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.eventQuickActionButton}
-                        onPress={() => handleEventAction('more')}
-                      >
-                        <FontAwesome5
-                          name="ellipsis-h"
-                          size={18}
-                          color={isDarkMode ? '#888' : '#666'}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </View>
-            </TouchableOpacity>
-          </Modal>
-
-          {/* Detailed Event Modal */}
-          <Modal
-            visible={showDetailedModal}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={() => setShowDetailedModal(false)}
-          >
-            <View style={[
-              styles.detailedModalContainer,
-              { backgroundColor: isDarkMode ? '#111' : '#fff' }
-            ]}>
-              <View style={styles.detailedModalHeader}>
-                <TouchableOpacity
-                  onPress={() => setShowDetailedModal(false)}
-                  style={styles.detailedModalCloseButton}
-                >
-                  <FontAwesome5
-                    name="times"
-                    size={18}
-                    color={isDarkMode ? '#888' : '#666'}
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {selectedEvent && (
-                <ScrollView style={styles.detailedModalContent}>
-                  {/* Event Photos */}
-                  {selectedEvent.photos && selectedEvent.photos.length > 0 && (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.photosContainer}
-                      contentContainerStyle={styles.photosContent}
-                    >
-                      {selectedEvent.photos.map((photo, index) => (
-                        <View key={index} style={styles.photoContainer}>
-                          <View style={[
-                            styles.photoPlaceholder,
-                            { backgroundColor: isDarkMode ? '#333' : '#f3f4f6' }
-                          ]}>
-                            <FontAwesome5
-                              name="image"
-                              size={24}
-                              color={isDarkMode ? '#666' : '#9ca3af'}
-                            />
-                          </View>
-                        </View>
-                      ))}
-                    </ScrollView>
-                  )}
-
-                  {/* Event Header */}
-                  <View style={styles.detailedModalHeaderSection}>
-                    <View style={[
-                      styles.detailedModalTypeIcon,
-                      { backgroundColor: getEventTypeColor(selectedEvent.type) + '20' }
-                    ]}>
-                      <FontAwesome5
-                        name={getEventTypeIcon(selectedEvent.type)}
-                        size={16}
-                        color={getEventTypeColor(selectedEvent.type)}
-                      />
-                    </View>
-                    <Text style={[
-                      styles.detailedModalTitle,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      {selectedEvent.title}
-                    </Text>
-                    <Text style={[
-                      styles.detailedModalHost,
-                      { color: isDarkMode ? '#888' : '#666' }
-                    ]}>
-                      Hosted by {selectedEvent.host}
-                    </Text>
-                  </View>
-
-                  {/* Event Details */}
-                  <View style={styles.detailedModalDetails}>
-                    <View style={styles.detailedModalDetailRow}>
-                      <MaterialCommunityIcons
-                        name="calendar-clock"
-                        size={20}
-                        color={isDarkMode ? '#90CAF9' : '#3b82f6'}
-                      />
-                      <Text style={[
-                        styles.detailedModalDetailText,
-                        { color: isDarkMode ? '#fff' : '#000' }
-                      ]}>
-                        {selectedEvent.date} at {selectedEvent.time}
-                      </Text>
-                    </View>
-                    <View style={styles.detailedModalDetailRow}>
-                      <MaterialCommunityIcons
-                        name="account-group"
-                        size={20}
-                        color={isDarkMode ? '#B8E6B8' : '#10b981'}
-                      />
-                      <Text style={[
-                        styles.detailedModalDetailText,
-                        { color: isDarkMode ? '#fff' : '#000' }
-                      ]}>
-                        {selectedEvent.participants}/{selectedEvent.maxParticipants} participants
-                      </Text>
-                    </View>
-                    {selectedEvent.location && (
-                      <View style={styles.detailedModalDetailRow}>
-                        <FontAwesome5
-                          name="map-marker-alt"
-                          size={20}
-                          color={isDarkMode ? '#FFE4E1' : '#ef4444'}
-                        />
-                        <Text style={[
-                          styles.detailedModalDetailText,
-                          { color: isDarkMode ? '#fff' : '#000' }
-                        ]}>
-                          {selectedEvent.location}
-                        </Text>
-                      </View>
-                    )}
-                    {selectedEvent.duration && (
-                      <View style={styles.detailedModalDetailRow}>
-                        <FontAwesome5
-                          name="clock"
-                          size={20}
-                          color={isDarkMode ? '#FFF9C4' : '#f59e0b'}
-                        />
-                        <Text style={[
-                          styles.detailedModalDetailText,
-                          { color: isDarkMode ? '#fff' : '#000' }
-                        ]}>
-                          {selectedEvent.duration}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Full Description */}
-                  <View style={styles.detailedModalDescriptionSection}>
-                    <Text style={[
-                      styles.detailedModalDescriptionTitle,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      About this event
-                    </Text>
-                    <Text style={[
-                      styles.detailedModalDescription,
-                      { color: isDarkMode ? '#ccc' : '#555' }
-                    ]}>
-                      {selectedEvent.fullDescription || selectedEvent.description}
-                    </Text>
-                  </View>
-                </ScrollView>
-              )}
-
-              {/* Action Buttons */}
-              <View style={[
-                styles.detailedModalFooter,
-                { borderTopColor: isDarkMode ? '#333' : '#e5e7eb' }
-              ]}>
-                <TouchableOpacity
-                  style={[
-                    styles.detailedModalPrimaryButton,
-                    {
-                      backgroundColor: selectedEvent?.isJoined
-                        ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                        : (isDarkMode ? '#90CAF9' : '#3b82f6'),
-                    }
-                  ]}
-                  onPress={() => {
-                    if (selectedEvent) {
-                      handleJoinEvent(selectedEvent.id);
-                    }
-                    setShowDetailedModal(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.detailedModalPrimaryButtonText,
-                    {
-                      color: selectedEvent?.isJoined
-                        ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                        : (isDarkMode ? '#1a1a1a' : '#fff')
-                    }
-                  ]}>
-                    {selectedEvent?.isJoined ? 'Leave Event' : 'Join Event'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+            <FontAwesome5
+              name="pencil-alt"
+              size={20}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
         </SafeAreaView>
       </PageBackground>
     </ScreenWrapper>
@@ -1326,10 +974,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 90,
-    paddingHorizontal: 16,
   },
   headerSection: {
     marginBottom: 8,
+    paddingHorizontal: 16,
   },
   statsCard: {
     borderRadius: 12,
@@ -1365,30 +1013,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
-  },
-  searchSection: {
-    marginBottom: 5,
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 8,
-    marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
   },
   filterToggle: {
     padding: 8,
@@ -1439,18 +1063,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventsContent: {
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   feedItem: {
-    paddingHorizontal: 16,
     paddingVertical: 12,
     marginBottom: 8,
+  },
+  feedItemTouchable: {
+    flex: 1,
   },
   feedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   hostInfo: {
     flexDirection: 'row',
@@ -1488,6 +1115,7 @@ const styles = StyleSheet.create({
   },
   feedContent: {
     marginBottom: 12,
+    paddingHorizontal: 16,
   },
   feedEventTitle: {
     fontSize: 16,
@@ -1499,7 +1127,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
-    fontFamily: 'CrimsonPro_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   eventTags: {
     flexDirection: 'row',
@@ -1528,6 +1156,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 8,
+    paddingHorizontal: 16,
     borderTopWidth: 0.5,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
@@ -1686,7 +1315,7 @@ const styles = StyleSheet.create({
   eventQuickTitle: {
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'CrimsonPro_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
     marginBottom: 4,
     lineHeight: 22,
   },
@@ -1708,6 +1337,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  eventQuickCloseButton: {
+    padding: 8,
+    marginLeft: 8,
   },
   // Detailed Modal Styles
   detailedModalContainer: {
@@ -1760,7 +1393,7 @@ const styles = StyleSheet.create({
   detailedModalTitle: {
     fontSize: 24,
     fontWeight: '700',
-    fontFamily: 'CrimsonPro_700Bold',
+    fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
     marginBottom: 8,
   },
@@ -1794,7 +1427,7 @@ const styles = StyleSheet.create({
   detailedModalDescription: {
     fontSize: 16,
     lineHeight: 24,
-    fontFamily: 'CrimsonPro_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   detailedModalFooter: {
     paddingHorizontal: 20,
@@ -1811,5 +1444,274 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
+  },
+  floatingCreateButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  // Create Event Modal Styles
+  createEventModalContainer: {
+    flex: 1,
+    paddingTop: 50,
+  },
+  createEventModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  createEventModalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  createEventModalCloseButton: {
+    padding: 8,
+  },
+  createEventModalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  createEventFormSection: {
+    marginBottom: 20,
+  },
+  createEventFormRow: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  createEventFormLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    marginBottom: 8,
+  },
+  createEventFormInput: {
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+  },
+  createEventFormTextArea: {
+    height: 100,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    textAlignVertical: 'top',
+  },
+  createEventTypeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  createEventTypeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  createEventTypeOptionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  createEventModalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    gap: 12,
+  },
+  createEventCancelButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createEventSubmitButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  createEventButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  createEventPickerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: '100%',
+    paddingHorizontal: 12,
+  },
+  createEventPickerText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+  },
+  // AI Enhancement Styles
+  exploreModesSection: {
+    marginBottom: 16,
+    paddingHorizontal: 16,
+  },
+  exploreModeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    marginBottom: 12,
+  },
+  exploreModeContainer: {
+    paddingHorizontal: 4,
+    gap: 12,
+  },
+  exploreModeCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    minWidth: 100,
+    gap: 4,
+  },
+  exploreModeText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  exploreModeSubtext: {
+    fontSize: 11,
+    fontFamily: 'Nunito_400Regular',
+  },
+  aiInsightsContainer: {
+    backgroundColor: 'rgba(255, 107, 157, 0.05)',
+    borderRadius: 12,
+    padding: 12,
+    marginVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 157, 0.2)',
+  },
+  aiMatchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: 6,
+  },
+  aiMatchScore: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  compatibilityBadge: {
+    backgroundColor: '#FF6B9D',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginLeft: 4,
+  },
+  compatibilityText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  personalizedReason: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    fontFamily: 'Nunito_400Regular',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  moodBoostIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  moodBoostText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  connectionsPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  connectionsText: {
+    fontSize: 11,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  vibeTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  vibeText: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    textTransform: 'capitalize',
+  },
+  floatingSearchBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingBottom: 10,
+    paddingHorizontal: 10,
+    backgroundColor: 'transparent',
+    zIndex: 1001,
+  },
+  floatingSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  floatingFilterChipsContainer: {
+    maxHeight: 40,
+    marginBottom: 6,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
   },
 });

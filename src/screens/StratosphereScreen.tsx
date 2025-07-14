@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { NuminaColors } from '../utils/colors';
 import { Header } from '../components/Header';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { LLMAnalyticsSection } from '../components/LLMAnalyticsSection';
+import { PageBackground } from '../components/PageBackground';
 
 interface StratosphereScreenProps {
   onNavigateBack: () => void;
@@ -30,7 +32,9 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
         navigation.navigate('Analytics');
         break;
       case 'stratosphere':
-        // Already on stratosphere screen, do nothing
+        break;
+      case 'collective':
+        navigation.navigate('Collective');
         break;
       case 'profile':
         Alert.alert('Profile', 'Profile feature coming soon!');
@@ -50,7 +54,15 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
             { 
               text: 'Sign Out', 
               style: 'destructive',
-              onPress: () => logout()
+              onPress: async () => {
+                try {
+                  await logout();
+                  // The AppNavigator will automatically redirect to Hero screen
+                  // when isAuthenticated becomes false
+                } catch (error) {
+                  console.error('Logout error:', error);
+                }
+              }
             }
           ]
         );
@@ -106,7 +118,7 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
   ];
 
   return (
-    <View style={styles.container}>
+    <PageBackground>
       <SafeAreaView style={styles.container}>
       
       <Header 
@@ -150,6 +162,11 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
                 }
               ]}
               activeOpacity={feature.comingSoon ? 1 : 0.7}
+              onPress={() => {
+                if (!feature.comingSoon && index === 0) {
+                  navigation.navigate('Collective');
+                }
+              }}
             >
               <View style={styles.featureHeader}>
                 <View style={[styles.featureIconContainer, { backgroundColor: `${feature.color}20` }]}>
@@ -212,9 +229,12 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
             remains private while contributing to global wellness understanding.
           </Text>
         </View>
+
+        {/* LLM Analytics Section */}
+        <LLMAnalyticsSection isVisible={true} />
       </ScrollView>
       </SafeAreaView>
-    </View>
+    </PageBackground>
   );
 };
 
@@ -225,6 +245,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 20,
   },
   scrollContent: {
     paddingBottom: 40,

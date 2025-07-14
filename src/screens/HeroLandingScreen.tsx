@@ -188,7 +188,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
       <Header 
         title="Numina"
         showMenuButton={true}
-        onMenuPress={handleToggleDarkMode}
+        onMenuPress={(key: string) => handleToggleDarkMode()}
         onTitlePress={() => {
           // Already on Hero screen - could scroll to top or refresh animations
           console.log('Numina title pressed on Hero screen');
@@ -215,7 +215,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           ]}
         >
           <Text style={[styles.welcomeText, { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600] }]}>
-            <Text style={{ color: isDarkMode ? '#B8E6B8' : NuminaColors.darkMode[600] }}>Track</Text>, <Text style={{ color: isDarkMode ? '#E6F3FF' : NuminaColors.darkMode[600] }}>analyze</Text>, and experience <Text style={{ color: isDarkMode ? '#FFF9C4' : NuminaColors.darkMode[600] }}>change</Text>.
+            <Text style={{ color: isDarkMode ? '#a880ff' : '#0099ff' }}>Search</Text>, <Text style={{ color: isDarkMode ? '#7bff98' : '#9f75ff' }}>connect</Text>, <Text style={{ color: isDarkMode ? '#76c3ff' : '#ffb172' }}>experience</Text>.
           </Text>
             <Text style={[
               styles.brandText,

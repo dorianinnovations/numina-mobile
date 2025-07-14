@@ -508,7 +508,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
           });
         }}
         onTitlePress={onNavigateHome}
-        onMenuPress={() => {}}
+        onMenuPress={(key: string) => {}}
       />
 
       {/* Background Effects */}

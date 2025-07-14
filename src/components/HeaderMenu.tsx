@@ -10,6 +10,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const getMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat' },
+  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Collective', key: 'collective' },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics' },
   { icon: <Feather name="cloud" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Cloud', key: 'cloud' },
   { icon: <MaterialCommunityIcons name="earth" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Stratosphere', key: 'stratosphere' },
@@ -129,10 +130,10 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   const menuWidth = 280;
   const menuHeight = 280;
   const rightMargin = 1;
-  const topMargin = 70;
+  const topMargin = 80;
   
-  const menuRight = rightMargin + 34;
-  const menuTop = topMargin + 34;
+  const menuRight = rightMargin + 20;
+  const menuTop = topMargin + 50;
 
   return (
     <View style={styles.overlay}>
@@ -187,18 +188,6 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         ]} />
         
         <View style={styles.menuContent}>
-          {/* Dismiss Button */}
-          <TouchableOpacity
-            style={styles.dismissButton}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <FontAwesome5 
-              name="times" 
-              size={14} 
-              color={isDarkMode ? '#fff' : '#666'} 
-            />
-          </TouchableOpacity>
           
           {menuActions.map((action, index) => (
             <TouchableOpacity
@@ -263,8 +252,8 @@ const styles = StyleSheet.create({
   menuContainer: {
     borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 0,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
     zIndex: 1001,
   },
   arrow: {
@@ -279,7 +268,7 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   menuContent: {
-    paddingTop: 32, // Space for dismiss button
+    paddingTop: 32, 
   },
   menuButton: {
     flexDirection: 'row',
@@ -302,18 +291,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
     fontFamily: 'Inter_500Medium',
   },
-  dismissButton: {
-    position: 'absolute',
-    top: 4,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 5,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1002,
-  },
+
   themeSelectorContainer: {
     borderTopWidth: 1,
     marginTop: 8,

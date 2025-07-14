@@ -5,6 +5,7 @@ import { userDataSync } from './userDataSync';
 import SecureStorageService from './secureStorage';
 
 const getBaseApiUrl = () => {
+  // Always use production server for simplicity
   return 'https://server-a7od.onrender.com';
 };
 

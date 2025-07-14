@@ -9,10 +9,13 @@ import {
   Easing,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { HeaderMenu } from './HeaderMenu';
 import { OptimizedImage } from './OptimizedImage';
+import { AnimatedHamburger } from './AnimatedHamburger';
+import { AnimatedBackArrow } from './AnimatedBackArrow';
 
 const numinaLogo = require('../assets/images/happynumina.png');
 
@@ -38,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   const { isDarkMode } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuButtonPosition, setMenuButtonPosition] = useState({ x: 0, y: 0, width: 34, height: 34 });
+  const [backArrowPressed, setBackArrowPressed] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -61,6 +65,20 @@ export const Header: React.FC<HeaderProps> = ({
   const handleMenuAction = (key: string) => {
     setMenuVisible(false);
     if (onMenuPress) onMenuPress(key);
+  };
+
+  const handleBackArrowPress = () => {
+    // Haptic feedback for premium feel
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    // Trigger press animation
+    setBackArrowPressed(true);
+    
+    // Call the original onBackPress after a short delay
+    setTimeout(() => {
+      setBackArrowPressed(false);
+      if (onBackPress) onBackPress();
+    }, 150);
   };
 
   const handleMenuButtonPress = (event: any) => {
@@ -103,95 +121,110 @@ export const Header: React.FC<HeaderProps> = ({
           },
         ]}
       >
-        <View style={styles.leftSection}>
-          <TouchableOpacity 
-            style={styles.logoContainer}
-            onPress={onTitlePress}
-            activeOpacity={onTitlePress ? 0.7 : 1}
-            disabled={!onTitlePress}
-          >
-            <OptimizedImage 
-              source={numinaLogo} 
-              style={styles.logo}
-              resizeMode="contain"
-              showLoader={false}
-              preload={false}
-            />
-            <Text style={[
-              styles.numinaText,
-              {
-                color: isDarkMode ? '#ffffff' : '#586266eb',
-              }
-            ]}>
-              {title || 'Numina'}
-            </Text>
-          </TouchableOpacity>
-          
-          {subtitle && (
-            <Text style={[
-              styles.headerSubtitle,
-              { 
-                color: isDarkMode ? '#888888' : '#666666',
-                marginLeft: 4,
-              }
-            ]}>
-              {subtitle}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.rightSection}>
-          {showBackButton && (
-            <TouchableOpacity
-              style={[
-                styles.iconButton,
-                {
-                  backgroundColor: isDarkMode 
-                    ? 'rgba(255, 255, 255, 0.1)' 
-                    : '#ffffff',
-                  borderColor: isDarkMode 
-                    ? 'rgba(255, 255, 255, 0.2)' 
-                    : 'rgba(0, 0, 0, 0.1)',
-                }
-              ]}
-              onPress={onBackPress}
-              activeOpacity={0.7}
-            >
-              <FontAwesome5 
-                name="arrow-left" 
-                size={16} 
-                color={isDarkMode ? '#ffffff' : '#586266eb'} 
-              />
-            </TouchableOpacity>
-          )}
-
-          {showMenuButton && (
-            <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.iconButton,
-                  {
-                    backgroundColor: isDarkMode 
-                      ? 'rgba(255, 255, 255, 0.1)' 
-                      : '#ffffff',
-                    borderColor: isDarkMode 
-                      ? 'rgba(255, 255, 255, 0.2)' 
-                      : 'rgba(0, 0, 0, 0.1)',
-                    marginLeft: showBackButton ? 12 : 0,
-                  }
-                ]}
-                onPress={handleMenuButtonPress}
-                activeOpacity={0.7}
+        <BlurView
+          intensity={isDarkMode ? 40 : 60}
+          tint={isDarkMode ? 'dark' : 'default'}
+          style={[
+            styles.blurContainer,
+            {
+              borderColor: isDarkMode 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(0, 0, 0, 0.1)',
+            },
+          ]}
+        >
+          <View style={styles.headerContent}>
+            <View style={styles.leftSection}>
+              <TouchableOpacity 
+                style={styles.logoContainer}
+                onPress={onTitlePress}
+                activeOpacity={onTitlePress ? 0.7 : 1}
+                disabled={!onTitlePress}
               >
-                <FontAwesome5
-                  name="bars"
-                  size={16}
-                  color={isDarkMode ? '#ffffff' : '#586266eb'}
+                <OptimizedImage 
+                  source={numinaLogo} 
+                  style={styles.logo}
+                  resizeMode="contain"
+                  showLoader={false}
+                  preload={false}
                 />
+                <Text style={[
+                  styles.numinaText,
+                  {
+                    color: isDarkMode ? '#ffffff' : '#586266eb',
+                  }
+                ]}>
+                  {title || 'Numina'}
+                </Text>
               </TouchableOpacity>
-            </Animated.View>
-          )}
-        </View>
+              
+              {subtitle && (
+                <Text style={[
+                  styles.headerSubtitle,
+                  { 
+                    color: isDarkMode ? '#888888' : '#666666',
+                    marginLeft: 4,
+                  }
+                ]}>
+                  {subtitle}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.rightSection}>
+              {showBackButton && (
+                <TouchableOpacity
+                  style={[
+                    styles.iconButton,
+                    {
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.1)' 
+                        : '#ffffff',
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(0, 0, 0, 0.1)',
+                    }
+                  ]}
+                  onPress={handleBackArrowPress}
+                  activeOpacity={0.7}
+                >
+                  <AnimatedBackArrow
+                    color={isDarkMode ? '#ffffff' : '#586266eb'}
+                    size={16}
+                    isPressed={backArrowPressed}
+                  />
+                </TouchableOpacity>
+              )}
+
+              {showMenuButton && (
+                <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : '#ffffff',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.2)' 
+                          : 'rgba(0, 0, 0, 0.1)',
+                        marginLeft: showBackButton ? 12 : 0,
+                      }
+                    ]}
+                    onPress={handleMenuButtonPress}
+                    activeOpacity={0.7}
+                  >
+                    <AnimatedHamburger
+                      isOpen={menuVisible}
+                      color={isDarkMode ? '#ffffff' : '#586266eb'}
+                      size={16}
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+            </View>
+          </View>
+        </BlurView>
       </Animated.View>
       
       <HeaderMenu
@@ -215,6 +248,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     zIndex: 100,
   },
+  blurContainer: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    overflow: 'hidden',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   leftSection: {
     flex: 1,
     alignItems: 'flex-start',
@@ -225,16 +271,16 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   logo: {
-    width: 40,
+    width: 36,
     borderRadius: 100,
-    height: 40,
+    height: 36,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   numinaText: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -1.5,
     fontFamily: 'CrimsonPro_700Bold',

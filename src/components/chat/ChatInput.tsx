@@ -28,6 +28,19 @@ interface ChatInputProps {
   maxLength?: number;
   placeholder?: string;
   voiceEnabled?: boolean;
+  // AI Personality Features
+  userEmotionalState?: {
+    mood: string;
+    intensity: number;
+    timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+    recentInteractions: string[];
+  };
+  aiPersonality?: {
+    communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+    adaptivePrompts: string[];
+    contextualHints: string[];
+  };
+  onPersonalityUpdate?: (personality: any) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -40,10 +53,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   maxLength = 500,
   placeholder = "Share your thoughts...",
   voiceEnabled = true,
+  userEmotionalState,
+  aiPersonality,
+  onPersonalityUpdate,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [inputHeight, setInputHeight] = useState(44);
+  const [adaptivePlaceholder, setAdaptivePlaceholder] = useState(placeholder);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [contextualSuggestions, setContextualSuggestions] = useState<string[]>([]);
   
   // Animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
@@ -146,6 +165,108 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const isInputEmpty = !value.trim();
 
+  // AI Personality Adaptation
+  useEffect(() => {
+    if (userEmotionalState && aiPersonality) {
+      const adaptedPlaceholder = getAdaptivePlaceholder(userEmotionalState, aiPersonality);
+      setAdaptivePlaceholder(adaptedPlaceholder);
+      
+      const suggestions = getContextualSuggestions(userEmotionalState, aiPersonality);
+      setContextualSuggestions(suggestions);
+    }
+  }, [userEmotionalState, aiPersonality]);
+
+  const getAdaptivePlaceholder = (emotionalState: any, personality: any) => {
+    const { mood, intensity, timeOfDay } = emotionalState;
+    const { communicationStyle } = personality;
+    
+    if (mood === 'anxious' && intensity > 7) {
+      return communicationStyle === 'empathetic' 
+        ? "I'm here to listen... what's on your mind? 💙"
+        : "Let's work through this together...";
+    }
+    
+    if (mood === 'happy' && intensity > 8) {
+      return "Share your joy! What's making you feel amazing? ✨";
+    }
+    
+    if (mood === 'stressed' && timeOfDay === 'evening') {
+      return "End-of-day check-in... how can I help you unwind? 🌙";
+    }
+    
+    if (timeOfDay === 'morning') {
+      return "Good morning! How are you feeling today? ☀️";
+    }
+    
+    switch (communicationStyle) {
+      case 'empathetic':
+        return "I'm here for you... what's in your heart? 💫";
+      case 'collaborative':
+        return "Let's explore this together... what's happening?";
+      case 'encouraging':
+        return "You've got this! What's on your mind? 🌟";
+      case 'direct':
+        return "What would you like to talk about?";
+      default:
+        return placeholder;
+    }
+  };
+
+  const getContextualSuggestions = (emotionalState: any, personality: any) => {
+    const { mood, intensity, timeOfDay } = emotionalState;
+    
+    if (mood === 'anxious' && intensity > 6) {
+      return [
+        "I'm feeling overwhelmed...",
+        "Help me understand these thoughts",
+        "What breathing exercises work?"
+      ];
+    }
+    
+    if (mood === 'happy' && intensity > 7) {
+      return [
+        "I want to share something amazing!",
+        "Today was incredible because...",
+        "I'm grateful for..."
+      ];
+    }
+    
+    if (mood === 'sad' && intensity > 5) {
+      return [
+        "I need some support today",
+        "Help me process these feelings",
+        "What self-care practices help?"
+      ];
+    }
+    
+    if (timeOfDay === 'evening') {
+      return [
+        "Reflect on my day",
+        "Plan for tomorrow",
+        "Practice gratitude"
+      ];
+    }
+    
+    return [
+      "How can I grow today?",
+      "What patterns do you notice?",
+      "Help me understand myself better"
+    ];
+  };
+
+  const getMoodColor = (mood: string) => {
+    switch (mood.toLowerCase()) {
+      case 'happy': return '#10b981';
+      case 'sad': return '#3b82f6';
+      case 'angry': return '#ef4444';
+      case 'anxious': return '#f59e0b';
+      case 'excited': return '#8b5cf6';
+      case 'calm': return '#06b6d4';
+      case 'stressed': return '#f59e0b';
+      default: return '#6366f1';
+    }
+  };
+
 
   return (
     <View style={styles.container}>
@@ -170,7 +291,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       <View style={[
         styles.floatingContainer,
         {
-          backgroundColor: 'transparent',
+          backgroundColor: isDarkMode ? '#121212' : '#ffffff',
           borderColor: isDarkMode
             ? 'rgba(255, 255, 255, 0.1)'
             : 'rgba(0, 0, 0, 0.1)',
@@ -206,12 +327,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ]}
               value={value}
               onChangeText={onChangeText}
-              placeholder="Ask, brainstorm, or share your thoughts..."
-              placeholderTextColor={'#646464'}
+              placeholder={adaptivePlaceholder}
+              placeholderTextColor={userEmotionalState?.mood === 'anxious' ? '#FF6B9D' : '#646464'}
               multiline
               maxLength={maxLength}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
+              onFocus={() => {
+                handleInputFocus();
+                setShowSuggestions(true);
+              }}
+              onBlur={() => {
+                handleInputBlur();
+                setTimeout(() => setShowSuggestions(false), 150);
+              }}
               onContentSizeChange={(event) => {
                 setInputHeight(event.nativeEvent.contentSize.height);
               }}
@@ -248,6 +375,90 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </View>
       </View>
 
+      {/* Contextual Suggestions */}
+      {showSuggestions && contextualSuggestions.length > 0 && (
+        <View style={[
+          styles.suggestionsContainer,
+          {
+            backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+            borderColor: isDarkMode ? '#333' : '#e5e7eb',
+          }
+        ]}>
+          <View style={styles.suggestionsHeader}>
+            <FontAwesome5
+              name="brain"
+              size={12}
+              color="#FF6B9D"
+            />
+            <Text style={[
+              styles.suggestionsTitle,
+              { color: isDarkMode ? '#ccc' : '#666' }
+            ]}>
+              Numina suggests...
+            </Text>
+          </View>
+          {contextualSuggestions.map((suggestion, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.suggestionItem,
+                { borderColor: isDarkMode ? '#333' : '#f0f0f0' }
+              ]}
+              onPress={() => {
+                onChangeText(suggestion);
+                setShowSuggestions(false);
+              }}
+            >
+              <Text style={[
+                styles.suggestionText,
+                { color: isDarkMode ? '#fff' : '#333' }
+              ]}>
+                {suggestion}
+              </Text>
+              <FontAwesome5
+                name="arrow-right"
+                size={10}
+                color={isDarkMode ? '#666' : '#999'}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+      
+      {/* Emotional State Indicator */}
+      {userEmotionalState && (
+        <View style={[
+          styles.emotionalStateIndicator,
+          {
+            backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+            borderColor: getMoodColor(userEmotionalState.mood),
+          }
+        ]}>
+          <View style={[
+            styles.moodDot,
+            { backgroundColor: getMoodColor(userEmotionalState.mood) }
+          ]} />
+          <Text style={[
+            styles.emotionalStateText,
+            { color: isDarkMode ? '#ccc' : '#666' }
+          ]}>
+            Numina senses you're feeling {userEmotionalState.mood}
+          </Text>
+          <View style={[
+            styles.intensityBar,
+            { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
+          ]}>
+            <View style={[
+              styles.intensityFill,
+              {
+                width: `${userEmotionalState.intensity * 10}%`,
+                backgroundColor: getMoodColor(userEmotionalState.mood),
+              }
+            ]} />
+          </View>
+        </View>
+      )}
+
       {/* Voice Recording Indicator */}
       {isVoiceActive && (
         <Animated.View style={[
@@ -280,7 +491,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 3,
     paddingTop: 12,
     paddingVertical: 0,
     paddingBottom: Platform.OS === 'ios' ? 12 : 8,
@@ -296,17 +507,17 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   floatingContainer: {
-    borderRadius: 20,
+    borderRadius: 17,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 10,
     position: 'relative',
     overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 12,
   },
   gradientOverlay: {
     position: 'absolute',
@@ -350,6 +561,7 @@ const styles = StyleSheet.create({
   textInput: {
     maxHeight: 70,
     paddingVertical: 6,
+    fontSize: 18,
     letterSpacing: -0.2,
   },
   sendButtonContainer: {
@@ -358,10 +570,11 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 45,
     height: 45,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 3,
   },
   voiceIndicator: {
     position: 'absolute',
@@ -392,5 +605,85 @@ const styles = StyleSheet.create({
   },
   voiceIndicatorText: {
     letterSpacing: -0.2,
+  },
+  // AI Adaptive Features Styles
+  suggestionsContainer: {
+    position: 'absolute',
+    bottom: 80,
+    left: 16,
+    right: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    maxHeight: 200,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  suggestionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  suggestionsTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginVertical: 2,
+    borderWidth: 1,
+  },
+  suggestionText: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    flex: 1,
+  },
+  emotionalStateIndicator: {
+    position: 'absolute',
+    top: -60,
+    left: 16,
+    right: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  moodDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  emotionalStateText: {
+    fontSize: 12,
+    fontFamily: 'Nunito_400Regular',
+    flex: 1,
+  },
+  intensityBar: {
+    width: 30,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  intensityFill: {
+    height: '100%',
+    borderRadius: 2,
   },
 });

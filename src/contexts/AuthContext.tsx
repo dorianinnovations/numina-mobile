@@ -1,29 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import NetInfo from '@react-native-community/netinfo';
-import ApiService from '../services/api';
+import ApiService, { UserData, LoginCredentials, SignUpCredentials } from '../services/api';
 import SecureStorageService from '../services/secureStorage';
-import { emotionalAnalyticsAPI } from '../services/emotionalAnalyticsAPI';
-import { offlineEmotionStorage } from '../services/offlineEmotionStorage';
 
 /**
- * Authentication Context for React Native
- * Maintains same interface as web app AuthContext
- * Handles login, signup, session persistence, and user state
+ * Simplified Authentication Context for React Native
+ * Focuses on core authentication without complex sync logic
  */
-
-interface SyncStatus {
-  isOnline: boolean;
-  lastSyncTime: string | null;
-  pendingChanges: number;
-  syncInProgress: boolean;
-}
 
 interface AuthContextType {
   // Authentication state
   isAuthenticated: boolean;
   loading: boolean;
   userData: UserData | null;
-  syncStatus: SyncStatus;
   isInitializing: boolean;
 
   // Authentication methods
@@ -34,17 +22,7 @@ interface AuthContextType {
   // Session management
   checkAuthStatus: () => Promise<void>;
   refreshUserData: () => Promise<void>;
-  
-  // Sync methods (for future offline functionality)
-  syncUserData: () => Promise<void>;
 }
-
-const defaultSyncStatus: SyncStatus = {
-  isOnline: true,
-  lastSyncTime: null,
-  pendingChanges: 0,
-  syncInProgress: false,
-};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -61,42 +39,16 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State management - same as web app
+  // Simplified state management
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(defaultSyncStatus);
   const [isInitializing, setIsInitializing] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false); // Add sync lock
-  const [lastSyncTime, setLastSyncTime] = useState<number>(0); // Add sync cooldown
 
   // Initialize authentication state on app startup
   useEffect(() => {
     initializeAuth();
   }, []);
-  
-  // Set up network monitoring and sync
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      setSyncStatus(prev => ({ ...prev, isOnline: state.isConnected || false }));
-      
-      // Auto-sync when coming back online with cooldown
-      if (state.isConnected && isAuthenticated && userData?.id && !isSyncing) {
-        const now = Date.now();
-        const timeSinceLastSync = now - lastSyncTime;
-        const SYNC_COOLDOWN = 30000; // 30 seconds cooldown
-        
-        if (timeSinceLastSync > SYNC_COOLDOWN) {
-          console.log('[AuthContext] Network reconnected, triggering sync after cooldown');
-          syncUserData();
-        } else {
-          console.log('[AuthContext] Skipping sync - cooldown period active');
-        }
-      }
-    });
-    
-    return () => unsubscribe();
-  }, [isAuthenticated, userData?.id, isSyncing, lastSyncTime]);
 
   const initializeAuth = async () => {
     setIsInitializing(true);
@@ -124,6 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           await clearAuthData();
         }
       } else {
+        console.log('[AuthContext] No valid session found');
       }
     } catch (error) {
       console.error('Auth initialization error:', error);
@@ -135,32 +88,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const clearAuthData = async () => {
     console.log('[AuthContext] Clearing auth data for user:', userData?.email);
-    // Clear emotional analytics data for user isolation
-    if (userData?.id) {
-      await offlineEmotionStorage.clearUserData(userData.id);
+    
+    // Don't clear if we're in the middle of a login process
+    if (loading) {
+      console.log('[AuthContext] Skipping clearAuthData - login in progress');
+      return;
     }
     
     await SecureStorageService.clearUserData(userData?.id);
     setIsAuthenticated(false);
     setUserData(null);
-    setSyncStatus(defaultSyncStatus);
     console.log('[AuthContext] Auth data cleared');
   };
 
-  // Login method - same logic as web app
+  // Login method - simplified
   const login = async (credentials: LoginCredentials) => {
     setLoading(true);
     
     try {
-      
       const response = await ApiService.login(credentials);
-      
       
       if (response.success && response.data) {
         // Handle the actual server response structure
         const token = response.data.token;
         const user = response.data.data?.user;
-        
         
         // Validate that both token and user data are present
         if (!token) {
@@ -182,21 +133,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         setUserData(user);
         
-        // Initialize sync status with user isolation
-        setSyncStatus({
-          ...defaultSyncStatus,
-          lastSyncTime: new Date().toISOString(),
-        });
-        
-        // Verify token is accessible before sync
-        const storedToken = await SecureStorageService.getToken();
-        console.log('[AuthContext] Token verification after login:', storedToken ? 'Token accessible' : 'Token NOT accessible');
-        
-        // Start background sync for emotional data
-        setTimeout(() => {
-          syncUserData();
-        }, 2000); // Delay to allow UI to settle
-        
+        console.log('[AuthContext] Login successful');
         return { success: true };
       } else {
         console.error('Login failed:', response.error);
@@ -216,19 +153,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Sign up method - same logic as web app
+  // Sign up method - simplified
   const signUp = async (credentials: SignUpCredentials) => {
     setLoading(true);
     
     try {
-      
       const response = await ApiService.signUp(credentials);
       
       if (response.success && response.data) {
         // Handle the actual server response structure
         const token = response.data.token;
         const user = response.data.data?.user;
-        
         
         // Validate that both token and user data are present
         if (!token) {
@@ -250,21 +185,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setIsAuthenticated(true);
         setUserData(user);
         
-        // Initialize sync status with user isolation
-        setSyncStatus({
-          ...defaultSyncStatus,
-          lastSyncTime: new Date().toISOString(),
-        });
-        
-        // Verify token is accessible before sync
-        const storedToken = await SecureStorageService.getToken();
-        console.log('[AuthContext] Token verification after login:', storedToken ? 'Token accessible' : 'Token NOT accessible');
-        
-        // Start background sync for emotional data
-        setTimeout(() => {
-          syncUserData();
-        }, 2000); // Delay to allow UI to settle
-        
+        console.log('[AuthContext] Sign up successful');
         return { success: true };
       } else {
         console.error('Signup failed:', response.error);
@@ -284,26 +205,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Logout method - same logic as web app
+  // Logout method - simplified
   const logout = async () => {
     setLoading(true);
     
     try {
-      
-      // Sync any pending data before logout - exactly like web app
-      if (userData?.id) {
-        try {
-          await syncUserData();
-        } catch (syncError) {
-        }
-      }
-      
-      // Clear all stored data
+      console.log('[AuthContext] Logging out user:', userData?.email);
       await clearAuthData();
-      
+      console.log('[AuthContext] Logout successful');
     } catch (error) {
       console.error('Logout error:', error);
-      // Force clear data even if sync fails
+      // Force clear data even if there's an error
       await clearAuthData();
     } finally {
       setLoading(false);
@@ -347,61 +259,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Sync user data - exactly like web app with offline-first approach
-  const syncUserData = async () => {
-    console.log('[AuthContext] syncUserData called:', { isAuthenticated, userId: userData?.id, isSyncing });
-    
-    // Prevent concurrent sync calls
-    if (isSyncing) {
-      console.log('[AuthContext] Sync already in progress, skipping');
-      return;
-    }
-    
-    if (!isAuthenticated || !userData?.id) {
-      console.log('[AuthContext] Skipping sync - not authenticated or no user ID');
-      return;
-    }
-    
-    setIsSyncing(true);
-    setSyncStatus(prev => ({ ...prev, syncInProgress: true }));
-    
-    try {
-      // Check token before sync
-      const token = await SecureStorageService.getToken();
-      console.log('[AuthContext] Token available for sync:', token ? 'Yes' : 'No');
-      
-      // Check if there's actually data to sync
-      const unsyncedEmotions = await emotionalAnalyticsAPI.syncOfflineData();
-      
-      // Update last sync time
-      setLastSyncTime(Date.now());
-      
-      console.log('[AuthContext] Sync completed:', unsyncedEmotions);
-      setSyncStatus(prev => ({
-        ...prev,
-        syncInProgress: false,
-        lastSyncTime: new Date().toISOString(),
-        pendingChanges: unsyncedEmotions.failed, // Track failed syncs
-        isOnline: true,
-      }));
-    } catch (error) {
-      console.error('Sync error:', error);
-      setSyncStatus(prev => ({ 
-        ...prev, 
-        syncInProgress: false,
-        isOnline: false,
-      }));
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
   const value: AuthContextType = {
     // State
     isAuthenticated,
     loading,
     userData,
-    syncStatus,
     isInitializing,
     
     // Methods
@@ -410,7 +272,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     checkAuthStatus,
     refreshUserData,
-    syncUserData,
   };
 
   return (

@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
+import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +44,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
+  const [isSignUpSuccess, setIsSignUpSuccess] = useState(false);
+  const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -62,10 +65,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Entry animation - slide in from right for forward navigation
+    // Entry animation - slide in from left for back navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
-    ScreenTransitions.slideInRight(slideAnim);
+    ScreenTransitions.slideInLeft(slideAnim);
   }, []);
 
   const handleSubmit = async () => {
@@ -89,7 +92,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
     setError('');
     setSuccess(false);
+    setIsSignUpSuccess(false);
     setLocalLoading(true);
+    setAuthStatus('loading');
 
     // Animate button press
     Animated.sequence([
@@ -114,6 +119,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
 
       if (result.success) {
         setSuccess(true);
+        setIsSignUpSuccess(true);
+        setAuthStatus('success');
         
         setTimeout(() => {
           ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
@@ -122,9 +129,19 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         }, 1500);
       } else {
         setError(result.error || 'An error occurred during sign up');
+        setIsSignUpSuccess(false);
+        setAuthStatus('error');
+        setTimeout(() => {
+          setAuthStatus('idle');
+        }, 2000);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred during sign up');
+      setIsSignUpSuccess(false);
+      setAuthStatus('error');
+      setTimeout(() => {
+        setAuthStatus('idle');
+      }, 2000);
     } finally {
       setLocalLoading(false);
     }
@@ -171,7 +188,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             onNavigateBack();
           });
         }}
-        onMenuPress={() => {}}
+        onMenuPress={(key: string) => {}}
       />
 
       <KeyboardAvoidingView
@@ -214,7 +231,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     },
                   ]}
                 >
-                  Ready to Begin?
+                  Ready to begin?
                 </Animated.Text>
                 <Text style={[
                   styles.subtitle, 
@@ -348,28 +365,48 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 </Animated.View>
               </View>
 
-              {/* Sign Up Button */}
-              <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-                <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    {
-                      backgroundColor: isDarkMode ? '#add5fa' : '#add5fa',
-                      opacity: loading ? 0.7 : 1,
-                    }
-                  ]}
-                  onPress={handleSubmit}
-                  disabled={loading}
-                  activeOpacity={0.9}
-                >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { color: isDarkMode ? '#000000' : '#ffffff' }
-                  ]}>
-                    {loading ? 'Creating Account...' : 'Get Started'}
-                  </Text>
-                </TouchableOpacity>
-              </Animated.View>
+              {/* Sign Up Button with Animation */}
+              <View style={styles.buttonContainer}>
+                <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.primaryButton,
+                      {
+                        backgroundColor: isDarkMode ? '#ffffff' : '#add5fa',
+                        opacity: (loading || isSignUpSuccess) ? 0.7 : 1,
+                      }
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={loading || isSignUpSuccess}
+                    activeOpacity={0.9}
+                  >
+                    <View style={styles.buttonContent}>
+                      <View style={styles.buttonTextContainer}>
+                        <Text style={[
+                          styles.primaryButtonText, 
+                          { color: isDarkMode ? '#000000' : '#ffffff' }
+                        ]}>
+                          {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success!' : 'Get Started'}
+                        </Text>
+                      </View>
+                      {authStatus !== 'idle' && (
+                        <View style={styles.spinnerContainer}>
+                          <AnimatedAuthStatus
+                            status={authStatus}
+                            color={isDarkMode ? '#000000' : '#ffffff'}
+                            size={16}
+                            onAnimationComplete={() => {
+                              if (authStatus === 'error') {
+                                setAuthStatus('idle');
+                              }
+                            }}
+                          />
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
 
               {/* Sign In Link */}
               <TouchableOpacity
@@ -477,12 +514,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 35,
+    fontSize: 32,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
-    letterSpacing: -1,
-    fontFamily: 'CrimsonPro_700Bold',
+    letterSpacing: -1.5,
+    fontFamily: 'Nunito_700Bold',
   },
   subtitle: {
     fontSize: 16,
@@ -508,19 +545,42 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_400Regular',
   },
   primaryButton: {
-    paddingVertical: 8,
+    width: '100%',
+    height: 37,
     borderRadius: 8,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 38,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
+  buttonContainer: {
+    minHeight: 38,
+    
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  buttonTextContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  spinnerContainer: {
+    width: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: -0.3,
     fontFamily: 'Nunito_500Medium',
@@ -553,7 +613,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   successText: {
     textAlign: 'center',

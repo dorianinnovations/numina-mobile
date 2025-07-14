@@ -24,6 +24,7 @@ import {
 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
+import { NuminaAnimations } from '../utils/animations';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useEmotionalAnalytics } from '../hooks/useEmotionalAnalytics';
@@ -42,15 +43,15 @@ interface Mood {
 }
 
 const moods: Mood[] = [
-  { emoji: "😊", label: "Happy", color: "#FEF08A", intensity: "high" },
-  { emoji: "😔", label: "Sad", color: "#93C5FD", intensity: "low" },
-  { emoji: "😡", label: "Angry", color: "#FCA5A5", intensity: "high" },
-  { emoji: "😰", label: "Anxious", color: "#C084FC", intensity: "medium" },
-  { emoji: "😌", label: "Calm", color: "#86EFAC", intensity: "low" },
-  { emoji: "😴", label: "Tired", color: "#D1D5DB", intensity: "low" },
-  { emoji: "🤔", label: "Thoughtful", color: "#A5B4FC", intensity: "medium" },
-  { emoji: "😍", label: "Excited", color: "#FBCFE8", intensity: "high" },
-  { emoji: "😣", label: "Stressed", color: "#FED7AA", intensity: "high" },
+  { emoji: "😊", label: "Happy", color: "#fef08aa5", intensity: "high" },
+  { emoji: "😔", label: "Sad", color: "#93c4fda4", intensity: "low" },
+  { emoji: "😡", label: "Angry", color: "#fca5a596", intensity: "high" },
+  { emoji: "😰", label: "Anxious", color: "#c084fc79", intensity: "medium" },
+  { emoji: "😌", label: "Calm", color: "#86efad81", intensity: "low" },
+  { emoji: "😴", label: "Tired", color: "#d1d5db88", intensity: "low" },
+  { emoji: "🤔", label: "Thoughtful", color: "#a5b4fc81", intensity: "medium" },
+  { emoji: "😍", label: "Excited", color: "#fbcfe884", intensity: "high" },
+  { emoji: "😣", label: "Stressed", color: "#fed7aa7c", intensity: "high" },
 ];
 
 export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack }) => {
@@ -138,6 +139,9 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
 
       setLastSubmittedEmotion(emotionLog);
       
+      // Success haptic feedback
+      NuminaAnimations.haptic.success();
+      
       // Reset form
       setCurrentMood('');
       setMoodIntensity(5);
@@ -148,6 +152,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
       await fetchWeeklyReport();
     } catch (err) {
       console.error('Failed to submit emotional entry:', err);
+      NuminaAnimations.haptic.error();
     }
   };
 
@@ -191,7 +196,6 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
       showMenuButton={true}
       title="Analytics"
       subtitle="Track your emotional journey"
-      onBackPress={onNavigateBack}
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -210,19 +214,20 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                   style={[
                     styles.successCard,
                     {
-                      backgroundColor: isDarkMode ? 'rgba(34,197,94,0.1)' : 'rgba(34,197,94,0.05)',
-                      borderColor: isDarkMode ? 'rgba(34,197,94,0.3)' : 'rgba(34,197,94,0.2)',
+                      backgroundColor: isDarkMode ? 'rgba(102,183,255,0.1)' : 'rgba(102,183,255,0.05)',
+                      borderColor: isDarkMode ? 'rgba(102,183,255,0.3)' : 'rgba(102,183,255,0.2)',
                       opacity: fadeAnim,
                     },
                   ]}
                 >
                   <View style={styles.successHeader}>
-                    <Feather name="check-circle" size={20} color="#22C55E" />
+                    <Feather name="check-circle" size={20} color={isDarkMode ? NuminaColors.chatBlue[300] : NuminaColors.chatBlue[400]} />
                     <Text style={[styles.successTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
                       Emotion Logged Successfully!
                     </Text>
                     <TouchableOpacity
                       onPress={async () => {
+                        NuminaAnimations.haptic.light();
                         setLastSubmittedEmotion(null);
                         const userData = await AsyncStorage.getItem('userData');
                         const userId = userData ? JSON.parse(userData).id : 'guest';
@@ -252,13 +257,16 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               <TouchableOpacity
                 style={[
                   styles.trackButton,
-                  { backgroundColor: NuminaColors.chatGreen[300] }
+                  { backgroundColor: isDarkMode ? NuminaColors.chatBlue[200] : NuminaColors.chatBlue[200] }
                 ]}
-                onPress={() => setShowInput(!showInput)}
+                onPress={() => {
+                  NuminaAnimations.haptic.light();
+                  setShowInput(!showInput);
+                }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add-circle" size={24} color="#1a1a1a" />
-                <Text style={styles.trackButtonText}>Track New Emotion</Text>
+                <Ionicons name="add-circle" size={24} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                <Text style={[styles.trackButtonText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>Track New Emotion</Text>
               </TouchableOpacity>
 
               {/* Key Metrics */}
@@ -322,48 +330,59 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 </Text>
                 
                 {userLoggedEmotions.length > 0 ? (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    <View style={styles.timeline}>
-                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, dayIndex) => {
-                        const dayEmotions = userLoggedEmotions.filter(emotion => {
-                          const emotionDate = new Date(emotion.timestamp);
-                          const targetDate = new Date();
-                          targetDate.setDate(targetDate.getDate() - (6 - dayIndex));
-                          return emotionDate.toDateString() === targetDate.toDateString();
-                        });
+                  <View style={styles.timelineContainer}>
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, dayIndex) => {
+                      const dayEmotions = userLoggedEmotions.filter(emotion => {
+                        const emotionDate = new Date(emotion.timestamp);
+                        const targetDate = new Date();
+                        targetDate.setDate(targetDate.getDate() - (6 - dayIndex));
+                        return emotionDate.toDateString() === targetDate.toDateString();
+                      });
 
-                        return (
-                          <View key={day} style={styles.dayColumn}>
-                            <Text style={[styles.dayLabel, { color: isDarkMode ? '#888' : '#666' }]}>
-                              {day}
-                            </Text>
-                            <View style={styles.emotionsColumn}>
-                              {dayEmotions.length > 0 ? (
-                                dayEmotions.map((emotion, idx) => {
+                      return (
+                        <View key={day} style={styles.dayContainer}>
+                          <Text style={[styles.dayLabel, { color: isDarkMode ? '#888' : '#666' }]}>
+                            {day}
+                          </Text>
+                          <View style={styles.emotionsContainer}>
+                            {dayEmotions.length > 0 ? (
+                              <View style={styles.emotionsGrid}>
+                                {dayEmotions.slice(0, 4).map((emotion, idx) => {
                                   const moodData = moods.find(m => m.label === emotion.mood);
                                   return (
                                     <View
                                       key={idx}
                                       style={[
-                                        styles.emotionDot,
+                                        styles.emotionBubble,
                                         { backgroundColor: moodData?.color || '#6B7280' }
                                       ]}
                                     >
-                                      <Text style={styles.emotionDotEmoji}>
+                                      <Text style={styles.emotionBubbleEmoji}>
                                         {moodData?.emoji || '😊'}
                                       </Text>
                                     </View>
                                   );
-                                })
-                              ) : (
-                                <View style={styles.emptyDay} />
-                              )}
-                            </View>
+                                })}
+                                {dayEmotions.length > 4 && (
+                                  <View style={styles.moreEmotionsIndicator}>
+                                    <Text style={styles.moreEmotionsText}>
+                                      +{dayEmotions.length - 4}
+                                    </Text>
+                                  </View>
+                                )}
+                              </View>
+                            ) : (
+                              <View style={styles.emptyDayIndicator}>
+                                <Text style={[styles.emptyDayText, { color: isDarkMode ? '#666' : '#ccc' }]}>
+                                  —
+                                </Text>
+                              </View>
+                            )}
                           </View>
-                        );
-                      })}
-                    </View>
-                  </ScrollView>
+                        </View>
+                      );
+                    })}
+                  </View>
                 ) : (
                   <View style={styles.emptyState}>
                     <MaterialCommunityIcons 
@@ -485,16 +504,18 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                     <Text style={[styles.modalTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
                       How are you feeling?
                     </Text>
-                    <TouchableOpacity onPress={() => setShowInput(false)}>
+                    <TouchableOpacity onPress={() => {
+                      NuminaAnimations.haptic.light();
+                      setShowInput(false);
+                    }}>
                       <Feather name="x" size={24} color={isDarkMode ? '#888' : '#666'} />
                     </TouchableOpacity>
                   </View>
 
                   {/* Mood Selection */}
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.moodScroll}>
-                    <View style={styles.moodGrid}>
-                      {moods.map((mood) => (
-                        <TouchableOpacity
+                  <View style={styles.moodGrid}>
+                    {moods.map((mood) => (
+                                              <TouchableOpacity
                           key={mood.label}
                           style={[
                             styles.moodButton,
@@ -503,23 +524,25 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                               borderColor: currentMood === mood.label ? mood.color : isDarkMode ? '#333' : '#e5e5e5',
                             },
                           ]}
-                          onPress={() => setCurrentMood(mood.label)}
+                          onPress={() => {
+                            NuminaAnimations.haptic.selection();
+                            setCurrentMood(mood.label);
+                          }}
                         >
-                          <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-                          <Text style={[
-                            styles.moodLabel,
-                            { 
-                              color: currentMood === mood.label 
-                                ? '#1a1a1a' 
-                                : isDarkMode ? '#fff' : '#1a1a1a' 
-                            }
-                          ]}>
-                            {mood.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </ScrollView>
+                        <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                        <Text style={[
+                          styles.moodLabel,
+                          { 
+                            color: currentMood === mood.label 
+                              ? '#1a1a1a' 
+                              : isDarkMode ? '#fff' : '#1a1a1a' 
+                          }
+                        ]}>
+                          {mood.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
 
                   {/* Intensity Slider */}
                   <View style={styles.sliderContainer}>
@@ -533,9 +556,9 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                       value={moodIntensity}
                       onValueChange={setMoodIntensity}
                       step={1}
-                      minimumTrackTintColor={NuminaColors.chatGreen[300]}
+                      minimumTrackTintColor={isDarkMode ? NuminaColors.chatBlue[400] : NuminaColors.chatBlue[300]}
                       maximumTrackTintColor={isDarkMode ? '#333' : '#e5e5e5'}
-                      thumbTintColor={NuminaColors.chatGreen[400]}
+                      thumbTintColor={isDarkMode ? NuminaColors.chatBlue[300] : NuminaColors.chatBlue[400]}
                     />
                   </View>
 
@@ -562,18 +585,25 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                     style={[
                       styles.submitButton,
                       {
-                        backgroundColor: currentMood ? NuminaColors.chatGreen[300] : '#ccc',
+                        backgroundColor: currentMood 
+                          ? (isDarkMode ? NuminaColors.chatBlue[400] : NuminaColors.chatBlue[200]) 
+                          : '#ccc',
                       },
                     ]}
-                    onPress={handleSubmitEmotionalEntry}
+                    onPress={() => {
+                      if (currentMood && !isSubmitting) {
+                        NuminaAnimations.haptic.medium();
+                        handleSubmitEmotionalEntry();
+                      }
+                    }}
                     disabled={!currentMood || isSubmitting}
                   >
                     {isSubmitting ? (
-                      <ActivityIndicator color="#1a1a1a" />
+                      <ActivityIndicator color={isDarkMode ? '#fff' : '#1a1a1a'} />
                     ) : (
                       <>
-                        <Feather name="save" size={20} color="#1a1a1a" />
-                        <Text style={styles.submitButtonText}>Save Emotional Entry</Text>
+                        <Feather name="save" size={20} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                        <Text style={[styles.submitButtonText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>Save Emotional Entry</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -639,8 +669,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: 8,
+    borderRadius: 8,
     marginBottom: 24,
     gap: 8,
   },
@@ -695,37 +725,72 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
-  timeline: {
+  timelineContainer: {
     flexDirection: 'row',
-    paddingRight: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
   },
-  dayColumn: {
+  dayContainer: {
     alignItems: 'center',
-    marginRight: 20,
+    flex: 1,
+    minWidth: 40,
   },
   dayLabel: {
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '500',
     marginBottom: 8,
+    textAlign: 'center',
   },
-  emotionsColumn: {
+  emotionsContainer: {
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    minHeight: 60,
   },
-  emotionDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  emotionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+    maxWidth: 60,
+  },
+  emotionBubble: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  emotionBubbleEmoji: {
+    fontSize: 12,
+  },
+  moreEmotionsIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emotionDotEmoji: {
-    fontSize: 16,
+  moreEmotionsText: {
+    fontSize: 8,
+    fontWeight: '600',
+    color: '#666',
   },
-  emptyDay: {
-    width: 32,
-    height: 2,
-    backgroundColor: '#e5e5e5',
-    borderRadius: 1,
+  emptyDayIndicator: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyDayText: {
+    fontSize: 16,
+    fontWeight: '300',
   },
   emptyState: {
     alignItems: 'center',
@@ -822,21 +887,27 @@ const styles = StyleSheet.create({
   },
   moodGrid: {
     flexDirection: 'row',
-    gap: 12,
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 32,
   },
   moodButton: {
-    width: 80,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 2,
+    width: '48%',
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
   },
   moodEmoji: {
-    fontSize: 28,
-    marginBottom: 4,
+    fontSize: 16,
   },
   moodLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   sliderContainer: {
