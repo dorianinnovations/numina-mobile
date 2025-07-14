@@ -21,17 +21,17 @@ import ApiService from '../services/api';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 
 const { width } = Dimensions.get('window');
 
-type CollectiveScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Collective'>;
+type SentimentScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Sentiment'>;
 
-interface CollectiveScreenProps {
+interface SentimentScreenProps {
   onNavigateBack: () => void;
 }
 
-interface CollectiveInsights {
+interface SentimentInsights {
   currentResonance: {
     dominantEmotion: string;
     intensity: number;
@@ -55,11 +55,11 @@ interface CollectiveInsights {
   };
 }
 
-export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBack }) => {
+export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
-  const navigation = useNavigation<CollectiveScreenNavigationProp>();
+  const navigation = useNavigation<SentimentScreenNavigationProp>();
   const { logout } = useAuth();
-  const [insights, setInsights] = useState<CollectiveInsights | null>(null);
+  const [insights, setInsights] = useState<SentimentInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,14 +103,14 @@ export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBa
     setError(null);
     
     try {
-      const response = await ApiService.getCollectiveInsights();
+      const response = await ApiService.getSentimentInsights();
       
       if (response.success && response.data) {
         setInsights(response.data);
         setLastUpdated(new Date());
       } else {
         // If no data or error, use mock data as fallback
-        const mockInsights: CollectiveInsights = {
+        const mockInsights: SentimentInsights = {
           currentResonance: {
             dominantEmotion: 'Joy',
             intensity: 7.2,
@@ -153,12 +153,12 @@ export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBa
           setInsights(mockInsights);
           setLastUpdated(new Date());
         } else {
-          setError(response.error || 'Failed to load collective insights');
+          setError(response.error || 'Failed to load sentiment insights');
         }
       }
     } catch (error: any) {
       console.error('Error loading insights:', error);
-      setError(error.message || 'Failed to load collective insights');
+      setError(error.message || 'Failed to load sentiment insights');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -206,7 +206,7 @@ export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBa
       case 'stratosphere':
         navigation.navigate('Stratosphere');
         break;
-      case 'collective':
+      case 'sentiment':
         break; // Already on this screen
       case 'profile':
         navigation.navigate('Profile');
@@ -257,7 +257,7 @@ export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBa
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={NuminaColors.green} />
             <Text style={[styles.loadingText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[600] }]}>
-              Connecting to collective consciousness...
+              Connecting to sentiment consciousness...
             </Text>
           </View>
         </SafeAreaView>
@@ -298,7 +298,7 @@ export const CollectiveScreen: React.FC<CollectiveScreenProps> = ({ onNavigateBa
                   style={styles.titleIcon}
                 />
                 <Text style={[styles.title, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                  Collective Insights
+                  Sentiment Insights
                 </Text>
               </View>
               <Text style={[styles.subtitle, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>

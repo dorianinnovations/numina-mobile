@@ -235,8 +235,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 style={[
                   styles.primaryButton,
                   {
-                    backgroundColor: isDarkMode ? '#ffffff' : '#383838',
-                    borderColor: isDarkMode ? '#23272b' : 'rgb(238, 238, 238)',
+                    backgroundColor: isDarkMode ? '#add5fa' : '#add5fa',
+                    borderColor: isDarkMode ? '#add5fa' : 'rgb(238, 238, 238)',
                   }
                 ]}
                 onPress={handleSignUpPress}
@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
   characterFrame: {
     width: 80,
     height: 80,
-    borderRadius: 16,
+    borderRadius: 50,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

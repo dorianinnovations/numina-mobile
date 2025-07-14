@@ -14,7 +14,7 @@ import {
   Keyboard,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/SimpleAuthContext';
 import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
@@ -298,8 +298,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     style={[
                       styles.primaryButton,
                       {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#add5fa',
-                        opacity: (loading || isSignInSuccess) ? 0.7 : 1,
+                        backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
+                        opacity: (loading || isSignInSuccess) ? 0.9 : 1,
                       }
                     ]}
                     onPress={handleSubmit}

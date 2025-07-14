@@ -669,15 +669,15 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
 
           {/* Navigation Controls  */}
           <View style={styles.navigation}>
-            <LinearGradient
-              colors={isDarkMode 
-                ? [NuminaColors.chatYellow[200], NuminaColors.chatBlue[200]]
-                : ['rgba(255, 255, 255, 0.9)', 'rgba(255, 255, 255, 1)']
-              }
-              style={styles.navigationContainer}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
+                          <LinearGradient
+                colors={isDarkMode 
+                  ? ['#ffffff', '#ffffff']
+                  : ['#add5fa', '#add5fa']
+                }
+                style={styles.navigationContainer}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
               {/* Enhanced Previous Button */}
               <Animated.View style={{ transform: [{ scale: prevButtonScale }] }}>
                 <TouchableOpacity
@@ -693,11 +693,11 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                   <Feather 
                     name="chevron-left" 
                     size={20} 
-                    color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
+                    color={isDarkMode ? '#000000' : '#ffffff'} 
                   />
                   <Text style={[
                     styles.navButtonText, 
-                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
+                    { color: isDarkMode ? '#000000' : '#ffffff' }
                   ]}>
                     Previous
                   </Text>
@@ -707,7 +707,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               {/* Divider */}
               <View style={[
                 styles.navDivider, 
-                { backgroundColor: isDarkMode ? 'rgba(128, 128, 128, 0.527)' : NuminaColors.darkMode[300] }
+                { backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.3)' }
               ]} />
 
               {/* Next/Finish Button */}
@@ -721,14 +721,14 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                   >
                     <Text style={[
                       styles.navButtonText, 
-                      { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
+                      { color: isDarkMode ? '#000000' : '#ffffff' }
                     ]}>
                       Next
                     </Text>
                     <Feather 
                       name="chevron-right" 
                       size={20} 
-                      color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
+                      color={isDarkMode ? '#000000' : '#ffffff'} 
                     />
                   </TouchableOpacity>
                 ) : (
@@ -741,11 +741,11 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     <Feather 
                       name="message-circle" 
                       size={20} 
-                      color={isDarkMode ? '#ffffff' : NuminaColors.darkMode[900]} 
+                      color={isDarkMode ? '#000000' : '#ffffff'} 
                     />
                     <Text style={[
                       styles.navButtonText, 
-                      { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[900] }
+                      { color: isDarkMode ? '#000000' : '#ffffff' }
                     ]}>
                       Start Chat
                     </Text>

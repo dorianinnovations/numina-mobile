@@ -208,11 +208,11 @@ export const AnimatedBackArrow: React.FC<AnimatedBackArrowProps> = ({
             size={size} 
             color={color}
             style={{
-              shadowColor: color,
+              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.3,
-              shadowRadius: 4,
-              elevation: 4,
+              shadowOpacity: color === '#6ec5ff' ? 0.8 : 0.3,
+              shadowRadius: color === '#6ec5ff' ? 8 : 4,
+              elevation: color === '#6ec5ff' ? 8 : 4,
             }}
           />
         </Animated.View>

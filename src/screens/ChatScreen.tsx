@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 import { NuminaColors } from '../utils/colors';
 import { ChatInput } from '../components/chat/ChatInput';
 import { MessageBubble } from '../components/chat/MessageBubble';
@@ -30,6 +30,7 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
+import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -77,7 +78,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!conversation) {
       const welcomeMessage: Message = {
         id: '1',
-        text: "Hi! I'm Numina. I recognize shifts in your mood before you do. How are you feeling today?",
+        text: "Hi, good to see you",
         sender: 'numina',
         timestamp: new Date().toISOString(),
       };
@@ -154,66 +155,99 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     try {
       // Use AI Personality Service for adaptive chat if available
-      let response;
+      let finalResponseText = '';
+      let personalityContext = null;
+      
       if (sendAdaptiveChatMessage && emotionalState && aiPersonality) {
         console.log('🧠 Using AI Personality Service for adaptive response');
         console.log('Emotional State:', emotionalState);
         console.log('AI Personality:', aiPersonality);
         
-        response = await sendAdaptiveChatMessage(
+        const adaptiveResult = await sendAdaptiveChatMessage(
           userMessage.text,
           (partialResponse: string, context?: any) => {
+            // Validate partialResponse
+            const safePartialResponse = partialResponse || '';
+            
             // Update the AI message with streaming content
             const updatedAIMessage = {
               ...aiMessage,
-              text: partialResponse,
+              text: safePartialResponse,
               isStreaming: true,
               personalityContext: context,
             };
             
             // Update conversation with streaming response
             const streamingConversation = { ...currentConversation };
-            streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
-            streamingConversation.updatedAt = new Date().toISOString();
-            
-            setConversation(streamingConversation);
+            if (streamingConversation.messages && streamingConversation.messages.length > 0) {
+              streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
+              streamingConversation.updatedAt = new Date().toISOString();
+              
+              setConversation(streamingConversation);
+              currentConversation = streamingConversation;
+            }
           }
         );
+        
+        // Handle the response properly - it's an object with content and personalityContext
+        if (adaptiveResult && typeof adaptiveResult === 'object') {
+          finalResponseText = adaptiveResult.content || '';
+          personalityContext = adaptiveResult.personalityContext || null;
+        } else {
+          finalResponseText = String(adaptiveResult || '');
+        }
       } else {
         console.log('📡 Using traditional ChatService');
         // Fallback to traditional chat service
-        await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
+        const chatResult = await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
+          // Validate partialResponse
+          const safePartialResponse = partialResponse || '';
+          
           // Update the AI message with streaming content
           const updatedAIMessage = {
             ...aiMessage,
-            text: partialResponse,
+            text: safePartialResponse,
             isStreaming: true,
           };
           
           // Update conversation with streaming response
           const streamingConversation = { ...currentConversation };
-          streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
-          streamingConversation.updatedAt = new Date().toISOString();
+          if (streamingConversation.messages && streamingConversation.messages.length > 0) {
+            streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
+            streamingConversation.updatedAt = new Date().toISOString();
+          
+            setConversation(streamingConversation);
+            currentConversation = streamingConversation;
+          }
+        });
         
-        setConversation(streamingConversation);
-        currentConversation = streamingConversation;
-      }).then((finalResponse: string) => {
-        // Finalize the AI message
-        const finalAIMessage = {
-          ...aiMessage,
-          text: finalResponse,
-          isStreaming: false,
-        };
-        
-        // Update conversation with final response
-        const finalConversation = { ...currentConversation };
+        finalResponseText = String(chatResult || '');
+      }
+      
+      // Validate final response
+      if (!finalResponseText) {
+        throw new Error('Empty response received from chat service');
+      }
+      
+      // Finalize the AI message
+      const finalAIMessage = {
+        ...aiMessage,
+        text: finalResponseText,
+        isStreaming: false,
+        personalityContext,
+      };
+      
+      // Update conversation with final response
+      const finalConversation = { ...currentConversation };
+      if (finalConversation.messages && finalConversation.messages.length > 0) {
         finalConversation.messages[finalConversation.messages.length - 1] = finalAIMessage;
         finalConversation.updatedAt = new Date().toISOString();
         
         setConversation(finalConversation);
-        saveConversation(finalConversation);
-        setIsLoading(false);
-      });
+        await saveConversation(finalConversation);
+      }
+      
+      setIsLoading(false);
     } catch (error: any) {
       console.error('Chat error:', error);
       
@@ -229,18 +263,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
       
       // Handle error with a helpful message
-      const errorMessage: Message = {
-        ...aiMessage,
-        text: errorText,
-        isStreaming: false,
-      };
+      try {
+        const errorMessage: Message = {
+          ...aiMessage,
+          text: errorText,
+          isStreaming: false,
+        };
+        
+        const errorConversation = { ...currentConversation };
+        if (errorConversation.messages && errorConversation.messages.length > 0) {
+          errorConversation.messages[errorConversation.messages.length - 1] = errorMessage;
+          errorConversation.updatedAt = new Date().toISOString();
+          
+          setConversation(errorConversation);
+          await saveConversation(errorConversation);
+        }
+      } catch (saveError) {
+        console.error('Failed to save error message:', saveError);
+      }
       
-      const errorConversation = { ...currentConversation };
-      errorConversation.messages[errorConversation.messages.length - 1] = errorMessage;
-      errorConversation.updatedAt = new Date().toISOString();
-      
-      setConversation(errorConversation);
-      await saveConversation(errorConversation);
       setIsLoading(false);
     }
   };
@@ -293,14 +334,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     onConversationUpdate?.(selectedConversation);
   };
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => (
-    <MessageBubble
-      message={item}
-      index={index}
-      onLongPress={handleMessageLongPress}
-      onSpeakMessage={handleSpeakMessage}
-    />
-  );
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+    // Safety check for item
+    if (!item || !item.text) {
+      console.warn('Invalid message item:', item);
+      return null;
+    }
+
+    return (
+      <ChatErrorBoundary
+        fallback={
+          <View style={{ padding: 16, backgroundColor: '#fee2e2', margin: 8, borderRadius: 8 }}>
+            <Text style={{ color: '#dc2626', textAlign: 'center' }}>
+              Message failed to render
+            </Text>
+          </View>
+        }
+      >
+        <MessageBubble
+          message={item}
+          index={index}
+          onLongPress={handleMessageLongPress}
+          onSpeakMessage={handleSpeakMessage}
+        />
+      </ChatErrorBoundary>
+    );
+  };
 
   if (!conversation) {
     return (
@@ -317,75 +376,81 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }
 
   return (
-    <ScreenWrapper
-      showHeader={true}
-      showBackButton={false}
-      showMenuButton={true}
-      title="Numina"
-      subtitle={
-        emotionalState 
-          ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
-          : "Emotion Inference • Pattern Recognition • Deep Insights"
-      }
+    <ChatErrorBoundary
+      onError={(error, errorInfo) => {
+        console.error('ChatScreen Error:', error, errorInfo);
+      }}
     >
-      <PageBackground>
-        <SafeAreaView style={styles.container}>
-          <StatusBar 
-            barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-            backgroundColor="transparent"
-            translucent={true}
-          />
-        
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Messages Container */}
-        <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-        >
-          <FlatList
-            ref={flatListRef}
-            data={conversation.messages}
-            renderItem={renderMessage}
-            keyExtractor={item => item.id}
-            style={styles.messagesList}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.messagesContent}
-            extraData={conversation.messages.length} // Force re-render on new messages
-          />
+      <ScreenWrapper
+        showHeader={true}
+        showBackButton={false}
+        showMenuButton={true}
+        title="Numina"
+        subtitle={
+          emotionalState 
+            ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
+            : "Emotion Inference • Pattern Recognition • Deep Insights"
+        }
+      >
+        <PageBackground>
+          <SafeAreaView style={styles.container}>
+            <StatusBar 
+              barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+              backgroundColor="transparent"
+              translucent={true}
+            />
+          
+          <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+            {/* Messages Container */}
+          <KeyboardAvoidingView
+            style={styles.chatContainer}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          >
+            <FlatList
+              ref={flatListRef}
+              data={conversation?.messages || []}
+              renderItem={renderMessage}
+              keyExtractor={item => item?.id || Math.random().toString()}
+              style={styles.messagesList}
+              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.messagesContent}
+              extraData={conversation?.messages?.length || 0} // Force re-render on new messages
+            />
 
-          {/* Enhanced AI-Powered Input */}
-          <ChatInput
-            value={inputText}
-            onChangeText={setInputText}
-            onSend={sendMessage}
-            onVoiceStart={handleVoiceStart}
-            onVoiceEnd={handleVoiceEnd}
-            isLoading={isLoading || isAnalyzing}
-            placeholder={getAdaptivePlaceholder() || "Share your thoughts..."}
-            voiceEnabled={true}
-            userEmotionalState={emotionalState || undefined}
-            aiPersonality={aiPersonality || undefined}
-            onPersonalityUpdate={(personality) => {
-              console.log('🎯 Personality update received:', personality);
-            }}
-          />
-        </KeyboardAvoidingView>
+            {/* Enhanced AI-Powered Input */}
+            <ChatInput
+              value={inputText}
+              onChangeText={setInputText}
+              onSend={sendMessage}
+              onVoiceStart={handleVoiceStart}
+              onVoiceEnd={handleVoiceEnd}
+              isLoading={isLoading || isAnalyzing}
+              placeholder={getAdaptivePlaceholder() || "Share your thoughts..."}
+              voiceEnabled={true}
+              userEmotionalState={emotionalState || undefined}
+              aiPersonality={aiPersonality || undefined}
+              onPersonalityUpdate={(personality) => {
+                console.log('🎯 Personality update received:', personality);
+              }}
+            />
+          </KeyboardAvoidingView>
 
 
-      </Animated.View>
+        </Animated.View>
 
-      {/* Conversation History */}
-      <ConversationHistory
-        visible={historyVisible}
-        onClose={() => setHistoryVisible(false)}
-        onSelectConversation={handleSelectConversation}
-        currentConversationId={conversation?.id}
-      />
-        </SafeAreaView>
-      </PageBackground>
-    </ScreenWrapper>
+        {/* Conversation History */}
+        <ConversationHistory
+          visible={historyVisible}
+          onClose={() => setHistoryVisible(false)}
+          onSelectConversation={handleSelectConversation}
+          currentConversationId={conversation?.id}
+        />
+          </SafeAreaView>
+        </PageBackground>
+      </ScreenWrapper>
+    </ChatErrorBoundary>
   );
 };
 

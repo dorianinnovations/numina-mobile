@@ -291,10 +291,10 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { translateY: topBarTransform },
                 { rotate: topBarRotation },
               ],
-              shadowColor: color,
+              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 4,
+              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
+              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />
@@ -311,10 +311,10 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { scaleX: middleBarScale },
                 { scaleY: middleBarScale },
               ],
-              shadowColor: color,
+              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 4,
+              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
+              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />
@@ -329,10 +329,10 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { translateY: bottomBarTransform },
                 { rotate: bottomBarRotation },
               ],
-              shadowColor: color,
+              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: 4,
+              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
+              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />

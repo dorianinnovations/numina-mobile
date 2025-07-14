@@ -3,7 +3,7 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Header } from './Header';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 import { RootStackParamList } from '../navigation/AppNavigator';
 
 interface ScreenWrapperProps {
@@ -55,9 +55,9 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           navigation.push('Stratosphere');
         }
         break;
-      case 'collective':
-        if (currentRoute !== 'Collective') {
-          navigation.push('Collective');
+      case 'sentiment':
+        if (currentRoute !== 'Sentiment') {
+          navigation.push('Sentiment');
         }
         break;
       case 'profile':

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import ApiService from './api';
+import ApiService, { OfflineQueueItem } from './api';
 
 /**
  * Offline Request Queue Service
@@ -131,7 +131,7 @@ class OfflineQueueService {
   }
 
   /**
-   * Process all queued requests
+   * Process all queued requests using server-side batch processing
    */
   static async processQueue(): Promise<void> {
     if (this.isProcessing) {
@@ -147,61 +147,116 @@ class OfflineQueueService {
         return;
       }
 
+      // Try server-side batch processing first
+      const serverProcessed = await this.processQueueOnServer(queue);
       
-      const successfulRequests: string[] = [];
-      const failedRequests: string[] = [];
-
-      for (const request of queue) {
-        try {
-          // Check if request is too old
-          if (Date.now() - request.timestamp > this.MAX_REQUEST_AGE) {
-            successfulRequests.push(request.id);
-            continue;
-          }
-
-          
-          // Attempt to replay the request
-          const response = await ApiService.apiRequest(request.endpoint, request.options, 1); // No retries here, queue handles it
-          
-          if (response.success) {
-            successfulRequests.push(request.id);
-          } else {
-            request.retryCount++;
-            
-            if (request.retryCount >= request.maxRetries) {
-              failedRequests.push(request.id);
-            } else {
-            }
-          }
-        } catch (error) {
-          request.retryCount++;
-          
-          if (request.retryCount >= request.maxRetries) {
-            console.error(`Queued request failed permanently: ${request.endpoint}`, error);
-            failedRequests.push(request.id);
-          } else {
-          }
-        }
+      if (serverProcessed) {
+        console.log('Queue processed successfully on server');
+        return;
       }
 
-      // Remove successful and permanently failed requests from queue
-      const updatedQueue = queue.filter(req => 
-        !successfulRequests.includes(req.id) && !failedRequests.includes(req.id)
-      );
-
-      await this.saveQueue(updatedQueue);
-      await this.updateStats({ 
-        pendingRequests: -successfulRequests.length,
-        failedRequests: failedRequests.length,
-        lastProcessed: Date.now()
-      });
-
+      // Fallback to individual processing
+      console.log('Falling back to individual queue processing');
+      await this.processQueueIndividually(queue);
       
     } catch (error) {
       console.error('Error processing offline queue:', error);
     } finally {
       this.isProcessing = false;
     }
+  }
+
+  /**
+   * Process queue using server-side batch processing
+   */
+  private static async processQueueOnServer(queue: QueuedRequest[]): Promise<boolean> {
+    try {
+      // Convert queue to server format
+      const serverQueueItems: OfflineQueueItem[] = queue.map(request => ({
+        id: request.id,
+        endpoint: request.endpoint,
+        method: (request.options.method || 'GET') as 'GET' | 'POST' | 'PUT' | 'DELETE',
+        data: request.options.body ? JSON.parse(request.options.body as string) : undefined,
+        timestamp: new Date(request.timestamp).toISOString(),
+        priority: request.priority as 'high' | 'medium' | 'low'
+      }));
+
+      // Send to server for processing
+      const response = await ApiService.processOfflineQueue(serverQueueItems);
+      
+      if (response.success) {
+        const { processed, failed } = response.data.results;
+        
+        // Remove processed items from queue
+        const processedIds = processed.map((p: any) => p.id);
+        const updatedQueue = queue.filter(req => !processedIds.includes(req.id));
+        
+        await this.saveQueue(updatedQueue);
+        await this.updateStats({ 
+          pendingRequests: -processed.length,
+          failedRequests: failed.length,
+          lastProcessed: Date.now()
+        });
+        
+        console.log(`Server processed ${processed.length} items, ${failed.length} failed`);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Server-side queue processing failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Process queue individually (fallback method)
+   */
+  private static async processQueueIndividually(queue: QueuedRequest[]): Promise<void> {
+    const successfulRequests: string[] = [];
+    const failedRequests: string[] = [];
+
+    for (const request of queue) {
+      try {
+        // Check if request is too old
+        if (Date.now() - request.timestamp > this.MAX_REQUEST_AGE) {
+          successfulRequests.push(request.id);
+          continue;
+        }
+
+        // Attempt to replay the request
+        const response = await ApiService.apiRequest(request.endpoint, request.options, 1);
+        
+        if (response.success) {
+          successfulRequests.push(request.id);
+        } else {
+          request.retryCount++;
+          
+          if (request.retryCount >= request.maxRetries) {
+            failedRequests.push(request.id);
+          }
+        }
+      } catch (error) {
+        request.retryCount++;
+        
+        if (request.retryCount >= request.maxRetries) {
+          console.error(`Queued request failed permanently: ${request.endpoint}`, error);
+          failedRequests.push(request.id);
+        }
+      }
+    }
+
+    // Remove successful and permanently failed requests from queue
+    const updatedQueue = queue.filter(req => 
+      !successfulRequests.includes(req.id) && !failedRequests.includes(req.id)
+    );
+
+    await this.saveQueue(updatedQueue);
+    await this.updateStats({ 
+      pendingRequests: -successfulRequests.length,
+      failedRequests: failedRequests.length,
+      lastProcessed: Date.now()
+    });
   }
 
   /**

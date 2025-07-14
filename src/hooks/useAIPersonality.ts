@@ -1,24 +1,38 @@
-import { useState, useEffect, useCallback } from 'react';
-import AIPersonalityService, { UserEmotionalState, PersonalityContext, AIPersonality } from '../services/aiPersonalityService';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import AIPersonalityService from '../services/aiPersonalityService';
+
+interface UserEmotionalState {
+  mood: string;
+  intensity: number;
+  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
+  recentInteractions: string[];
+  patterns: string[];
+}
+
+interface AIPersonality {
+  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+  adaptivePrompts: string[];
+  contextualHints: string[];
+}
+
+interface PersonalityContext {
+  communicationStyle: string;
+  emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
+  adaptedResponse: boolean;
+  userMoodDetected?: string;
+  responsePersonalization?: string;
+}
 
 interface UseAIPersonalityReturn {
-  // State
   emotionalState: UserEmotionalState | null;
   aiPersonality: AIPersonality | null;
   isAnalyzing: boolean;
-  
-  // Methods
   analyzeEmotionalState: () => Promise<UserEmotionalState>;
   getPersonalityRecommendations: () => Promise<AIPersonality>;
-  sendAdaptiveChatMessage: (
-    prompt: string, 
-    onChunk: (chunk: string, context?: PersonalityContext) => void
-  ) => Promise<{ content: string; personalityContext: PersonalityContext }>;
+  sendAdaptiveChatMessage: (prompt: string, onChunk: (chunk: string, context?: PersonalityContext) => void) => Promise<{ content: string; personalityContext: PersonalityContext }>;
   submitFeedback: (messageId: string, feedback: 'helpful' | 'not_helpful' | 'love_it', style: string) => Promise<void>;
   getContextualSuggestions: () => string[];
   getAdaptivePlaceholder: () => string;
-  
-  // Error handling
   error: string | null;
   retryAnalysis: () => Promise<void>;
 }
@@ -28,12 +42,30 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
   const [aiPersonality, setAiPersonality] = useState<AIPersonality | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Performance optimization: Track last analysis time to avoid unnecessary calls
+  const lastAnalysisRef = useRef<number>(0);
+  const analysisDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const aiPersonalityService = AIPersonalityService.getInstance();
 
   const analyzeEmotionalState = useCallback(async (): Promise<UserEmotionalState> => {
+    const now = Date.now();
+    
+         // Debounce rapid calls (within 5 seconds)
+     if (now - lastAnalysisRef.current < 5000) {
+       console.log('⏳ Debouncing emotional state analysis (last:', Math.round((now - lastAnalysisRef.current) / 1000), 's ago)');
+       return emotionalState || aiPersonalityService.getDefaultEmotionalState();
+     }
+    
+    // Clear any pending debounce
+    if (analysisDebounceRef.current) {
+      clearTimeout(analysisDebounceRef.current);
+    }
+    
     setIsAnalyzing(true);
     setError(null);
+    lastAnalysisRef.current = now;
     
     try {
       const state = await aiPersonalityService.analyzeCurrentEmotionalState();
@@ -45,7 +77,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     } finally {
       setIsAnalyzing(false);
     }
-  }, []);
+  }, [emotionalState]);
 
   const getPersonalityRecommendations = useCallback(async (): Promise<AIPersonality> => {
     try {
@@ -94,16 +126,21 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
   }, [emotionalState, aiPersonality]);
 
   const retryAnalysis = useCallback(async (): Promise<void> => {
+    // Reset analysis time to force fresh analysis
+    lastAnalysisRef.current = 0;
     await analyzeEmotionalState();
     await getPersonalityRecommendations();
   }, [analyzeEmotionalState, getPersonalityRecommendations]);
 
-  // Initialize on mount
+  // Initialize on mount with debounced analysis
   useEffect(() => {
     const initialize = async () => {
       try {
-        await analyzeEmotionalState();
-        await getPersonalityRecommendations();
+        // Debounce the initial analysis to avoid blocking the UI
+        analysisDebounceRef.current = setTimeout(async () => {
+          await analyzeEmotionalState();
+          await getPersonalityRecommendations();
+        }, 1000); // 1 second delay for initial load
       } catch (err) {
         // Silently handle initialization errors
         console.warn('Failed to initialize AI personality:', err);
@@ -111,6 +148,13 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     };
 
     initialize();
+    
+    // Cleanup on unmount
+    return () => {
+      if (analysisDebounceRef.current) {
+        clearTimeout(analysisDebounceRef.current);
+      }
+    };
   }, []);
 
   return {

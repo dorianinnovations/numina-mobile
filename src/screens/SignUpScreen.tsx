@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
@@ -372,8 +372,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     style={[
                       styles.primaryButton,
                       {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#add5fa',
-                        opacity: (loading || isSignUpSuccess) ? 0.7 : 1,
+                        backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
+                        opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
                       }
                     ]}
                     onPress={handleSubmit}
@@ -386,7 +386,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           styles.primaryButtonText, 
                           { color: isDarkMode ? '#000000' : '#ffffff' }
                         ]}>
-                          {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success!' : 'Get Started'}
+                          {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success' : 'Get Started'}
                         </Text>
                       </View>
                       {authStatus !== 'idle' && (
@@ -422,7 +422,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   styles.linkText, 
                   { color: isDarkMode ? '#ffffff' : '#000000' }
                 ]}>
-                  Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#B8E6B8' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#B8E6B8' : '#000000' }]}>in</Text>
+                  Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>in</Text>
                 </Text>
               </TouchableOpacity>
 

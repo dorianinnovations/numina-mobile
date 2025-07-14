@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
@@ -54,12 +55,14 @@ interface MessageBubbleProps {
 
 // Component for rendering formatted bot messages
 const BotMessageContent: React.FC<{
-  text: string;
+  text: string | undefined;
   previousLength: number;
   newContentOpacity: Animated.Value;
   isStreaming?: boolean;
   theme: any;
 }> = ({ text, previousLength, newContentOpacity, isStreaming, theme }) => {
+  // Handle undefined text
+  const safeText = text || '';
   
   const renderFormattedText = (content: string) => {
     const lines = content.split('\n');
@@ -196,12 +199,12 @@ const BotMessageContent: React.FC<{
     <View style={styles.botTextContainer}>
       {/* Previous content at full opacity */}
       <View>
-        {renderFormattedText(text.slice(0, previousLength))}
+        {renderFormattedText(safeText.slice(0, previousLength))}
       </View>
       
       {/* New content with fade animation */}
       <Animated.View style={{ opacity: newContentOpacity }}>
-        {renderFormattedText(text.slice(previousLength))}
+        {renderFormattedText(safeText.slice(previousLength))}
       </Animated.View>
       
       {isStreaming && (
@@ -227,6 +230,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [previousLength, setPreviousLength] = useState(0);
   const [showPersonalityIndicator, setShowPersonalityIndicator] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
+  const [hasStartedStreaming, setHasStartedStreaming] = useState(false);
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -234,9 +238,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
   const newContentOpacity = useRef(new Animated.Value(1)).current;
+  const timestampOpacity = useRef(new Animated.Value(0)).current;
 
-  const isUser = message.sender === 'user';
-  const isAI = message.sender === 'numina';
+  const isUser = message?.sender === 'user';
+  const isAI = message?.sender === 'numina';
 
   // Entry animation with stagger
   useEffect(() => {
@@ -262,31 +267,195 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         useNativeDriver: false,
       }),
     ]).start();
-  }, [index]);
-
-  // Progressive fade-in for new content chunks
-  useEffect(() => {
-    setDisplayedText(message.text);
     
-    if (message.text && message.isStreaming) {
-      // Check if new content was added
-      if (message.text.length > previousLength) {
-        // Animate the new content fading in
-        newContentOpacity.setValue(0.3);
-        Animated.timing(newContentOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }).start();
-        
-        setPreviousLength(message.text.length);
-      }
-    } else if (message.text && !message.isStreaming) {
-      // Completed message - ensure full opacity
-      newContentOpacity.setValue(1);
-      setPreviousLength(message.text.length);
+    // Initialize timestamp opacity for user messages
+    if (isUser) {
+      timestampOpacity.setValue(1);
     }
-  }, [message.text, message.isStreaming]);
+  }, [index, isUser]);
+
+  // Progressive fade-in for new content chunks and timestamp
+  useEffect(() => {
+    try {
+      const safeText = message?.text || '';
+      setDisplayedText(safeText);
+      
+      if (safeText && message?.isStreaming) {
+        // More dynamic haptic feedback when bot starts streaming
+        if (!hasStartedStreaming && isAI) {
+          // Create an "awakening" sequence that feels like AI coming to life
+          const createAliveStartHaptic = async () => {
+            try {
+              // First gentle pulse: AI "waking up"
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              
+              // Brief pause for organic timing
+              await new Promise(resolve => setTimeout(resolve, 60));
+              
+              // Second slightly stronger pulse: AI "focusing"
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              
+              // Shorter pause for building energy
+              await new Promise(resolve => setTimeout(resolve, 40));
+              
+              // Final light pulse: AI "beginning to speak"
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              
+            } catch (error) {
+              console.error('Error in alive start haptic:', error);
+              // Fallback to simple haptic if sequence fails
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
+          };
+          
+          // Execute the alive haptic sequence
+          createAliveStartHaptic();
+          setHasStartedStreaming(true);
+        }
+        
+        // Check if new content was added
+        if (safeText.length > previousLength) {
+          // Animate the new content fading in
+          newContentOpacity.setValue(0.3);
+          Animated.timing(newContentOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+          
+          // Add subtle alive haptic feedback during streaming for AI messages
+          if (isAI && hasStartedStreaming) {
+            // Create subtle "breathing" haptic every few characters
+            const textAdded = safeText.length - previousLength;
+            const shouldPulse = textAdded >= 5 && (safeText.length % 15 === 0); // Every ~15 characters
+            
+            if (shouldPulse) {
+              // Very light pulse to simulate AI "thinking" and "breathing"
+              setTimeout(() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              }, 50); // Slight delay to feel more organic
+            }
+          }
+          
+          setPreviousLength(safeText.length);
+        }
+        // Hide timestamp while streaming
+        timestampOpacity.setValue(0);
+      } else if (safeText && !message?.isStreaming) {
+        // Completed message - ensure full opacity
+        newContentOpacity.setValue(1);
+        setPreviousLength(safeText.length);
+        
+        // More dynamic haptic feedback when bot finishes streaming
+        if (hasStartedStreaming && isAI) {
+          // Create an intelligent "breathing" completion sequence that feels alive
+          const createAliveCompletionHaptic = async () => {
+            try {
+              const messageLength = safeText.length;
+              const isLongMessage = messageLength > 200;
+              const isVeryLongMessage = messageLength > 500;
+              
+              // Analyze message content for personality-based haptic patterns
+              const messageContent = safeText.toLowerCase();
+              const isQuestionResponse = messageContent.includes('?') || messageContent.includes('question');
+              const isCodeResponse = messageContent.includes('```') || messageContent.includes('code') || messageContent.includes('function');
+              const isEmotionalResponse = messageContent.includes('feel') || messageContent.includes('emotion') || messageContent.includes('understand');
+              const isExplanationResponse = messageContent.includes('explain') || messageContent.includes('because') || messageContent.includes('therefore');
+              
+              // Adaptive timing based on message length and content
+              const baseDelay = isLongMessage ? 100 : 80;
+              const finalDelay = isVeryLongMessage ? 250 : 200;
+              
+              // First impact: Strong signal that completion is happening
+              // Use stronger haptic for longer messages (more "satisfying")
+              const initialIntensity = isLongMessage 
+                ? Haptics.ImpactFeedbackStyle.Heavy 
+                : Haptics.ImpactFeedbackStyle.Medium;
+              await Haptics.impactAsync(initialIntensity);
+              
+              // Brief pause to create rhythm
+              await new Promise(resolve => setTimeout(resolve, baseDelay));
+              
+              // Content-based middle sequence
+              if (isEmotionalResponse) {
+                // Gentle, flowing pattern for emotional responses
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 20));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 60));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } else if (isCodeResponse) {
+                // Precise, structured pattern for code responses
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                await new Promise(resolve => setTimeout(resolve, baseDelay - 20));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay - 20));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } else if (isQuestionResponse) {
+                // Inquisitive, lighter pattern for questions
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 30));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 30));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } else if (isExplanationResponse) {
+                // Methodical, confident pattern for explanations
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              } else {
+                // Default pattern for general responses
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              }
+              
+              // For longer messages, add more satisfying conclusion
+              if (isLongMessage) {
+                await new Promise(resolve => setTimeout(resolve, finalDelay));
+                // Deep satisfaction haptic for completing long responses
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                
+                // Extra "contentment" pulse for very long messages
+                if (isVeryLongMessage) {
+                  await new Promise(resolve => setTimeout(resolve, 150));
+                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+              } else {
+                // For shorter messages, lighter conclusion
+                await new Promise(resolve => setTimeout(resolve, finalDelay));
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+              
+            } catch (error) {
+              console.error('Error in alive completion haptic:', error);
+              // Fallback to simple haptic if sequence fails
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            }
+          };
+          
+          // Execute the alive haptic sequence
+          createAliveCompletionHaptic();
+        }
+        
+        // Fade in timestamp after message completes
+        setTimeout(() => {
+          Animated.timing(timestampOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start();
+        }, 300); // Small delay after message completion
+      }
+    } catch (error) {
+      console.error('Error in MessageBubble text effect:', error);
+      setDisplayedText(message?.text || '');
+      // Show timestamp immediately if there's an error
+      timestampOpacity.setValue(1);
+    }
+  }, [message?.text, message?.isStreaming, hasStartedStreaming, isAI]);
 
   const handlePressIn = () => {
     setIsPressed(true);
@@ -413,7 +582,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </View>
         ) : (
           /* Bot Message with AI Personality Features */
-          <View style={styles.botMessageContainer}>
+          <View style={[
+            styles.messageBubble,
+            styles.aiBubble,
+            {
+              backgroundColor: theme.colors.chat.aiMessage.background,
+            }
+          ]}>
+            {/* Message Options - Top Right */}
+            {isAI && !message.isStreaming && (
+              <View style={styles.aiMessageOptionsContainer}>
+                <TouchableOpacity
+                  style={styles.aiOptionsButton}
+                  onPress={() => {
+                    // Future functionality: share, copy, etc.
+                  }}
+                >
+                  <FontAwesome5 name="ellipsis-h" size={12} color={isDarkMode ? '#999' : '#666'} />
+                </TouchableOpacity>
+              </View>
+            )}
+            
             {/* Personality Context Header */}
             {message.personalityContext && (
               <View style={[
@@ -493,74 +682,36 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </View>
             )}
             
-            {/* Personality Feedback */}
-            {isAI && !message.isStreaming && !feedbackGiven && (
-              <View style={styles.feedbackContainer}>
-                <TouchableOpacity
-                  style={[styles.feedbackButton, { backgroundColor: '#10b98120' }]}
-                  onPress={() => {
-                    onPersonalityFeedback?.('helpful');
-                    setFeedbackGiven(true);
-                  }}
-                >
-                  <FontAwesome5 name="thumbs-up" size={12} color="#10b981" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.feedbackButton, { backgroundColor: '#ef444420' }]}
-                  onPress={() => {
-                    onPersonalityFeedback?.('not_helpful');
-                    setFeedbackGiven(true);
-                  }}
-                >
-                  <FontAwesome5 name="thumbs-down" size={12} color="#ef4444" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.feedbackButton, { backgroundColor: '#ff6b9d20' }]}
-                  onPress={() => {
-                    onPersonalityFeedback?.('love_it');
-                    setFeedbackGiven(true);
-                  }}
-                >
-                  <FontAwesome5 name="heart" size={12} color="#ff6b9d" />
-                </TouchableOpacity>
-              </View>
-            )}
+            {/* Timestamp - Bottom Right of AI Message */}
+            <Text style={[
+              TextStyles.timestamp,
+              styles.aiMessageTimestamp,
+              {
+                color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[200],
+              }
+            ]}>
+              {formatTime(message.timestamp)}
+            </Text>
           </View>
         )}
 
-        {/* Timestamp */}
-        <Text style={[
-          TextStyles.timestamp,
-          styles.timestamp,
-          isUser ? styles.userTimestamp : styles.aiTimestamp,
-          isAI && styles.aiTimestampWithAvatar,
-          {
-            color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[200],
-          }
-        ]}>
-          {formatTime(message.timestamp)}
-        </Text>
+        {/* Timestamp - show for user messages only (AI timestamp is inside the bubble) */}
+        {isUser && (
+          <Text style={[
+            TextStyles.timestamp,
+            styles.timestamp,
+            styles.userTimestamp,
+            {
+              color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[200],
+            }
+          ]}>
+            {formatTime(message.timestamp)}
+          </Text>
+        )}
       </TouchableOpacity>
 
 
 
-      {/* AI Avatar */}
-      {isAI && (
-        <View style={[
-          styles.avatarContainer,
-          {
-            backgroundColor: isDarkMode 
-              ? NuminaColors.darkMode[600] 
-              : NuminaColors.darkMode[100],
-          }
-        ]}>
-          <FontAwesome5
-            name="seedling"
-            size={17}
-            color={isDarkMode ? '#7ccbff' : '#7ccbff'}
-          />
-        </View>
-      )}
     </Animated.View>
   );
 };
@@ -714,7 +865,7 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 1,
     fontWeight: '500',
   },
   userTimestamp: {
@@ -726,23 +877,21 @@ const styles = StyleSheet.create({
   aiTimestampWithAvatar: {
     marginLeft: 6,
   },
-
-  avatarContainer: {
-    position: 'absolute',
-    bottom: 1,
-    left: 64,
-    width: 15,
-    height: 15,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.6,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0.5 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+  botMessageWithTimestamp: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    width: '100%',
   },
+  inlineTimestamp: {
+    fontSize: 11,
+    marginTop: 6,
+    marginLeft: 2,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    alignSelf: 'flex-start',
+  },
+
+
   // AI Personality Styles
   personalityHeader: {
     flexDirection: 'row',
@@ -799,17 +948,40 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
   },
-  feedbackContainer: {
+  messageOptionsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 8,
-    gap: 8,
   },
-  feedbackButton: {
+  optionsButton: {
     padding: 8,
-    borderRadius: 16,
+    borderRadius: 8,
     minWidth: 32,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // New professional AI message styles
+  aiMessageOptionsContainer: {
+    position: 'absolute',
+    top: 16,
+    right: 8,
+    zIndex: 1,
+  },
+  aiOptionsButton: {
+    padding: 6,
+    borderRadius: 12,
+    minWidth: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.7,
+  },
+  aiMessageTimestamp: {
+    fontSize: 11,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    marginRight: 4,
+    opacity: 0.7,
   },
 });

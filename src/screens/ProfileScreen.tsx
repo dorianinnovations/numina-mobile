@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 import { PageBackground } from '../components/PageBackground';
 import { Header } from '../components/Header';
 

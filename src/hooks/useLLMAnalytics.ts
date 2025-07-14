@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from '../services/api';
+import SecureStorageService from '../services/secureStorage';
 
 interface LLMInsight {
   id: string;
@@ -25,11 +26,12 @@ interface LLMAnalyticsState {
   recommendationsError: string | null;
 }
 
-const CACHE_KEYS = {
-  insights: '@llm_insights',
-  weekly: '@llm_weekly',
-  recommendations: '@llm_recommendations',
-};
+// Generate user-specific cache keys
+const getCacheKeys = (userId: string) => ({
+  insights: `@llm_insights_${userId}`,
+  weekly: `@llm_weekly_${userId}`,
+  recommendations: `@llm_recommendations_${userId}`,
+});
 
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
@@ -53,10 +55,17 @@ export const useLLMAnalytics = () => {
 
   const loadCachedData = async () => {
     try {
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        console.warn('No user ID found, cannot load cached LLM data');
+        return;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
       const [insights, weekly, recommendations] = await Promise.all([
-        AsyncStorage.getItem(CACHE_KEYS.insights),
-        AsyncStorage.getItem(CACHE_KEYS.weekly),
-        AsyncStorage.getItem(CACHE_KEYS.recommendations),
+        AsyncStorage.getItem(cacheKeys.insights),
+        AsyncStorage.getItem(cacheKeys.weekly),
+        AsyncStorage.getItem(cacheKeys.recommendations),
       ]);
 
       setState(prev => ({
@@ -206,7 +215,11 @@ export const useLLMAnalytics = () => {
           isGeneratingInsights: false 
         }));
         
-        await cacheData(CACHE_KEYS.insights, insights);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.insights, insights);
+        }
       } else {
         // Fallback to mock data if API fails
         const insights = generateMockInsights('general');
@@ -216,7 +229,11 @@ export const useLLMAnalytics = () => {
           isGeneratingInsights: false 
         }));
         
-        await cacheData(CACHE_KEYS.insights, insights);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.insights, insights);
+        }
       }
     } catch (error: any) {
       // Use mock data on error
@@ -227,7 +244,11 @@ export const useLLMAnalytics = () => {
         isGeneratingInsights: false 
       }));
       
-      await cacheData(CACHE_KEYS.insights, insights);
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (userId) {
+        const cacheKeys = getCacheKeys(userId);
+        await cacheData(cacheKeys.insights, insights);
+      }
     }
   }, []);
 
@@ -245,7 +266,11 @@ export const useLLMAnalytics = () => {
           isGeneratingWeekly: false 
         }));
         
-        await cacheData(CACHE_KEYS.weekly, insights);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.weekly, insights);
+        }
       } else {
         // Fallback to mock data
         const insights = generateMockInsights('weekly');
@@ -255,7 +280,11 @@ export const useLLMAnalytics = () => {
           isGeneratingWeekly: false 
         }));
         
-        await cacheData(CACHE_KEYS.weekly, insights);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.weekly, insights);
+        }
       }
     } catch (error: any) {
       // Use mock data on error
@@ -266,7 +295,11 @@ export const useLLMAnalytics = () => {
         isGeneratingWeekly: false 
       }));
       
-      await cacheData(CACHE_KEYS.weekly, insights);
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (userId) {
+        const cacheKeys = getCacheKeys(userId);
+        await cacheData(cacheKeys.weekly, insights);
+      }
     }
   }, []);
 
@@ -284,7 +317,11 @@ export const useLLMAnalytics = () => {
           isGeneratingRecommendations: false 
         }));
         
-        await cacheData(CACHE_KEYS.recommendations, recommendations);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.recommendations, recommendations);
+        }
       } else {
         // Fallback to mock data
         const recommendations = generateMockInsights('recommendations');
@@ -294,7 +331,11 @@ export const useLLMAnalytics = () => {
           isGeneratingRecommendations: false 
         }));
         
-        await cacheData(CACHE_KEYS.recommendations, recommendations);
+        const userId = await SecureStorageService.getCurrentUserId();
+        if (userId) {
+          const cacheKeys = getCacheKeys(userId);
+          await cacheData(cacheKeys.recommendations, recommendations);
+        }
       }
     } catch (error: any) {
       // Use mock data on error
@@ -305,7 +346,11 @@ export const useLLMAnalytics = () => {
         isGeneratingRecommendations: false 
       }));
       
-      await cacheData(CACHE_KEYS.recommendations, recommendations);
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (userId) {
+        const cacheKeys = getCacheKeys(userId);
+        await cacheData(cacheKeys.recommendations, recommendations);
+      }
     }
   }, []);
 

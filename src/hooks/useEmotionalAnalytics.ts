@@ -4,7 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { emotionalAnalyticsAPI } from '../services/emotionalAnalyticsAPI';
 import { userDataSync } from '../services/userDataSync';
 import { offlineEmotionStorage } from '../services/offlineEmotionStorage';
-import SecureStorageService from '../services/secureStorage';
+import AuthManager from '../services/authManager';
 
 interface EmotionData {
   mood: string;
@@ -74,7 +74,7 @@ export const useEmotionalAnalytics = () => {
     try {
       // First try to fetch from API if online
       const netInfo = await NetInfo.fetch();
-      const token = await SecureStorageService.getToken();
+      const token = AuthManager.getInstance().getCurrentToken();
       console.log('[useEmotionalAnalytics] Loading emotions, token available:', !!token);
       
       if (netInfo.isConnected && token) {

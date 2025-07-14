@@ -5,7 +5,7 @@ import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from "../contexts/SimpleAuthContext";
 import { NuminaColors } from '../utils/colors';
 import { Header } from '../components/Header';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -33,8 +33,8 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
         break;
       case 'stratosphere':
         break;
-      case 'collective':
-        navigation.navigate('Collective');
+      case 'sentiment':
+        navigation.navigate('Sentiment');
         break;
       case 'profile':
         Alert.alert('Profile', 'Profile feature coming soon!');
@@ -74,7 +74,7 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
 
   const stratosphereFeatures = [
     {
-      title: 'Collective Insights',
+              title: 'Sentiment Insights',
       description: 'Explore anonymized emotional patterns from the Numina community',
       icon: <MaterialCommunityIcons name="earth" size={28} color={NuminaColors.green} />,
       color: NuminaColors.green,
@@ -146,7 +146,7 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
             </Text>
           </View>
           <Text style={[styles.subtitle, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-            Connect with the global wellness community and explore collective insights
+            Connect with the global wellness community and explore sentiment insights
           </Text>
         </View>
 
@@ -164,7 +164,7 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
               activeOpacity={feature.comingSoon ? 1 : 0.7}
               onPress={() => {
                 if (!feature.comingSoon && index === 0) {
-                  navigation.navigate('Collective');
+                  navigation.navigate('Sentiment');
                 }
               }}
             >
@@ -225,7 +225,7 @@ export const StratosphereScreen: React.FC<StratosphereScreenProps> = ({ onNaviga
             Privacy First
           </Text>
           <Text style={[styles.infoText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-            All collective insights are completely anonymized and encrypted. Your personal data 
+            All sentiment insights are completely anonymized and encrypted. Your personal data 
             remains private while contributing to global wellness understanding.
           </Text>
         </View>

@@ -95,10 +95,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
     
-    await SecureStorageService.clearUserData(userData?.id);
+    // SMART LOGOUT: Only clear session data, preserve user data for re-login
+    await SecureStorageService.clearSessionData();
+    
     setIsAuthenticated(false);
     setUserData(null);
-    console.log('[AuthContext] Auth data cleared');
+    console.log('[AuthContext] Session cleared (user data preserved for re-login)');
   };
 
   // Login method - simplified
@@ -122,16 +124,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error('Invalid user data received');
         }
         
+        // Map server response to expected format (server sends _id, we need id)
+        const normalizedUser = {
+          id: user._id || user.id,
+          email: user.email,
+          ...user
+        };
+        
         // Store token and user data securely
-        console.log('[AuthContext] Storing token for user:', user.email);
+        console.log('[AuthContext] Storing token for user:', normalizedUser.email);
         await SecureStorageService.setToken(token);
         console.log('[AuthContext] Token stored successfully');
-        await SecureStorageService.setUserData(user);
+        await SecureStorageService.setUserData(normalizedUser);
         console.log('[AuthContext] User data stored successfully');
+        
+        // Clear other users' data while preserving current user's data
+        if (normalizedUser.id) {
+          await SecureStorageService.clearOtherUsersData(normalizedUser.id);
+          console.log('[AuthContext] Other users data cleared, current user data preserved');
+        }
         
         // Update state
         setIsAuthenticated(true);
-        setUserData(user);
+        setUserData(normalizedUser);
+        
+        // Load user's previous data (emotions, conversations, etc.)
+        if (normalizedUser.id) {
+          try {
+            const userData = await SecureStorageService.loadUserSpecificData(normalizedUser.id);
+            console.log('[AuthContext] User data loaded:', {
+              emotions: userData.emotions.length,
+              conversations: userData.conversations.length
+            });
+          } catch (error) {
+            console.error('[AuthContext] Error loading user data:', error);
+          }
+        }
         
         console.log('[AuthContext] Login successful');
         return { success: true };
@@ -174,16 +202,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           throw new Error('Invalid user data received');
         }
         
+        // Map server response to expected format (server sends _id, we need id)
+        const normalizedUser = {
+          id: user._id || user.id,
+          email: user.email,
+          ...user
+        };
+        
         // Store token and user data securely
-        console.log('[AuthContext] Storing token for user:', user.email);
+        console.log('[AuthContext] Storing token for user:', normalizedUser.email);
         await SecureStorageService.setToken(token);
         console.log('[AuthContext] Token stored successfully');
-        await SecureStorageService.setUserData(user);
+        await SecureStorageService.setUserData(normalizedUser);
         console.log('[AuthContext] User data stored successfully');
+        
+        // Clear other users' data while preserving current user's data
+        if (normalizedUser.id) {
+          await SecureStorageService.clearOtherUsersData(normalizedUser.id);
+          console.log('[AuthContext] Other users data cleared, current user data preserved');
+        }
         
         // Update state
         setIsAuthenticated(true);
-        setUserData(user);
+        setUserData(normalizedUser);
+        
+        // Load user's previous data (emotions, conversations, etc.) - will be empty for new users
+        if (normalizedUser.id) {
+          try {
+            const userData = await SecureStorageService.loadUserSpecificData(normalizedUser.id);
+            console.log('[AuthContext] User data loaded:', {
+              emotions: userData.emotions.length,
+              conversations: userData.conversations.length
+            });
+          } catch (error) {
+            console.error('[AuthContext] Error loading user data:', error);
+          }
+        }
         
         console.log('[AuthContext] Sign up successful');
         return { success: true };

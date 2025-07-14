@@ -159,27 +159,16 @@ export const submitEmotionalEntry = async (emotionData: any) => {
   }
 };
 
-// Get current session - tries online first, falls back to local
+// Get current session - uses local storage since backend only has POST /emotions
 export const getCurrentSession = async (refresh = false) => {
   try {
-    if (await canUseOnlineAPI()) {
-      const response = await fetch(`${getBaseApiUrl()}/emotions`, {
-        headers: await createAuthHeaders()
-      });
-      const result = await handleApiResponse(response);
-      // Transform API response to match expected format
-      return {
-        recentEmotions: result.data || [],
-        totalCount: result.data?.length || 0
-      };
-    }
-    
-    // Fallback to local data
+    // Backend only has POST /emotions for submitting, not GET for retrieving
+    // So we'll use local storage for session data
     return await offlineEmotionStorage.getCurrentSession();
   } catch (error) {
     console.error('❌ Failed to get current session:', error);
-    // Always return local data on error
-    return await offlineEmotionStorage.getCurrentSession();
+    // Return empty session on error
+    return { recentEmotions: [], totalCount: 0 };
   }
 };
 

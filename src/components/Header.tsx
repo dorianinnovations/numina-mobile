@@ -173,27 +173,27 @@ export const Header: React.FC<HeaderProps> = ({
 
             <View style={styles.rightSection}>
               {showBackButton && (
-                <TouchableOpacity
-                  style={[
-                    styles.iconButton,
-                    {
-                      backgroundColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.1)' 
-                        : '#ffffff',
-                      borderColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.2)' 
-                        : 'rgba(0, 0, 0, 0.1)',
-                    }
-                  ]}
-                  onPress={handleBackArrowPress}
-                  activeOpacity={0.7}
-                >
-                  <AnimatedBackArrow
-                    color={isDarkMode ? '#ffffff' : '#586266eb'}
-                    size={16}
-                    isPressed={backArrowPressed}
-                  />
-                </TouchableOpacity>
+                                  <TouchableOpacity
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? '#1a1a1a' 
+                          : '#add5fa',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(255, 255, 255, 0.3)',
+                      }
+                    ]}
+                    onPress={handleBackArrowPress}
+                    activeOpacity={0.7}
+                  >
+                    <AnimatedBackArrow
+                      color={isDarkMode ? '#6ec5ff' : '#ffffff'}
+                      size={16}
+                      isPressed={backArrowPressed}
+                    />
+                  </TouchableOpacity>
               )}
 
               {showMenuButton && (
@@ -203,11 +203,11 @@ export const Header: React.FC<HeaderProps> = ({
                       styles.iconButton,
                       {
                         backgroundColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : '#ffffff',
+                          ? '#1a1a1a' 
+                          : '#add5fa',
                         borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.2)' 
-                          : 'rgba(0, 0, 0, 0.1)',
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(255, 255, 255, 0.3)',
                         marginLeft: showBackButton ? 12 : 0,
                       }
                     ]}
@@ -216,7 +216,7 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     <AnimatedHamburger
                       isOpen={menuVisible}
-                      color={isDarkMode ? '#ffffff' : '#586266eb'}
+                      color={isDarkMode ? '#6ec5ff' : '#ffffff'}
                       size={16}
                     />
                   </TouchableOpacity>

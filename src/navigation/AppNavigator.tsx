@@ -16,11 +16,11 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { AboutScreen } from "../screens/AboutScreen";
 import { CloudScreen } from "../screens/CloudScreen";
-import { CollectiveScreen } from "../screens/CollectiveScreen";
+import { SentimentScreen } from "../screens/SentimentScreen";
 
 // Contexts
 import { useTheme } from "../contexts/ThemeContext";
-import { useAuth } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/SimpleAuthContext";
 
 
 export type RootStackParamList = {
@@ -33,7 +33,7 @@ export type RootStackParamList = {
   Analytics: undefined;
   Cloud: undefined;
   Stratosphere: undefined;
-  Collective: undefined;
+  Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
   About: undefined;
@@ -269,13 +269,13 @@ export const AppNavigator: React.FC = () => {
         </Stack.Screen>
 
         <Stack.Screen
-          name="Collective"
+          name="Sentiment"
           options={{
             ...slideTransition,
           }}
         >
           {({ navigation }) => (
-            <CollectiveScreen onNavigateBack={() => navigation.goBack()} />
+            <SentimentScreen onNavigateBack={() => navigation.goBack()} />
           )}
         </Stack.Screen>
 

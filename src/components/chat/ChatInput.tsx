@@ -63,6 +63,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [adaptivePlaceholder, setAdaptivePlaceholder] = useState(placeholder);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [contextualSuggestions, setContextualSuggestions] = useState<string[]>([]);
+  const [isEmotionalAnalysisLoading, setIsEmotionalAnalysisLoading] = useState(false);
+  
+  // Animated values for smooth animations
+  const suggestionsScale = useRef(new Animated.Value(0)).current;
+  const suggestionsOpacity = useRef(new Animated.Value(0)).current;
+  const suggestionsTranslateY = useRef(new Animated.Value(20)).current;
+  const suggestionsRotate = useRef(new Animated.Value(0)).current;
   
   // Animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
@@ -70,6 +77,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const sendButtonScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
+  const emotionalLoadingAnim = useRef(new Animated.Value(0)).current;
+  
+  // Individual suggestion item animations
+  const suggestionItems = useRef<Animated.Value[]>([]).current;
 
   // Voice recording animation
   useEffect(() => {
@@ -94,6 +105,188 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       pulseAnim.setValue(1);
     }
   }, [isVoiceActive]);
+
+  // Emotional analysis loading animation
+  useEffect(() => {
+    if (isEmotionalAnalysisLoading) {
+      const loadingAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(emotionalLoadingAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(emotionalLoadingAnim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loadingAnimation.start();
+      return () => loadingAnimation.stop();
+    } else {
+      emotionalLoadingAnim.setValue(0);
+    }
+  }, [isEmotionalAnalysisLoading]);
+
+  // Fluid Animation Functions
+  const showSuggestionsWithAnimation = () => {
+    setShowSuggestions(true);
+    
+    // Reset values for clean entrance
+    suggestionsScale.setValue(0);
+    suggestionsOpacity.setValue(0);
+    suggestionsTranslateY.setValue(20);
+    suggestionsRotate.setValue(-2);
+    
+    // Smooth bounce entrance with spring physics
+    Animated.parallel([
+      Animated.spring(suggestionsScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 180,
+        friction: 12,
+        overshootClamping: false,
+      }),
+      Animated.timing(suggestionsOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(suggestionsTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 200,
+        friction: 15,
+      }),
+      Animated.spring(suggestionsRotate, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 20,
+      }),
+    ]).start();
+    
+    // Staggered animation for suggestion items
+    suggestionItems.forEach((item, index) => {
+      item.setValue(0);
+      Animated.timing(item, {
+        toValue: 1,
+        delay: index * 80,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+  
+  const hideSuggestionsWithAnimation = () => {
+    // Snappy exit animation
+    Animated.parallel([
+      Animated.spring(suggestionsScale, {
+        toValue: 0.9,
+        useNativeDriver: true,
+        tension: 400,
+        friction: 25,
+      }),
+      Animated.timing(suggestionsOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(suggestionsTranslateY, {
+        toValue: -10,
+        useNativeDriver: true,
+        tension: 350,
+        friction: 20,
+      }),
+      Animated.spring(suggestionsRotate, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 400,
+        friction: 25,
+      }),
+    ]).start();
+    
+    // Hide after animation completes
+    setTimeout(() => {
+      setShowSuggestions(false);
+    }, 220);
+  };
+  
+  const handleSuggestionPress = (suggestion: string) => {
+    // Haptic feedback for premium feel
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    // Quick scale down animation before selection
+    Animated.sequence([
+      Animated.timing(suggestionsScale, {
+        toValue: 0.95,
+        duration: 80,
+        useNativeDriver: true,
+      }),
+      Animated.spring(suggestionsScale, {
+        toValue: 0.85,
+        useNativeDriver: true,
+        tension: 500,
+        friction: 30,
+      }),
+    ]).start();
+    
+    Animated.timing(suggestionsOpacity, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+    
+    // Apply suggestion and hide
+    setTimeout(() => {
+      onChangeText(suggestion);
+      setShowSuggestions(false);
+    }, 100);
+  };
+  
+  const handleDismiss = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    hideSuggestionsWithAnimation();
+  };
+  
+  // Animated styles for the suggestions container
+  const suggestionsAnimatedStyle = {
+    transform: [
+      { scale: suggestionsScale },
+      { translateY: suggestionsTranslateY },
+      { rotate: suggestionsRotate.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '1deg'],
+      }) },
+    ],
+    opacity: suggestionsOpacity,
+  };
+  
+  // Individual suggestion item animated styles
+  const getSuggestionItemStyle = (index: number) => {
+    const item = suggestionItems[index];
+    if (!item) return {};
+    
+    return {
+      transform: [
+        { 
+          translateY: item.interpolate({
+            inputRange: [0, 1],
+            outputRange: [15, 0],
+          })
+        },
+        {
+          scale: item.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.9, 1],
+          })
+        },
+      ],
+      opacity: item,
+    };
+  };
 
   const handleVoicePress = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -165,6 +358,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const isInputEmpty = !value.trim();
 
+  // Trigger emotional analysis loading when userEmotionalState changes
+  useEffect(() => {
+    if (userEmotionalState) {
+      // Simulate loading for emotional analysis
+      setIsEmotionalAnalysisLoading(true);
+      const timer = setTimeout(() => {
+        setIsEmotionalAnalysisLoading(false);
+      }, 1500); // 1.5 seconds loading time
+      
+      return () => clearTimeout(timer);
+    }
+  }, [userEmotionalState]);
+
   // AI Personality Adaptation
   useEffect(() => {
     if (userEmotionalState && aiPersonality) {
@@ -175,6 +381,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       setContextualSuggestions(suggestions);
     }
   }, [userEmotionalState, aiPersonality]);
+  
+  // Initialize suggestion item animations when suggestions change
+  useEffect(() => {
+    if (contextualSuggestions.length > 0) {
+      // Create animated values for each suggestion item
+      suggestionItems.length = 0;
+      contextualSuggestions.forEach((_, index) => {
+        suggestionItems[index] = new Animated.Value(0);
+      });
+    }
+  }, [contextualSuggestions]);
 
   const getAdaptivePlaceholder = (emotionalState: any, personality: any) => {
     const { mood, intensity, timeOfDay } = emotionalState;
@@ -182,31 +399,31 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     if (mood === 'anxious' && intensity > 7) {
       return communicationStyle === 'empathetic' 
-        ? "I'm here to listen... what's on your mind? 💙"
-        : "Let's work through this together...";
+        ? "What's weighing on your mind right now?"
+        : "Let's break this down step by step...";
     }
     
     if (mood === 'happy' && intensity > 8) {
-      return "Share your joy! What's making you feel amazing? ✨";
+      return "What's bringing you this energy today?";
     }
     
     if (mood === 'stressed' && timeOfDay === 'evening') {
-      return "End-of-day check-in... how can I help you unwind? 🌙";
+      return "How can we process today and prepare for rest?";
     }
     
     if (timeOfDay === 'morning') {
-      return "Good morning! How are you feeling today? ☀️";
+      return "What's your mental state as you start today?";
     }
     
     switch (communicationStyle) {
       case 'empathetic':
-        return "I'm here for you... what's in your heart? 💫";
+        return "What would help you feel understood right now?";
       case 'collaborative':
-        return "Let's explore this together... what's happening?";
+        return "What should we work through together?";
       case 'encouraging':
-        return "You've got this! What's on your mind? 🌟";
+        return "What's on your mind that we can tackle?";
       case 'direct':
-        return "What would you like to talk about?";
+        return "What would you like to discuss?";
       default:
         return placeholder;
     }
@@ -254,16 +471,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     ];
   };
 
-  const getMoodColor = (mood: string) => {
+  const getMoodColor = (mood: string | undefined) => {
+    if (!mood) return '#62bbef';
+    
     switch (mood.toLowerCase()) {
       case 'happy': return '#10b981';
       case 'sad': return '#3b82f6';
       case 'angry': return '#ef4444';
       case 'anxious': return '#f59e0b';
-      case 'excited': return '#8b5cf6';
+      case 'excited': return '#7f69ff';
       case 'calm': return '#06b6d4';
       case 'stressed': return '#f59e0b';
-      default: return '#6366f1';
+      default: return '#80eaff';
     }
   };
 
@@ -333,11 +552,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               maxLength={maxLength}
               onFocus={() => {
                 handleInputFocus();
-                setShowSuggestions(true);
+                showSuggestionsWithAnimation();
               }}
               onBlur={() => {
                 handleInputBlur();
-                setTimeout(() => setShowSuggestions(false), 150);
+                setTimeout(() => hideSuggestionsWithAnimation(), 150);
               }}
               onContentSizeChange={(event) => {
                 setInputHeight(event.nativeEvent.contentSize.height);
@@ -377,17 +596,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       {/* Contextual Suggestions */}
       {showSuggestions && contextualSuggestions.length > 0 && (
-        <View style={[
+        <Animated.View style={[
           styles.suggestionsContainer,
           {
             backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
             borderColor: isDarkMode ? '#333' : '#e5e7eb',
-          }
+          },
+          suggestionsAnimatedStyle,
         ]}>
           <View style={styles.suggestionsHeader}>
             <FontAwesome5
               name="brain"
-              size={12}
+              size={10}
               color="#FF6B9D"
             />
             <Text style={[
@@ -396,33 +616,46 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             ]}>
               Numina suggests...
             </Text>
-          </View>
-          {contextualSuggestions.map((suggestion, index) => (
             <TouchableOpacity
-              key={index}
-              style={[
-                styles.suggestionItem,
-                { borderColor: isDarkMode ? '#333' : '#f0f0f0' }
-              ]}
-              onPress={() => {
-                onChangeText(suggestion);
-                setShowSuggestions(false);
-              }}
+              style={styles.dismissButton}
+              onPress={handleDismiss}
+              activeOpacity={0.7}
             >
-              <Text style={[
-                styles.suggestionText,
-                { color: isDarkMode ? '#fff' : '#333' }
-              ]}>
-                {suggestion}
-              </Text>
               <FontAwesome5
-                name="arrow-right"
+                name="times"
                 size={10}
                 color={isDarkMode ? '#666' : '#999'}
               />
             </TouchableOpacity>
+          </View>
+          {contextualSuggestions.map((suggestion, index) => (
+            <Animated.View
+              key={index}
+              style={getSuggestionItemStyle(index)}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.suggestionItem,
+                  { borderColor: isDarkMode ? '#333' : '#f0f0f0' }
+                ]}
+                onPress={() => handleSuggestionPress(suggestion)}
+                activeOpacity={0.8}
+              >
+                <Text style={[
+                  styles.suggestionText,
+                  { color: isDarkMode ? '#fff' : '#333' }
+                ]}>
+                  {suggestion}
+                </Text>
+                <FontAwesome5
+                  name="arrow-right"
+                  size={8}
+                  color={isDarkMode ? '#666' : '#999'}
+                />
+              </TouchableOpacity>
+            </Animated.View>
           ))}
-        </View>
+        </Animated.View>
       )}
       
       {/* Emotional State Indicator */}
@@ -438,12 +671,57 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             styles.moodDot,
             { backgroundColor: getMoodColor(userEmotionalState.mood) }
           ]} />
-          <Text style={[
-            styles.emotionalStateText,
-            { color: isDarkMode ? '#ccc' : '#666' }
-          ]}>
-            Numina senses you're feeling {userEmotionalState.mood}
-          </Text>
+          {isEmotionalAnalysisLoading ? (
+            <View style={styles.loadingContainer}>
+              <Animated.Text style={[
+                styles.emotionalStateText,
+                { 
+                  color: isDarkMode ? '#ccc' : '#666',
+                  opacity: emotionalLoadingAnim
+                }
+              ]}>
+                Numina is analyzing your emotional state...
+              </Animated.Text>
+              <View style={styles.loadingDots}>
+                <Animated.View style={[
+                  styles.loadingDot,
+                  { 
+                    backgroundColor: getMoodColor(userEmotionalState.mood),
+                    opacity: emotionalLoadingAnim
+                  }
+                ]} />
+                <Animated.View style={[
+                  styles.loadingDot,
+                  { 
+                    backgroundColor: getMoodColor(userEmotionalState.mood),
+                    opacity: emotionalLoadingAnim,
+                    transform: [{ translateX: emotionalLoadingAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 4]
+                    })}]
+                  }
+                ]} />
+                <Animated.View style={[
+                  styles.loadingDot,
+                  { 
+                    backgroundColor: getMoodColor(userEmotionalState.mood),
+                    opacity: emotionalLoadingAnim,
+                    transform: [{ translateX: emotionalLoadingAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 8]
+                    })}]
+                  }
+                ]} />
+              </View>
+            </View>
+          ) : (
+            <Text style={[
+              styles.emotionalStateText,
+              { color: isDarkMode ? '#ccc' : '#666' }
+            ]}>
+              Numina senses you're feeling {userEmotionalState.mood}
+            </Text>
+          )}
           <View style={[
             styles.intensityBar,
             { backgroundColor: isDarkMode ? '#333' : '#f0f0f0' }
@@ -609,48 +887,61 @@ const styles = StyleSheet.create({
   // AI Adaptive Features Styles
   suggestionsContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 156, 
     left: 16,
     right: 16,
-    borderRadius: 12,
+    borderRadius: 16, 
     borderWidth: 1,
-    padding: 12,
-    maxHeight: 200,
-    elevation: 8,
+    padding: 16, 
+    maxHeight: 400, 
+    elevation: 12, 
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 }, 
+    shadowOpacity: 0.25, 
+    shadowRadius: 20, 
   },
   suggestionsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
+    justifyContent: 'space-between',
+    marginBottom: 8, // Increased from 6
+    gap: 6, // Increased from 4
   },
   suggestionsTitle: {
-    fontSize: 12,
+    fontSize: 12, // Increased from 11
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
+    flex: 1,
+  },
+  dismissButton: {
+    padding: 6, // Increased for better touch target
+    borderRadius: 16, // Increased for modern look
+    backgroundColor: 'rgba(0, 0, 0, 0.08)', // Slightly more visible
+    minWidth: 28, // Ensure consistent size
+    minHeight: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginVertical: 2,
+    paddingVertical: 12, // Increased for better touch targets
+    paddingHorizontal: 12, // Increased for better spacing
+    borderRadius: 12, // Increased for more modern look
+    marginVertical: 4, // Increased spacing between items
     borderWidth: 1,
+    // Added subtle background interaction
+    transform: [{ scale: 1 }],
   },
   suggestionText: {
-    fontSize: 14,
+    fontSize: 14, // Increased from 13
     fontFamily: 'Nunito_400Regular',
     flex: 1,
   },
   emotionalStateIndicator: {
     position: 'absolute',
-    top: -60,
+    top: -30,
     left: 16,
     right: 16,
     paddingVertical: 8,
@@ -684,6 +975,23 @@ const styles = StyleSheet.create({
   },
   intensityFill: {
     height: '100%',
+    borderRadius: 2,
+  },
+  // Loading animation styles
+  loadingContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  loadingDot: {
+    width: 4,
+    height: 4,
     borderRadius: 2,
   },
 });

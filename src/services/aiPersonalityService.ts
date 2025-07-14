@@ -1,6 +1,7 @@
 import ApiService from './api';
 import { emotionalAnalyticsAPI } from './emotionalAnalyticsAPI';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageService from './secureStorage';
 
 interface UserEmotionalState {
   mood: string;
@@ -10,30 +11,37 @@ interface UserEmotionalState {
   patterns: string[];
 }
 
-interface PersonalityContext {
-  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
-  emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
-  adaptedResponse: boolean;
-  userMoodDetected?: string;
-  responsePersonalization?: string;
-}
-
 interface AIPersonality {
   communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
   adaptivePrompts: string[];
   contextualHints: string[];
 }
 
-const CACHE_KEYS = {
-  emotionalState: '@ai_emotional_state',
-  personalityPreferences: '@ai_personality_preferences',
-  adaptationHistory: '@ai_adaptation_history',
-};
+interface PersonalityContext {
+  communicationStyle: string;
+  emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
+  adaptedResponse: boolean;
+  userMoodDetected?: string;
+  responsePersonalization?: string;
+}
+
+// Generate user-specific cache keys
+const getCacheKeys = (userId: string) => ({
+  emotionalState: `@ai_emotional_state_${userId}`,
+  personalityPreferences: `@ai_personality_preferences_${userId}`,
+  adaptationHistory: `@ai_adaptation_history_${userId}`,
+});
+
+// Performance optimization: Cache duration reduced for faster updates
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes instead of 1 hour
+const DEBOUNCE_DELAY = 2000; // 2 seconds debounce for API calls
 
 class AIPersonalityService {
   private static instance: AIPersonalityService;
   private currentEmotionalState: UserEmotionalState | null = null;
   private personalityPreferences: any = {};
+  private lastAnalysisTime: number = 0;
+  private pendingAnalysis: Promise<UserEmotionalState> | null = null;
 
   static getInstance(): AIPersonalityService {
     if (!this.instance) {
@@ -42,31 +50,86 @@ class AIPersonalityService {
     return this.instance;
   }
 
-  // Analyze current emotional state from recent data
+  // Optimized emotional state analysis with better caching and debouncing
   async analyzeCurrentEmotionalState(): Promise<UserEmotionalState> {
+    const now = Date.now();
+    
+    // Check if we have a recent cached state (within 15 minutes)
+    const cached = await this.getCachedEmotionalState();
+    if (cached && (now - this.lastAnalysisTime) < CACHE_DURATION) {
+      console.log('🚀 Using cached emotional state (age:', Math.round((now - this.lastAnalysisTime) / 1000), 's)');
+      return cached;
+    }
+
+    // Debounce rapid requests
+    if (this.pendingAnalysis && (now - this.lastAnalysisTime) < DEBOUNCE_DELAY) {
+      console.log('⏳ Returning pending analysis to avoid duplicate requests');
+      return this.pendingAnalysis;
+    }
+
+    // Start new analysis
+    this.pendingAnalysis = this.performEmotionalAnalysis();
+    this.lastAnalysisTime = now;
+    
     try {
-      // Get recent emotions from local storage
+      const result = await this.pendingAnalysis;
+      this.pendingAnalysis = null;
+      return result;
+    } catch (error) {
+      this.pendingAnalysis = null;
+      throw error;
+    }
+  }
+
+  private async performEmotionalAnalysis(): Promise<UserEmotionalState> {
+    try {
+      // Get recent emotions from local storage (fast)
       const recentSession = await emotionalAnalyticsAPI.getCurrentSession();
       const recentEmotions = recentSession.recentEmotions || [];
       
-      // Get conversation history (simplified for now)
+      // Quick local analysis first for immediate response
+      const localState = this.generateLocalEmotionalState(recentEmotions);
+      
+      // If we have recent emotions, use local analysis immediately
+      if (recentEmotions.length > 0) {
+        console.log('⚡ Using fast local analysis based on', recentEmotions.length, 'recent emotions');
+        this.currentEmotionalState = localState;
+        await this.cacheEmotionalState(localState);
+        
+        // Start background AI analysis for better accuracy
+        this.performBackgroundAIAnalysis(recentEmotions);
+        
+        return localState;
+      }
+
+      // Only call AI if we have conversation history or no recent emotions
       const conversationHistory = await this.getRecentConversations();
       
-      // Call AI analysis endpoint or use local analysis
-      const response = await ApiService.analyzeUserEmotionalState({
-        recentEmotions,
-        conversationHistory,
-        timeContext: new Date().toISOString(),
-      });
+      if (conversationHistory.length > 0) {
+        console.log('🧠 Performing AI analysis with', conversationHistory.length, 'conversations');
+        
+        // Call AI analysis endpoint with timeout
+        const response = await Promise.race([
+          ApiService.analyzeUserEmotionalState({
+            recentEmotions,
+            conversationHistory,
+            timeContext: new Date().toISOString(),
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('AI analysis timeout')), 8000)
+          )
+        ]);
 
-      if (response.success && response.data) {
-        this.currentEmotionalState = response.data;
-        await this.cacheEmotionalState(response.data);
-        return response.data;
-      } else {
-        // Fallback to local analysis
-        return this.generateLocalEmotionalState(recentEmotions);
+        if (response.success && response.data) {
+          this.currentEmotionalState = response.data;
+          await this.cacheEmotionalState(response.data);
+          return response.data;
+        }
       }
+      
+      // Fallback to local analysis
+      console.log('🔄 Falling back to local analysis');
+      return localState;
     } catch (error) {
       console.error('Error analyzing emotional state:', error);
       // Return cached state or generate basic state
@@ -75,25 +138,59 @@ class AIPersonalityService {
     }
   }
 
+  // Background AI analysis that doesn't block the UI
+  private async performBackgroundAIAnalysis(recentEmotions: any[]): Promise<void> {
+    try {
+      const conversationHistory = await this.getRecentConversations();
+      
+      const response = await ApiService.analyzeUserEmotionalState({
+        recentEmotions,
+        conversationHistory,
+        timeContext: new Date().toISOString(),
+      });
+
+      if (response.success && response.data) {
+        console.log('🎯 Background AI analysis completed, updating cache');
+        this.currentEmotionalState = response.data;
+        await this.cacheEmotionalState(response.data);
+      }
+    } catch (error) {
+      console.warn('Background AI analysis failed:', error);
+    }
+  }
+
   // Generate personality recommendations based on emotional state
   async getPersonalityRecommendations(emotionalState?: UserEmotionalState): Promise<AIPersonality> {
     const state = emotionalState || this.currentEmotionalState || await this.analyzeCurrentEmotionalState();
     
+    // Check for cached personality recommendations
+    const cached = await this.getCachedPersonalityRecommendations(state.mood);
+    if (cached) {
+      console.log('🚀 Using cached personality recommendations for mood:', state.mood);
+      return cached;
+    }
+    
     try {
+      console.log('🧠 Fetching personality recommendations for mood:', state.mood);
       const response = await ApiService.getPersonalityRecommendations(state);
       
       if (response.success && response.data) {
-        return {
+        const personality = {
           communicationStyle: response.data.communicationStyle,
           adaptivePrompts: response.data.suggestedPrompts || [],
           contextualHints: response.data.contextualHints || [],
         };
+        
+        // Cache the personality recommendations
+        await this.cachePersonalityRecommendations(state.mood, personality);
+        return personality;
       }
     } catch (error) {
       console.error('Error getting personality recommendations:', error);
     }
     
     // Fallback to local personality analysis
+    console.log('🔄 Using local personality recommendations');
     return this.generateLocalPersonalityRecommendations(state);
   }
 
@@ -319,6 +416,11 @@ class AIPersonalityService {
     };
   }
 
+  // Public method for generating default emotional state
+  public getDefaultEmotionalState(): UserEmotionalState {
+    return this.generateDefaultEmotionalState();
+  }
+
   private generateLocalPersonalityRecommendations(state: UserEmotionalState): AIPersonality {
     let communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
     
@@ -377,7 +479,14 @@ ${prompt}`;
 
   private async cacheEmotionalState(state: UserEmotionalState): Promise<void> {
     try {
-      await AsyncStorage.setItem(CACHE_KEYS.emotionalState, JSON.stringify({
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        console.warn('No user ID found, cannot cache emotional state');
+        return;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      await AsyncStorage.setItem(cacheKeys.emotionalState, JSON.stringify({
         data: state,
         timestamp: Date.now(),
       }));
@@ -386,13 +495,61 @@ ${prompt}`;
     }
   }
 
-  private async getCachedEmotionalState(): Promise<UserEmotionalState | null> {
+  private async cachePersonalityRecommendations(mood: string, personality: AIPersonality): Promise<void> {
     try {
-      const cached = await AsyncStorage.getItem(CACHE_KEYS.emotionalState);
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        console.warn('No user ID found, cannot cache personality recommendations');
+        return;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      const key = `${cacheKeys.personalityPreferences}_${mood}`;
+      await AsyncStorage.setItem(key, JSON.stringify({
+        data: personality,
+        timestamp: Date.now(),
+      }));
+    } catch (error) {
+      console.error('Error caching personality recommendations:', error);
+    }
+  }
+
+  private async getCachedPersonalityRecommendations(mood: string): Promise<AIPersonality | null> {
+    try {
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        return null;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      const key = `${cacheKeys.personalityPreferences}_${mood}`;
+      const cached = await AsyncStorage.getItem(key);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        // Use cached data if less than 1 hour old
-        if (Date.now() - timestamp < 60 * 60 * 1000) {
+        // Use cached data if less than 30 minutes old
+        if (Date.now() - timestamp < 30 * 60 * 1000) {
+          return data;
+        }
+      }
+    } catch (error) {
+      console.error('Error getting cached personality recommendations:', error);
+    }
+    return null;
+  }
+
+  private async getCachedEmotionalState(): Promise<UserEmotionalState | null> {
+    try {
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        return null;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      const cached = await AsyncStorage.getItem(cacheKeys.emotionalState);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        // Use cached data if less than 15 minutes old (reduced from 1 hour)
+        if (Date.now() - timestamp < CACHE_DURATION) {
           return data;
         }
       }
@@ -413,7 +570,11 @@ ${prompt}`;
         current[style].negative++;
       }
       
-      await AsyncStorage.setItem(CACHE_KEYS.personalityPreferences, JSON.stringify(current));
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (userId) {
+        const cacheKeys = getCacheKeys(userId);
+        await AsyncStorage.setItem(cacheKeys.personalityPreferences, JSON.stringify(current));
+      }
       this.personalityPreferences = current;
     } catch (error) {
       console.error('Error updating personality preferences:', error);

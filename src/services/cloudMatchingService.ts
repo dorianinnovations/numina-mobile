@@ -1,6 +1,7 @@
 import ApiService from './api';
 import AIPersonalityService, { UserEmotionalState } from './aiPersonalityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureStorageService from './secureStorage';
 
 interface CloudEvent {
   id: string;
@@ -45,11 +46,12 @@ interface CompatibleUser {
   connectionReason: string;
 }
 
-const CACHE_KEYS = {
-  events: '@cloud_events',
-  compatibility: '@compatibility_analysis',
-  userMatches: '@user_matches',
-};
+// Generate user-specific cache keys
+const getCacheKeys = (userId: string) => ({
+  events: `@cloud_events_${userId}`,
+  compatibility: `@compatibility_analysis_${userId}`,
+  userMatches: `@user_matches_${userId}`,
+});
 
 class CloudMatchingService {
   private static instance: CloudMatchingService;
@@ -80,7 +82,9 @@ class CloudMatchingService {
       });
 
       if (response.success && response.data) {
-        const enhancedEvents = await this.enhanceEventsWithAI(response.data, emotionalState);
+        // Ensure response.data is an array
+        const eventsArray = Array.isArray(response.data) ? response.data : [];
+        const enhancedEvents = await this.enhanceEventsWithAI(eventsArray, emotionalState);
         this.cachedEvents = enhancedEvents;
         await this.cacheEvents(enhancedEvents);
         return enhancedEvents;
@@ -264,6 +268,11 @@ class CloudMatchingService {
 
   // Private helper methods
   private async enhanceEventsWithAI(events: CloudEvent[], emotionalState: UserEmotionalState): Promise<CloudEvent[]> {
+    if (!Array.isArray(events)) {
+      console.warn('enhanceEventsWithAI: events is not an array, returning empty array');
+      return [];
+    }
+    
     return Promise.all(events.map(async (event) => {
       // Add AI matching scores and insights locally if not provided by backend
       if (!event.aiMatchScore) {
@@ -421,7 +430,14 @@ class CloudMatchingService {
   // Caching methods
   private async cacheEvents(events: CloudEvent[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(CACHE_KEYS.events, JSON.stringify({
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        console.warn('No user ID found, cannot cache events');
+        return;
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      await AsyncStorage.setItem(cacheKeys.events, JSON.stringify({
         data: events,
         timestamp: Date.now(),
       }));
@@ -432,7 +448,13 @@ class CloudMatchingService {
 
   private async getCachedEvents(): Promise<CloudEvent[]> {
     try {
-      const cached = await AsyncStorage.getItem(CACHE_KEYS.events);
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) {
+        return [];
+      }
+      
+      const cacheKeys = getCacheKeys(userId);
+      const cached = await AsyncStorage.getItem(cacheKeys.events);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
         // Use cached data if less than 30 minutes old
@@ -448,13 +470,17 @@ class CloudMatchingService {
 
   private async cacheCompatibilityAnalysis(eventId: string, analysis: CompatibilityAnalysis): Promise<void> {
     try {
-      const existing = await AsyncStorage.getItem(CACHE_KEYS.compatibility) || '{}';
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) return;
+      
+      const cacheKeys = getCacheKeys(userId);
+      const existing = await AsyncStorage.getItem(cacheKeys.compatibility) || '{}';
       const cache = JSON.parse(existing);
       cache[eventId] = {
         data: analysis,
         timestamp: Date.now(),
       };
-      await AsyncStorage.setItem(CACHE_KEYS.compatibility, JSON.stringify(cache));
+      await AsyncStorage.setItem(cacheKeys.compatibility, JSON.stringify(cache));
     } catch (error) {
       console.error('Error caching compatibility analysis:', error);
     }
@@ -462,7 +488,11 @@ class CloudMatchingService {
 
   private async cacheUserMatches(users: CompatibleUser[]): Promise<void> {
     try {
-      await AsyncStorage.setItem(CACHE_KEYS.userMatches, JSON.stringify({
+      const userId = await SecureStorageService.getCurrentUserId();
+      if (!userId) return;
+      
+      const cacheKeys = getCacheKeys(userId);
+      await AsyncStorage.setItem(cacheKeys.userMatches, JSON.stringify({
         data: users,
         timestamp: Date.now(),
       }));

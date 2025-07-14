@@ -12,15 +12,22 @@ import {
   FlatList,
   TextInput,
   Modal,
+  Image,
+  Alert,
+  Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 import { NuminaAnimations } from '../utils/animations';
 import { TextStyles } from '../utils/fonts';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { useRealTimeEvents } from '../hooks/useRealTimeEvents';
 
 const { width } = Dimensions.get('window');
 
@@ -39,7 +46,6 @@ interface Event {
   fullDescription?: string;
   location?: string;
   duration?: string;
-  // AI Enhancement Features
   aiMatchScore?: number;
   emotionalCompatibility?: 'high' | 'medium' | 'low';
   personalizedReason?: string;
@@ -48,6 +54,27 @@ interface Event {
   communityVibe?: 'energetic' | 'calm' | 'creative' | 'supportive' | 'adventurous';
   aiInsights?: string;
   growthOpportunity?: string;
+  // Enhanced fields
+  requiresApproval?: boolean;
+  isPrivate?: boolean;
+  skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'all';
+  tags?: string[];
+  ageRange?: { min: number; max: number };
+  cost?: number;
+  currency?: string;
+  requirements?: string;
+  whatToBring?: string;
+  cancellationPolicy?: 'flexible' | 'moderate' | 'strict';
+  repeatSchedule?: 'none' | 'daily' | 'weekly' | 'monthly';
+  virtualOption?: boolean;
+  meetingLink?: string;
+  contactInfo?: string;
+  socialMediaLinks?: {
+    instagram?: string;
+    twitter?: string;
+    facebook?: string;
+    discord?: string;
+  };
 }
 
 interface CloudScreenProps {
@@ -222,11 +249,42 @@ const SAMPLE_EVENTS: Event[] = [
 export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
   const [activeFilter, setActiveFilter] = useState<string>('ai-matched');
-  const [events, setEvents] = useState(SAMPLE_EVENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showAIInsights, setShowAIInsights] = useState(true);
   const [exploreMode, setExploreMode] = useState<'matched' | 'discover' | 'grow'>('matched');
+  
+  // Real-time events hook
+  const {
+    events: realTimeEvents,
+    comments,
+    isConnected,
+    isLoading: eventsLoading,
+    error: eventsError,
+    createEvent: createRealTimeEvent,
+    joinEvent: joinRealTimeEvent,
+    leaveEvent: leaveRealTimeEvent,
+    clearError,
+  } = useRealTimeEvents();
+
+  // Merge real-time events with sample events for demo
+  const [events, setEvents] = useState(() => {
+    const mergedEvents = [...realTimeEvents, ...SAMPLE_EVENTS];
+    // Remove duplicates based on ID
+    const uniqueEvents = mergedEvents.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
+    return uniqueEvents;
+  });
+
+  // Update events when real-time events change
+  useEffect(() => {
+    const mergedEvents = [...realTimeEvents, ...SAMPLE_EVENTS];
+    const uniqueEvents = mergedEvents.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
+    setEvents(uniqueEvents);
+  }, [realTimeEvents]);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     timeOfDay: [],
     eventType: [],
@@ -252,7 +310,31 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     location: '',
     duration: '',
     maxParticipants: 10,
+    // Enhanced fields
+    photos: [] as string[],
+    requiresApproval: false,
+    isPrivate: false,
+    skillLevel: 'beginner' as 'beginner' | 'intermediate' | 'advanced' | 'all',
+    tags: [] as string[],
+    ageRange: { min: 18, max: 65 },
+    cost: 0,
+    currency: 'USD',
+    requirements: '',
+    whatToBring: '',
+    cancellationPolicy: 'flexible' as 'flexible' | 'moderate' | 'strict',
+    repeatSchedule: 'none' as 'none' | 'daily' | 'weekly' | 'monthly',
+    virtualOption: false,
+    meetingLink: '',
+    contactInfo: '',
+    socialMediaLinks: {
+      instagram: '',
+      twitter: '',
+      facebook: '',
+      discord: '',
+    },
   });
+  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -366,15 +448,123 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     setShowTimePicker(false);
   };
 
-  const handleJoinEvent = (eventId: string) => {
+  // Photo upload functionality
+  const requestPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'We need access to your photo library to add event photos.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const handlePhotoUpload = async (source: 'camera' | 'library') => {
+    const hasPermission = await requestPermissions();
+    if (!hasPermission) return;
+
+    setUploadingPhoto(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      let result;
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'We need camera access to take photos.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [16, 9],
+          quality: 0.8,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [16, 9],
+          quality: 0.8,
+          allowsMultipleSelection: true,
+        });
+      }
+
+      if (!result.canceled) {
+        const newPhotos = result.assets.map(asset => asset.uri);
+        setCreateEventForm(prev => ({
+          ...prev,
+          photos: [...prev.photos, ...newPhotos].slice(0, 5) // Max 5 photos
+        }));
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      Alert.alert('Error', 'Failed to upload photo. Please try again.');
+    } finally {
+      setUploadingPhoto(false);
+      setShowPhotoOptions(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCreateEventForm(prev => ({
+      ...prev,
+      photos: prev.photos.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addTag = (tag: string) => {
+    if (tag && !createEventForm.tags.includes(tag)) {
+      setCreateEventForm(prev => ({
+        ...prev,
+        tags: [...prev.tags, tag].slice(0, 5) // Max 5 tags
+      }));
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setCreateEventForm(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const handleJoinEvent = async (eventId: string) => {
     NuminaAnimations.haptic.medium();
-    setEvents(prevEvents =>
-      prevEvents.map(event =>
-        event.id === eventId
-          ? { ...event, isJoined: !event.isJoined, participants: event.isJoined ? event.participants - 1 : event.participants + 1 }
-          : event
-      )
-    );
+    
+    try {
+      const event = events.find(e => e.id === eventId);
+      if (!event) return;
+
+      if (event.isJoined) {
+        // Leave event
+        await leaveRealTimeEvent(eventId);
+        setEvents(prevEvents =>
+          prevEvents.map(e =>
+            e.id === eventId
+              ? { ...e, isJoined: false, participants: e.participants - 1 }
+              : e
+          )
+        );
+      } else {
+        // Join event
+        await joinRealTimeEvent(eventId);
+        setEvents(prevEvents =>
+          prevEvents.map(e =>
+            e.id === eventId
+              ? { ...e, isJoined: true, participants: e.participants + 1 }
+              : e
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error joining/leaving event:', error);
+      // Optionally show error message to user
+    }
   };
 
   // AI-Enhanced filtering logic
@@ -709,197 +899,6 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     { key: 'cultural_exploration', label: 'Cultural', icon: 'globe', color: '#30B0C7' },
   ];
 
-  // Filter and search events
-  const filteredEvents = events.filter(event => {
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = 
-        event.title.toLowerCase().includes(query) ||
-        event.description.toLowerCase().includes(query) ||
-        event.type.toLowerCase().includes(query) ||
-        event.location?.toLowerCase().includes(query) ||
-        event.host.toLowerCase().includes(query);
-      
-      if (!matchesSearch) return false;
-    }
-
-    // Active filter
-    if (activeFilter === 'ai-matched') {
-      return event.aiMatchScore && event.aiMatchScore > 0.8;
-    } else if (activeFilter === 'mood-boost') {
-      return event.moodBoostPotential && event.moodBoostPotential > 8.0;
-    } else if (activeFilter === 'growth') {
-      return event.growthOpportunity && event.growthOpportunity.length > 0;
-    } else if (activeFilter === 'connections') {
-      return event.suggestedConnections && event.suggestedConnections.length > 0;
-    } else if (activeFilter !== 'all') {
-      return event.type === activeFilter;
-    }
-
-    return true;
-  });
-
-  // Render event item
-  const renderEventFeedItem = ({ item }: { item: Event }) => (
-    <TouchableOpacity
-      style={[
-        styles.eventItem,
-        {
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
-          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-        }
-      ]}
-      onPress={() => {
-        setSelectedEvent(item);
-        setShowEventModal(true);
-      }}
-      activeOpacity={0.8}
-    >
-      {/* AI Match Score Badge */}
-      {item.aiMatchScore && item.aiMatchScore > 0.8 && (
-        <View style={[
-          styles.aiMatchBadge,
-          {
-            backgroundColor: isDarkMode ? '#86efac' : '#10b981',
-          }
-        ]}>
-          <FontAwesome5 name="brain" size={12} color="#ffffff" />
-          <Text style={styles.aiMatchBadgeText}>
-            {Math.round(item.aiMatchScore * 100)}% Match
-          </Text>
-        </View>
-      )}
-
-      {/* Event Header */}
-      <View style={styles.eventHeader}>
-        <View style={[
-          styles.eventTypeIcon,
-          { backgroundColor: getEventTypeColor(item.type) + '20' }
-        ]}>
-          <FontAwesome5 
-            name={getEventTypeIcon(item.type)} 
-            size={16} 
-            color={getEventTypeColor(item.type)} 
-          />
-        </View>
-        <View style={styles.eventHeaderText}>
-          <Text style={[
-            styles.eventTitle,
-            { color: isDarkMode ? '#fff' : '#000' }
-          ]} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={[
-            styles.eventMeta,
-            { color: isDarkMode ? '#888' : '#666' }
-          ]}>
-            {item.date} • {item.time} • by {item.host}
-          </Text>
-        </View>
-        {item.isJoined && (
-          <View style={[
-            styles.joinedBadge,
-            { backgroundColor: isDarkMode ? '#86efac' : '#10b981' }
-          ]}>
-            <FontAwesome5 name="check" size={10} color="#ffffff" />
-          </View>
-        )}
-      </View>
-
-      {/* Event Description */}
-      <Text style={[
-        styles.eventDescription,
-        { color: isDarkMode ? '#ccc' : '#555' }
-      ]} numberOfLines={2}>
-        {item.description}
-      </Text>
-
-      {/* Event Stats */}
-      <View style={styles.eventStats}>
-        <View style={styles.eventStat}>
-          <FontAwesome5 name="users" size={12} color={isDarkMode ? '#888' : '#666'} />
-          <Text style={[
-            styles.eventStatText,
-            { color: isDarkMode ? '#888' : '#666' }
-          ]}>
-            {item.participants}/{item.maxParticipants}
-          </Text>
-        </View>
-        {item.location && (
-          <View style={styles.eventStat}>
-            <FontAwesome5 name="map-marker-alt" size={12} color={isDarkMode ? '#888' : '#666'} />
-            <Text style={[
-              styles.eventStatText,
-              { color: isDarkMode ? '#888' : '#666' }
-            ]} numberOfLines={1}>
-              {item.location}
-            </Text>
-          </View>
-        )}
-        {item.moodBoostPotential && (
-          <View style={styles.eventStat}>
-            <FontAwesome5 name="smile" size={12} color={isDarkMode ? '#86efac' : '#10b981'} />
-            <Text style={[
-              styles.eventStatText,
-              { color: isDarkMode ? '#86efac' : '#10b981' }
-            ]}>
-              +{item.moodBoostPotential.toFixed(1)}
-            </Text>
-          </View>
-        )}
-      </View>
-
-      {/* AI Insights */}
-      {item.aiInsights && (
-        <View style={[
-          styles.aiInsights,
-          {
-            backgroundColor: isDarkMode ? 'rgba(134, 239, 172, 0.1)' : 'rgba(134, 239, 172, 0.15)',
-            borderColor: isDarkMode ? '#86efac' : '#10b981',
-          }
-        ]}>
-          <FontAwesome5 name="lightbulb" size={10} color={isDarkMode ? '#86efac' : '#10b981'} />
-          <Text style={[
-            styles.aiInsightsText,
-            { color: isDarkMode ? '#86efac' : '#10b981' }
-          ]} numberOfLines={1}>
-            {item.aiInsights}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
-  );
-
-  // Helper functions
-  const getEventTypeIcon = (type: Event['type']) => {
-    const icons = {
-      food_dining: 'utensils',
-      tech_learning: 'laptop-code',
-      outdoor_activity: 'mountain',
-      creative_arts: 'palette',
-      fitness_wellness: 'dumbbell',
-      professional_networking: 'briefcase',
-      hobby_interest: 'gamepad',
-      cultural_exploration: 'globe',
-    };
-    return icons[type] || 'calendar';
-  };
-
-  const getEventTypeColor = (type: Event['type']) => {
-    const colors = {
-      food_dining: '#FF9500',
-      tech_learning: '#007AFF',
-      outdoor_activity: '#34C759',
-      creative_arts: '#AF52DE',
-      fitness_wellness: '#FF3B30',
-      professional_networking: '#5856D6',
-      hobby_interest: '#FF9500',
-      cultural_exploration: '#30B0C7',
-    };
-    return colors[type] || '#8E8E93';
-  };
-
   return (
     <ScreenWrapper
       showHeader={true}
@@ -924,7 +923,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
             }
           ]}>
 
-            {/* Search Bar */}
+            {/* Connection Status & Search Bar */}
             <View style={[
               styles.searchSection,
               {
@@ -932,6 +931,20 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                 borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
               }
             ]}>
+              {/* Connection Status */}
+              <View style={styles.connectionStatus}>
+                <View style={[
+                  styles.connectionDot,
+                  { backgroundColor: isConnected ? '#10b981' : '#ef4444' }
+                ]} />
+                <Text style={[
+                  styles.connectionText,
+                  { color: isDarkMode ? '#ccc' : '#666' }
+                ]}>
+                  {isConnected ? 'Live' : 'Offline'}
+                </Text>
+              </View>
+              
               <View style={[
                 styles.searchContainer,
                 {
@@ -966,7 +979,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
               </View>
               <TouchableOpacity
                 style={[
-                  styles.filterButton,
+                  styles.filterButtonIcon,
                   {
                     backgroundColor: showFilters 
                       ? (isDarkMode ? '#86efac' : '#10b981')
@@ -1214,6 +1227,52 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                 </View>
 
                 <ScrollView style={styles.createEventContent}>
+                  {/* Event Photos */}
+                  <View style={styles.createEventField}>
+                    <Text style={[
+                      styles.createEventFieldLabel,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Event Photos ({createEventForm.photos.length}/5)
+                    </Text>
+                    <View style={styles.photosContainer}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                        <View style={styles.photosRow}>
+                          {createEventForm.photos.map((photo, index) => (
+                            <View key={index} style={styles.photoItem}>
+                              <Image source={{ uri: photo }} style={styles.photoImage} />
+                              <TouchableOpacity
+                                style={styles.removePhotoButton}
+                                onPress={() => removePhoto(index)}
+                              >
+                                <FontAwesome5 name="times" size={12} color="#fff" />
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                          {createEventForm.photos.length < 5 && (
+                            <TouchableOpacity
+                              style={[
+                                styles.addPhotoButton,
+                                {
+                                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                                  borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
+                                }
+                              ]}
+                              onPress={() => setShowPhotoOptions(true)}
+                              disabled={uploadingPhoto}
+                            >
+                              {uploadingPhoto ? (
+                                <ActivityIndicator size="small" color={isDarkMode ? '#fff' : '#000'} />
+                              ) : (
+                                <FontAwesome5 name="plus" size={20} color={isDarkMode ? '#fff' : '#000'} />
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </ScrollView>
+                    </View>
+                  </View>
+
                   {/* Event Title */}
                   <View style={styles.createEventField}>
                     <Text style={[
@@ -1276,7 +1335,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View style={styles.eventTypeOptions}>
-                        {eventTypeFilters.slice(1).map((filter) => (
+                        {filterOptions.slice(5).map((filter) => (
                           <TouchableOpacity
                             key={filter.key}
                             style={[
@@ -1429,6 +1488,168 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                       keyboardType="numeric"
                     />
                   </View>
+
+                  {/* Event Settings */}
+                  <View style={styles.createEventField}>
+                    <Text style={[
+                      styles.createEventFieldLabel,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Event Settings
+                    </Text>
+                    <View style={styles.settingsContainer}>
+                      <View style={styles.settingRow}>
+                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                          Require Approval
+                        </Text>
+                        <Switch
+                          value={createEventForm.requiresApproval}
+                          onValueChange={(value) => setCreateEventForm(prev => ({ 
+                            ...prev, 
+                            requiresApproval: value 
+                          }))}
+                          trackColor={{ false: '#767577', true: '#add5fa' }}
+                          thumbColor={createEventForm.requiresApproval ? '#6ba3d0' : '#f4f3f4'}
+                        />
+                      </View>
+                      <View style={styles.settingRow}>
+                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                          Private Event
+                        </Text>
+                        <Switch
+                          value={createEventForm.isPrivate}
+                          onValueChange={(value) => setCreateEventForm(prev => ({ 
+                            ...prev, 
+                            isPrivate: value 
+                          }))}
+                          trackColor={{ false: '#767577', true: '#add5fa' }}
+                          thumbColor={createEventForm.isPrivate ? '#6ba3d0' : '#f4f3f4'}
+                        />
+                      </View>
+                      <View style={styles.settingRow}>
+                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                          Virtual Option
+                        </Text>
+                        <Switch
+                          value={createEventForm.virtualOption}
+                          onValueChange={(value) => setCreateEventForm(prev => ({ 
+                            ...prev, 
+                            virtualOption: value 
+                          }))}
+                          trackColor={{ false: '#767577', true: '#add5fa' }}
+                          thumbColor={createEventForm.virtualOption ? '#6ba3d0' : '#f4f3f4'}
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  {/* Skill Level */}
+                  <View style={styles.createEventField}>
+                    <Text style={[
+                      styles.createEventFieldLabel,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Skill Level
+                    </Text>
+                    <View style={styles.skillLevelContainer}>
+                      {['beginner', 'intermediate', 'advanced', 'all'].map((level) => (
+                        <TouchableOpacity
+                          key={level}
+                          style={[
+                            styles.skillLevelButton,
+                            {
+                              backgroundColor: createEventForm.skillLevel === level
+                                ? '#add5fa'
+                                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                              borderColor: createEventForm.skillLevel === level
+                                ? '#6ba3d0'
+                                : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'),
+                            }
+                          ]}
+                          onPress={() => setCreateEventForm(prev => ({ 
+                            ...prev, 
+                            skillLevel: level as any 
+                          }))}
+                        >
+                          <Text style={[
+                            styles.skillLevelText,
+                            {
+                              color: createEventForm.skillLevel === level
+                                ? '#ffffff'
+                                : (isDarkMode ? '#ccc' : '#666')
+                            }
+                          ]}>
+                            {level.charAt(0).toUpperCase() + level.slice(1)}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Cost */}
+                  <View style={styles.createEventField}>
+                    <Text style={[
+                      styles.createEventFieldLabel,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Cost (Optional)
+                    </Text>
+                    <View style={styles.costContainer}>
+                      <TextInput
+                        style={[
+                          styles.createEventInput,
+                          styles.costInput,
+                          {
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                            color: isDarkMode ? '#fff' : '#000',
+                          }
+                        ]}
+                        placeholder="0"
+                        placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                        value={createEventForm.cost.toString()}
+                        onChangeText={(text) => setCreateEventForm(prev => ({ 
+                          ...prev, 
+                          cost: parseFloat(text) || 0 
+                        }))}
+                        keyboardType="numeric"
+                      />
+                      <Text style={[
+                        styles.currencyLabel,
+                        { color: isDarkMode ? '#ccc' : '#666' }
+                      ]}>
+                        {createEventForm.currency}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* What to Bring */}
+                  <View style={styles.createEventField}>
+                    <Text style={[
+                      styles.createEventFieldLabel,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      What to Bring (Optional)
+                    </Text>
+                    <TextInput
+                      style={[
+                        styles.createEventInput,
+                        styles.createEventTextArea,
+                        {
+                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                          color: isDarkMode ? '#fff' : '#000',
+                        }
+                      ]}
+                      placeholder="List items participants should bring..."
+                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                      value={createEventForm.whatToBring}
+                      onChangeText={(text) => setCreateEventForm(prev => ({ ...prev, whatToBring: text }))}
+                      multiline={true}
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                    />
+                  </View>
                 </ScrollView>
 
                 {/* Create Button */}
@@ -1440,43 +1661,90 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                       opacity: (createEventForm.title && createEventForm.description) ? 1 : 0.5,
                     }
                   ]}
-                  onPress={() => {
+                  onPress={async () => {
                     if (createEventForm.title && createEventForm.description) {
-                      // Add new event logic here
-                      const newEvent: Event = {
-                        id: Date.now().toString(),
-                        title: createEventForm.title,
-                        description: createEventForm.description,
-                        type: createEventForm.type,
-                        date: createEventForm.date,
-                        time: createEventForm.time,
-                        participants: 1,
-                        maxParticipants: createEventForm.maxParticipants,
-                        host: 'You',
-                        isJoined: true,
-                        location: createEventForm.location,
-                        aiMatchScore: 0.95,
-                        emotionalCompatibility: 'high',
-                        personalizedReason: 'Perfect for your current interests',
-                        moodBoostPotential: 9.0,
-                        communityVibe: 'energetic',
-                        aiInsights: 'Great opportunity to connect with like-minded people',
-                        growthOpportunity: 'Expand your social circle and skills',
-                      };
-                      
-                      setEvents(prev => [newEvent, ...prev]);
-                      setShowCreateEventModal(false);
-                      
-                      // Reset form
-                      setCreateEventForm({
-                        title: '',
-                        description: '',
-                        type: 'food_dining',
-                        date: 'Today',
-                        time: '7:00 PM',
-                        location: '',
-                        maxParticipants: 10,
-                      });
+                      try {
+                        // Create event with real-time sync
+                        const eventData = {
+                          title: createEventForm.title,
+                          description: createEventForm.description,
+                          type: createEventForm.type,
+                          date: createEventForm.date,
+                          time: createEventForm.time,
+                          location: createEventForm.location,
+                          duration: createEventForm.duration,
+                          maxParticipants: createEventForm.maxParticipants,
+                          hostId: 'current_user_id',
+                          hostName: 'You',
+                          // Enhanced fields
+                          photos: createEventForm.photos,
+                          requiresApproval: createEventForm.requiresApproval,
+                          isPrivate: createEventForm.isPrivate,
+                          skillLevel: createEventForm.skillLevel,
+                          tags: createEventForm.tags,
+                          ageRange: createEventForm.ageRange,
+                          cost: createEventForm.cost,
+                          currency: createEventForm.currency,
+                          requirements: createEventForm.requirements,
+                          whatToBring: createEventForm.whatToBring,
+                          cancellationPolicy: createEventForm.cancellationPolicy,
+                          repeatSchedule: createEventForm.repeatSchedule,
+                          virtualOption: createEventForm.virtualOption,
+                          meetingLink: createEventForm.meetingLink,
+                          contactInfo: createEventForm.contactInfo,
+                          socialMediaLinks: createEventForm.socialMediaLinks,
+                          // AI enhancement
+                          aiMatchScore: 0.95,
+                          emotionalCompatibility: 'high',
+                          personalizedReason: 'Perfect for your current interests',
+                          moodBoostPotential: 9.0,
+                          communityVibe: 'energetic',
+                          aiInsights: 'Great opportunity to connect with like-minded people',
+                          growthOpportunity: 'Expand your social circle and skills',
+                        };
+
+                        await createRealTimeEvent(eventData);
+                        setShowCreateEventModal(false);
+                        
+                        // Reset form
+                        setCreateEventForm({
+                          title: '',
+                          description: '',
+                          type: 'food_dining',
+                          date: '',
+                          time: '',
+                          location: '',
+                          duration: '',
+                          maxParticipants: 10,
+                          photos: [],
+                          requiresApproval: false,
+                          isPrivate: false,
+                          skillLevel: 'beginner',
+                          tags: [],
+                          ageRange: { min: 18, max: 65 },
+                          cost: 0,
+                          currency: 'USD',
+                          requirements: '',
+                          whatToBring: '',
+                          cancellationPolicy: 'flexible',
+                          repeatSchedule: 'none',
+                          virtualOption: false,
+                          meetingLink: '',
+                          contactInfo: '',
+                          socialMediaLinks: {
+                            instagram: '',
+                            twitter: '',
+                            facebook: '',
+                            discord: '',
+                          },
+                        });
+                        
+                        // Haptic feedback for success
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      } catch (error) {
+                        console.error('Error creating event:', error);
+                        // Show error to user
+                      }
                     }
                   }}
                   disabled={!createEventForm.title || !createEventForm.description}
@@ -1486,6 +1754,77 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                     Create Event
                   </Text>
                 </TouchableOpacity>
+              </View>
+            </BlurView>
+          </Modal>
+
+          {/* Photo Options Modal */}
+          <Modal
+            visible={showPhotoOptions}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={() => setShowPhotoOptions(false)}
+          >
+            <BlurView style={styles.modalOverlay} intensity={20}>
+              <View style={[
+                styles.photoOptionsModal,
+                {
+                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
+                }
+              ]}>
+                <View style={styles.photoOptionsHeader}>
+                  <Text style={[
+                    styles.photoOptionsTitle,
+                    { color: isDarkMode ? '#fff' : '#000' }
+                  ]}>
+                    Add Photo
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.closePhotoOptionsButton}
+                    onPress={() => setShowPhotoOptions(false)}
+                  >
+                    <FontAwesome5 name="times" size={18} color={isDarkMode ? '#888' : '#666'} />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.photoOptionsContent}>
+                  <TouchableOpacity
+                    style={[
+                      styles.photoOptionButton,
+                      {
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                      }
+                    ]}
+                    onPress={() => handlePhotoUpload('camera')}
+                  >
+                    <FontAwesome5 name="camera" size={24} color={isDarkMode ? '#add5fa' : '#6ba3d0'} />
+                    <Text style={[
+                      styles.photoOptionText,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Take Photo
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.photoOptionButton,
+                      {
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                      }
+                    ]}
+                    onPress={() => handlePhotoUpload('library')}
+                  >
+                    <FontAwesome5 name="images" size={24} color={isDarkMode ? '#add5fa' : '#6ba3d0'} />
+                    <Text style={[
+                      styles.photoOptionText,
+                      { color: isDarkMode ? '#fff' : '#000' }
+                    ]}>
+                      Choose from Library
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </BlurView>
           </Modal>
@@ -1581,6 +1920,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
+  },
+  filterButtonIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   filterButtonText: {
     fontSize: 13,
@@ -2254,6 +2600,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  connectionStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 12,
+  },
+  connectionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  connectionText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -2266,13 +2628,6 @@ const styles = StyleSheet.create({
   clearSearchButton: {
     padding: 4,
     marginLeft: 8,
-  },
-  filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 
   // Event Item Styles
@@ -2487,5 +2842,144 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#ffffff',
     fontFamily: 'Nunito_600SemiBold',
+  },
+  
+  // Photo Upload Styles
+  photosContainer: {
+    marginTop: 8,
+  },
+  photosRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  photoItem: {
+    position: 'relative',
+  },
+  photoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  removePhotoButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ff4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  addPhotoButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Photo Options Modal Styles
+  photoOptionsModal: {
+    width: '80%',
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  photoOptionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    paddingBottom: 16,
+  },
+  photoOptionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  closePhotoOptionsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoOptionsContent: {
+    padding: 20,
+    paddingTop: 0,
+    gap: 16,
+  },
+  photoOptionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  photoOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  
+  // Settings Styles
+  settingsContainer: {
+    gap: 16,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  settingLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  
+  // Skill Level Styles
+  skillLevelContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  skillLevelButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  skillLevelText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  
+  // Cost Styles
+  costContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  costInput: {
+    flex: 1,
+  },
+  currencyLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    minWidth: 40,
   },
 });

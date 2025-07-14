@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   StatusBar,
   TouchableOpacity,
   Linking,
+  Animated,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -16,6 +19,8 @@ import { Header } from '../components/Header';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+
+const { width } = Dimensions.get('window');
 
 interface AboutScreenProps {
   onNavigateBack: () => void;
@@ -29,115 +34,301 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
   const { isDarkMode } = useTheme();
   const navigation = useNavigation<AboutScreenNavigationProp>();
 
+  // Animation refs - more professional timing
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+
+  // Individual card animations with staggered professional timing
+  const cardAnims = useRef(
+    Array.from({ length: 6 }, () => ({
+      fade: new Animated.Value(0),
+      slide: new Animated.Value(40),
+      scale: new Animated.Value(0.92),
+      rotate: new Animated.Value(-2),
+    }))
+  ).current;
+
+  // Header animation
+  const headerAnim = useRef({
+    fade: new Animated.Value(0),
+    slide: new Animated.Value(60),
+    scale: new Animated.Value(0.85),
+  }).current;
+
+  useEffect(() => {
+    // Professional entry animation sequence
+    Animated.sequence([
+      // Header animation first
+      Animated.parallel([
+        Animated.timing(headerAnim.fade, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(headerAnim.slide, {
+          toValue: 0,
+          duration: 800,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(headerAnim.scale, {
+          toValue: 1,
+          tension: 50,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Main content animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          delay: 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 600,
+          delay: 200,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 60,
+          friction: 8,
+          delay: 200,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+
+    // Staggered card animations with professional timing
+    cardAnims.forEach((anim, index) => {
+      const delay = 400 + (index * 120); // More sophisticated stagger timing
+      
+      Animated.parallel([
+        Animated.timing(anim.fade, {
+          toValue: 1,
+          duration: 700,
+          delay,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim.slide, {
+          toValue: 0,
+          duration: 700,
+          delay,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.spring(anim.scale, {
+          toValue: 1,
+          tension: 55,
+          friction: 8,
+          delay,
+          useNativeDriver: true,
+        }),
+        Animated.timing(anim.rotate, {
+          toValue: 0,
+          duration: 700,
+          delay,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+  }, []);
+
   const onTitlePress = () => {
     navigation.navigate('Chat');
   };
 
-  const aboutSections = [
+  const creatorData = [
     {
-      title: 'App Information',
-      items: [
-        { icon: 'info-circle', title: 'Version', value: '1.0.0', type: 'info' },
-        { icon: 'calendar-alt', title: 'Release Date', value: 'January 2025', type: 'info' },
-        { icon: 'code', title: 'Build', value: '2025.01.001', type: 'info' },
-      ]
+      type: 'creator',
+      name: 'Doresh Seeker',
+      role: 'Solo Developer & Innovation Architect',
+      bio: 'A dedicated independent developer committed to advancing emotional intelligence technology and fostering meaningful human-AI connections through cutting-edge innovation.',
+      icon: 'user-circle',
+      links: [
+        { type: 'github', url: 'https://github.com/dorianinnovations', icon: 'github' },
+        { type: 'linkedin', url: 'https://www.linkedin.com/in/isaiahpappas', icon: 'linkedin' },
+        { type: 'twitter', url: 'https://twitter.com/numinaworks', icon: 'twitter' },
+      ],
     },
     {
-      title: 'Legal & Privacy',
-      items: [
-        { icon: 'file-contract', title: 'Terms of Service', desc: 'View our terms and conditions', type: 'link' },
-        { icon: 'shield-alt', title: 'Privacy Policy', desc: 'How we protect your data', type: 'link' },
-        { icon: 'balance-scale', title: 'License', desc: 'Open source licenses', type: 'link' },
-      ]
+      type: 'app',
+      name: 'Numina',
+      role: 'Advanced AI Emotional Intelligence Platform',
+      bio: 'A sophisticated AI-powered platform designed to enhance emotional awareness, provide personalized wellness insights, and facilitate deeper self-understanding through intelligent analysis.',
+      icon: 'brain',
+      version: '1.0.0',
+      build: '2025.01.001',
     },
     {
-      title: 'Connect With Us',
-      items: [
-        { icon: 'globe', title: 'Website', value: 'numina.ai', type: 'link' },
-        { icon: 'envelope', title: 'Support', value: 'support@numina.ai', type: 'link' },
-        { icon: 'twitter', title: 'Twitter', value: '@numina_ai', type: 'link' },
-        { icon: 'github', title: 'GitHub', value: 'github.com/numina', type: 'link' },
-      ]
+      type: 'vision',
+      name: 'Innovation Mission',
+      role: 'Democratizing Emotional Intelligence',
+      bio: 'Committed to making advanced emotional intelligence tools accessible to everyone, empowering individuals to cultivate resilience, self-awareness, and meaningful human connections.',
+      icon: 'eye',
+    },
+    {
+      type: 'technology',
+      name: 'Engineering Excellence',
+      role: 'State-of-the-Art Technology',
+      bio: 'Built with modern React Native, TypeScript, advanced AI/ML models, and robust cloud infrastructure to deliver a seamless, intelligent user experience.',
+      icon: 'code',
+    },
+    {
+      type: 'community',
+      name: 'Open Innovation',
+      role: 'Collaborative Development',
+      bio: 'Numina embraces open-source principles, fostering a collaborative ecosystem where innovation thrives and community feedback drives continuous improvement.',
+      icon: 'users',
+    },
+    {
+      type: 'contact',
+      name: 'Connect & Collaborate',
+      role: 'Partnership & Support',
+      bio: 'Interested in collaboration, technical discussions, or providing feedback? Let\'s explore opportunities to advance emotional intelligence technology together.',
+      icon: 'envelope',
+      links: [
+        { type: 'email', url: 'mailto:support@numina.ai', icon: 'envelope' },
+        { type: 'website', url: 'https://numina.ai', icon: 'globe' },
+      ],
     },
   ];
 
-  const handleLinkPress = (item: any) => {
-    if (item.type === 'link') {
-      // Handle different types of links
-      if (item.title === 'Support') {
-        Linking.openURL(`mailto:${item.value}`);
-      } else if (item.title === 'Website') {
-        Linking.openURL(`https://${item.value}`);
-      } else if (item.title === 'Twitter') {
-        Linking.openURL(`https://twitter.com/${item.value.replace('@', '')}`);
-      } else if (item.title === 'GitHub') {
-        Linking.openURL(`https://${item.value}`);
-      }
-    }
+  const handleLinkPress = (url: string) => {
+    Linking.openURL(url);
   };
 
-  const renderAboutItem = (item: any, index: number) => (
-    <TouchableOpacity
-      key={index}
-      style={[
-        styles.aboutItem,
-        {
-          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-          borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-        }
-      ]}
-      activeOpacity={item.type === 'link' ? 0.7 : 1}
-      onPress={() => handleLinkPress(item)}
-    >
-      <View style={[
-        styles.aboutIcon,
-        {
-          backgroundColor: isDarkMode ? 'rgba(134, 239, 172, 0.1)' : 'rgba(134, 239, 172, 0.15)',
-        }
-      ]}>
-        <FontAwesome5 
-          name={item.icon as any} 
-          size={16} 
-          color={isDarkMode ? '#86efac' : '#10b981'} 
-        />
-      </View>
-      <View style={styles.aboutText}>
-        <Text style={[
-          styles.aboutTitle,
-          { color: isDarkMode ? '#ffffff' : '#000000' }
-        ]}>
-          {item.title}
-        </Text>
-        {item.value && (
+  const handleCardPress = (index: number) => {
+    const anim = cardAnims[index];
+    
+    // Professional press animation
+    Animated.sequence([
+      Animated.timing(anim.scale, {
+        toValue: 0.96,
+        duration: 100,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.spring(anim.scale, {
+        toValue: 1,
+        tension: 300,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const renderCard = (item: any, index: number) => {
+    const anim = cardAnims[index];
+    
+    return (
+      <TouchableOpacity
+        key={index}
+        activeOpacity={0.95}
+        onPress={() => handleCardPress(index)}
+      >
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              backgroundColor: isDarkMode ? '#111111' : 'rgba(255, 255, 255, 0.25)',
+              borderColor: isDarkMode ? '#222222' : 'rgba(255, 255, 255, 0.3)',
+              opacity: anim.fade,
+              transform: [
+                { translateY: anim.slide },
+                { scale: anim.scale },
+                { rotate: anim.rotate.interpolate({
+                  inputRange: [-2, 0],
+                  outputRange: ['-2deg', '0deg'],
+                }) },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={[
+              styles.cardIcon,
+              {
+                backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.1)' : 'rgba(173, 213, 250, 0.15)',
+              }
+            ]}>
+              <FontAwesome5 
+                name={item.icon as any} 
+                size={24} 
+                color={isDarkMode ? '#add5fa' : '#6ba3d0'} 
+              />
+            </View>
+            <View style={styles.cardTitleContainer}>
+              <Text style={[
+                styles.cardName,
+                { color: isDarkMode ? '#ffffff' : '#000000' }
+              ]}>
+                {item.name}
+              </Text>
+              <Text style={[
+                styles.cardRole,
+                { color: isDarkMode ? '#add5fa' : '#6ba3d0' }
+              ]}>
+                {item.role}
+              </Text>
+            </View>
+          </View>
+
           <Text style={[
-            styles.aboutValue,
-            { 
-              color: item.type === 'link' 
-                ? (isDarkMode ? '#86efac' : '#10b981')
-                : (isDarkMode ? '#bbbbbb' : '#666666')
-            }
+            styles.cardBio,
+            { color: isDarkMode ? '#bbbbbb' : '#666666' }
           ]}>
-            {item.value}
+            {item.bio}
           </Text>
-        )}
-        {item.desc && (
-          <Text style={[
-            styles.aboutDesc,
-            { color: isDarkMode ? '#888888' : '#666666' }
-          ]}>
-            {item.desc}
-          </Text>
-        )}
-      </View>
-      {item.type === 'link' && (
-        <FontAwesome5 
-          name="external-link-alt" 
-          size={12} 
-          color={isDarkMode ? '#666666' : '#999999'} 
-        />
-      )}
-    </TouchableOpacity>
-  );
+
+          {item.version && (
+            <View style={styles.appInfo}>
+              <Text style={[
+                styles.appVersion,
+                { color: isDarkMode ? '#888888' : '#666666' }
+              ]}>
+                Version {item.version} • Build {item.build}
+              </Text>
+            </View>
+          )}
+
+          {item.links && (
+            <View style={styles.cardLinks}>
+              {item.links.map((link: any, linkIndex: number) => (
+                <TouchableOpacity
+                  key={linkIndex}
+                  style={[
+                    styles.linkButton,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.05)',
+                      borderColor: isDarkMode ? '#333' : 'rgba(0, 0, 0, 0.1)',
+                    }
+                  ]}
+                  onPress={() => handleLinkPress(link.url)}
+                  activeOpacity={0.8}
+                >
+                  <FontAwesome5
+                    name={link.icon as any}
+                    size={16}
+                    color={isDarkMode ? '#add5fa' : '#6ba3d0'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <PageBackground>
@@ -147,76 +338,98 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
           backgroundColor="transparent"
           translucent={true}
         />
-        <ScrollView 
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* App Header */}
-          <View style={[
-            styles.appHeader,
+        
+        {/* Header Component */}
+        <Header
+          onTitlePress={onTitlePress}
+          onMenuPress={() => {}}
+          onBackPress={onNavigateBack}
+          title="About"
+          subtitle="Learn more about Numina"
+          showBackButton={true}
+          showMenuButton={false}
+        />
+        
+        <Animated.View
+          style={[
+            styles.content,
             {
-              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-              borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-            }
-          ]}>
-            <View style={[
-              styles.appIcon,
-              {
-                backgroundColor: isDarkMode ? '#86efac' : '#10b981',
-              }
-            ]}>
-              <FontAwesome5 
-                name="brain" 
-                size={32} 
-                color="#ffffff" 
-              />
-            </View>
-            <Text style={[
-              styles.appName,
-              { color: isDarkMode ? '#ffffff' : '#000000' }
-            ]}>
-              Numina
-            </Text>
-            <Text style={[
-              styles.appTagline,
-              { color: isDarkMode ? '#bbbbbb' : '#666666' }
-            ]}>
-              Your AI-powered emotional wellness companion
-            </Text>
-          </View>
-
-          {/* About Sections */}
-          {aboutSections.map((section, sectionIndex) => (
-            <View key={sectionIndex} style={styles.section}>
+              opacity: fadeAnim,
+              transform: [
+                { translateY: slideAnim },
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
+        >
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* App Header with Professional Animation */}
+            <Animated.View 
+              style={[
+                styles.appHeader,
+                {
+                  backgroundColor: isDarkMode ? '#111111' : 'rgba(255, 255, 255, 0.25)',
+                  borderColor: isDarkMode ? '#222222' : 'rgba(255, 255, 255, 0.3)',
+                  opacity: headerAnim.fade,
+                  transform: [
+                    { translateY: headerAnim.slide },
+                    { scale: headerAnim.scale },
+                  ],
+                }
+              ]}
+            >
+              <View style={[
+                styles.appIcon,
+                {
+                  backgroundColor: isDarkMode ? '#add5fa' : '#6ba3d0',
+                }
+              ]}>
+                <FontAwesome5 
+                  name="brain" 
+                  size={40} 
+                  color="#ffffff" 
+                />
+              </View>
               <Text style={[
-                styles.sectionTitle,
+                styles.appName,
                 { color: isDarkMode ? '#ffffff' : '#000000' }
               ]}>
-                {section.title}
+                Numina
               </Text>
-              <View style={styles.sectionItems}>
-                {section.items.map((item, itemIndex) => renderAboutItem(item, itemIndex))}
-              </View>
-            </View>
-          ))}
+              <Text style={[
+                styles.appTagline,
+                { color: isDarkMode ? '#bbbbbb' : '#666666' }
+              ]}>
+                Advanced AI-powered emotional intelligence platform
+              </Text>
+            </Animated.View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={[
-              styles.footerText,
-              { color: isDarkMode ? '#666666' : '#999999' }
-            ]}>
-              Made with ❤️ for emotional wellness
-            </Text>
-            <Text style={[
-              styles.copyright,
-              { color: isDarkMode ? '#444444' : '#cccccc' }
-            ]}>
-              © 2025 Numina. All rights reserved.
-            </Text>
-          </View>
-        </ScrollView>
+            {/* Creator & Team Cards */}
+            <View style={styles.cardsContainer}>
+              {creatorData.map((item, index) => renderCard(item, index))}
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={[
+                styles.footerText,
+                { color: isDarkMode ? '#666666' : '#999999' }
+              ]}>
+                Engineered with precision for advancing emotional intelligence
+              </Text>
+              <Text style={[
+                styles.copyright,
+                { color: isDarkMode ? '#444444' : '#cccccc' }
+              ]}>
+                © 2025 Numina. All rights reserved.
+              </Text>
+            </View>
+          </ScrollView>
+        </Animated.View>
       </SafeAreaView>
     </PageBackground>
   );
@@ -228,105 +441,159 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 120,
+    paddingTop: 20,
+  },
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
-    padding: 24,
+    padding: 16,
     paddingBottom: 40,
   },
   appHeader: {
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    padding: 32,
+    padding: 40,
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
   },
   appIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
+    width: 120,
+    height: 120,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 36,
     fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-    marginBottom: 8,
+    fontFamily: 'Nunito_700Bold',
+    marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: -1.5,
   },
   appTagline: {
     fontSize: 16,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
     lineHeight: 24,
   },
-  section: {
-    marginBottom: 32,
+  cardsContainer: {
+    gap: 28,
+    marginHorizontal: -8,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 16,
+  card: {
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
   },
-  sectionItems: {
-    gap: 12,
-  },
-  aboutItem: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 16,
-    minHeight: 38 * 1.6, // Thin brick style
+    marginBottom: 20,
   },
-  aboutIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  cardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  aboutText: {
+  cardTitleContainer: {
     flex: 1,
   },
-  aboutTitle: {
-    fontSize: 14,
+  cardName: {
+    fontSize: 20,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 2,
+    fontFamily: 'Nunito_600SemiBold',
+    marginBottom: 4,
+    letterSpacing: -0.5,
   },
-  aboutValue: {
+  cardRole: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    letterSpacing: -0.2,
+  },
+  cardBio: {
+    fontSize: 15,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    lineHeight: 22,
+    marginBottom: 20,
+    letterSpacing: -0.1,
+  },
+  appInfo: {
+    marginBottom: 20,
+  },
+  appVersion: {
     fontSize: 12,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
+    textAlign: 'center',
+    letterSpacing: -0.1,
   },
-  aboutDesc: {
-    fontSize: 12,
-    fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+  cardLinks: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  linkButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   footer: {
     alignItems: 'center',
-    paddingTop: 32,
+    paddingTop: 48,
+    marginTop: 40,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   footerText: {
     fontSize: 14,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 8,
+    fontFamily: 'Nunito_400Regular',
+    marginBottom: 12,
     textAlign: 'center',
+    letterSpacing: -0.1,
   },
   copyright: {
     fontSize: 12,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
+    letterSpacing: -0.1,
   },
 });
