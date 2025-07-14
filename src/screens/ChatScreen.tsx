@@ -28,6 +28,8 @@ import { ConversationHistory } from '../components/ConversationHistory';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { useAIPersonality } from '../hooks/useAIPersonality';
+import { useCloudMatching } from '../hooks/useCloudMatching';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -48,6 +50,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [conversation, setConversation] = useState<Conversation | null>(initialConversation || null);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // AI Personality Integration
+  const {
+    emotionalState,
+    aiPersonality,
+    isAnalyzing,
+    sendAdaptiveChatMessage,
+    getContextualSuggestions,
+    getAdaptivePlaceholder,
+    error: aiError,
+  } = useAIPersonality();
+
+  // Cloud Matching Integration  
+  const {
+    getPersonalizedRecommendations,
+    error: cloudError,
+  } = useCloudMatching();
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -134,19 +153,47 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setConversation(currentConversation);
 
     try {
-      // Send message to real backend with streaming
-      await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
-        // Update the AI message with streaming content
-        const updatedAIMessage = {
-          ...aiMessage,
-          text: partialResponse,
-          isStreaming: true,
-        };
+      // Use AI Personality Service for adaptive chat if available
+      let response;
+      if (sendAdaptiveChatMessage && emotionalState && aiPersonality) {
+        console.log('🧠 Using AI Personality Service for adaptive response');
+        console.log('Emotional State:', emotionalState);
+        console.log('AI Personality:', aiPersonality);
         
-        // Update conversation with streaming response
-        const streamingConversation = { ...currentConversation };
-        streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
-        streamingConversation.updatedAt = new Date().toISOString();
+        response = await sendAdaptiveChatMessage(
+          userMessage.text,
+          (partialResponse: string, context?: any) => {
+            // Update the AI message with streaming content
+            const updatedAIMessage = {
+              ...aiMessage,
+              text: partialResponse,
+              isStreaming: true,
+              personalityContext: context,
+            };
+            
+            // Update conversation with streaming response
+            const streamingConversation = { ...currentConversation };
+            streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
+            streamingConversation.updatedAt = new Date().toISOString();
+            
+            setConversation(streamingConversation);
+          }
+        );
+      } else {
+        console.log('📡 Using traditional ChatService');
+        // Fallback to traditional chat service
+        await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
+          // Update the AI message with streaming content
+          const updatedAIMessage = {
+            ...aiMessage,
+            text: partialResponse,
+            isStreaming: true,
+          };
+          
+          // Update conversation with streaming response
+          const streamingConversation = { ...currentConversation };
+          streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
+          streamingConversation.updatedAt = new Date().toISOString();
         
         setConversation(streamingConversation);
         currentConversation = streamingConversation;
@@ -275,7 +322,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       showBackButton={false}
       showMenuButton={true}
       title="Numina"
-      subtitle="Emotion Inference • Pattern Recognition • Deep Insights"
+      subtitle={
+        emotionalState 
+          ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
+          : "Emotion Inference • Pattern Recognition • Deep Insights"
+      }
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -304,16 +355,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             extraData={conversation.messages.length} // Force re-render on new messages
           />
 
-          {/* Enhanced Input */}
+          {/* Enhanced AI-Powered Input */}
           <ChatInput
             value={inputText}
             onChangeText={setInputText}
             onSend={sendMessage}
             onVoiceStart={handleVoiceStart}
             onVoiceEnd={handleVoiceEnd}
-            isLoading={isLoading}
-            placeholder="Share your thoughts..."
+            isLoading={isLoading || isAnalyzing}
+            placeholder={getAdaptivePlaceholder() || "Share your thoughts..."}
             voiceEnabled={true}
+            userEmotionalState={emotionalState || undefined}
+            aiPersonality={aiPersonality || undefined}
+            onPersonalityUpdate={(personality) => {
+              console.log('🎯 Personality update received:', personality);
+            }}
           />
         </KeyboardAvoidingView>
 
