@@ -1,3 +1,4 @@
+import NetInfo from '@react-native-community/netinfo';
 import AuthManager from './authManager';
 
 /**
@@ -6,15 +7,19 @@ import AuthManager from './authManager';
  * Handles authentication, token management, chat completion, and data sync
  */
 
-// API Configuration - always use production server
-const getApiBaseUrl = () => {
-  // Always use production server for simplicity
-  return 'https://server-a7od.onrender.com';
-};
+import ENV, { SECURITY_HEADERS, validateEnvironment } from '../config/environment';
+
+// Validate environment on import
+if (!validateEnvironment()) {
+  throw new Error('Invalid environment configuration');
+}
+
+// API Configuration
+export const API_BASE_URL = ENV.API_BASE_URL;
 
 // Chat API configuration
 export const CHAT_API_CONFIG = {
-  PRODUCTION_URL: 'https://server-a7od.onrender.com/completion',
+  PRODUCTION_URL: `${ENV.API_BASE_URL}/completion`,
   REQUEST_DEFAULTS: {
     stream: true,
     temperature: 0.8,
@@ -22,8 +27,6 @@ export const CHAT_API_CONFIG = {
     stop: ['<|im_end|>', '\n<|im_start|>']
   }
 };
-
-export const API_BASE_URL = getApiBaseUrl();
 
 // Request timeout configuration
 const REQUEST_TIMEOUT = 10000; // 10 seconds
@@ -205,6 +208,43 @@ interface AppConfig {
 class ApiService {
   private static baseURL = API_BASE_URL;
 
+  // CRITICAL FIX: Add network state validation
+  private static async validateNetworkState(): Promise<boolean> {
+    try {
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        console.warn('🌐 API: No network connection available');
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('🌐 API: Failed to check network state:', error);
+      return false;
+    }
+  }
+
+  // CRITICAL FIX: Enhanced error logging
+  private static logError(context: string, error: any, endpoint?: string): void {
+    const errorInfo = {
+      context,
+      endpoint,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      timestamp: new Date().toISOString(),
+    };
+    
+    console.error('❌ API Error:', errorInfo);
+    
+    // In production, you might want to send this to a logging service
+    if (__DEV__) {
+      console.group('🔍 Detailed Error Info');
+      console.log('Context:', context);
+      console.log('Endpoint:', endpoint);
+      console.log('Error:', error);
+      console.groupEnd();
+    }
+  }
+
   // Generic API request method with retry logic and exponential backoff
   static async apiRequest<T = any>(
     endpoint: string, 
@@ -213,17 +253,27 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
+    // CRITICAL FIX: Validate network state before attempting request
+    const isNetworkAvailable = await this.validateNetworkState();
+    if (!isNetworkAvailable) {
+      return {
+        success: false,
+        error: 'No network connection available. Please check your internet connection and try again.',
+      };
+    }
+    
     for (let attempt = 1; attempt <= retryAttempts; attempt++) {
       try {
-        // Get token from auth manager
-        const token = AuthManager.getInstance().getCurrentToken();
+        // Get token from AuthManager (single source of truth)
+        const token = await AuthManager.getInstance().getCurrentToken();
         
-        // Default headers - exactly matching web app
+        // Default headers with security headers
         const defaultHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
+          ...SECURITY_HEADERS,
         };
 
-        // Add authorization header if token exists - exactly like web app
+        // Add authorization header if token exists
         if (token) {
           defaultHeaders.Authorization = `Bearer ${token}`;
         }
@@ -245,11 +295,10 @@ class ApiService {
         };
 
         const url = `${this.baseURL}${endpoint}`;
-        console.log(`🌐 API: Making request to ${url}`);
-        console.log(`🔑 API: Headers:`, headers);
+        // API request to server
         const response = await fetch(url, config);
         clearTimeout(timeoutId);
-        console.log(`📡 API: Response status: ${response.status}`);
+        // API response received
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'Network error' }));
@@ -260,10 +309,8 @@ class ApiService {
               !endpoint.includes('/signup') &&
               !endpoint.includes('/sentiment-data') &&  // Don't logout on sentiment data errors
               !endpoint.includes('/analytics/llm')) {    // Don't logout on LLM errors
-            // Import dynamically to avoid circular dependency
-            const { default: SecureStorageService } = await import('./secureStorage');
-            await SecureStorageService.clearUserData();
-            // The auth context will handle the state change
+            // Use AuthManager for consistent auth clearing
+            await AuthManager.getInstance().logout();
             throw new Error('Authentication expired');
           }
           
@@ -287,6 +334,9 @@ class ApiService {
           data,
         };
       } catch (error: any) {
+        // CRITICAL FIX: Enhanced error logging
+        this.logError('API Request', error, endpoint);
+        
         const isNetworkError = error.name === 'TypeError' || 
                               error.message?.includes('fetch') ||
                               error.message?.includes('Failed to fetch') ||
@@ -313,7 +363,13 @@ class ApiService {
                 const { default: OfflineQueueService } = await import('./offlineQueue');
                 await OfflineQueueService.enqueueRequest(endpoint, options, priority);
               } catch (queueError) {
-                // Queue error handling
+                // CRITICAL FIX: Proper error handling instead of silent failure
+                this.logError('Offline Queue Enqueue', queueError, endpoint);
+                console.error('Failed to enqueue request for offline processing:', {
+                  endpoint,
+                  error: queueError,
+                  priority
+                });
               }
             }
           }
@@ -336,7 +392,13 @@ class ApiService {
               const { default: OfflineQueueService } = await import('./offlineQueue');
               await OfflineQueueService.enqueueRequest(endpoint, options, priority);
             } catch (queueError) {
-              // Queue error handling
+              // CRITICAL FIX: Proper error handling instead of silent failure
+              this.logError('Offline Queue Enqueue', queueError, endpoint);
+              console.error('Failed to enqueue request for offline processing:', {
+                endpoint,
+                error: queueError,
+                priority
+              });
             }
           }
           
@@ -396,7 +458,7 @@ class ApiService {
     message: ChatMessage, 
     onChunk: (chunk: string) => void
   ): Promise<string> {
-    const token = AuthManager.getInstance().getCurrentToken();
+    const token = await AuthManager.getInstance().getCurrentToken();
     
     // Always use production URL
     const chatUrl = CHAT_API_CONFIG.PRODUCTION_URL;
@@ -587,7 +649,7 @@ class ApiService {
     timeframe: string = 'week',
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = AuthManager.getInstance().getCurrentToken();
+    const token = await AuthManager.getInstance().getCurrentToken();
     const url = `${this.baseURL}/personal-insights/growth-summary?timeframe=${timeframe}&stream=true`;
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -778,8 +840,16 @@ class ApiService {
     },
     onChunk: (chunk: string, context?: PersonalityContext) => void
   ): Promise<{ content: string; personalityContext: PersonalityContext }> {
-    const token = AuthManager.getInstance().getCurrentToken();
+    const token = await AuthManager.getInstance().getCurrentToken();
     const chatUrl = `${this.baseURL}/ai/adaptive-chat`;
+
+    console.log('🔄 ADAPTIVE_CHAT: Starting request to:', chatUrl);
+    console.log('🔄 ADAPTIVE_CHAT: Message payload:', {
+      message: message.message || message.prompt,
+      hasEmotionalContext: !!message.emotionalContext,
+      personalityStyle: message.personalityStyle,
+      stream: message.stream
+    });
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -800,15 +870,21 @@ class ApiService {
             const newText = responseText.slice(lastProcessedIndex);
             
             if (newText) {
+              // Response chunk received
+              
               lastProcessedIndex = currentLength;
               const lines = newText.split('\n');
               
               for (const line of lines) {
                 if (line && line.trim() && line.startsWith('data: ')) {
                   const content = line.substring(6).trim();
+                  // Processing SSE line
+                  
                   if (content && content !== '[DONE]') {
                     try {
                       const parsed = JSON.parse(content);
+                      // JSON parsed successfully
+                      
                       if (parsed && parsed.content) {
                         fullContent += parsed.content;
                         onChunk(fullContent, personalityContext || undefined);
@@ -817,27 +893,46 @@ class ApiService {
                         personalityContext = parsed.personalityContext;
                       }
                     } catch (parseError) {
-                      console.warn('JSON parse error:', parseError);
+                      console.error('🔄 ADAPTIVE_CHAT_DEBUG: JSON parse failed', { 
+                        error: parseError.message, 
+                        content: content.substring(0, 200) 
+                      });
                       if (content) {
                         fullContent += content;
                         onChunk(fullContent, personalityContext || undefined);
                       }
                     }
+                  } else if (content === '[DONE]') {
+                    console.log('🔄 CHAT: Stream completed, content length:', fullContent.length);
                   }
                 }
               }
             }
           }
         } catch (error) {
-          console.error('Error in onreadystatechange:', error);
+          console.error('🔄 CHAT: Stream error:', error);
         }
       };
       
+      xhr.onerror = () => {
+        console.error('🔄 ADAPTIVE_CHAT: Network error');
+        reject(new Error('Network error during adaptive chat'));
+      };
+      
+      xhr.ontimeout = () => {
+        console.error('🔄 ADAPTIVE_CHAT: Request timeout');
+        reject(new Error('Adaptive chat request timed out'));
+      };
+
       xhr.onload = () => {
         try {
+          console.log('🔄 ADAPTIVE_CHAT: Request completed with status:', xhr.status);
+          console.log('🔄 ADAPTIVE_CHAT: Response headers:', xhr.getAllResponseHeaders());
+          
           if (xhr.status >= 200 && xhr.status < 300) {
             // Check if we got streaming content first
             if (fullContent) {
+              console.log('🔄 ADAPTIVE_CHAT: Success with content length:', fullContent.length);
               resolve({
                 content: fullContent,
                 personalityContext: personalityContext || {
@@ -847,9 +942,13 @@ class ApiService {
                 }
               });
             } else {
+              console.log('🔄 ADAPTIVE_CHAT: No streaming content received');
+              console.log('🔄 ADAPTIVE_CHAT: Raw response:', xhr.responseText.substring(0, 500));
               // Handle JSON response format
               try {
                 const jsonResponse = JSON.parse(xhr.responseText);
+                console.log('🔄 ADAPTIVE_CHAT: Parsed JSON response:', jsonResponse);
+                
                 if (jsonResponse.success && jsonResponse.data && jsonResponse.data.response) {
                   resolve({
                     content: jsonResponse.data.response,
@@ -860,39 +959,45 @@ class ApiService {
                     }
                   });
                 } else {
+                  console.error('🔄 CHAT: Server returned [DONE] with no content - tools not executing');
                   reject(new Error('Invalid response format from adaptive chat service'));
                 }
               } catch (parseError) {
+                console.error('🔄 CHAT: Failed to parse server response');
                 reject(new Error('Failed to parse adaptive chat response'));
               }
             }
           } else {
+            console.error('🔄 CHAT: HTTP error', xhr.status);
             reject(new Error(`Adaptive chat request failed: ${xhr.status}`));
           }
         } catch (error) {
+          console.error('🔄 CHAT: Unexpected error', error);
           reject(error);
         }
       };
       
-      xhr.onerror = () => {
-        console.error('XHR Network error');
-        reject(new Error('Network error'));
-      };
-      
-      xhr.ontimeout = () => {
-        console.error('XHR Timeout');
-        reject(new Error('Request timeout'));
-      };
-      
-      // Set timeout
+      // Set timeout before sending
       xhr.timeout = 30000; // 30 seconds
       
-      xhr.send(JSON.stringify({
+      const requestPayload = {
         ...CHAT_API_CONFIG.REQUEST_DEFAULTS,
         ...message,
         adaptiveFeatures: true,
         stream: true
-      }));
+      };
+      
+      console.log('🔄 ADAPTIVE_CHAT: Sending payload:', requestPayload);
+      
+      console.log('🔄 CHAT: Sending message:', message.message?.substring(0, 50));
+      console.log('🔄 CHAT: Request payload:', { 
+        hasMessage: !!message.message, 
+        messageLength: message.message?.length,
+        hasPrompt: !!requestPayload.prompt,
+        adaptiveFeatures: requestPayload.adaptiveFeatures 
+      });
+      
+      xhr.send(JSON.stringify(requestPayload));
     });
   }
 
@@ -1108,7 +1213,7 @@ class ApiService {
 
   // Validate token on app startup
   static async validateToken(): Promise<ApiResponse<UserData>> {
-    const token = AuthManager.getInstance().getCurrentToken();
+    const token = await AuthManager.getInstance().getCurrentToken();
     
     if (!token) {
       return {
@@ -1224,7 +1329,7 @@ class ApiService {
     } = {},
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = AuthManager.getInstance().getCurrentToken();
+    const token = await AuthManager.getInstance().getCurrentToken();
     const url = `${this.baseURL}/cascading-recommendations/generate`;
 
     return new Promise((resolve, reject) => {
@@ -1328,6 +1433,327 @@ class ApiService {
     return this.apiRequest('/numina-personality/react-to-interaction', {
       method: 'POST',
       body: JSON.stringify({ userMessage, userEmotion, context }),
+    });
+  }
+
+  // ========== WALLET & CREDIT POOL METHODS ==========
+
+  // Execute tool with payment
+  static async executeToolWithPayment(toolName: string, args: any = {}): Promise<ApiResponse<any>> {
+    try {
+      return await this.apiRequest('/tools/execute', {
+        method: 'POST',
+        body: JSON.stringify({ toolName, arguments: args }),
+      });
+    } catch (error: any) {
+      // Graceful fallback for missing wallet endpoints
+      if (error.message?.includes('404') || error.message?.includes('Network error')) {
+        return {
+          success: false,
+          error: 'Wallet features are not available yet. Please try again later.',
+        };
+      }
+      throw error;
+    }
+  }
+
+  // Credit Management Methods
+  static async checkBalance(): Promise<ApiResponse<{
+    balance: number;
+    currency: string;
+    todaySpent: number;
+    remainingDailyLimit: number;
+    isActive: boolean;
+    isVerified: boolean;
+    autoRechargeEnabled: boolean;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: { action: 'check_balance' }
+      }),
+    });
+  }
+
+  static async addFundsStripe(amount: number, paymentMethodId: string): Promise<ApiResponse<{
+    success: boolean;
+    newBalance: number;
+    transactionId: string;
+    message: string;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: {
+          action: 'add_funds_stripe',
+          amount,
+          paymentMethodId
+        }
+      }),
+    });
+  }
+
+  static async setupStripeCustomer(): Promise<ApiResponse<{
+    success: boolean;
+    customerId: string;
+    message: string;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: { action: 'setup_stripe_customer' }
+      }),
+    });
+  }
+
+  static async createPaymentIntent(amount: number): Promise<ApiResponse<{
+    success: boolean;
+    paymentIntentId: string;
+    clientSecret: string;
+    amount: number;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: {
+          action: 'create_payment_intent',
+          amount
+        }
+      }),
+    });
+  }
+
+  static async getTransactionHistory(): Promise<ApiResponse<{
+    transactions: Array<{
+      id: string;
+      type: string;
+      amount: number;
+      description: string;
+      status: string;
+      timestamp: string;
+      toolName?: string;
+    }>;
+    totalCount: number;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: { action: 'get_transactions' }
+      }),
+    });
+  }
+
+  static async verifyAccount(): Promise<ApiResponse<{
+    success: boolean;
+    message: string;
+    isVerified: boolean;
+    isActive: boolean;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: { action: 'verify_account' }
+      }),
+    });
+  }
+
+  static async setSpendingLimit(limit: number, limitType: 'daily' | 'weekly' | 'monthly' | 'perTransaction'): Promise<ApiResponse<{
+    success: boolean;
+    limitType: string;
+    newLimit: number;
+    message: string;
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: {
+          action: 'set_limit',
+          spendingLimit: limit,
+          limitType
+        }
+      }),
+    });
+  }
+
+  static async checkSpending(amount: number): Promise<ApiResponse<{
+    success: boolean;
+    canSpend: boolean;
+    currentBalance: number;
+    requestedAmount: number;
+    remainingAfterSpend?: number;
+    reasons?: string[];
+  }>> {
+    return this.apiRequest('/tools/execute', {
+      method: 'POST',
+      body: JSON.stringify({
+        toolName: 'credit_management',
+        arguments: {
+          action: 'check_spending',
+          amount
+        }
+      }),
+    });
+  }
+
+  // Tool Management Methods
+  static async getAvailableTools(): Promise<ApiResponse<{
+    tools: Array<{
+      name: string;
+      description: string;
+      category: string;
+      costPerExecution: number;
+      requiresPayment: boolean;
+      enabled: boolean;
+    }>;
+  }>> {
+    try {
+      return await this.apiRequest('/tools/registry');
+    } catch (error: any) {
+      // Graceful fallback for missing wallet endpoints
+      if (error.message?.includes('404') || error.message?.includes('Network error')) {
+        return {
+          success: true,
+          data: { tools: [] }, // Return empty tools array
+        };
+      }
+      throw error;
+    }
+  }
+
+  static async getToolStats(): Promise<ApiResponse<{
+    total: number;
+    enabled: number;
+    disabled: number;
+    categories: Record<string, number>;
+    totalExecutions: number;
+    averageSuccessRate: number;
+  }>> {
+    return this.apiRequest('/tools/stats');
+  }
+
+  // ========== SUBSCRIPTION MANAGEMENT METHODS ==========
+
+  // Get subscription status
+  static async getSubscriptionStatus(): Promise<ApiResponse<{
+    numinaTrace: {
+      isActive: boolean;
+      plan: string | null;
+      startDate: string;
+      endDate: string;
+      autoRenew: boolean;
+      nextBillingDate: string;
+      hasActiveSubscription: boolean;
+    };
+  }>> {
+    return this.apiRequest('/subscription/status');
+  }
+
+  // Get subscription pricing plans
+  static async getSubscriptionPricing(): Promise<ApiResponse<{
+    plans: Array<{
+      name: string;
+      displayName: string;
+      price: number;
+      currency: string;
+      duration: string;
+      savings?: string;
+      features: string[];
+    }>;
+  }>> {
+    return this.apiRequest('/subscription/pricing');
+  }
+
+  // Subscribe to Numina Trace
+  static async subscribeToNuminaTrace(plan: string, paymentMethodId: string): Promise<ApiResponse<{
+    message: string;
+    subscription: any;
+    creditPoolActivated: boolean;
+  }>> {
+    return this.apiRequest('/subscription/numina-trace/subscribe', {
+      method: 'POST',
+      body: JSON.stringify({ plan, paymentMethodId }),
+    });
+  }
+
+  // Cancel Numina Trace subscription
+  static async cancelSubscription(): Promise<ApiResponse<{
+    message: string;
+    activeUntil: string;
+  }>> {
+    return this.apiRequest('/subscription/numina-trace/cancel', {
+      method: 'POST',
+    });
+  }
+
+  // Check if user has active subscription (utility method)
+  static async hasActiveSubscription(): Promise<boolean> {
+    try {
+      const response = await this.getSubscriptionStatus();
+      return response.success && response.data?.numinaTrace?.hasActiveSubscription === true;
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      return false;
+    }
+  }
+
+  // ========== SPOTIFY INTEGRATION METHODS ==========
+
+  // Connect Spotify account
+  static async connectSpotifyAccount(spotifyData: {
+    accessToken: string;
+    refreshToken?: string;
+    spotifyUserId: string;
+    spotifyEmail: string;
+    spotifyDisplayName: string;
+    expiresIn: number;
+  }): Promise<ApiResponse<{
+    message: string;
+    spotifyConnected: boolean;
+    profileUpdated: boolean;
+  }>> {
+    return this.apiRequest('/auth/spotify/connect', {
+      method: 'POST',
+      body: JSON.stringify(spotifyData),
+    });
+  }
+
+  // Disconnect Spotify account
+  static async disconnectSpotifyAccount(): Promise<ApiResponse<{
+    message: string;
+    spotifyDisconnected: boolean;
+  }>> {
+    return this.apiRequest('/auth/spotify/disconnect', {
+      method: 'POST',
+    });
+  }
+
+  // Get Spotify connection status
+  static async getSpotifyStatus(): Promise<ApiResponse<{
+    isConnected: boolean;
+    spotifyUserId?: string;
+    spotifyDisplayName?: string;
+    spotifyEmail?: string;
+    connectedAt?: string;
+  }>> {
+    return this.apiRequest('/integration/spotify/status');
+  }
+
+  // Refresh Spotify tokens
+  static async refreshSpotifyTokens(refreshToken: string): Promise<ApiResponse<{
+    accessToken: string;
+    refreshToken?: string;
+    expiresIn: number;
+  }>> {
+    return this.apiRequest('/integration/spotify/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
     });
   }
 

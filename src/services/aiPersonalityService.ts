@@ -206,7 +206,7 @@ class AIPersonalityService {
       // Try adaptive chat endpoint first
       return await ApiService.sendAdaptiveChatMessage(
         {
-          prompt,
+          message: prompt,
           emotionalContext: emotionalState,
           personalityStyle: personality.communicationStyle,
           stream: true,
