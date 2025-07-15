@@ -11,23 +11,17 @@ import {
   Dimensions,
   FlatList,
   TextInput,
-  Modal,
-  Image,
-  Alert,
-  Switch,
   ActivityIndicator,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
-import { NuminaAnimations } from '../utils/animations';
-import { TextStyles } from '../utils/fonts';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useRealTimeEvents } from '../hooks/useRealTimeEvents';
+import { RealTimeEvent } from '../services/realTimeSync';
 
 const { width } = Dimensions.get('window');
 
@@ -42,305 +36,83 @@ interface Event {
   maxParticipants: number;
   host: string;
   isJoined: boolean;
-  photos?: string[];
-  fullDescription?: string;
+  aiMatchScore?: number;
+  emotionalCompatibility?: string;
+  personalizedReason?: string;
+  moodBoostPotential?: number;
   location?: string;
   duration?: string;
-  aiMatchScore?: number;
-  emotionalCompatibility?: 'high' | 'medium' | 'low';
-  personalizedReason?: string;
-  suggestedConnections?: string[];
-  moodBoostPotential?: number;
-  communityVibe?: 'energetic' | 'calm' | 'creative' | 'supportive' | 'adventurous';
-  aiInsights?: string;
-  growthOpportunity?: string;
-  // Enhanced fields
-  requiresApproval?: boolean;
-  isPrivate?: boolean;
-  skillLevel?: 'beginner' | 'intermediate' | 'advanced' | 'all';
-  tags?: string[];
-  ageRange?: { min: number; max: number };
-  cost?: number;
-  currency?: string;
-  requirements?: string;
-  whatToBring?: string;
-  cancellationPolicy?: 'flexible' | 'moderate' | 'strict';
-  repeatSchedule?: 'none' | 'daily' | 'weekly' | 'monthly';
-  virtualOption?: boolean;
-  meetingLink?: string;
-  contactInfo?: string;
-  socialMediaLinks?: {
-    instagram?: string;
-    twitter?: string;
-    facebook?: string;
-    discord?: string;
-  };
 }
 
 interface CloudScreenProps {
   onNavigateBack: () => void;
 }
 
-interface SearchFilters {
-  timeOfDay: string[];
-  eventType: string[];
-  participantRange: string;
-  dateRange: string;
-  difficulty: string[];
-  location: string;
-}
+const FILTER_CATEGORIES = [
+  { id: 'all', label: 'All', icon: 'apps' },
+  { id: 'ai-matched', label: 'For You', icon: 'sparkles' },
+  { id: 'nearby', label: 'Nearby', icon: 'location-outline' },
+  { id: 'today', label: 'Today', icon: 'calendar-today' },
+  { id: 'joined', label: 'Joined', icon: 'checkmark-circle' },
+];
 
-// AI-Enhanced Sample Events with Personalization
-const SAMPLE_EVENTS: Event[] = [
-  {
-    id: '1',
-    title: 'Taco Tuesday at El Mariachi',
-    description: 'Join fellow foodies for authentic Mexican cuisine and great conversation',
-    type: 'food_dining',
-    date: 'Today',
-    time: '7:00 PM',
-    participants: 8,
-    maxParticipants: 15,
-    host: 'Maria Garcia',
-    isJoined: true,
-    photos: ['https://picsum.photos/400/300?random=1', 'https://picsum.photos/400/300?random=2'],
-    fullDescription: 'Looking for people who love authentic Mexican food! We\'ll be trying the best tacos in town at El Mariachi. Great opportunity to meet fellow food enthusiasts, share restaurant recommendations, and enjoy delicious cuisine together. All skill levels welcome - just bring your appetite!',
-    location: 'El Mariachi Restaurant, Downtown',
-    duration: '2 hours',
-    // AI Enhancement Data
-    aiMatchScore: 0.92,
-    emotionalCompatibility: 'high',
-    personalizedReason: 'Your stress levels drop 34% after social dining experiences',
-    suggestedConnections: ['Alex (fellow foodie)', 'Sam (meditation buddy)'],
-    moodBoostPotential: 8.5,
-    communityVibe: 'supportive',
-    aiInsights: 'Perfect for your Tuesday evening energy pattern',
-    growthOpportunity: 'Build social confidence through shared interests'
-  },
-  {
-    id: '2',
-    title: 'Linux Command Line Workshop',
-    description: 'Learn terminal basics with experienced developers',
-    type: 'tech_learning',
-    date: 'Tomorrow',
-    time: '6:00 PM',
-    participants: 12,
-    maxParticipants: 20,
-    host: 'David Chen',
-    isJoined: false,
-    photos: ['https://picsum.photos/400/300?random=3', 'https://picsum.photos/400/300?random=4'],
-    fullDescription: 'Perfect for beginners and intermediate users! Learn essential Linux commands, file navigation, and basic scripting. Bring your laptop and questions. We\'ll cover practical examples and real-world scenarios. Great networking opportunity for tech professionals.',
-    location: 'Tech Hub, Innovation Center',
-    duration: '3 hours',
-    // AI Enhancement Data
-    aiMatchScore: 0.78,
-    emotionalCompatibility: 'medium',
-    personalizedReason: 'Learning new skills typically increases your confidence by 23%',
-    suggestedConnections: ['Riley (coding enthusiast)', 'Jordan (career mentor)'],
-    moodBoostPotential: 7.2,
-    communityVibe: 'energetic',
-    aiInsights: 'Challenges spark your growth mindset - perfect timing!',
-    growthOpportunity: 'Expand technical confidence and professional network'
-  },
-  {
-    id: '3',
-    title: 'Sunset Hiking at Eagle Peak',
-    description: 'Moderate hike with stunning sunset views',
-    type: 'outdoor_activity',
-    date: 'Dec 16',
-    time: '4:00 PM',
-    participants: 6,
-    maxParticipants: 12,
-    host: 'Alex Thompson',
-    isJoined: false,
-    photos: ['https://picsum.photos/400/300?random=5', 'https://picsum.photos/400/300?random=6'],
-    fullDescription: 'Join us for a beautiful sunset hike! Moderate difficulty, 3-mile round trip with 800ft elevation gain. Perfect for nature lovers and photography enthusiasts. We\'ll take breaks to enjoy the views and get to know each other. Bring water, snacks, and good hiking shoes.',
-    location: 'Eagle Peak Trailhead',
-    duration: '3 hours',
-    // AI Enhancement Data
-    aiMatchScore: 0.95,
-    emotionalCompatibility: 'high',
-    personalizedReason: 'Nature activities create 89% improvement in your mood balance',
-    suggestedConnections: ['Maya (mindfulness guide)', 'Chris (adventure buddy)'],
-    moodBoostPotential: 9.1,
-    communityVibe: 'adventurous',
-    aiInsights: 'Golden hour perfectly matches your energy peaks!',
-    growthOpportunity: 'Connect with nature while building meaningful friendships'
-  },
-  {
-    id: '4',
-    title: 'Watercolor Painting Meetup',
-    description: 'Create beautiful landscapes with fellow artists',
-    type: 'creative_arts',
-    date: 'Dec 18',
-    time: '2:00 PM',
-    participants: 8,
-    maxParticipants: 15,
-    host: 'Sophie Williams',
-    isJoined: true,
-    photos: ['https://picsum.photos/400/300?random=7'],
-    fullDescription: 'All skill levels welcome! We\'ll be painting landscapes inspired by local scenery. Materials provided for beginners. Great way to meet fellow artists, share techniques, and create something beautiful together. Coffee and snacks included.',
-    location: 'Art Studio, Creative District',
-    duration: '2.5 hours',
-    // AI Enhancement Data
-    aiMatchScore: 0.88,
-    emotionalCompatibility: 'high',
-    personalizedReason: 'Creative expression reduces your anxiety by 42%',
-    suggestedConnections: ['Emma (fellow creator)', 'Kai (mindful artist)'],
-    moodBoostPotential: 8.7,
-    communityVibe: 'creative',
-    aiInsights: 'Perfect afternoon flow activity for your creative soul',
-    growthOpportunity: 'Express emotions through art while connecting with kindred spirits'
-  },
-  {
-    id: '5',
-    title: 'Morning CrossFit & Coffee',
-    description: 'High-intensity workout followed by coffee and networking',
-    type: 'fitness_wellness',
-    date: 'Dec 17',
-    time: '7:00 AM',
-    participants: 10,
-    maxParticipants: 20,
-    host: 'Mike Rodriguez',
-    isJoined: false,
-    photos: ['https://picsum.photos/400/300?random=8'],
-    fullDescription: 'Start your day with energy! 45-minute CrossFit session suitable for all fitness levels, followed by coffee and conversation. Great for meeting health-conscious professionals and fitness enthusiasts. Workout modifications available.',
-    location: 'CrossFit Downtown',
-    duration: '1.5 hours',
-  },
-  {
-    id: '6',
-    title: 'Startup Networking Mixer',
-    description: 'Connect with entrepreneurs and investors',
-    type: 'professional_networking',
-    date: 'Dec 19',
-    time: '6:30 PM',
-    participants: 25,
-    maxParticipants: 40,
-    host: 'Sarah Johnson',
-    isJoined: false,
-  },
-  {
-    id: '7',
-    title: 'Board Game Night',
-    description: 'Strategic games and friendly competition',
-    type: 'hobby_interest',
-    date: 'Dec 20',
-    time: '7:00 PM',
-    participants: 8,
-    maxParticipants: 12,
-    host: 'Chris Lee',
-    isJoined: true,
-  },
-  {
-    id: '8',
-    title: 'International Food Festival',
-    description: 'Explore global cuisines and cultures',
-    type: 'cultural_exploration',
-    date: 'Dec 21',
-    time: '5:00 PM',
-    participants: 18,
-    maxParticipants: 30,
-    host: 'Cultural Exchange Team',
-    isJoined: false,
-  },
+const EVENT_TYPES = [
+  { id: 'food_dining', label: 'Food & Dining', icon: 'restaurant', color: '#ff6b6b' },
+  { id: 'tech_learning', label: 'Tech & Learning', icon: 'laptop', color: '#4ecdc4' },
+  { id: 'outdoor_activity', label: 'Outdoor', icon: 'leaf', color: '#45b7d1' },
+  { id: 'creative_arts', label: 'Creative Arts', icon: 'color-palette', color: '#f9ca24' },
+  { id: 'fitness_wellness', label: 'Fitness', icon: 'fitness', color: '#f0932b' },
+  { id: 'professional_networking', label: 'Networking', icon: 'people', color: '#eb4d4b' },
+  { id: 'hobby_interest', label: 'Hobbies', icon: 'game-controller', color: '#6c5ce7' },
+  { id: 'cultural_exploration', label: 'Culture', icon: 'globe', color: '#a29bfe' },
 ];
 
 export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
-  const [activeFilter, setActiveFilter] = useState<string>('ai-matched');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [showAIInsights, setShowAIInsights] = useState(true);
-  const [exploreMode, setExploreMode] = useState<'matched' | 'discover' | 'grow'>('matched');
-  
-  // Real-time events hook
-  const {
-    events: realTimeEvents,
-    comments,
-    isConnected,
-    isLoading: eventsLoading,
-    error: eventsError,
-    createEvent: createRealTimeEvent,
-    joinEvent: joinRealTimeEvent,
-    leaveEvent: leaveRealTimeEvent,
-    clearError,
+  const { 
+    events: realTimeEvents, 
+    isLoading: eventsLoading, 
+    error: eventsError 
   } = useRealTimeEvents();
-
-  // Merge real-time events with sample events for demo
-  const [events, setEvents] = useState(() => {
-    const mergedEvents = [...realTimeEvents, ...SAMPLE_EVENTS];
-    // Remove duplicates based on ID
-    const uniqueEvents = mergedEvents.filter((event, index, self) => 
-      index === self.findIndex(e => e.id === event.id)
-    );
-    return uniqueEvents;
-  });
-
-  // Update events when real-time events change
-  useEffect(() => {
-    const mergedEvents = [...realTimeEvents, ...SAMPLE_EVENTS];
-    const uniqueEvents = mergedEvents.filter((event, index, self) => 
-      index === self.findIndex(e => e.id === event.id)
-    );
-    setEvents(uniqueEvents);
-  }, [realTimeEvents]);
-  const [searchFilters, setSearchFilters] = useState<SearchFilters>({
-    timeOfDay: [],
-    eventType: [],
-    participantRange: 'any',
-    dateRange: 'any',
-    difficulty: [],
-    location: 'any',
-  });
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [showDetailedModal, setShowDetailedModal] = useState(false);
-  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState(new Date());
-  const [createEventForm, setCreateEventForm] = useState({
-    title: '',
-    description: '',
-    type: 'food_dining' as Event['type'],
-    date: '',
-    time: '',
-    location: '',
-    duration: '',
-    maxParticipants: 10,
-    // Enhanced fields
-    photos: [] as string[],
-    requiresApproval: false,
-    isPrivate: false,
-    skillLevel: 'beginner' as 'beginner' | 'intermediate' | 'advanced' | 'all',
-    tags: [] as string[],
-    ageRange: { min: 18, max: 65 },
-    cost: 0,
-    currency: 'USD',
-    requirements: '',
-    whatToBring: '',
-    cancellationPolicy: 'flexible' as 'flexible' | 'moderate' | 'strict',
-    repeatSchedule: 'none' as 'none' | 'daily' | 'weekly' | 'monthly',
-    virtualOption: false,
-    meetingLink: '',
-    contactInfo: '',
-    socialMediaLinks: {
-      instagram: '',
-      twitter: '',
-      facebook: '',
-      discord: '',
-    },
-  });
-  const [showPhotoOptions, setShowPhotoOptions] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [activeFilter, setActiveFilter] = useState('ai-matched');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [showSearchControls, setShowSearchControls] = useState(false);
   
-  // Animations
+  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const filterSlideAnim = useRef(new Animated.Value(-100)).current;
+  const searchControlsHeight = useRef(new Animated.Value(0)).current;
+  const searchControlsOpacity = useRef(new Animated.Value(0)).current;
+  const arrowRotation = useRef(new Animated.Value(0)).current;
+
+  // Process real-time events with proper type conversion
+  const events = (realTimeEvents || []).filter((event, index, self) => 
+    index === self.findIndex(e => e.id === event.id)
+  ).map((event: RealTimeEvent) => ({
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    type: (event.type as Event['type']) || 'hobby_interest',
+    date: event.date,
+    time: event.time,
+    participants: event.currentParticipants || 0,
+    maxParticipants: event.maxParticipants || 10,
+    host: event.hostName || 'Anonymous',
+    isJoined: event.participants?.includes(event.hostId || '') || false,
+    aiMatchScore: (event as any).aiMatchScore,
+    emotionalCompatibility: (event as any).emotionalCompatibility,
+    personalizedReason: (event as any).personalizedReason,
+    moodBoostPotential: (event as any).moodBoostPotential,
+    location: event.location,
+    duration: (event as any).duration,
+  })) as Event[];
 
   useEffect(() => {
+    // Entrance animation
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -355,557 +127,264 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     ]).start();
   }, []);
 
-  const getEventTypeIcon = (type: Event['type']) => {
-    switch (type) {
-      case 'food_dining':
-        return 'utensils';
-      case 'tech_learning':
-        return 'laptop-code';
-      case 'outdoor_activity':
-        return 'mountain';
-      case 'creative_arts':
-        return 'palette';
-      case 'fitness_wellness':
-        return 'dumbbell';
-      case 'professional_networking':
-        return 'briefcase';
-      case 'hobby_interest':
-        return 'gamepad';
-      case 'cultural_exploration':
-        return 'globe';
-      default:
-        return 'calendar';
-    }
-  };
-
-  const getEventTypeColor = (type: Event['type']) => {
-    switch (type) {
-      case 'food_dining':
-        return isDarkMode ? '#FFE4E1' : '#ef4444';
-      case 'tech_learning':
-        return isDarkMode ? '#E6F3FF' : '#3b82f6';
-      case 'outdoor_activity':
-        return isDarkMode ? '#B8E6B8' : '#10b981';
-      case 'creative_arts':
-        return isDarkMode ? '#FFF9C4' : '#f59e0b';
-      case 'fitness_wellness':
-        return isDarkMode ? '#FFB6C1' : '#ec4899';
-      case 'professional_networking':
-        return isDarkMode ? '#E6E6FA' : '#8b5cf6';
-      case 'hobby_interest':
-        return isDarkMode ? '#FFD700' : '#fbbf24';
-      case 'cultural_exploration':
-        return isDarkMode ? '#98FB98' : '#22c55e';
-      default:
-        return isDarkMode ? '#90CAF9' : '#6366f1';
-    }
-  };
-
-  const getVibeColor = (vibe: string) => {
-    switch (vibe) {
-      case 'energetic': return '#FF6B9D';
-      case 'calm': return '#6BCF7F';
-      case 'creative': return '#AF52DE';
-      case 'supportive': return '#4DABF7';
-      case 'adventurous': return '#FFD93D';
-      default: return '#8E8E93';
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      month: 'short', 
-      day: 'numeric',
-      weekday: 'short'
-    };
-    return date.toLocaleDateString('en-US', options);
-  };
-
-  const formatTime = (date: Date) => {
-    const options: Intl.DateTimeFormatOptions = { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true
-    };
-    return date.toLocaleTimeString('en-US', options);
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setSelectedDate(date);
-    setCreateEventForm(prev => ({ 
-      ...prev, 
-      date: formatDate(date) 
-    }));
-    setShowDatePicker(false);
-  };
-
-  const handleTimeSelect = (date: Date) => {
-    setSelectedTime(date);
-    setCreateEventForm(prev => ({ 
-      ...prev, 
-      time: formatTime(date) 
-    }));
-    setShowTimePicker(false);
-  };
-
-  // Photo upload functionality
-  const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission Required',
-        'We need access to your photo library to add event photos.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-    return true;
-  };
-
-  const handlePhotoUpload = async (source: 'camera' | 'library') => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    setUploadingPhoto(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    try {
-      let result;
-      if (source === 'camera') {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Required', 'We need camera access to take photos.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [16, 9],
-          quality: 0.8,
-        });
-      } else {
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [16, 9],
-          quality: 0.8,
-          allowsMultipleSelection: true,
-        });
-      }
-
-      if (!result.canceled) {
-        const newPhotos = result.assets.map(asset => asset.uri);
-        setCreateEventForm(prev => ({
-          ...prev,
-          photos: [...prev.photos, ...newPhotos].slice(0, 5) // Max 5 photos
-        }));
-      }
-    } catch (error) {
-      console.error('Error uploading photo:', error);
-      Alert.alert('Error', 'Failed to upload photo. Please try again.');
-    } finally {
-      setUploadingPhoto(false);
-      setShowPhotoOptions(false);
-    }
-  };
-
-  const removePhoto = (index: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCreateEventForm(prev => ({
-      ...prev,
-      photos: prev.photos.filter((_, i) => i !== index)
-    }));
-  };
-
-  const addTag = (tag: string) => {
-    if (tag && !createEventForm.tags.includes(tag)) {
-      setCreateEventForm(prev => ({
-        ...prev,
-        tags: [...prev.tags, tag].slice(0, 5) // Max 5 tags
-      }));
-    }
-  };
-
-  const removeTag = (tagToRemove: string) => {
-    setCreateEventForm(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
-  };
-
-  const handleJoinEvent = async (eventId: string) => {
-    NuminaAnimations.haptic.medium();
-    
-    try {
-      const event = events.find(e => e.id === eventId);
-      if (!event) return;
-
-      if (event.isJoined) {
-        // Leave event
-        await leaveRealTimeEvent(eventId);
-        setEvents(prevEvents =>
-          prevEvents.map(e =>
-            e.id === eventId
-              ? { ...e, isJoined: false, participants: e.participants - 1 }
-              : e
-          )
-        );
-      } else {
-        // Join event
-        await joinRealTimeEvent(eventId);
-        setEvents(prevEvents =>
-          prevEvents.map(e =>
-            e.id === eventId
-              ? { ...e, isJoined: true, participants: e.participants + 1 }
-              : e
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error joining/leaving event:', error);
-      // Optionally show error message to user
-    }
-  };
-
-  // AI-Enhanced filtering logic
   const filteredEvents = events.filter(event => {
-    // AI-powered smart filters
-    if (activeFilter === 'ai-matched') {
-      return event.aiMatchScore && event.aiMatchScore > 0.8;
-    }
-    if (activeFilter === 'mood-boost') {
-      return event.moodBoostPotential && event.moodBoostPotential > 8.0;
-    }
-    if (activeFilter === 'growth') {
-      return event.growthOpportunity && event.growthOpportunity.length > 0;
-    }
-    if (activeFilter === 'connections') {
-      return event.suggestedConnections && event.suggestedConnections.length > 0;
-    }
-    
-    // Basic type filter
-    if (activeFilter !== 'all' && event.type !== activeFilter) {
-      return false;
-    }
-
-    // Search query filter
-    if (searchQuery.trim()) {
+    // Search filter
+    if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      const matchesTitle = event.title.toLowerCase().includes(query);
-      const matchesDescription = event.description.toLowerCase().includes(query);
-      const matchesHost = event.host.toLowerCase().includes(query);
-      if (!matchesTitle && !matchesDescription && !matchesHost) {
+      if (!event.title.toLowerCase().includes(query) && 
+          !event.description.toLowerCase().includes(query)) {
         return false;
       }
     }
 
-    // Advanced filters
-    if (searchFilters.eventType.length > 0 && !searchFilters.eventType.includes(event.type)) {
+    // Type filter
+    if (selectedTypes.length > 0 && !selectedTypes.includes(event.type)) {
       return false;
     }
 
-    // Time of day filter
-    if (searchFilters.timeOfDay.length > 0) {
-      const hour = parseInt(event.time.split(':')[0]);
-      const timeCategory = hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-      if (!searchFilters.timeOfDay.includes(timeCategory)) {
-        return false;
-      }
+    // Category filter
+    switch (activeFilter) {
+      case 'ai-matched':
+        return event.aiMatchScore && event.aiMatchScore > 0.7;
+      case 'nearby':
+        return event.location && event.location.includes('Downtown');
+      case 'today':
+        return event.date === 'Today';
+      case 'joined':
+        return event.isJoined;
+      default:
+        return true;
     }
-
-    // Participant range filter
-    if (searchFilters.participantRange !== 'any') {
-      const participantCount = event.participants;
-      switch (searchFilters.participantRange) {
-        case 'small':
-          if (participantCount > 10) return false;
-          break;
-        case 'medium':
-          if (participantCount <= 10 || participantCount > 20) return false;
-          break;
-        case 'large':
-          if (participantCount <= 20) return false;
-          break;
-      }
-    }
-
-    return true;
   });
 
-  const handleEventPress = (event: Event) => {
-    NuminaAnimations.haptic.light();
-    setSelectedEvent(event);
-    setShowEventModal(true);
+  const handleFilterPress = (filterId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveFilter(filterId);
   };
 
-  const handleEventAction = (action: 'like' | 'share' | 'save' | 'more') => {
-    if (!selectedEvent) return;
-    
-    NuminaAnimations.haptic.selection();
-    
-    switch (action) {
-      case 'like':
-        // Handle like functionality
-        console.log('Like event:', selectedEvent.title);
-        setShowEventModal(false);
-        break;
-      case 'share':
-        // Handle share functionality
-        console.log('Share event:', selectedEvent.title);
-        setShowEventModal(false);
-        break;
-      case 'save':
-        // Handle save functionality
-        console.log('Save event:', selectedEvent.title);
-        setShowEventModal(false);
-        break;
-      case 'more':
-        // Open detailed modal
-        setShowEventModal(false);
-        setShowDetailedModal(true);
-        break;
-    }
+  const handleTypeToggle = (typeId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSelectedTypes(prev => 
+      prev.includes(typeId) 
+        ? prev.filter(id => id !== typeId)
+        : [...prev, typeId]
+    );
   };
 
-  const renderEventFeedItem = ({ item: event }: { item: Event }) => (
-    <Animated.View style={[
-      styles.feedItem,
-      {
-        opacity: fadeAnim,
-      }
-    ]}>
-      <TouchableOpacity
-        onPress={() => handleEventPress(event)}
-        activeOpacity={0.7}
-        style={styles.feedItemTouchable}
+  const toggleFilters = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowFilters(!showFilters);
+    Animated.timing(filterSlideAnim, {
+      toValue: showFilters ? -100 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const toggleSearchControls = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const newShowSearchControls = !showSearchControls;
+    setShowSearchControls(newShowSearchControls);
+    
+    Animated.parallel([
+      Animated.timing(searchControlsHeight, {
+        toValue: newShowSearchControls ? 200 : 0,
+        duration: 300,
+        useNativeDriver: false,
+      }),
+      Animated.timing(searchControlsOpacity, {
+        toValue: newShowSearchControls ? 1 : 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(arrowRotation, {
+        toValue: newShowSearchControls ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+
+  const getTypeInfo = (type: string) => {
+    return EVENT_TYPES.find(t => t.id === type) || EVENT_TYPES[0];
+  };
+
+  const renderEventCard = ({ item, index }: { item: Event; index: number }) => {
+    const typeInfo = getTypeInfo(item.type);
+    
+    return (
+      <Animated.View 
+        style={[
+          styles.eventCard,
+          {
+            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            transform: [{ translateY: slideAnim }],
+            opacity: fadeAnim,
+          }
+        ]}
       >
-        {/* Host Header */}
-        <View style={styles.feedHeader}>
-          <View style={styles.hostInfo}>
-            <View style={[
-              styles.hostAvatar,
-              { backgroundColor: getEventTypeColor(event.type) }
-            ]}>
-              <Text style={styles.hostInitial}>
-                {event.host.charAt(0)}
-              </Text>
-            </View>
-            <View style={styles.hostDetails}>
-              <Text style={[
-                styles.hostName,
-                { color: isDarkMode ? '#fff' : '#000' }
-              ]}>
-                {event.host}
-              </Text>
-              <Text style={[
-                styles.postTime,
-                { color: isDarkMode ? '#888' : '#666' }
-              ]}>
-                {event.date} • {event.time}
-              </Text>
-            </View>
-          </View>
+        {/* Event Type Badge */}
+        <View style={[styles.typeBadge, { backgroundColor: `${typeInfo.color}20` }]}>
+          <Ionicons name={typeInfo.icon as any} size={16} color={typeInfo.color} />
+          <Text style={[styles.typeText, { color: typeInfo.color }]}>
+            {typeInfo.label}
+          </Text>
         </View>
 
+        {/* AI Match Score */}
+        {item.aiMatchScore && item.aiMatchScore > 0.7 && (
+          <View style={styles.aiMatchBadge}>
+            <FontAwesome5 name="magic" size={12} color={NuminaColors.purple} />
+            <Text style={[styles.aiMatchText, { color: NuminaColors.purple }]}>
+              {Math.round(item.aiMatchScore * 100)}% match
+            </Text>
+          </View>
+        )}
+
         {/* Event Content */}
-        <View style={styles.feedContent}>
+        <View style={styles.eventContent}>
           <Text style={[
-            styles.feedEventTitle,
-            { color: isDarkMode ? '#fff' : '#000' }
+            styles.eventTitle, 
+            { color: isDarkMode ? '#fff' : '#1a1a1a' }
           ]}>
-            {event.title}
-          </Text>
-          <Text style={[
-            styles.feedDescription,
-            { color: isDarkMode ? '#ccc' : '#555' }
-          ]}>
-            {event.description}
+            {item.title}
           </Text>
           
-          {/* AI Insights Section */}
-          {event.aiMatchScore && event.aiMatchScore > 0.8 && (
-            <View style={styles.aiInsightsContainer}>
-              <View style={styles.aiMatchHeader}>
-                <MaterialCommunityIcons
-                  name="brain"
-                  size={14}
-                  color="#FF6B9D"
-                />
-                <Text style={[
-                  styles.aiMatchScore,
-                  { color: '#FF6B9D' }
-                ]}>
-                  {Math.round(event.aiMatchScore * 100)}% Match
-                </Text>
-                {event.emotionalCompatibility === 'high' && (
-                  <View style={styles.compatibilityBadge}>
-                    <Text style={styles.compatibilityText}>High Compatibility</Text>
-                  </View>
-                )}
-              </View>
-              
-              {event.personalizedReason && (
-                <Text style={[
-                  styles.personalizedReason,
-                  { color: isDarkMode ? '#e1bee7' : '#7b1fa2' }
-                ]}>
-                  ✨ {event.personalizedReason}
-                </Text>
-              )}
-              
-              {event.moodBoostPotential && event.moodBoostPotential > 8 && (
-                <View style={styles.moodBoostIndicator}>
-                  <MaterialCommunityIcons
-                    name="emoticon-happy"
-                    size={12}
-                    color="#FFD93D"
-                  />
-                  <Text style={[styles.moodBoostText, { color: '#FFD93D' }]}>
-                    +{event.moodBoostPotential}/10 Mood Boost
-                  </Text>
-                </View>
-              )}
-              
-              {event.suggestedConnections && event.suggestedConnections.length > 0 && (
-                <View style={styles.connectionsPreview}>
-                  <MaterialCommunityIcons
-                    name="account-heart"
-                    size={12}
-                    color="#4DABF7"
-                  />
-                  <Text style={[styles.connectionsText, { color: '#4DABF7' }]}>
-                    Connect with {event.suggestedConnections[0]}
-                    {event.suggestedConnections.length > 1 && ` +${event.suggestedConnections.length - 1} more`}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-          
-          {/* Event Tags */}
-          <View style={styles.eventTags}>
-            <View style={[
-              styles.eventTag,
-              { backgroundColor: getEventTypeColor(event.type) + '20' }
-            ]}>
-              <FontAwesome5
-                name={getEventTypeIcon(event.type)}
-                size={12}
-                color={getEventTypeColor(event.type)}
-              />
-              <Text style={[
-                styles.eventTagText,
-                { color: getEventTypeColor(event.type) }
-              ]}>
-                {event.type.replace('_', ' ')}
+          <Text style={[
+            styles.eventDescription,
+            { color: isDarkMode ? '#bbb' : '#666' }
+          ]}>
+            {item.description}
+          </Text>
+
+          {/* Event Meta */}
+          <View style={styles.eventMeta}>
+            <View style={styles.metaItem}>
+              <Ionicons name="calendar-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
+              <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
+                {item.date} • {item.time}
               </Text>
             </View>
             
-            {/* Community Vibe Indicator */}
-            {event.communityVibe && (
-              <View style={[
-                styles.vibeTag,
-                { backgroundColor: getVibeColor(event.communityVibe) + '20' }
-              ]}>
-                <Text style={[
-                  styles.vibeText,
-                  { color: getVibeColor(event.communityVibe) }
-                ]}>
-                  {event.communityVibe}
+            <View style={styles.metaItem}>
+              <Ionicons name="people-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
+              <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
+                {item.participants}/{item.maxParticipants}
+              </Text>
+            </View>
+
+            {item.location && (
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
+                <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
+                  {item.location}
                 </Text>
               </View>
             )}
-            
-            <Text style={[
-              styles.participantCount,
-              { color: isDarkMode ? '#888' : '#666' }
-            ]}>
-              {event.participants} going
-            </Text>
           </View>
+
+          {/* Join Button */}
+          <TouchableOpacity
+            style={[
+              styles.joinButton,
+              {
+                backgroundColor: item.isJoined 
+                  ? `${NuminaColors.green}20` 
+                  : `${typeInfo.color}20`,
+                borderColor: item.isJoined ? NuminaColors.green : typeInfo.color,
+              }
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              // Handle join/leave logic
+            }}
+          >
+            <Ionicons 
+              name={item.isJoined ? "checkmark-circle" : "add-circle-outline"} 
+              size={18} 
+              color={item.isJoined ? NuminaColors.green : typeInfo.color} 
+            />
+            <Text style={[
+              styles.joinButtonText,
+              { color: item.isJoined ? NuminaColors.green : typeInfo.color }
+            ]}>
+              {item.isJoined ? 'Joined' : 'Join Event'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Personalized Reason */}
+          {item.personalizedReason && (
+            <View style={styles.personalizedSection}>
+              <FontAwesome5 name="lightbulb" size={12} color={NuminaColors.yellow} />
+              <Text style={[
+                styles.personalizedText,
+                { color: isDarkMode ? '#ddd' : '#555' }
+              ]}>
+                {item.personalizedReason}
+              </Text>
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
-      {/* Action Bar */}
-      <View style={styles.feedActions}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => NuminaAnimations.haptic.selection()}
-        >
-          <FontAwesome5
-            name="heart"
-            size={18}
-            color={isDarkMode ? '#888' : '#666'}
+  const renderEmptyState = () => {
+    if (eventsError) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons 
+            name="warning-outline" 
+            size={64} 
+            color={isDarkMode ? '#ff6b6b' : '#ff4757'} 
           />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => NuminaAnimations.haptic.selection()}
-        >
-          <FontAwesome5
-            name="comment"
-            size={18}
-            color={isDarkMode ? '#888' : '#666'}
-          />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton}>
-          <FontAwesome5
-            name="share"
-            size={18}
-            color={isDarkMode ? '#888' : '#666'}
-          />
-        </TouchableOpacity>
-        <View style={styles.actionSpacer} />
-        <TouchableOpacity
-          style={[
-            styles.joinFeedButton,
-            {
-              backgroundColor: event.isJoined
-                ? (isDarkMode ? '#90CAF9' : '#E3F2FD')
-                : 'transparent',
-              borderColor: isDarkMode ? '#90CAF9' : '#3b82f6',
-            }
-          ]}
-          onPress={() => handleJoinEvent(event.id)}
-        >
           <Text style={[
-            styles.joinFeedButtonText,
-            {
-              color: event.isJoined
-                ? (isDarkMode ? '#1a1a1a' : '#1a1a1a')
-                : (isDarkMode ? '#90CAF9' : '#3b82f6')
-            }
+            styles.emptyTitle,
+            { color: isDarkMode ? '#ff6b6b' : '#ff4757' }
           ]}>
-            {event.isJoined ? 'Going' : 'Join'}
+            Unable to load events
           </Text>
-        </TouchableOpacity>
-      </View>
-    </Animated.View>
-  );
+          <Text style={[
+            styles.emptySubtitle,
+            { color: isDarkMode ? '#666' : '#999' }
+          ]}>
+            Please check your connection and try again
+          </Text>
+        </View>
+      );
+    }
 
-  const filterOptions = [
-    { key: 'ai-matched', label: '✨ AI Matched', icon: 'brain', color: '#FF6B9D' },
-    { key: 'mood-boost', label: '⚡ Mood Boost', icon: 'zap', color: '#FFD93D' },
-    { key: 'growth', label: '🌱 Growth', icon: 'trending-up', color: '#6BCF7F' },
-    { key: 'connections', label: '🤝 Connections', icon: 'users', color: '#4DABF7' },
-    { key: 'all', label: 'All', icon: 'th-large', color: '#8E8E93' },
-    { key: 'food_dining', label: 'Food & Dining', icon: 'utensils', color: '#FF9500' },
-    { key: 'tech_learning', label: 'Tech & Learning', icon: 'laptop-code', color: '#007AFF' },
-    { key: 'outdoor_activity', label: 'Outdoor & Adventure', icon: 'mountain', color: '#34C759' },
-    { key: 'creative_arts', label: 'Creative Arts', icon: 'palette', color: '#AF52DE' },
-    { key: 'fitness_wellness', label: 'Fitness & Wellness', icon: 'dumbbell', color: '#FF3B30' },
-    { key: 'professional_networking', label: 'Professional', icon: 'briefcase', color: '#5856D6' },
-    { key: 'hobby_interest', label: 'Hobbies & Games', icon: 'gamepad', color: '#FF9500' },
-    { key: 'cultural_exploration', label: 'Cultural', icon: 'globe', color: '#30B0C7' },
-  ];
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons 
+          name="cloud-outline" 
+          size={64} 
+          color={isDarkMode ? '#444' : '#ccc'} 
+        />
+        <Text style={[
+          styles.emptyTitle,
+          { color: isDarkMode ? '#888' : '#666' }
+        ]}>
+          No events found
+        </Text>
+        <Text style={[
+          styles.emptySubtitle,
+          { color: isDarkMode ? '#666' : '#999' }
+        ]}>
+          Try adjusting your filters or search
+        </Text>
+      </View>
+    );
+  };
 
   return (
     <ScreenWrapper
       showHeader={true}
       showBackButton={true}
-      showMenuButton={true}
-      title="Cloud"
-      subtitle="Collaborative Events & Community"
+      title="Discover"
+      subtitle="Find your tribe"
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -915,919 +394,207 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
             translucent={true}
           />
 
-          <Animated.View style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateX: slideAnim }],
-            }
-          ]}>
-
-            {/* Connection Status & Search Bar */}
-            <View style={[
-              styles.searchSection,
-              {
-                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
-                borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-              }
-            ]}>
-              {/* Connection Status */}
-              <View style={styles.connectionStatus}>
-                <View style={[
-                  styles.connectionDot,
-                  { backgroundColor: isConnected ? '#10b981' : '#ef4444' }
-                ]} />
-                <Text style={[
-                  styles.connectionText,
-                  { color: isDarkMode ? '#ccc' : '#666' }
-                ]}>
-                  {isConnected ? 'Live' : 'Offline'}
-                </Text>
-              </View>
-              
-              <View style={[
-                styles.searchContainer,
-                {
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                }
-              ]}>
-                <FontAwesome5 
-                  name="search" 
-                  size={16} 
-                  color={isDarkMode ? '#888' : '#666'} 
-                  style={styles.searchIcon} 
-                />
-                <TextInput
-                  style={[
-                    styles.searchInput,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}
-                  placeholder="Search events by name, type, or location..."
-                  placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setSearchQuery('')}
-                    style={styles.clearSearchButton}
-                  >
-                    <FontAwesome5 name="times" size={14} color={isDarkMode ? '#888' : '#666'} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              <TouchableOpacity
-                style={[
-                  styles.filterButtonIcon,
-                  {
-                    backgroundColor: showFilters 
-                      ? (isDarkMode ? '#86efac' : '#10b981')
-                      : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-                  }
-                ]}
-                onPress={() => setShowFilters(!showFilters)}
-              >
-                <FontAwesome5 
-                  name="filter" 
-                  size={16} 
-                  color={showFilters ? '#fff' : (isDarkMode ? '#888' : '#666')} 
-                />
-              </TouchableOpacity>
-            </View>
-
-            {/* AI Exploration Modes */}
-            <View style={styles.exploreModesSection}>
-              <Text style={[
-                styles.exploreModeTitle,
-                { color: isDarkMode ? '#fff' : '#000' }
-              ]}>
-                🎆 Explore Your World
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.exploreModeContainer}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.exploreModeCard,
-                    {
-                      backgroundColor: exploreMode === 'matched' 
-                        ? '#FF6B9D20' 
-                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
-                      borderColor: exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#333' : '#e5e7eb'),
-                    }
-                  ]}
-                  onPress={() => {
-                    setExploreMode('matched');
-                    setActiveFilter('ai-matched');
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="brain"
-                    size={24}
-                    color={exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#888' : '#666')}
-                  />
-                  <Text style={[
-                    styles.exploreModeText,
-                    { color: exploreMode === 'matched' ? '#FF6B9D' : (isDarkMode ? '#888' : '#666') }
-                  ]}>
-                    AI Matched
-                  </Text>
-                  <Text style={[
-                    styles.exploreModeSubtext,
-                    { color: isDarkMode ? '#666' : '#999' }
-                  ]}>
-                    Perfect for you
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.exploreModeCard,
-                    {
-                      backgroundColor: exploreMode === 'discover' 
-                        ? '#FFD93D20' 
-                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
-                      borderColor: exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#333' : '#e5e7eb'),
-                    }
-                  ]}
-                  onPress={() => {
-                    setExploreMode('discover');
-                    setActiveFilter('mood-boost');
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="compass"
-                    size={24}
-                    color={exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#888' : '#666')}
-                  />
-                  <Text style={[
-                    styles.exploreModeText,
-                    { color: exploreMode === 'discover' ? '#FFD93D' : (isDarkMode ? '#888' : '#666') }
-                  ]}>
-                    Discover
-                  </Text>
-                  <Text style={[
-                    styles.exploreModeSubtext,
-                    { color: isDarkMode ? '#666' : '#999' }
-                  ]}>
-                    New adventures
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[
-                    styles.exploreModeCard,
-                    {
-                      backgroundColor: exploreMode === 'grow' 
-                        ? '#6BCF7F20' 
-                        : (isDarkMode ? '#1a1a1a' : '#ffffff'),
-                      borderColor: exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#333' : '#e5e7eb'),
-                    }
-                  ]}
-                  onPress={() => {
-                    setExploreMode('grow');
-                    setActiveFilter('growth');
-                  }}
-                >
-                  <MaterialCommunityIcons
-                    name="trending-up"
-                    size={24}
-                    color={exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#888' : '#666')}
-                  />
-                  <Text style={[
-                    styles.exploreModeText,
-                    { color: exploreMode === 'grow' ? '#6BCF7F' : (isDarkMode ? '#888' : '#666') }
-                  ]}>
-                    Grow
-                  </Text>
-                  <Text style={[
-                    styles.exploreModeSubtext,
-                    { color: isDarkMode ? '#666' : '#999' }
-                  ]}>
-                    Level up yourself
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </View>
-            
-            {/* Filter Section */}
-            <View style={styles.filterSection}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterContainer}
-              >
-                {filterOptions.map((filter) => (
-                  <TouchableOpacity
-                    key={filter.key}
-                    style={[
-                      styles.filterButton,
-                      {
-                        backgroundColor: activeFilter === filter.key
-                          ? (filter.color ? filter.color + '20' : (isDarkMode ? '#90CAF9' : '#E3F2FD'))
-                          : 'transparent',
-                        borderColor: activeFilter === filter.key 
-                          ? (filter.color || (isDarkMode ? '#90CAF9' : '#3b82f6')) 
-                          : (isDarkMode ? '#333' : '#e5e7eb'),
-                      }
-                    ]}
-                    onPress={() => {
-                  NuminaAnimations.haptic.selection();
-                  setActiveFilter(filter.key);
-                }}
-                    activeOpacity={0.8}
-                  >
-                    <FontAwesome5
-                      name={filter.icon}
-                      size={14}
-                      color={activeFilter === filter.key
-                        ? (filter.color || (isDarkMode ? '#1a1a1a' : '#1a1a1a'))
-                        : (isDarkMode ? '#888' : '#666')
-                      }
-                    />
-                    <Text style={[
-                      styles.filterButtonText,
-                      {
-                        color: activeFilter === filter.key
-                          ? (filter.color || (isDarkMode ? '#1a1a1a' : '#1a1a1a'))
-                          : (isDarkMode ? '#888' : '#666')
-                      }
-                    ]}>
-                      {filter.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            {/* Events List */}
-            <FlatList
-              data={filteredEvents}
-              renderItem={renderEventFeedItem}
-              keyExtractor={(item) => item.id}
-              style={styles.eventsList}
-              contentContainerStyle={styles.eventsContent}
-              showsVerticalScrollIndicator={false}
-            />
-          </Animated.View>
-
-          {/* Floating Create Event Button */}
-          <TouchableOpacity
+          {/* Search Header */}
+          <Animated.View 
             style={[
-              styles.floatingCreateButton,
+              styles.searchHeader,
               {
-                backgroundColor: isDarkMode ? '#6ec5ff' : '#83b2ff',
-                shadowColor: isDarkMode ? '#6ec5ff' : '#7eafff',
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
               }
             ]}
-            onPress={() => {
-              NuminaAnimations.haptic.medium();
-              setShowCreateEventModal(true);
-            }}
-            activeOpacity={0.8}
           >
-            <FontAwesome5
-              name="pencil-alt"
-              size={20}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
+            {/* Search Bar */}
+            <View style={[
+              styles.searchBar,
+              {
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+              }
+            ]}>
+              <Ionicons name="search" size={20} color={isDarkMode ? '#888' : '#999'} />
+              <TextInput
+                style={[
+                  styles.searchInput,
+                  { color: isDarkMode ? '#fff' : '#333' }
+                ]}
+                placeholder="Search events..."
+                placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                  <Ionicons name="close-circle" size={20} color={isDarkMode ? '#888' : '#999'} />
+                </TouchableOpacity>
+              )}
+            </View>
 
-          {/* Create Event Modal */}
-          <Modal
-            visible={showCreateEventModal}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowCreateEventModal(false)}
-          >
-            <BlurView style={styles.modalOverlay} intensity={20}>
-              <View style={[
-                styles.createEventModal,
+            {/* Filter Toggle */}
+            <TouchableOpacity
+              style={[
+                styles.filterToggle,
                 {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
+                  backgroundColor: showFilters 
+                    ? `${NuminaColors.purple}20` 
+                    : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)'),
                 }
-              ]}>
-                <View style={styles.createEventHeader}>
-                  <Text style={[
-                    styles.createEventTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
-                  ]}>
-                    Create New Event
-                  </Text>
-                  <TouchableOpacity
-                    style={styles.closeCreateEventButton}
-                    onPress={() => setShowCreateEventModal(false)}
-                  >
-                    <FontAwesome5 name="times" size={18} color={isDarkMode ? '#888' : '#666'} />
-                  </TouchableOpacity>
-                </View>
+              ]}
+              onPress={toggleFilters}
+            >
+              <Ionicons 
+                name="options" 
+                size={20} 
+                color={showFilters ? NuminaColors.purple : (isDarkMode ? '#888' : '#999')} 
+              />
+            </TouchableOpacity>
+          </Animated.View>
 
-                <ScrollView style={styles.createEventContent}>
-                  {/* Event Photos */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Event Photos ({createEventForm.photos.length}/5)
-                    </Text>
-                    <View style={styles.photosContainer}>
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={styles.photosRow}>
-                          {createEventForm.photos.map((photo, index) => (
-                            <View key={index} style={styles.photoItem}>
-                              <Image source={{ uri: photo }} style={styles.photoImage} />
-                              <TouchableOpacity
-                                style={styles.removePhotoButton}
-                                onPress={() => removePhoto(index)}
-                              >
-                                <FontAwesome5 name="times" size={12} color="#fff" />
-                              </TouchableOpacity>
-                            </View>
-                          ))}
-                          {createEventForm.photos.length < 5 && (
-                            <TouchableOpacity
-                              style={[
-                                styles.addPhotoButton,
-                                {
-                                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                                  borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)',
-                                }
-                              ]}
-                              onPress={() => setShowPhotoOptions(true)}
-                              disabled={uploadingPhoto}
-                            >
-                              {uploadingPhoto ? (
-                                <ActivityIndicator size="small" color={isDarkMode ? '#fff' : '#000'} />
-                              ) : (
-                                <FontAwesome5 name="plus" size={20} color={isDarkMode ? '#fff' : '#000'} />
-                              )}
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </ScrollView>
-                    </View>
-                  </View>
-
-                  {/* Event Title */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Event Title
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.createEventInput,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          color: isDarkMode ? '#fff' : '#000',
-                        }
-                      ]}
-                      placeholder="Enter event title..."
-                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                      value={createEventForm.title}
-                      onChangeText={(text) => setCreateEventForm(prev => ({ ...prev, title: text }))}
-                    />
-                  </View>
-
-                  {/* Event Description */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Description
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.createEventInput,
-                        styles.createEventTextArea,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          color: isDarkMode ? '#fff' : '#000',
-                        }
-                      ]}
-                      placeholder="Tell us about your event..."
-                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                      value={createEventForm.description}
-                      onChangeText={(text) => setCreateEventForm(prev => ({ ...prev, description: text }))}
-                      multiline={true}
-                      numberOfLines={4}
-                      textAlignVertical="top"
-                    />
-                  </View>
-
-                  {/* Event Type */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Event Type
-                    </Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={styles.eventTypeOptions}>
-                        {filterOptions.slice(5).map((filter) => (
-                          <TouchableOpacity
-                            key={filter.key}
-                            style={[
-                              styles.eventTypeOption,
-                              {
-                                backgroundColor: createEventForm.type === filter.key
-                                  ? (filter.color + '20')
-                                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-                                borderColor: createEventForm.type === filter.key
-                                  ? filter.color
-                                  : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-                              }
-                            ]}
-                            onPress={() => setCreateEventForm(prev => ({ 
-                              ...prev, 
-                              type: filter.key as Event['type'] 
-                            }))}
-                          >
-                            <FontAwesome5 
-                              name={filter.icon} 
-                              size={16} 
-                              color={createEventForm.type === filter.key 
-                                ? filter.color 
-                                : (isDarkMode ? '#888' : '#666')
-                              } 
-                            />
-                            <Text style={[
-                              styles.eventTypeOptionText,
-                              {
-                                color: createEventForm.type === filter.key 
-                                  ? filter.color 
-                                  : (isDarkMode ? '#888' : '#666')
-                              }
-                            ]}>
-                              {filter.label}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </View>
-
-                  {/* Location */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Location
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.createEventInput,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          color: isDarkMode ? '#fff' : '#000',
-                        }
-                      ]}
-                      placeholder="Event location..."
-                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                      value={createEventForm.location}
-                      onChangeText={(text) => setCreateEventForm(prev => ({ ...prev, location: text }))}
-                    />
-                  </View>
-
-                  {/* Date and Time */}
-                  <View style={styles.dateTimeRow}>
-                    <View style={[styles.createEventField, { flex: 1, marginRight: 8 }]}>
-                      <Text style={[
-                        styles.createEventFieldLabel,
-                        { color: isDarkMode ? '#fff' : '#000' }
-                      ]}>
-                        Date
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.createEventInput,
-                          styles.dateTimeButton,
-                          {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          }
-                        ]}
-                        onPress={() => setShowDatePicker(true)}
-                      >
-                        <FontAwesome5 name="calendar" size={16} color={isDarkMode ? '#86efac' : '#10b981'} />
-                        <Text style={[
-                          styles.dateTimeButtonText,
-                          { color: isDarkMode ? '#fff' : '#000' }
-                        ]}>
-                          {createEventForm.date}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={[styles.createEventField, { flex: 1, marginLeft: 8 }]}>
-                      <Text style={[
-                        styles.createEventFieldLabel,
-                        { color: isDarkMode ? '#fff' : '#000' }
-                      ]}>
-                        Time
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.createEventInput,
-                          styles.dateTimeButton,
-                          {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          }
-                        ]}
-                        onPress={() => setShowTimePicker(true)}
-                      >
-                        <FontAwesome5 name="clock" size={16} color={isDarkMode ? '#86efac' : '#10b981'} />
-                        <Text style={[
-                          styles.dateTimeButtonText,
-                          { color: isDarkMode ? '#fff' : '#000' }
-                        ]}>
-                          {createEventForm.time}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* Max Participants */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Max Participants
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.createEventInput,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          color: isDarkMode ? '#fff' : '#000',
-                        }
-                      ]}
-                      placeholder="Maximum number of participants"
-                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                      value={createEventForm.maxParticipants.toString()}
-                      onChangeText={(text) => setCreateEventForm(prev => ({ 
-                        ...prev, 
-                        maxParticipants: parseInt(text) || 0 
-                      }))}
-                      keyboardType="numeric"
-                    />
-                  </View>
-
-                  {/* Event Settings */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Event Settings
-                    </Text>
-                    <View style={styles.settingsContainer}>
-                      <View style={styles.settingRow}>
-                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                          Require Approval
-                        </Text>
-                        <Switch
-                          value={createEventForm.requiresApproval}
-                          onValueChange={(value) => setCreateEventForm(prev => ({ 
-                            ...prev, 
-                            requiresApproval: value 
-                          }))}
-                          trackColor={{ false: '#767577', true: '#add5fa' }}
-                          thumbColor={createEventForm.requiresApproval ? '#6ba3d0' : '#f4f3f4'}
-                        />
-                      </View>
-                      <View style={styles.settingRow}>
-                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                          Private Event
-                        </Text>
-                        <Switch
-                          value={createEventForm.isPrivate}
-                          onValueChange={(value) => setCreateEventForm(prev => ({ 
-                            ...prev, 
-                            isPrivate: value 
-                          }))}
-                          trackColor={{ false: '#767577', true: '#add5fa' }}
-                          thumbColor={createEventForm.isPrivate ? '#6ba3d0' : '#f4f3f4'}
-                        />
-                      </View>
-                      <View style={styles.settingRow}>
-                        <Text style={[styles.settingLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                          Virtual Option
-                        </Text>
-                        <Switch
-                          value={createEventForm.virtualOption}
-                          onValueChange={(value) => setCreateEventForm(prev => ({ 
-                            ...prev, 
-                            virtualOption: value 
-                          }))}
-                          trackColor={{ false: '#767577', true: '#add5fa' }}
-                          thumbColor={createEventForm.virtualOption ? '#6ba3d0' : '#f4f3f4'}
-                        />
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Skill Level */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Skill Level
-                    </Text>
-                    <View style={styles.skillLevelContainer}>
-                      {['beginner', 'intermediate', 'advanced', 'all'].map((level) => (
-                        <TouchableOpacity
-                          key={level}
-                          style={[
-                            styles.skillLevelButton,
-                            {
-                              backgroundColor: createEventForm.skillLevel === level
-                                ? '#add5fa'
-                                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-                              borderColor: createEventForm.skillLevel === level
-                                ? '#6ba3d0'
-                                : (isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'),
-                            }
-                          ]}
-                          onPress={() => setCreateEventForm(prev => ({ 
-                            ...prev, 
-                            skillLevel: level as any 
-                          }))}
-                        >
-                          <Text style={[
-                            styles.skillLevelText,
-                            {
-                              color: createEventForm.skillLevel === level
-                                ? '#ffffff'
-                                : (isDarkMode ? '#ccc' : '#666')
-                            }
-                          ]}>
-                            {level.charAt(0).toUpperCase() + level.slice(1)}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Cost */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Cost (Optional)
-                    </Text>
-                    <View style={styles.costContainer}>
-                      <TextInput
-                        style={[
-                          styles.createEventInput,
-                          styles.costInput,
-                          {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                            color: isDarkMode ? '#fff' : '#000',
-                          }
-                        ]}
-                        placeholder="0"
-                        placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                        value={createEventForm.cost.toString()}
-                        onChangeText={(text) => setCreateEventForm(prev => ({ 
-                          ...prev, 
-                          cost: parseFloat(text) || 0 
-                        }))}
-                        keyboardType="numeric"
-                      />
-                      <Text style={[
-                        styles.currencyLabel,
-                        { color: isDarkMode ? '#ccc' : '#666' }
-                      ]}>
-                        {createEventForm.currency}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* What to Bring */}
-                  <View style={styles.createEventField}>
-                    <Text style={[
-                      styles.createEventFieldLabel,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      What to Bring (Optional)
-                    </Text>
-                    <TextInput
-                      style={[
-                        styles.createEventInput,
-                        styles.createEventTextArea,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                          borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
-                          color: isDarkMode ? '#fff' : '#000',
-                        }
-                      ]}
-                      placeholder="List items participants should bring..."
-                      placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                      value={createEventForm.whatToBring}
-                      onChangeText={(text) => setCreateEventForm(prev => ({ ...prev, whatToBring: text }))}
-                      multiline={true}
-                      numberOfLines={3}
-                      textAlignVertical="top"
-                    />
-                  </View>
-                </ScrollView>
-
-                {/* Create Button */}
+          {/* Quick Filters */}
+          <Animated.View 
+            style={[
+              styles.quickFilters,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filtersContent}
+            >
+              {FILTER_CATEGORIES.map(filter => (
                 <TouchableOpacity
+                  key={filter.id}
                   style={[
-                    styles.createEventSubmitButton,
+                    styles.filterChip,
                     {
-                      backgroundColor: isDarkMode ? '#86efac' : '#10b981',
-                      opacity: (createEventForm.title && createEventForm.description) ? 1 : 0.5,
+                      backgroundColor: activeFilter === filter.id
+                        ? `${NuminaColors.purple}20`
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'),
+                      borderColor: activeFilter === filter.id
+                        ? NuminaColors.purple
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
                     }
                   ]}
-                  onPress={async () => {
-                    if (createEventForm.title && createEventForm.description) {
-                      try {
-                        // Create event with real-time sync
-                        const eventData = {
-                          title: createEventForm.title,
-                          description: createEventForm.description,
-                          type: createEventForm.type,
-                          date: createEventForm.date,
-                          time: createEventForm.time,
-                          location: createEventForm.location,
-                          duration: createEventForm.duration,
-                          maxParticipants: createEventForm.maxParticipants,
-                          hostId: 'current_user_id',
-                          hostName: 'You',
-                          // Enhanced fields
-                          photos: createEventForm.photos,
-                          requiresApproval: createEventForm.requiresApproval,
-                          isPrivate: createEventForm.isPrivate,
-                          skillLevel: createEventForm.skillLevel,
-                          tags: createEventForm.tags,
-                          ageRange: createEventForm.ageRange,
-                          cost: createEventForm.cost,
-                          currency: createEventForm.currency,
-                          requirements: createEventForm.requirements,
-                          whatToBring: createEventForm.whatToBring,
-                          cancellationPolicy: createEventForm.cancellationPolicy,
-                          repeatSchedule: createEventForm.repeatSchedule,
-                          virtualOption: createEventForm.virtualOption,
-                          meetingLink: createEventForm.meetingLink,
-                          contactInfo: createEventForm.contactInfo,
-                          socialMediaLinks: createEventForm.socialMediaLinks,
-                          // AI enhancement
-                          aiMatchScore: 0.95,
-                          emotionalCompatibility: 'high',
-                          personalizedReason: 'Perfect for your current interests',
-                          moodBoostPotential: 9.0,
-                          communityVibe: 'energetic',
-                          aiInsights: 'Great opportunity to connect with like-minded people',
-                          growthOpportunity: 'Expand your social circle and skills',
-                        };
-
-                        await createRealTimeEvent(eventData);
-                        setShowCreateEventModal(false);
-                        
-                        // Reset form
-                        setCreateEventForm({
-                          title: '',
-                          description: '',
-                          type: 'food_dining',
-                          date: '',
-                          time: '',
-                          location: '',
-                          duration: '',
-                          maxParticipants: 10,
-                          photos: [],
-                          requiresApproval: false,
-                          isPrivate: false,
-                          skillLevel: 'beginner',
-                          tags: [],
-                          ageRange: { min: 18, max: 65 },
-                          cost: 0,
-                          currency: 'USD',
-                          requirements: '',
-                          whatToBring: '',
-                          cancellationPolicy: 'flexible',
-                          repeatSchedule: 'none',
-                          virtualOption: false,
-                          meetingLink: '',
-                          contactInfo: '',
-                          socialMediaLinks: {
-                            instagram: '',
-                            twitter: '',
-                            facebook: '',
-                            discord: '',
-                          },
-                        });
-                        
-                        // Haptic feedback for success
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                      } catch (error) {
-                        console.error('Error creating event:', error);
-                        // Show error to user
-                      }
-                    }
-                  }}
-                  disabled={!createEventForm.title || !createEventForm.description}
+                  onPress={() => handleFilterPress(filter.id)}
                 >
-                  <FontAwesome5 name="plus" size={18} color="#ffffff" />
-                  <Text style={styles.createEventSubmitButtonText}>
-                    Create Event
+                  <Ionicons 
+                    name={filter.icon as any} 
+                    size={16} 
+                    color={activeFilter === filter.id ? NuminaColors.purple : (isDarkMode ? '#888' : '#999')} 
+                  />
+                  <Text style={[
+                    styles.filterText,
+                    { 
+                      color: activeFilter === filter.id 
+                        ? NuminaColors.purple 
+                        : (isDarkMode ? '#888' : '#999') 
+                    }
+                  ]}>
+                    {filter.label}
                   </Text>
                 </TouchableOpacity>
-              </View>
-            </BlurView>
-          </Modal>
+              ))}
+            </ScrollView>
+          </Animated.View>
 
-          {/* Photo Options Modal */}
-          <Modal
-            visible={showPhotoOptions}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowPhotoOptions(false)}
+
+          {/* Advanced Filters Panel */}
+          <Animated.View 
+            style={[
+              styles.advancedFilters,
+              {
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
+                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                transform: [{ translateY: filterSlideAnim }],
+              }
+            ]}
           >
-            <BlurView style={styles.modalOverlay} intensity={20}>
-              <View style={[
-                styles.photoOptionsModal,
-                {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e5e7eb',
-                }
-              ]}>
-                <View style={styles.photoOptionsHeader}>
+            <Text style={[
+              styles.filtersTitle,
+              { color: isDarkMode ? '#fff' : '#333' }
+            ]}>
+              Event Types
+            </Text>
+            <View style={styles.typeFilters}>
+              {EVENT_TYPES.map(type => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={[
+                    styles.typeChip,
+                    {
+                      backgroundColor: selectedTypes.includes(type.id)
+                        ? `${type.color}20`
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'),
+                      borderColor: selectedTypes.includes(type.id)
+                        ? type.color
+                        : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
+                    }
+                  ]}
+                  onPress={() => handleTypeToggle(type.id)}
+                >
+                  <Ionicons 
+                    name={type.icon as any} 
+                    size={14} 
+                    color={selectedTypes.includes(type.id) ? type.color : (isDarkMode ? '#888' : '#999')} 
+                  />
                   <Text style={[
-                    styles.photoOptionsTitle,
-                    { color: isDarkMode ? '#fff' : '#000' }
+                    styles.typeChipText,
+                    { 
+                      color: selectedTypes.includes(type.id) 
+                        ? type.color 
+                        : (isDarkMode ? '#888' : '#999') 
+                    }
                   ]}>
-                    Add Photo
+                    {type.label}
                   </Text>
-                  <TouchableOpacity
-                    style={styles.closePhotoOptionsButton}
-                    onPress={() => setShowPhotoOptions(false)}
-                  >
-                    <FontAwesome5 name="times" size={18} color={isDarkMode ? '#888' : '#666'} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.photoOptionsContent}>
-                  <TouchableOpacity
-                    style={[
-                      styles.photoOptionButton,
-                      {
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-                      }
-                    ]}
-                    onPress={() => handlePhotoUpload('camera')}
-                  >
-                    <FontAwesome5 name="camera" size={24} color={isDarkMode ? '#add5fa' : '#6ba3d0'} />
-                    <Text style={[
-                      styles.photoOptionText,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Take Photo
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.photoOptionButton,
-                      {
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                        borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-                      }
-                    ]}
-                    onPress={() => handlePhotoUpload('library')}
-                  >
-                    <FontAwesome5 name="images" size={24} color={isDarkMode ? '#add5fa' : '#6ba3d0'} />
-                    <Text style={[
-                      styles.photoOptionText,
-                      { color: isDarkMode ? '#fff' : '#000' }
-                    ]}>
-                      Choose from Library
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* Events List */}
+          <Animated.View 
+            style={[
+              styles.eventsContainer,
+              { opacity: fadeAnim }
+            ]}
+          >
+            {(loading || eventsLoading) ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={NuminaColors.purple} />
+                <Text style={[
+                  styles.loadingText,
+                  { color: isDarkMode ? '#888' : '#666' }
+                ]}>
+                  Finding perfect events for you...
+                </Text>
               </View>
-            </BlurView>
-          </Modal>
+            ) : (
+              <FlatList
+                data={filteredEvents}
+                renderItem={renderEventCard}
+                keyExtractor={item => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={[
+                  styles.eventsList,
+                  { paddingBottom: showFilters ? 140 : 100 }
+                ]}
+                ListEmptyComponent={renderEmptyState}
+                onScroll={() => {
+                  if (showFilters) {
+                    setShowFilters(false);
+                    Animated.timing(filterSlideAnim, {
+                      toValue: -100,
+                      duration: 300,
+                      useNativeDriver: true,
+                    }).start();
+                  }
+                }}
+              />
+            )}
+          </Animated.View>
         </SafeAreaView>
       </PageBackground>
     </ScreenWrapper>
@@ -1837,812 +604,139 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginTop: 100,
   },
-  content: {
-    flex: 1,
-    paddingTop: 90,
-  },
-  headerSection: {
-    marginBottom: 8,
-    paddingHorizontal: 16,
-  },
-  statsCard: {
-    borderRadius: 12,
+  searchHeader: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginTop: 240,
+    marginHorizontal: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    gap: 16,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
-  statsRow: {
+  searchBar: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 10,
   },
-  statItem: {
+  searchInput: {
     flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: '#575757',
-    marginHorizontal: 20,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-  },
-  statLabel: {
-    fontSize: 10,
-    fontFamily: 'Nunito_400Regular',
-    textAlign: 'center',
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
   },
   filterToggle: {
-    padding: 8,
-    borderRadius: 8,
-    marginLeft: 8,
+    padding: 14,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  filterChipsContainer: {
-    maxHeight: 40,
+  quickFilters: {
+    marginTop: 16,
   },
-  filterChipsContent: {
-    paddingHorizontal: 4,
-    gap: 8,
+  filtersContent: {
+    paddingHorizontal: 20,
+    gap: 12,
   },
   filterChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 6,
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontFamily: 'Nunito_500Medium',
-  },
-  filterSection: {
-    marginBottom: 12,
-  },
-  filterContainer: {
-    paddingHorizontal: 4,
-    gap: 12,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
   },
-  filterButtonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterButtonText: {
-    fontSize: 13,
+  filterText: {
+    fontSize: 14,
     fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
+    fontFamily: 'Inter_500Medium',
   },
-  eventsList: {
-    flex: 1,
-  },
-  eventsContent: {
-    paddingBottom: 100,
-  },
-  feedItem: {
-    paddingVertical: 12,
-    marginBottom: 8,
-  },
-  feedItemTouchable: {
-    flex: 1,
-  },
-  feedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    paddingHorizontal: 16,
-  },
-  hostInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  hostAvatar: {
-    width: 32,
-    height: 32,
+  advancedFilters: {
+    position: 'absolute',
+    top: 160,
+    left: 16,
+    right: 16,
+    padding: 16,
     borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    borderWidth: 1,
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
   },
-  hostInitial: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  hostDetails: {
-    flex: 1,
-  },
-  hostName: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  postTime: {
-    fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
-  },
-  moreButton: {
-    padding: 8,
-  },
-  feedContent: {
-    marginBottom: 12,
-    paddingHorizontal: 16,
-  },
-  feedEventTitle: {
+  filtersTitle: {
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 6,
-  },
-  feedDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontFamily: 'Inter_600SemiBold',
     marginBottom: 12,
-    fontFamily: 'Nunito_400Regular',
   },
-  eventTags: {
+  typeFilters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  typeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
   },
-  eventTag: {
+  typeChipText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+  },
+  eventsContainer: {
+    flex: 1,
+    marginTop: 12,
+  },
+  eventsList: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  eventCard: {
+    marginBottom: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  typeBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    zIndex: 1,
   },
-  eventTagText: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    textTransform: 'capitalize',
-  },
-  participantCount: {
-    fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
-  },
-  feedActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingHorizontal: 16,
-    borderTopWidth: 0.5,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  actionButton: {
-    padding: 8,
-    marginRight: 16,
-  },
-  actionSpacer: {
-    flex: 1,
-  },
-  joinFeedButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  joinFeedButtonText: {
+  typeText: {
     fontSize: 12,
     fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  // Modal Styles
-  modalContainer: {
-    flex: 1,
-    paddingTop: 50,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  modalCloseButton: {
-    padding: 8,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  filterGroup: {
-    marginVertical: 20,
-  },
-  filterGroupTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 12,
-  },
-  filterOptions: {
-    gap: 8,
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 38,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-  },
-  filterOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    letterSpacing: -0.2,
-  },
-  suggestionChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 38,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 8,
-  },
-  suggestionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    letterSpacing: -0.2,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    gap: 12,
-  },
-  clearFiltersButton: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearFiltersText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  applyFiltersButton: {
-    flex: 1,
-    height: 38,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  applyFiltersText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  // Event Quick Actions Modal Styles
-  eventModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  eventQuickCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 20,
-    width: '100%',
-    maxWidth: 320,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  eventQuickHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-    gap: 12,
-  },
-  eventQuickTypeIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  eventQuickInfo: {
-    flex: 1,
-  },
-  eventQuickTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 4,
-    lineHeight: 22,
-  },
-  eventQuickMeta: {
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-  },
-  eventQuickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  eventQuickActionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  eventQuickCloseButton: {
-    padding: 8,
-    marginLeft: 8,
-  },
-  // Detailed Modal Styles
-  detailedModalContainer: {
-    flex: 1,
-    paddingTop: 50,
-  },
-  detailedModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  detailedModalCloseButton: {
-    padding: 8,
-  },
-  detailedModalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  photosContainer: {
-    marginBottom: 24,
-  },
-  photosContent: {
-    paddingRight: 20,
-    gap: 12,
-  },
-  photoContainer: {
-    width: 200,
-    height: 120,
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  detailedModalHeaderSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  detailedModalTypeIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  detailedModalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  detailedModalHost: {
-    fontSize: 16,
-    fontFamily: 'Nunito_400Regular',
-    textAlign: 'center',
-  },
-  detailedModalDetails: {
-    marginBottom: 32,
-    gap: 16,
-  },
-  detailedModalDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  detailedModalDetailText: {
-    fontSize: 16,
-    fontFamily: 'Nunito_500Medium',
-  },
-  detailedModalDescriptionSection: {
-    marginBottom: 32,
-  },
-  detailedModalDescriptionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 12,
-  },
-  detailedModalDescription: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: 'Nunito_400Regular',
-  },
-  detailedModalFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    borderTopWidth: 1,
-  },
-  detailedModalPrimaryButton: {
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailedModalPrimaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  floatingCreateButton: {
-    position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 1000,
-  },
-  // Create Event Modal Styles
-  createEventModalContainer: {
-    flex: 1,
-    paddingTop: 50,
-  },
-  createEventModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
-  },
-  createEventModalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  createEventModalCloseButton: {
-    padding: 8,
-  },
-  createEventModalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  createEventFormSection: {
-    marginBottom: 20,
-  },
-  createEventFormRow: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  createEventFormLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 8,
-  },
-  createEventFormInput: {
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-  },
-  createEventFormTextArea: {
-    height: 100,
-    borderRadius: 8,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-    textAlignVertical: 'top',
-  },
-  createEventTypeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  createEventTypeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  createEventTypeOptionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  createEventModalFooter: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    gap: 12,
-  },
-  createEventCancelButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createEventSubmitButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  createEventButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  createEventPickerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: '100%',
-    paddingHorizontal: 12,
-  },
-  createEventPickerText: {
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-  },
-  // AI Enhancement Styles
-  exploreModesSection: {
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
-  exploreModeTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    marginBottom: 12,
-  },
-  exploreModeContainer: {
-    paddingHorizontal: 4,
-    gap: 12,
-  },
-  exploreModeCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 2,
-    minWidth: 100,
-    gap: 4,
-  },
-  exploreModeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  exploreModeSubtext: {
-    fontSize: 11,
-    fontFamily: 'Nunito_400Regular',
-  },
-  aiInsightsContainer: {
-    backgroundColor: 'rgba(255, 107, 157, 0.05)',
-    borderRadius: 12,
-    padding: 12,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 157, 0.2)',
-  },
-  aiMatchHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 6,
-  },
-  aiMatchScore: {
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  compatibilityBadge: {
-    backgroundColor: '#FF6B9D',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 4,
-  },
-  compatibilityText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  personalizedReason: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    fontFamily: 'Nunito_400Regular',
-    marginBottom: 4,
-    lineHeight: 16,
-  },
-  moodBoostIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  moodBoostText: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  connectionsPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  connectionsText: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  vibeTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    marginLeft: 8,
-  },
-  vibeText: {
-    fontSize: 10,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    textTransform: 'capitalize',
-  },
-  floatingSearchBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingBottom: 10,
-    paddingHorizontal: 10,
-    backgroundColor: 'transparent',
-    zIndex: 1001,
-  },
-  floatingSearchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  floatingFilterChipsContainer: {
-    maxHeight: 40,
-    marginBottom: 6,
-  },
-  searchIcon: {
-    marginRight: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-  },
-
-  // Search Section Styles
-  searchSection: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  connectionStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginRight: 12,
-  },
-  connectionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  connectionText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  clearSearchButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-
-  // Event Item Styles
-  eventItem: {
-    marginHorizontal: 16,
-    marginVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 4,
-    position: 'relative',
+    fontFamily: 'Inter_600SemiBold',
   },
   aiMatchBadge: {
     position: 'absolute',
@@ -2652,334 +746,104 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
+    backgroundColor: 'rgba(138, 43, 226, 0.1)',
     borderRadius: 12,
     gap: 4,
     zIndex: 1,
   },
-  aiMatchBadgeText: {
-    fontSize: 10,
+  aiMatchText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Inter_600SemiBold',
   },
-  eventHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 12,
-  },
-  eventTypeIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  eventHeaderText: {
-    flex: 1,
+  eventContent: {
+    padding: 20,
+    paddingTop: 52,
   },
   eventTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 2,
-  },
-  eventMeta: {
-    fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
-  },
-  joinedBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 12,
+    lineHeight: 24,
   },
   eventDescription: {
     fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Inter_400Regular',
     lineHeight: 20,
+    marginBottom: 20,
+  },
+  eventMeta: {
+    gap: 10,
+    marginBottom: 20,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  joinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
     marginBottom: 12,
   },
-  eventStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 8,
-  },
-  eventStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  eventStatText: {
-    fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
-  },
-  aiInsights: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  aiInsightsText: {
-    fontSize: 10,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    flex: 1,
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  createEventModal: {
-    width: '90%',
-    maxHeight: '85%',
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  createEventHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 16,
-  },
-  createEventTitle: {
-    fontSize: 20,
+  joinButtonText: {
+    fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Inter_600SemiBold',
   },
-  closeCreateEventButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  createEventContent: {
-    maxHeight: 500,
-    padding: 20,
-    paddingTop: 0,
-  },
-  createEventField: {
-    marginBottom: 16,
-  },
-  createEventFieldLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    marginBottom: 8,
-  },
-  createEventInput: {
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    fontFamily: 'Nunito_400Regular',
-  },
-  createEventTextArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
+  personalizedSection: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 10,
   },
-  eventTypeOptions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  eventTypeOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 6,
-  },
-  eventTypeOptionText: {
+  personalizedText: {
+    flex: 1,
     fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
+    fontStyle: 'italic',
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 16,
   },
-  dateTimeRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 0,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  dateTimeButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  createEventSubmitButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: 20,
-    marginTop: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
-  },
-  createEventSubmitButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  
-  // Photo Upload Styles
-  photosContainer: {
-    marginTop: 8,
-  },
-  photosRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  photoItem: {
-    position: 'relative',
-  },
-  photoImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
-  },
-  removePhotoButton: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#ff4444',
+  emptyState: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    paddingVertical: 80,
   },
-  addPhotoButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  // Photo Options Modal Styles
-  photoOptionsModal: {
-    width: '80%',
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: 'hidden',
-    alignSelf: 'center',
-  },
-  photoOptionsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 16,
-  },
-  photoOptionsTitle: {
+  emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontFamily: 'Inter_600SemiBold',
+    marginTop: 16,
+    marginBottom: 4,
   },
-  closePhotoOptionsButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  emptySubtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  photoOptionsContent: {
-    padding: 20,
-    paddingTop: 0,
+    paddingVertical: 80,
     gap: 16,
   },
-  photoOptionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 12,
-  },
-  photoOptionText: {
+  loadingText: {
     fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  
-  // Settings Styles
-  settingsContainer: {
-    gap: 16,
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  settingLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  
-  // Skill Level Styles
-  skillLevelContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  skillLevelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  skillLevelText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-  },
-  
-  // Cost Styles
-  costContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  costInput: {
-    flex: 1,
-  },
-  currencyLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    minWidth: 40,
+    fontFamily: 'Inter_500Medium',
   },
 });

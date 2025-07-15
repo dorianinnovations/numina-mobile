@@ -13,6 +13,8 @@ interface AuthContextType {
   loading: boolean;
   userData: any | null;
   isInitializing: boolean;
+  user: any | null;
+  authToken: string | null;
 
   // Authentication methods
   login: (credentials: { email: string; password: string }) => Promise<AuthResult>;
@@ -161,6 +163,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     userData: authState.user,
     isInitializing: authState.isInitializing,
+    user: authState.user,
+    authToken: authState.token,
     
     // Methods
     login,

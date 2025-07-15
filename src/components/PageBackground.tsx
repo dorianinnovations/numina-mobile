@@ -19,7 +19,7 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
       <View 
         style={[
           styles.container, 
-          { backgroundColor: '#1a1a1a' },
+          { backgroundColor: '#0a0a0a' },
           style
         ]}
       >

@@ -277,6 +277,32 @@ class WebSocketService {
     this.socket.on('live_analytics', (data: any) => {
       this.emitToHandlers('live_analytics', data);
     });
+
+    // Growth Insights and Milestone events
+    this.socket.on('milestone_achieved', (data: any) => {
+      this.emitToHandlers('milestone_achieved', data);
+    });
+
+    this.socket.on('milestone_celebrated', (data: any) => {
+      this.emitToHandlers('milestone_celebrated', data);
+    });
+
+    this.socket.on('emotional_share_received', (data: any) => {
+      this.emitToHandlers('emotional_share_received', data);
+    });
+
+    this.socket.on('support_request_received', (data: any) => {
+      this.emitToHandlers('support_request_received', data);
+    });
+
+    this.socket.on('growth_insights_updated', (data: any) => {
+      this.emitToHandlers('growth_insights_updated', data);
+    });
+
+    // Dynamic Numina Senses
+    this.socket.on('numina_senses_updated', (data: any) => {
+      this.emitToHandlers('numina_senses_updated', data);
+    });
   }
 
   /**
@@ -434,6 +460,46 @@ class WebSocketService {
   requestLiveAnalytics(): void {
     if (this.socket && this.connectionStatus.isConnected) {
       this.socket.emit('request_live_analytics');
+    }
+  }
+
+  /**
+   * Share emotional state with friend
+   */
+  shareEmotionalState(targetUserId: string, emotion: string, intensity: number): void {
+    if (this.socket && this.connectionStatus.isConnected) {
+      this.socket.emit('share_emotional_state', {
+        targetUserId,
+        emotion,
+        intensity,
+        shareType: 'check_in'
+      });
+    }
+  }
+
+  /**
+   * Celebrate milestone achievement
+   */
+  celebrateMilestone(milestoneId: string, title: string, shareWithCommunity: boolean = true): void {
+    if (this.socket && this.connectionStatus.isConnected) {
+      this.socket.emit('celebrate_milestone', {
+        milestoneId,
+        title,
+        shareWithCommunity
+      });
+    }
+  }
+
+  /**
+   * Request community support
+   */
+  requestSupport(intensity: number, context: string, anonymous: boolean = true): void {
+    if (this.socket && this.connectionStatus.isConnected) {
+      this.socket.emit('request_support', {
+        intensity,
+        context,
+        anonymous
+      });
     }
   }
 

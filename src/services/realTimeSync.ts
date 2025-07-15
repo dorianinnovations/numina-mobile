@@ -135,20 +135,13 @@ class RealTimeSyncService extends SimpleEventEmitter {
     }
 
     try {
-      // In a real app, this would be your WebSocket server URL
-      // For now, we'll simulate the connection for demo purposes
-      const wsUrl = 'ws://localhost:8080/ws'; // This would be your actual WebSocket URL
+      // Production WebSocket URL - should be configured via environment variables
+      const wsUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL || 'wss://api.numina.app/ws';
       
-      // Since we don't have a real WebSocket server, we'll simulate it
-      this.simulateWebSocketConnection();
-      return;
-      
-      // Uncomment below for real WebSocket connection:
-      /*
+      // Attempt real WebSocket connection
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
-        console.log('WebSocket connected');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -162,7 +155,6 @@ class RealTimeSyncService extends SimpleEventEmitter {
       };
 
       this.websocket.onclose = () => {
-        console.log('WebSocket disconnected');
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');
@@ -170,10 +162,10 @@ class RealTimeSyncService extends SimpleEventEmitter {
       };
 
       this.websocket.onerror = (error) => {
-        console.error('WebSocket error:', error);
         this.emit('error', error);
+        // Fallback to simulation if WebSocket fails
+        this.simulateWebSocketConnection();
       };
-      */
     } catch (error) {
       console.error('Failed to connect WebSocket:', error);
       this.scheduleReconnect();

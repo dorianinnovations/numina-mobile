@@ -73,6 +73,34 @@ export const NuminaColors = {
     950: '#0F0F0F',
   },
 
+  // Chat Purple Scale
+  chatPurple: {
+    50: '#F3E5F5',
+    100: '#E1BEE7',
+    200: '#CE93D8',
+    300: '#BA68C8',
+    400: '#A855F7',
+    500: '#9333EA',
+    600: '#8E24AA',
+    700: '#7B1FA2',
+    800: '#6A1B9A',
+    900: '#4A148C',
+  },
+
+  // Chat Red Scale
+  chatRed: {
+    50: '#FFEBEE',
+    100: '#FFCDD2',
+    200: '#EF9A9A',
+    300: '#E57373',
+    400: '#EF5350',
+    500: '#F44336',
+    600: '#E53935',
+    700: '#D32F2F',
+    800: '#C62828',
+    900: '#B71C1C',
+  },
+
   // System Colors
   red: '#FF6B6B',
   orange: '#FF8E42',
@@ -80,7 +108,7 @@ export const NuminaColors = {
   green: '#6BCF7F',
   blue: '#4D96FF',
   purple: '#9B59B6',
-  pink: '#FF6B9D',
+  lightBlue: '#87CEEB',
 
   // Semantic Colors
   success: '#00FF88',

@@ -11,6 +11,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Image,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -149,18 +150,6 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
 
   const creatorData = [
     {
-      type: 'creator',
-      name: 'Doresh Seeker',
-      role: 'Solo Developer & Innovation Architect',
-      bio: 'A dedicated independent developer committed to advancing emotional intelligence technology and fostering meaningful human-AI connections through cutting-edge innovation.',
-      icon: 'user-circle',
-      links: [
-        { type: 'github', url: 'https://github.com/dorianinnovations', icon: 'github' },
-        { type: 'linkedin', url: 'https://www.linkedin.com/in/isaiahpappas', icon: 'linkedin' },
-        { type: 'twitter', url: 'https://twitter.com/numinaworks', icon: 'twitter' },
-      ],
-    },
-    {
       type: 'app',
       name: 'Numina',
       role: 'Advanced AI Emotional Intelligence Platform',
@@ -168,6 +157,18 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
       icon: 'brain',
       version: '1.0.0',
       build: '2025.01.001',
+    },
+    {
+      type: 'creator',
+      name: 'Creator',
+      role: 'Isaiah C. - San Diego, CA',
+      bio: 'A passionate independent developer dedicated to creating thoughtful technology that enhances emotional well-being and facilitates deeper understanding between humans and AI systems.',
+      icon: 'user-circle',
+      links: [
+        { type: 'github', url: 'https://github.com/dorianinnovations', icon: 'github' },
+        { type: 'linkedin', url: 'https://www.linkedin.com/in/isaiahpappas', icon: 'linkedin' },
+        { type: 'twitter', url: 'https://twitter.com/numinaworks', icon: 'twitter' },
+      ],
     },
     {
       type: 'vision',
@@ -197,8 +198,8 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
       bio: 'Interested in collaboration, technical discussions, or providing feedback? Let\'s explore opportunities to advance emotional intelligence technology together.',
       icon: 'envelope',
       links: [
-        { type: 'email', url: 'mailto:support@numina.ai', icon: 'envelope' },
-        { type: 'website', url: 'https://numina.ai', icon: 'globe' },
+        { type: 'email', url: 'mailto:numinaworks@gmail.com', icon: 'envelope' },
+        { type: 'website', url: 'https://numinaai.netlify.app', icon: 'globe' },
       ],
     },
   ];
@@ -229,6 +230,7 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
 
   const renderCard = (item: any, index: number) => {
     const anim = cardAnims[index];
+    const isNumina = item.type === 'app';
     
     return (
       <TouchableOpacity
@@ -254,20 +256,29 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
             },
           ]}
         >
-          <View style={styles.cardHeader}>
-            <View style={[
-              styles.cardIcon,
-              {
-                backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.1)' : 'rgba(173, 213, 250, 0.15)',
-              }
-            ]}>
-              <FontAwesome5 
-                name={item.icon as any} 
-                size={24} 
-                color={isDarkMode ? '#add5fa' : '#6ba3d0'} 
-              />
+          <View style={isNumina ? styles.numinaCardHeader : styles.cardHeader}>
+            <View style={isNumina ? styles.numinaCardIcon : styles.cardIcon}>
+              {isNumina ? (
+                <Image 
+                  source={require('../assets/images/NUMINALOGO.png')}
+                  style={styles.numinaLogoImage}
+                  resizeMode="contain"
+                />
+              ) : item.type === 'creator' ? (
+                <Image 
+                  source={require('../../assets/unknownuser.jpg')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <FontAwesome5 
+                  name={item.icon as any} 
+                  size={24} 
+                  color={isDarkMode ? '#add5fa' : '#6ba3d0'} 
+                />
+              )}
             </View>
-            <View style={styles.cardTitleContainer}>
+            <View style={isNumina ? styles.numinaCardTitleContainer : styles.cardTitleContainer}>
               <Text style={[
                 styles.cardName,
                 { color: isDarkMode ? '#ffffff' : '#000000' }
@@ -280,25 +291,25 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
               ]}>
                 {item.role}
               </Text>
+              <Text style={[
+                styles.cardBio,
+                { color: isDarkMode ? '#bbbbbb' : '#666666' }
+              ]}>
+                {item.bio}
+              </Text>
             </View>
           </View>
 
-          <Text style={[
-            styles.cardBio,
-            { color: isDarkMode ? '#bbbbbb' : '#666666' }
-          ]}>
-            {item.bio}
-          </Text>
-
-          {item.version && (
-            <View style={styles.appInfo}>
+          {/* Only for non-Numina cards: bio and links */}
+          {!isNumina && (
+            <>
               <Text style={[
-                styles.appVersion,
-                { color: isDarkMode ? '#888888' : '#666666' }
+                styles.cardBio,
+                { color: isDarkMode ? '#bbbbbb' : '#666666' }
               ]}>
-                Version {item.version} • Build {item.build}
+                {item.bio}
               </Text>
-            </View>
+            </>
           )}
 
           {item.links && (
@@ -367,47 +378,6 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
             contentContainerStyle={styles.contentContainer}
             showsVerticalScrollIndicator={false}
           >
-            {/* App Header with Professional Animation */}
-            <Animated.View 
-              style={[
-                styles.appHeader,
-                {
-                  backgroundColor: isDarkMode ? '#111111' : 'rgba(255, 255, 255, 0.25)',
-                  borderColor: isDarkMode ? '#222222' : 'rgba(255, 255, 255, 0.3)',
-                  opacity: headerAnim.fade,
-                  transform: [
-                    { translateY: headerAnim.slide },
-                    { scale: headerAnim.scale },
-                  ],
-                }
-              ]}
-            >
-              <View style={[
-                styles.appIcon,
-                {
-                  backgroundColor: isDarkMode ? '#add5fa' : '#6ba3d0',
-                }
-              ]}>
-                <FontAwesome5 
-                  name="brain" 
-                  size={40} 
-                  color="#ffffff" 
-                />
-              </View>
-              <Text style={[
-                styles.appName,
-                { color: isDarkMode ? '#ffffff' : '#000000' }
-              ]}>
-                Numina
-              </Text>
-              <Text style={[
-                styles.appTagline,
-                { color: isDarkMode ? '#bbbbbb' : '#666666' }
-              ]}>
-                Advanced AI-powered emotional intelligence platform
-              </Text>
-            </Animated.View>
-
             {/* Creator & Team Cards */}
             <View style={styles.cardsContainer}>
               {creatorData.map((item, index) => renderCard(item, index))}
@@ -441,7 +411,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 80,
   },
   scrollView: {
     flex: 1,
@@ -562,9 +532,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   linkButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 100,
+    height: 48,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -582,7 +552,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 8,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     marginBottom: 12,
@@ -590,10 +560,59 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   copyright: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
     letterSpacing: -0.1,
+  },
+  logoImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#f4f4f4',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  numinaCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  numinaCardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    backgroundColor: 'rgba(173, 213, 250, 0.15)',
+  },
+  numinaLogoImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#9898980',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  numinaCardTitleContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
   },
 });

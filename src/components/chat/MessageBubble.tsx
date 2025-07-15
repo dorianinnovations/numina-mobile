@@ -27,7 +27,7 @@ interface Message {
   isStreaming?: boolean;
   // AI Personality Features
   personalityContext?: {
-    communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+    communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
     emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
     adaptedResponse: boolean;
     userMoodDetected?: string;
@@ -239,6 +239,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const pressAnim = useRef(new Animated.Value(1)).current;
   const newContentOpacity = useRef(new Animated.Value(1)).current;
   const timestampOpacity = useRef(new Animated.Value(0)).current;
+  const personalityHeaderOpacity = useRef(new Animated.Value(0)).current;
+  const personalityHeaderSlide = useRef(new Animated.Value(20)).current;
 
   const isUser = message?.sender === 'user';
   const isAI = message?.sender === 'numina';
@@ -272,7 +274,26 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     if (isUser) {
       timestampOpacity.setValue(1);
     }
-  }, [index, isUser]);
+    
+    // Animate personality header for AI messages
+    if (isAI && message.personalityContext) {
+      const personalityDelay = delay + 200; // Slight delay after main message animation
+      Animated.parallel([
+        Animated.timing(personalityHeaderOpacity, {
+          toValue: 1,
+          duration: 600,
+          delay: personalityDelay,
+          useNativeDriver: true,
+        }),
+        Animated.timing(personalityHeaderSlide, {
+          toValue: 0,
+          duration: 600,
+          delay: personalityDelay,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [index, isUser, isAI, message.personalityContext]);
 
   // Progressive fade-in for new content chunks and timestamp
   useEffect(() => {
@@ -509,7 +530,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getPersonalityColor = (style: string) => {
     switch (style) {
-      case 'empathetic': return '#FF6B9D';
+      case 'supportive': return '#87CEEB';
       case 'direct': return '#4DABF7';
       case 'collaborative': return '#6BCF7F';
       case 'encouraging': return '#FFD93D';
@@ -519,7 +540,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getPersonalityIcon = (style: string) => {
     switch (style) {
-      case 'empathetic': return 'heart';
+      case 'supportive': return 'heart';
       case 'direct': return 'bullseye';
       case 'collaborative': return 'users';
       case 'encouraging': return 'star';
@@ -529,7 +550,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getPersonalityLabel = (style: string) => {
     switch (style) {
-      case 'empathetic': return 'Empathetic Mode';
+      case 'supportive': return 'Supportive Mode';
       case 'direct': return 'Direct Mode';
       case 'collaborative': return 'Collaborative Mode';
       case 'encouraging': return 'Encouraging Mode';
@@ -559,37 +580,44 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         style={isUser ? styles.userMessageWrapper : styles.messageWrapper}
       >
         {isUser ? (
-          /* User Message Bubble */
-          <View style={[
-            styles.messageBubble,
-            styles.userBubble,
-            {
-              backgroundColor: theme.colors.chat.userMessage.background,
+          /* User Message Bubble with Neumorphic Gradient */
+          <LinearGradient
+            colors={isDarkMode 
+              ? ['#2d2d2d', '#262626', '#232323'] 
+              : [theme.colors.chat.userMessage.background, theme.colors.chat.userMessage.background]
             }
-          ]}>
+            style={[
+              styles.messageBubble,
+              styles.userBubble,
+              {
+                borderWidth: 1,
+                borderColor: isDarkMode ? '#404040' : 'rgba(0, 0, 0, 0.1)',
+                shadowColor: isDarkMode ? '#000000' : '#000000',
+                shadowOffset: { width: 2, height: 2 },
+                shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                shadowRadius: 4,
+                elevation: 2,
+              }
+            ]}
+          >
             <View style={styles.textContainer}>
               <Text style={[
                 styles.messageText,
                 {
-                  color: theme.colors.chat.userMessage.text,
+                  color: isDarkMode ? '#f5f5f5' : theme.colors.chat.userMessage.text,
                   letterSpacing: -0.3,
+                  lineHeight: 28,
                   fontFamily: 'Nunito_400Regular',
                 }
               ]}>
                 {displayedText}
               </Text>
             </View>
-          </View>
+          </LinearGradient>
         ) : (
-          /* Bot Message with AI Personality Features */
-          <View style={[
-            styles.messageBubble,
-            styles.aiBubble,
-            {
-              backgroundColor: theme.colors.chat.aiMessage.background,
-            }
-          ]}>
-            {/* Message Options - Top Right */}
+          /* Bot Message with AI Personality Features - No Bubble */
+          <View style={styles.botMessageContainer}>
+            {/* Message Options - Lower Right */}
             {isAI && !message.isStreaming && (
               <View style={styles.aiMessageOptionsContainer}>
                 <TouchableOpacity
@@ -598,18 +626,21 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     // Future functionality: share, copy, etc.
                   }}
                 >
-                  <FontAwesome5 name="ellipsis-h" size={12} color={isDarkMode ? '#999' : '#666'} />
+                  <FontAwesome5 name="ellipsis-h" size={8} color={isDarkMode ? '#666' : '#333'} />
                 </TouchableOpacity>
               </View>
             )}
             
             {/* Personality Context Header */}
             {message.personalityContext && (
-              <View style={[
+              <Animated.View style={[
                 styles.personalityHeader,
+                styles.personalityHeaderNoBubble,
                 {
                   backgroundColor: getPersonalityColor(message.personalityContext.communicationStyle) + '15',
                   borderColor: getPersonalityColor(message.personalityContext.communicationStyle) + '30',
+                  opacity: personalityHeaderOpacity,
+                  transform: [{ translateY: personalityHeaderSlide }],
                 }
               ]}>
                 <FontAwesome5
@@ -634,7 +665,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                     </Text>
                   </View>
                 )}
-              </View>
+              </Animated.View>
             )}
             
             <BotMessageContent 
@@ -682,7 +713,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               </View>
             )}
             
-            {/* Timestamp - Bottom Right of AI Message */}
+            {/* Timestamp - Bottom Left of AI Message (no bubble) */}
             <Text style={[
               TextStyles.timestamp,
               styles.aiMessageTimestamp,
@@ -737,6 +768,8 @@ const styles = StyleSheet.create({
   botMessageContainer: {
     width: '100%',
     paddingHorizontal: 2,
+    paddingVertical: 4,
+    position: 'relative',
   },
   botTextContainer: {
     width: '100%',
@@ -810,8 +843,8 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     overflow: 'hidden',
     position: 'relative',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 2,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 2 },
@@ -819,10 +852,13 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
   },
   userBubble: {
-    borderBottomRightRadius: 15,
+    borderRadius: 8,
   },
   aiBubble: {
-    borderBottomLeftRadius: 15,
+    borderBottomLeftRadius: 8,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 18,
   },
   bubbleGradient: {
     padding: 16,
@@ -849,9 +885,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageText: {
-    fontSize: 15.2,
-    lineHeight: 26.4,
+    fontSize: 16,
+    lineHeight: 26,
     fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
   },
   streamingCursor: {
     opacity: 0.7,
@@ -884,7 +921,7 @@ const styles = StyleSheet.create({
   },
   inlineTimestamp: {
     fontSize: 11,
-    marginTop: 6,
+    marginTop: 2,
     marginLeft: 2,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
@@ -897,11 +934,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 2,
     marginBottom: 8,
     borderRadius: 12,
     borderWidth: 1,
     gap: 6,
+  },
+  personalityHeaderNoBubble: {
+    marginLeft: 0,
+    marginRight: 0,
+    maxWidth: '90%',
   },
   personalityText: {
     fontSize: 11,
@@ -963,25 +1005,26 @@ const styles = StyleSheet.create({
   // New professional AI message styles
   aiMessageOptionsContainer: {
     position: 'absolute',
-    top: 16,
+    bottom: 8,
     right: 8,
     zIndex: 1,
   },
   aiOptionsButton: {
-    padding: 6,
-    borderRadius: 12,
-    minWidth: 28,
+    padding: 4,
+    borderRadius: 8,
+    minWidth: 20,
+    minHeight: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.7,
+    opacity: 0.9,
   },
   aiMessageTimestamp: {
     fontSize: 11,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    marginRight: 4,
-    opacity: 0.7,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    marginLeft: 2,
+    opacity: 0.6,
   },
 });

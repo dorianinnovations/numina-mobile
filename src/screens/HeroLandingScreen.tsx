@@ -100,25 +100,37 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     Animated.sequence([
       Animated.parallel([
         Animated.timing(primaryButtonScale, {
-          toValue: 0.95,
-          duration: 80,
+          toValue: 0.92,
+          duration: 40,
           useNativeDriver: true,
         }),
         Animated.timing(primaryButtonOpacity, {
-          toValue: 0.8,
-          duration: 80,
+          toValue: 0.7,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(primaryButtonScale, {
+          toValue: 1.05,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(primaryButtonOpacity, {
+          toValue: 0.9,
+          duration: 60,
           useNativeDriver: true,
         }),
       ]),
       Animated.parallel([
         Animated.timing(primaryButtonScale, {
           toValue: 1,
-          duration: 120,
+          duration: 90,
           useNativeDriver: true,
         }),
         Animated.timing(primaryButtonOpacity, {
           toValue: 1,
-          duration: 120,
+          duration: 90,
           useNativeDriver: true,
         }),
       ]),
@@ -134,25 +146,37 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     Animated.sequence([
       Animated.parallel([
         Animated.timing(secondaryButtonScale, {
-          toValue: 0.95,
-          duration: 80,
+          toValue: 0.92,
+          duration: 40,
           useNativeDriver: true,
         }),
         Animated.timing(secondaryButtonOpacity, {
-          toValue: 0.8,
-          duration: 80,
+          toValue: 0.7,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(secondaryButtonScale, {
+          toValue: 1.05,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+        Animated.timing(secondaryButtonOpacity, {
+          toValue: 0.9,
+          duration: 60,
           useNativeDriver: true,
         }),
       ]),
       Animated.parallel([
         Animated.timing(secondaryButtonScale, {
           toValue: 1,
-          duration: 120,
+          duration: 90,
           useNativeDriver: true,
         }),
         Animated.timing(secondaryButtonOpacity, {
           toValue: 1,
-          duration: 120,
+          duration: 90,
           useNativeDriver: true,
         }),
       ]),
@@ -215,7 +239,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           ]}
         >
           <Text style={[styles.welcomeText, { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600] }]}>
-            <Text style={{ color: isDarkMode ? '#a880ff' : '#0099ff' }}>Search</Text>, <Text style={{ color: isDarkMode ? '#7bff98' : '#9f75ff' }}>connect</Text>, <Text style={{ color: isDarkMode ? '#76c3ff' : '#ffb172' }}>experience</Text>.
+            <Text style={{ color: isDarkMode ? '#87CEEB' : '#0099ff' }}>Search</Text>, <Text style={{ color: isDarkMode ? '#B0E0E6' : '#9f75ff' }}>connect</Text>, <Text style={{ color: isDarkMode ? '#ADD8E6' : '#ffb172' }}>experience</Text>.
           </Text>
             <Text style={[
               styles.brandText,

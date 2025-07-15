@@ -475,13 +475,13 @@ export const ScreenTransitions = {
     Animated.parallel([
       Animated.timing(value, {
         toValue: 1,
-        duration: 400,
+        duration: 200,
         useNativeDriver: true,
         easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
       }),
       Animated.timing(scaleValue, {
         toValue: 1,
-        duration: 400,
+        duration: 200,
         useNativeDriver: true,
         easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
       }),
@@ -493,13 +493,13 @@ export const ScreenTransitions = {
     Animated.parallel([
       Animated.timing(value, {
         toValue: 0,
-        duration: 250,
+        duration: 125,
         useNativeDriver: true,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
       }),
       Animated.timing(scaleValue, {
         toValue: 0.9,
-        duration: 250,
+        duration: 125,
         useNativeDriver: true,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
       }),

@@ -42,7 +42,7 @@ interface UserProfile {
 }
 
 const PERSONALITY_TYPES = [
-  'Empathetic Listener', 'Creative Explorer', 'Analytical Thinker', 
+  'Supportive Listener', 'Creative Explorer', 'Analytical Thinker', 
   'Social Connector', 'Mindful Seeker', 'Adventure Enthusiast'
 ];
 
@@ -245,6 +245,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 onChangeText={(text) => setProfile(prev => ({ ...prev, displayName: text }))}
                 placeholder="Display Name"
                 placeholderTextColor={isDarkMode ? '#888888' : '#666666'}
+                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
               />
             ) : (
               <Text style={[
@@ -273,6 +274,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 placeholderTextColor={isDarkMode ? '#888888' : '#666666'}
                 multiline={true}
                 numberOfLines={3}
+                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
               />
             ) : profile.bio ? (
               <Text style={[
@@ -301,6 +303,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   onChangeText={(text) => setProfile(prev => ({ ...prev, location: text }))}
                   placeholder="Your location"
                   placeholderTextColor={isDarkMode ? '#888888' : '#666666'}
+                  keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                 />
               </View>
             ) : profile.location ? (

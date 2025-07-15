@@ -64,9 +64,35 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
   const [streamingProgress, setStreamingProgress] = useState(0);
   const [streamingStatus, setStreamingStatus] = useState<string>('');
 
+  // Data validation function to ensure metrics are properly bounded
+  const validateGrowthData = (data: any): any => {
+    if (!data || !data.metrics) return data;
+    
+    const validatedMetrics = {
+      ...data.metrics,
+      positivityRatio: Math.max(0, Math.min(1, data.metrics.positivityRatio || 0)),
+      engagementScore: Math.max(0, Math.min(1, data.metrics.engagementScore || 0)),
+      avgSessionsPerDay: Math.max(0, Math.min(24, data.metrics.avgSessionsPerDay || 0)),
+      avgIntensity: Math.max(0, Math.min(10, data.metrics.avgIntensity || 0))
+    };
+    
+    return {
+      ...data,
+      metrics: validatedMetrics
+    };
+  };
+
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  
+  // Stagger animation refs for content fade-in
+  const contentFadeAnim = useRef(new Animated.Value(0)).current;
+  const growthCardFadeAnim = useRef(new Animated.Value(0)).current;
+  const milestonesCardFadeAnim = useRef(new Animated.Value(0)).current;
+  const statsCardFadeAnim = useRef(new Animated.Value(0)).current;
+  const socialCardFadeAnim = useRef(new Animated.Value(0)).current;
+  const privacyCardFadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     console.log('🎭 SentimentScreen: Component mounted, loading data...');
@@ -149,6 +175,14 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     };
   }, []);
 
+  // Trigger stagger animations when loading completes
+  useEffect(() => {
+    if (!loading && !isInitialLoad && (growthData || milestones.length > 0)) {
+      console.log('🎭 SentimentScreen: Loading complete, triggering stagger animations');
+      triggerStaggerAnimations();
+    }
+  }, [loading, isInitialLoad, growthData, milestones]);
+
   // Rate limiting function
   const canRefresh = () => {
     const now = Date.now();
@@ -184,7 +218,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           setStreamingStatus('Finalizing...');
           setStreamingProgress(100);
           
-          setGrowthData(chunk.data);
+          setGrowthData(validateGrowthData(chunk.data));
           
           // Small delay to show completion
           setTimeout(() => {
@@ -198,7 +232,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       // Handle completion for any remaining processing
       if (streamingResponse.complete && streamingResponse.content) {
         console.log('✅ SentimentScreen: Streaming completed with final content');
-        setGrowthData(streamingResponse.content);
+        setGrowthData(validateGrowthData(streamingResponse.content));
         setIsStreamingGrowthData(false);
         setLoading(false);
         setIsInitialLoad(false);
@@ -213,7 +247,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
         console.log('📈 SentimentScreen: Growth data API response (fallback):', response);
         if (response.success && response.data) {
           console.log('✅ SentimentScreen: Successfully loaded growth data (fallback)');
-          setGrowthData(response.data.data || response.data);
+          setGrowthData(validateGrowthData(response.data));
           setLoading(false);
           setIsInitialLoad(false);
         } else {
@@ -222,18 +256,21 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       } catch (fallbackError) {
         console.log('📈 SentimentScreen: Using mock growth data due to complete failure');
         // Final fallback to mock data
-        setGrowthData({
+        setGrowthData(validateGrowthData({
           metrics: {
-            positivityRatio: 78,
-            engagementScore: 85,
+            positivityRatio: 0.78, // Values should be 0.0-1.0, not percentages
+            engagementScore: 0.85,
+            avgSessionsPerDay: 2.4,
+            avgIntensity: 6.8,
             topEmotions: [
               { emotion: 'Joy', count: 12 },
               { emotion: 'Calm', count: 8 },
               { emotion: 'Excitement', count: 5 }
             ]
           },
+          period: 'Last 7 days',
           aiInsights: 'Your positivity has increased 15% this week. Great progress on maintaining emotional balance!'
-        });
+        }));
         setLoading(false);
         setIsInitialLoad(false);
       }
@@ -252,7 +289,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       console.log('🏆 SentimentScreen: Milestones API response:', response);
       if (response.success && response.data) {
         console.log('✅ SentimentScreen: Successfully loaded milestones');
-        const milestonesData = response.data.data?.milestones || response.data.milestones || [];
+        const milestonesData = response.data.milestones || [];
         setMilestones(milestonesData);
         console.log('🏆 SentimentScreen: Milestones state updated:', milestonesData);
       } else {
@@ -445,6 +482,60 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     ]).finally(() => setRefreshing(false));
   };
 
+  const triggerStaggerAnimations = () => {
+    // Reset all animations to 0
+    contentFadeAnim.setValue(0);
+    growthCardFadeAnim.setValue(0);
+    milestonesCardFadeAnim.setValue(0);
+    statsCardFadeAnim.setValue(0);
+    socialCardFadeAnim.setValue(0);
+    privacyCardFadeAnim.setValue(0);
+    
+    // Stagger the animations with delays
+    Animated.sequence([
+      // Main content fade in
+      Animated.timing(contentFadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      // Growth card fade in
+      Animated.timing(growthCardFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      // Milestones card fade in
+      Animated.timing(milestonesCardFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+      // Stats card fade in
+      Animated.timing(statsCardFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+      // Social card fade in
+      Animated.timing(socialCardFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+      // Privacy card fade in
+      Animated.timing(privacyCardFadeAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handleMenuAction = (key: string) => {
     switch (key) {
@@ -528,7 +619,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
             {isStreamingGrowthData && (
               <View style={styles.progressContainer}>
                 <View style={[
-                  styles.progressBar,
+                  styles.progressBarLoading,
                   { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
                 ]}>
                   <View style={[
@@ -540,7 +631,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                   ]} />
                 </View>
                 <Text style={[
-                  styles.progressText,
+                  styles.progressTextLoading,
                   { color: isDarkMode ? '#999999' : '#666666' }
                 ]}>
                   {streamingProgress}%
@@ -575,33 +666,18 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
             />
           }
         >
-          <Animated.View style={{ opacity: fadeAnim }}>
-            {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.titleContainer}>
-                <MaterialCommunityIcons 
-                  name="earth" 
-                  size={32} 
-                  color={NuminaColors.green} 
-                  style={styles.titleIcon}
-                />
-                <Text style={[styles.title, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                  Your Growth Dashboard
-                </Text>
-              </View>
-              <Text style={[styles.subtitle, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-                Comprehensive view of your personal growth and insights
-              </Text>
-            </View>
+          <Animated.View style={{ opacity: contentFadeAnim }}>
+
 
 
                 {/* Growth Insights Dashboard */}
                 {growthData && (
-                  <View style={[
+                  <Animated.View style={[
                     styles.growthCard,
                     {
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
                       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                      opacity: growthCardFadeAnim,
                     }
                   ]}>
                     <View style={styles.insightsHeader}>
@@ -622,7 +698,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                     <View style={styles.growthRingContainer}>
                       <View style={[styles.growthRing, { borderColor: NuminaColors.green }]}>
                         <Text style={[styles.growthPercentage, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                          {Math.round((growthData.metrics?.positivityRatio || 0) * 100)}%
+                          {Math.min(100, Math.round((growthData.metrics?.positivityRatio || 0) * 100))}%
                         </Text>
                         <Text style={[styles.growthLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                           Positive
@@ -630,13 +706,13 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                       </View>
                       <View style={styles.growthMetrics}>
                         <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-                          Engagement: {Math.round((growthData.metrics?.engagementScore || 0) * 100)}%
+                          Engagement: {Math.min(100, Math.round((growthData.metrics?.engagementScore || 0) * 100))}%
                         </Text>
                         <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-                          Sessions/Day: {(growthData.metrics?.avgSessionsPerDay || 0).toFixed(1)}
+                          Sessions/Day: {Math.max(0, (growthData.metrics?.avgSessionsPerDay || 0)).toFixed(1)}
                         </Text>
                         <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-                          Avg Intensity: {(growthData.metrics?.avgIntensity || 0).toFixed(1)}/10
+                          Avg Intensity: {Math.max(0, Math.min(10, (growthData.metrics?.avgIntensity || 0))).toFixed(1)}/10
                         </Text>
                       </View>
                     </View>
@@ -652,16 +728,17 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                         </Text>
                       </View>
                     )}
-                  </View>
+                  </Animated.View>
                 )}
 
                 {/* Milestone System */}
                 {milestones && milestones.length > 0 && (
-                  <View style={[
+                  <Animated.View style={[
                     styles.milestonesCard,
                     {
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
                       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                      opacity: milestonesCardFadeAnim,
                     }
                   ]}>
                     <View style={styles.insightsHeader}>
@@ -709,16 +786,17 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                         </Text>
                       </View>
                     ))}
-                  </View>
+                  </Animated.View>
                 )}
 
                 {/* Quick Stats Card */}
                 {growthData && (
-                  <View style={[
+                  <Animated.View style={[
                     styles.statsCard,
                     {
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
                       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                      opacity: statsCardFadeAnim,
                     }
                   ]}>
                     <View style={styles.insightsHeader}>
@@ -731,7 +809,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                     <View style={styles.statsGrid}>
                       <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: NuminaColors.green }]}>
-                          {Math.round((growthData.metrics?.positivityRatio || 0) * 100)}%
+                          {Math.min(100, Math.round((growthData.metrics?.positivityRatio || 0) * 100))}%
                         </Text>
                         <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                           Positivity
@@ -739,7 +817,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                       </View>
                       <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: NuminaColors.chatBlue[400] }]}>
-                          {(growthData.metrics?.avgSessionsPerDay || 0).toFixed(1)}
+                          {Math.max(0, Math.min(24, (growthData.metrics?.avgSessionsPerDay || 0))).toFixed(1)}
                         </Text>
                         <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                           Sessions/Day
@@ -747,34 +825,35 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                       </View>
                       <View style={styles.statItem}>
                         <Text style={[styles.statValue, { color: NuminaColors.yellow }]}>
-                          {(growthData.metrics?.avgIntensity || 0).toFixed(1)}
+                          {Math.max(0, Math.min(10, (growthData.metrics?.avgIntensity || 0))).toFixed(1)}
                         </Text>
                         <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                           Avg Intensity
                         </Text>
                       </View>
                       <View style={styles.statItem}>
-                        <Text style={[styles.statValue, { color: NuminaColors.pink }]}>
-                          {Math.round((growthData.metrics?.engagementScore || 0) * 100)}%
+                        <Text style={[styles.statValue, { color: NuminaColors.chatPurple[400] }]}>
+                          {Math.min(100, Math.round((growthData.metrics?.engagementScore || 0) * 100))}%
                         </Text>
                         <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                           Engagement
                         </Text>
                       </View>
                     </View>
-                  </View>
+                  </Animated.View>
                 )}
 
                 {/* Real-Time Social Features */}
-                <View style={[
+                <Animated.View style={[
                   styles.socialCard,
                   {
                     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
                     borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    opacity: socialCardFadeAnim,
                   }
                 ]}>
                   <View style={styles.insightsHeader}>
-                    <MaterialCommunityIcons name="heart-multiple" size={24} color={NuminaColors.pink} />
+                    <MaterialCommunityIcons name="heart-multiple" size={24} color={NuminaColors.chatPurple[400]} />
                     <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
                       Connect & Share
                     </Text>
@@ -797,28 +876,29 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                     </TouchableOpacity>
 
                     {/* Request Support */}
-                    <TouchableOpacity onPress={requestSupport} style={[styles.socialButton, { backgroundColor: `${NuminaColors.pink}20` }]}>
+                    <TouchableOpacity onPress={requestSupport} style={[styles.socialButton, { backgroundColor: `${NuminaColors.chatPurple[400]}20` }]}>
                       <Text style={styles.supportEmoji}>🆘</Text>
                       <Text style={[styles.socialButtonText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
                         Request Support
                       </Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </Animated.View>
 
                 {/* Privacy Notice */}
-                <View style={[
+                <Animated.View style={[
                   styles.privacyCard,
                   {
                     backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.7)',
                     borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+                    opacity: privacyCardFadeAnim,
                   }
                 ]}>
                   <Feather name="shield" size={20} color={NuminaColors.green} />
                   <Text style={[styles.privacyText, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
                     All data is anonymized and aggregated. Your privacy is protected.
                   </Text>
-                </View>
+                </Animated.View>
 
           </Animated.View>
         </ScrollView>
@@ -833,8 +913,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingHorizontal: 8,
+    paddingTop: 80,
   },
   loadingContainer: {
     flex: 1,
@@ -1061,6 +1141,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 16,
+    marginHorizontal: 8,
   },
   growthRingContainer: {
     flexDirection: 'row',
@@ -1086,16 +1167,21 @@ const styles = StyleSheet.create({
   },
   growthMetrics: {
     flex: 1,
+    minWidth: 0,
   },
   metricText: {
     fontSize: 14,
     fontFamily: 'Inter_500Medium',
     marginBottom: 8,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   aiInsightText: {
     fontSize: 13,
     fontFamily: 'Inter_400Regular',
     lineHeight: 18,
+    flex: 1,
+    flexWrap: 'wrap',
   },
   periodText: {
     fontSize: 12,
@@ -1121,6 +1207,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 16,
+    marginHorizontal: 8,
   },
   achievedMilestones: {
     flexDirection: 'row',
@@ -1174,6 +1261,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 16,
+    marginHorizontal: 8,
   },
   statsGrid: {
     flexDirection: 'row',
@@ -1202,6 +1290,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 16,
+    marginHorizontal: 8,
   },
   socialButtons: {
     gap: 12,
@@ -1234,7 +1323,7 @@ const styles = StyleSheet.create({
     width: '80%',
     alignItems: 'center',
   },
-  progressBar: {
+  progressBarLoading: {
     width: '100%',
     height: 4,
     borderRadius: 2,
@@ -1244,7 +1333,7 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
-  progressText: {
+  progressTextLoading: {
     marginTop: 8,
     fontSize: 12,
     fontWeight: '500',

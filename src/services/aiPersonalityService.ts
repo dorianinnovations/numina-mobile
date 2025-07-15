@@ -12,7 +12,7 @@ interface UserEmotionalState {
 }
 
 interface AIPersonality {
-  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+  communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
   adaptivePrompts: string[];
   contextualHints: string[];
 }
@@ -330,7 +330,7 @@ class AIPersonalityService {
     const { communicationStyle } = personality;
     
     if (mood === 'anxious' && intensity > 7) {
-      return communicationStyle === 'empathetic' 
+      return communicationStyle === 'supportive' 
         ? "I'm here to listen... what's on your mind? 💙"
         : "Let's work through this together...";
     }
@@ -348,7 +348,7 @@ class AIPersonalityService {
     }
     
     switch (communicationStyle) {
-      case 'empathetic':
+      case 'supportive':
         return "I'm here for you... what's in your heart? 💫";
       case 'collaborative':
         return "Let's explore this together... what's happening?";
@@ -422,10 +422,10 @@ class AIPersonalityService {
   }
 
   private generateLocalPersonalityRecommendations(state: UserEmotionalState): AIPersonality {
-    let communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+    let communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
     
     if (state.mood === 'anxious' || state.mood === 'sad') {
-      communicationStyle = 'empathetic';
+      communicationStyle = 'supportive';
     } else if (state.mood === 'excited' || state.mood === 'happy') {
       communicationStyle = 'encouraging';
     } else if (state.mood === 'thoughtful' || state.mood === 'calm') {

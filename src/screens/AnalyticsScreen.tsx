@@ -43,6 +43,7 @@ interface Mood {
 }
 
 const moods: Mood[] = [
+  // Core Emotions
   { emoji: "😊", label: "Happy", color: "#fef08aa5", intensity: "high" },
   { emoji: "😔", label: "Sad", color: "#93c4fda4", intensity: "low" },
   { emoji: "😡", label: "Angry", color: "#fca5a596", intensity: "high" },
@@ -52,6 +53,70 @@ const moods: Mood[] = [
   { emoji: "🤔", label: "Thoughtful", color: "#a5b4fc81", intensity: "medium" },
   { emoji: "😍", label: "Excited", color: "#fbcfe884", intensity: "high" },
   { emoji: "😣", label: "Stressed", color: "#fed7aa7c", intensity: "high" },
+  
+  // Positive Emotions
+  { emoji: "🥰", label: "Loved", color: "#fda4af85", intensity: "high" },
+  { emoji: "🤗", label: "Grateful", color: "#a7f3d085", intensity: "medium" },
+  { emoji: "😇", label: "Peaceful", color: "#93c5fd85", intensity: "low" },
+  { emoji: "🤩", label: "Amazed", color: "#fbbf2485", intensity: "high" },
+  { emoji: "😌", label: "Content", color: "#86efac85", intensity: "low" },
+  { emoji: "😤", label: "Determined", color: "#f9731685", intensity: "high" },
+  { emoji: "🥺", label: "Hopeful", color: "#c084fc85", intensity: "medium" },
+  { emoji: "😌", label: "Relaxed", color: "#34d39985", intensity: "low" },
+  { emoji: "🤔", label: "Curious", color: "#60a5fa85", intensity: "medium" },
+  { emoji: "😌", label: "Satisfied", color: "#10b98185", intensity: "medium" },
+  { emoji: "🤗", label: "Supported", color: "#8b5cf685", intensity: "medium" },
+  { emoji: "😌", label: "Mindful", color: "#06b6d485", intensity: "low" },
+  { emoji: "🤩", label: "Inspired", color: "#ec489985", intensity: "high" },
+  { emoji: "😌", label: "Balanced", color: "#14b8a685", intensity: "low" },
+  
+  // Challenging Emotions
+  { emoji: "😤", label: "Frustrated", color: "#fdba7480", intensity: "medium" },
+  { emoji: "🥺", label: "Vulnerable", color: "#f59e0b85", intensity: "medium" },
+  { emoji: "😤", label: "Overwhelmed", color: "#ef444485", intensity: "high" },
+  { emoji: "😤", label: "Irritated", color: "#f9731685", intensity: "medium" },
+  { emoji: "😤", label: "Disappointed", color: "#6b728085", intensity: "medium" },
+  { emoji: "😤", label: "Confused", color: "#8b5cf685", intensity: "medium" },
+  { emoji: "😤", label: "Lonely", color: "#64748b85", intensity: "medium" },
+  { emoji: "😤", label: "Jealous", color: "#f59e0b85", intensity: "medium" },
+  { emoji: "😤", label: "Guilty", color: "#dc262685", intensity: "medium" },
+  { emoji: "😤", label: "Shame", color: "#7c3aed85", intensity: "medium" },
+  
+  // Physical States
+  { emoji: "🍽️", label: "Hungry", color: "#fbbf2485", intensity: "medium" },
+  { emoji: "🥤", label: "Thirsty", color: "#0ea5e985", intensity: "medium" },
+  { emoji: "😴", label: "Sleepy", color: "#6366f185", intensity: "low" },
+  { emoji: "💪", label: "Energetic", color: "#10b98185", intensity: "high" },
+  { emoji: "🏃", label: "Restless", color: "#f59e0b85", intensity: "medium" },
+  { emoji: "🛌", label: "Comfortable", color: "#8b5cf685", intensity: "low" },
+  { emoji: "🤒", label: "Sick", color: "#ef444485", intensity: "medium" },
+  { emoji: "🤕", label: "Pain", color: "#dc262685", intensity: "high" },
+  { emoji: "😮‍💨", label: "Exhausted", color: "#6b728085", intensity: "high" },
+  { emoji: "😮‍💨", label: "Refreshed", color: "#10b98185", intensity: "medium" },
+  
+  // Social Emotions
+  { emoji: "🤝", label: "Connected", color: "#3b82f685", intensity: "medium" },
+  { emoji: "💕", label: "Romantic", color: "#ec489985", intensity: "high" },
+  { emoji: "👥", label: "Social", color: "#8b5cf685", intensity: "medium" },
+  { emoji: "🤗", label: "Welcomed", color: "#10b98185", intensity: "medium" },
+  { emoji: "😤", label: "Rejected", color: "#ef444485", intensity: "medium" },
+  { emoji: "😤", label: "Misunderstood", color: "#6b728085", intensity: "medium" },
+  { emoji: "😤", label: "Excluded", color: "#64748b85", intensity: "medium" },
+  { emoji: "🤝", label: "Accepted", color: "#10b98185", intensity: "medium" },
+  { emoji: "😤", label: "Betrayed", color: "#dc262685", intensity: "high" },
+  { emoji: "🤝", label: "Trusted", color: "#05966985", intensity: "medium" },
+  
+  // Creative & Work
+  { emoji: "🎨", label: "Creative", color: "#ec489985", intensity: "high" },
+  { emoji: "💡", label: "Focused", color: "#3b82f685", intensity: "medium" },
+  { emoji: "📚", label: "Studious", color: "#6366f185", intensity: "medium" },
+  { emoji: "💼", label: "Productive", color: "#10b98185", intensity: "high" },
+  { emoji: "😤", label: "Bored", color: "#6b728085", intensity: "low" },
+  { emoji: "😤", label: "Distracted", color: "#8b5cf685", intensity: "medium" },
+  { emoji: "🎯", label: "Motivated", color: "#f59e0b85", intensity: "high" },
+  { emoji: "😤", label: "Procrastinating", color: "#64748b85", intensity: "medium" },
+  { emoji: "🏆", label: "Accomplished", color: "#fbbf2485", intensity: "high" },
+  { emoji: "😤", label: "Stuck", color: "#6b728085", intensity: "medium" },
 ];
 
 export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack }) => {
@@ -422,7 +487,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                           {mood.mood}
                         </Text>
                         <Text style={[styles.moodBarPercentage, { color: isDarkMode ? '#888' : '#666' }]}>
-                          {mood.percentage}%
+                          {Math.min(100, Math.round(mood.percentage || 0))}%
                         </Text>
                       </View>
                       <View style={[styles.moodBarTrack, { backgroundColor: isDarkMode ? '#333' : '#e5e5e5' }]}>
@@ -430,7 +495,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                           style={[
                             styles.moodBarFill,
                             {
-                              width: `${mood.percentage}%`,
+                              width: `${Math.min(100, Math.round(mood.percentage || 0))}%`,
                               backgroundColor: getColorForMood(mood.mood),
                             },
                           ]}
@@ -513,22 +578,26 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                   </View>
 
                   {/* Mood Selection */}
-                  <View style={styles.moodGrid}>
+                  <ScrollView 
+                    style={styles.moodScroll}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.moodGrid}
+                  >
                     {moods.map((mood) => (
-                                              <TouchableOpacity
-                          key={mood.label}
-                          style={[
-                            styles.moodButton,
-                            {
-                              backgroundColor: currentMood === mood.label ? mood.color : 'transparent',
-                              borderColor: currentMood === mood.label ? mood.color : isDarkMode ? '#333' : '#e5e5e5',
-                            },
-                          ]}
-                          onPress={() => {
-                            NuminaAnimations.haptic.selection();
-                            setCurrentMood(mood.label);
-                          }}
-                        >
+                      <TouchableOpacity
+                        key={mood.label}
+                        style={[
+                          styles.moodButton,
+                          {
+                            backgroundColor: currentMood === mood.label ? mood.color : 'transparent',
+                            borderColor: currentMood === mood.label ? mood.color : isDarkMode ? '#333' : '#e5e5e5',
+                          },
+                        ]}
+                        onPress={() => {
+                          NuminaAnimations.haptic.selection();
+                          setCurrentMood(mood.label);
+                        }}
+                      >
                         <Text style={styles.moodEmoji}>{mood.emoji}</Text>
                         <Text style={[
                           styles.moodLabel,
@@ -542,7 +611,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </View>
+                  </ScrollView>
 
                   {/* Intensity Slider */}
                   <View style={styles.sliderContainer}>
@@ -578,6 +647,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                     onChangeText={setNotes}
                     multiline
                     numberOfLines={3}
+                    keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                   />
 
                   {/* Submit Button */}
@@ -888,26 +958,26 @@ const styles = StyleSheet.create({
   moodGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
     justifyContent: 'space-between',
-    marginBottom: 32,
+    paddingBottom: 16,
   },
   moodButton: {
-    width: '48%',
-    height: 44,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    width: '31%',
+    height: 36,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
   },
   moodEmoji: {
-    fontSize: 16,
+    fontSize: 14,
   },
   moodLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   sliderContainer: {

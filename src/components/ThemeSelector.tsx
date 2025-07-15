@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, LayoutChangeEvent } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { ThemeMode } from '../types/theme';
 
@@ -13,13 +14,58 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ style }) => {
 
   const options: { mode: ThemeMode; label: string; icon: string }[] = [
     { mode: 'light', label: 'Light', icon: 'sun' },
-    { mode: 'system', label: 'Auto', icon: 'monitor' },
+    { mode: 'system', label: 'Auto', icon: 'smartphone' },
     { mode: 'dark', label: 'Dark', icon: 'moon' },
   ];
 
+  // Layout and animation state
+  const [containerWidth, setContainerWidth] = useState(0);
+  const selectedIndicator = useRef(new Animated.Value(0)).current;
+
+  // Calculate button width based on container
+  const buttonWidth = containerWidth / 3;
+
+  // Update selected indicator position when theme changes
+  useEffect(() => {
+    const selectedIndex = options.findIndex(option => option.mode === themeMode);
+    
+    Animated.spring(selectedIndicator, {
+      toValue: selectedIndex * buttonWidth,
+      tension: 200,
+      friction: 20,
+      useNativeDriver: false, // Use false for translateX with calculated values
+    }).start();
+  }, [themeMode, buttonWidth]);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    setContainerWidth(width);
+  };
+
+  const handleThemePress = (mode: ThemeMode) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setThemeMode(mode);
+  };
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.segmentedControl}>
+      <View style={styles.segmentedControl} onLayout={handleLayout}>
+        {/* Selected indicator background */}
+        <Animated.View
+          style={[
+            styles.selectedIndicator,
+            {
+              width: buttonWidth,
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.04)',
+              transform: [
+                {
+                  translateX: selectedIndicator,
+                },
+              ],
+            },
+          ]}
+        />
+        
         {options.map((option, index) => {
           const isSelected = themeMode === option.mode;
           const isFirst = index === 0;
@@ -31,9 +77,7 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ style }) => {
               style={[
                 styles.segment,
                 {
-                  backgroundColor: isSelected 
-                    ? (isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0, 0, 0, 0.04)')
-                    : (isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)'),
+                  backgroundColor: 'transparent',
                   borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
                   borderTopLeftRadius: isFirst ? 8 : 0,
                   borderBottomLeftRadius: isFirst ? 8 : 0,
@@ -45,18 +89,19 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({ style }) => {
                   borderBottomWidth: 1,
                 }
               ]}
-              onPress={() => setThemeMode(option.mode)}
+              onPress={() => handleThemePress(option.mode)}
               activeOpacity={0.7}
             >
               <Feather 
                 name={option.icon as any} 
                 size={16} 
-                color={isDarkMode ? '#fff' : '#333'}
+                color={isSelected ? (isDarkMode ? '#fff' : '#333') : (isDarkMode ? '#888' : '#666')}
               />
               <Text style={[
                 styles.segmentText,
                 {
-                  color: isDarkMode ? '#fff' : '#333',
+                  color: isSelected ? (isDarkMode ? '#fff' : '#333') : (isDarkMode ? '#888' : '#666'),
+                  fontWeight: isSelected ? '600' : '500',
                 }
               ]}>
                 {option.label}
@@ -77,6 +122,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderRadius: 8,
     marginVertical: 2,
+    position: 'relative',
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    height: '100%',
+    borderRadius: 8,
+    zIndex: 0,
   },
   segment: {
     flex: 1,
@@ -86,10 +140,10 @@ const styles = StyleSheet.create({
     height: 38,
     paddingHorizontal: 16,
     gap: 12,
+    zIndex: 1,
   },
   segmentText: {
     fontSize: 14,
-    fontWeight: '500',
     letterSpacing: -0.2,
     fontFamily: 'Inter_500Medium',
   },

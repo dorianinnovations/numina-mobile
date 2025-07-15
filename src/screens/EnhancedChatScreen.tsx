@@ -433,9 +433,21 @@ export const EnhancedChatScreen: React.FC<EnhancedChatScreenProps> = ({
               keyExtractor={(item) => item.id}
               style={styles.messagesList}
               contentContainerStyle={styles.messagesContainer}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-              onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
+              onLayout={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
               showsVerticalScrollIndicator={false}
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+                autoscrollToTopThreshold: 10,
+              }}
             />
             
             {renderTypingIndicator()}
@@ -516,7 +528,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messagesContainer: {
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
   },
   typingIndicator: {
     paddingHorizontal: 16,

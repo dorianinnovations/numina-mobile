@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const getMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat' },
-  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Sentiment', key: 'sentiment' },
+  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment' },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics' },
   { icon: <Feather name="cloud" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Cloud', key: 'cloud' },
   { icon: <MaterialCommunityIcons name="earth" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Stratosphere', key: 'stratosphere' },
@@ -36,99 +36,220 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
   const { isDarkMode } = useTheme();
   const menuActions = getMenuActions(isDarkMode);
   
-  // Animation values
+  // State to prevent multiple rapid presses
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [pressedIndex, setPressedIndex] = useState<number | null>(null);
+  
+  // Main menu animations
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const translateYAnim = useRef(new Animated.Value(-20)).current;
-  const textAnimations = useRef<Animated.Value[]>(menuActions.map(() => new Animated.Value(0))).current;
+  const translateYAnim = useRef(new Animated.Value(-8)).current;
   
+  // Item stagger animations
+  const itemAnims = useRef(menuActions.map(() => ({
+    opacity: new Animated.Value(0),
+    translateY: new Animated.Value(10),
+    scale: new Animated.Value(0.9),
+  }))).current;
+  
+  // Button press animations
+  const buttonAnims = useRef(menuActions.map(() => ({
+    scale: new Animated.Value(1),
+    opacity: new Animated.Value(1),
+  }))).current;
+
+  // Cleanup function to reset all animations
+  const resetAnimations = useCallback(() => {
+    scaleAnim.setValue(0);
+    opacityAnim.setValue(0);
+    translateYAnim.setValue(-8);
+    
+    itemAnims.forEach(anim => {
+      anim.opacity.setValue(0);
+      anim.translateY.setValue(10);
+      anim.scale.setValue(0.9);
+    });
+    
+    buttonAnims.forEach(anim => {
+      anim.scale.setValue(1);
+      anim.opacity.setValue(1);
+    });
+    
+    setIsAnimating(false);
+    setPressedIndex(null);
+  }, [scaleAnim, opacityAnim, translateYAnim, itemAnims, buttonAnims]);
+
+  // Show animation
+  const showMenu = useCallback(() => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    resetAnimations();
+    
+    // Fast container animation
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: 0,
+        duration: 140,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Faster staggered item animations
+      const itemAnimations = itemAnims.map((anim, index) => 
+        Animated.parallel([
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: 100,
+            delay: index * 15,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim.translateY, {
+            toValue: 0,
+            duration: 100,
+            delay: index * 15,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim.scale, {
+            toValue: 1,
+            duration: 100,
+            delay: index * 15,
+            easing: Easing.out(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      Animated.stagger(15, itemAnimations).start(() => {
+        setIsAnimating(false);
+      });
+    });
+  }, [isAnimating, resetAnimations, scaleAnim, opacityAnim, translateYAnim, itemAnims]);
+
+  // Hide animation
+  const hideMenu = useCallback(() => {
+    if (isAnimating) return;
+    
+    setIsAnimating(true);
+    
+    // Ultra-fast exit animation
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 0.9,
+        duration: 100,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 0,
+        duration: 100,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateYAnim, {
+        toValue: -8,
+        duration: 100,
+        easing: Easing.in(Easing.quad),
+        useNativeDriver: true,
+      }),
+      // Hide all items instantly
+      ...itemAnims.map(anim => 
+        Animated.timing(anim.opacity, {
+          toValue: 0,
+          duration: 80,
+          useNativeDriver: true,
+        })
+      ),
+    ]).start(() => {
+      resetAnimations();
+    });
+  }, [isAnimating, scaleAnim, opacityAnim, translateYAnim, itemAnims, resetAnimations]);
+
+  // Effect to handle visibility changes
   useEffect(() => {
     if (visible) {
-      // Fast container animation with no bounce
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 40,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 40,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateYAnim, {
-          toValue: 0,
-          duration: 40,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Sequential text fade animations
-        const textAnimationsArray = menuActions.map((_, index) => 
-          Animated.timing(textAnimations[index], {
-            toValue: 1,
-            duration: 97,
-            delay: index * 60,
-            easing: Easing.out(Easing.sin),
-            useNativeDriver: true,
-          })
-        );
-        Animated.parallel(textAnimationsArray).start();
-      });
+      showMenu();
     } else {
-      // Fast exit
+      hideMenu();
+    }
+  }, [visible, showMenu, hideMenu]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      resetAnimations();
+    };
+  }, [resetAnimations]);
+
+  // Enhanced button press handler
+  const handleMenuButtonPress = useCallback((actionKey: string, index: number) => {
+    if (isAnimating || pressedIndex !== null) return;
+    
+    setPressedIndex(index);
+    
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    const scaleAnim = buttonAnims[index].scale;
+    const opacityAnim = buttonAnims[index].opacity;
+    
+    // Fast press animation
+    Animated.sequence([
+      // Press down
       Animated.parallel([
         Animated.timing(scaleAnim, {
-          toValue: 0,
-          duration: 40,
-          easing: Easing.in(Easing.cubic),
+          toValue: 0.96,
+          duration: 60,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
-          toValue: 0,
-          duration: 40,
-          easing: Easing.in(Easing.cubic),
+          toValue: 0.8,
+          duration: 60,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.timing(translateYAnim, {
-          toValue: -20,
-          duration: 40,
-          easing: Easing.in(Easing.cubic),
+      ]),
+      // Release
+      Animated.parallel([
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 80,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        ...textAnimations.map(anim => 
-          Animated.timing(anim, {
-            toValue: 0,
-            duration: 40,
-            easing: Easing.in(Easing.sin),
-            useNativeDriver: true,
-          })
-        ),
-      ]).start();
-    }
-  }, [visible]);
-
-  // Double haptic feedback function
-  const triggerDoubleHaptic = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setTimeout(() => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }, 50); // 50ms delay for quick succession
-  };
-
-  // Handle menu button press with double haptic
-  const handleMenuButtonPress = (actionKey: string) => {
-    triggerDoubleHaptic();
-    onAction(actionKey);
-  };
+        Animated.timing(opacityAnim, {
+          toValue: 1,
+          duration: 80,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      setPressedIndex(null);
+      // Execute action immediately
+      onAction(actionKey);
+    });
+  }, [isAnimating, pressedIndex, buttonAnims, onAction]);
 
   if (!visible) return null;
 
   // Calculate position based on menu button
   const menuWidth = 280;
-  const menuHeight = 280;
   const rightMargin = 1;
   const topMargin = 80;
   
@@ -142,13 +263,14 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         style={styles.backgroundOverlay}
         activeOpacity={1} 
         onPress={onClose}
+        disabled={isAnimating}
       >
         <Animated.View
           style={[
             StyleSheet.absoluteFillObject,
             {
               opacity: opacityAnim,
-              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(0, 0, 0, 0.2)',
             }
           ]}
         />
@@ -162,13 +284,13 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
             top: menuTop,
             right: menuRight,
             width: menuWidth,
-            backgroundColor: isDarkMode ? '#191919' : 'rgba(255, 255, 255, 0.98)',
-            borderColor: isDarkMode ? '#23272b' : 'rgba(255, 255, 255, 0.9)',
+            backgroundColor: isDarkMode ? '#1a1a1a' : 'rgba(255, 255, 255, 0.98)',
+            borderColor: isDarkMode ? '#333' : 'rgba(0, 0, 0, 0.1)',
             shadowColor: isDarkMode ? '#000' : '#000',
-            shadowOffset: { width: 0, height: isDarkMode ? 8 : 12 },
-            shadowOpacity: isDarkMode ? 0.25 : 0.3,
-            shadowRadius: isDarkMode ? 24 : 32,
-            elevation: isDarkMode ? 16 : 20,
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: isDarkMode ? 0.4 : 0.15,
+            shadowRadius: 16,
+            elevation: 12,
             opacity: opacityAnim,
             transform: [
               { scale: scaleAnim },
@@ -181,51 +303,64 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         <View style={[
           styles.arrow,
           {
-            borderBottomColor: isDarkMode ? '#1f1f1f' : 'rgba(255, 255, 255, 0.98)',
+            borderBottomColor: isDarkMode ? '#1a1a1a' : 'rgba(255, 255, 255, 0.98)',
             borderLeftColor: 'transparent',
             borderRightColor: 'transparent',
           }
         ]} />
         
         <View style={styles.menuContent}>
-          
           {menuActions.map((action, index) => (
-            <TouchableOpacity
+            <Animated.View
               key={action.key}
               style={[
                 styles.menuButton,
                 {
                   backgroundColor: isDarkMode 
-                    ? 'rgba(255,255,255,0.03)' 
-                    : 'rgba(0, 0, 0, 0.02)',
+                    ? (pressedIndex === index ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)') 
+                    : (pressedIndex === index ? 'rgba(0, 0, 0, 0.08)' : 'rgba(0, 0, 0, 0.03)'),
                   borderColor: isDarkMode 
-                    ? '#23272b' 
-                    : 'rgba(0, 0, 0, 0.05)',
+                    ? 'rgba(255,255,255,0.1)' 
+                    : 'rgba(0, 0, 0, 0.08)',
+                  opacity: itemAnims[index].opacity,
+                  transform: [
+                    { translateY: itemAnims[index].translateY },
+                    { scale: Animated.multiply(itemAnims[index].scale, buttonAnims[index].scale) },
+                  ],
                 }
               ]}
-              onPress={() => handleMenuButtonPress(action.key)}
-              activeOpacity={0.7}
             >
-              <View style={styles.iconContainer}>{action.icon}</View>
-              <Animated.Text style={[
-                styles.menuButtonText,
-                { 
-                  color: isDarkMode ? '#fff' : NuminaColors.darkMode[600],
-                  opacity: textAnimations[index],
-                }
-              ]}>{action.label}</Animated.Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.buttonTouchable}
+                onPress={() => handleMenuButtonPress(action.key, index)}
+                activeOpacity={0.8}
+                disabled={isAnimating || pressedIndex !== null}
+              >
+                <View style={styles.iconContainer}>
+                  {action.icon}
+                </View>
+                <Text style={[
+                  styles.menuButtonText,
+                  { 
+                    color: isDarkMode ? '#fff' : NuminaColors.darkMode[600],
+                  }
+                ]}>{action.label}</Text>
+              </TouchableOpacity>
+            </Animated.View>
           ))}
           
           {/* Theme Selector */}
-          <View style={[
-            styles.themeSelectorContainer,
-            {
-              borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-            }
-          ]}>
+          <Animated.View 
+            style={[
+              styles.themeSelectorContainer,
+              {
+                borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                opacity: itemAnims[itemAnims.length - 1]?.opacity || 1,
+              }
+            ]}
+          >
             <ThemeSelector />
-          </View>
+          </Animated.View>
         </View>
       </Animated.View>
     </View>
@@ -250,16 +385,17 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   menuContainer: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     zIndex: 1001,
+    overflow: 'visible',
   },
   arrow: {
     position: 'absolute',
     top: -8,
-    right: 12,
+    right: 16,
     width: 0,
     height: 0,
     borderLeftWidth: 8,
@@ -268,34 +404,39 @@ const styles = StyleSheet.create({
     borderStyle: 'solid',
   },
   menuContent: {
-    paddingTop: 32, 
+    paddingTop: 8,
   },
   menuButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 38,
-    borderRadius: 8,
-    marginHorizontal: 8,
+    height: 44,
+    borderRadius: 12,
+    marginHorizontal: 4,
     marginVertical: 2,
     paddingHorizontal: 16,
     borderWidth: 1,
   },
+  buttonTouchable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    height: '100%',
+  },
   iconContainer: {
     width: 24,
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
   },
   menuButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
     fontFamily: 'Inter_500Medium',
   },
-
   themeSelectorContainer: {
     borderTopWidth: 1,
-    marginTop: 8,
-    paddingTop: 8,
+    marginTop: 12,
+    paddingTop: 12,
     paddingHorizontal: 8,
   },
-}); 
+});

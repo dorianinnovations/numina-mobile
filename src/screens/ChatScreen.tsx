@@ -30,6 +30,7 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
+import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 
 interface ChatScreenProps {
@@ -63,11 +64,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     error: aiError,
   } = useAIPersonality();
 
+
   // Cloud Matching Integration  
   const {
     getPersonalizedRecommendations,
     error: cloudError,
   } = useCloudMatching();
+
+  // Numina Personality Integration - This starts the frequent updates!
+  const numinaPersonality = useNuminaPersonality(true); // true = active chat session
+  
+  // Get adaptive placeholder from AI Personality
+  const getAdaptivePlaceholderText = useCallback(() => {
+    if (emotionalState && aiPersonality) {
+      return getAdaptivePlaceholder();
+    }
+    return "Share your thoughts...";
+  }, [emotionalState, aiPersonality, getAdaptivePlaceholder]);
+  
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -78,7 +92,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!conversation) {
       const welcomeMessage: Message = {
         id: '1',
-        text: "Hi, good to see you",
+        text: "Welcome to Numina! I'm here to help you explore, discover, and connect. What would you like to explore today?",
         sender: 'numina',
         timestamp: new Date().toISOString(),
       };
@@ -159,9 +173,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       let personalityContext = null;
       
       if (sendAdaptiveChatMessage && emotionalState && aiPersonality) {
-        console.log('🧠 Using AI Personality Service for adaptive response');
-        console.log('Emotional State:', emotionalState);
-        console.log('AI Personality:', aiPersonality);
         
         const adaptiveResult = await sendAdaptiveChatMessage(
           userMessage.text,
@@ -197,7 +208,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           finalResponseText = String(adaptiveResult || '');
         }
       } else {
-        console.log('📡 Using traditional ChatService');
         // Fallback to traditional chat service
         const chatResult = await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
           // Validate partialResponse
@@ -413,11 +423,25 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               renderItem={renderMessage}
               keyExtractor={item => item?.id || Math.random().toString()}
               style={styles.messagesList}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onContentSizeChange={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
+              onLayout={() => {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }, 100);
+              }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.messagesContent}
               extraData={conversation?.messages?.length || 0} // Force re-render on new messages
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+                autoscrollToTopThreshold: 10,
+              }}
             />
+
 
             {/* Enhanced AI-Powered Input */}
             <ChatInput
@@ -427,12 +451,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onVoiceStart={handleVoiceStart}
               onVoiceEnd={handleVoiceEnd}
               isLoading={isLoading || isAnalyzing}
-              placeholder={getAdaptivePlaceholder() || "Share your thoughts..."}
+              placeholder={getAdaptivePlaceholderText()}
               voiceEnabled={true}
               userEmotionalState={emotionalState || undefined}
-              aiPersonality={aiPersonality || undefined}
+              aiPersonality={aiPersonality as any || undefined}
               onPersonalityUpdate={(personality) => {
-                console.log('🎯 Personality update received:', personality);
+                // Handle personality updates
               }}
             />
           </KeyboardAvoidingView>
@@ -460,7 +484,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 120 : 100, 
   },
   loadingScreen: {
     flex: 1,
@@ -476,8 +499,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   messagesContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingTop: 100,
+    paddingBottom: 100,
     flexGrow: 1,
   },
   loadingText: {

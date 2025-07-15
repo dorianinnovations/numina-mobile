@@ -109,15 +109,10 @@ class AppInitializer {
         
         // Update API base URL from config
         const endpoints = appConfigService.getEndpoints();
-        console.log('📡 Endpoints from server config:', endpoints);
         
         if (endpoints.websocket) {
-          // Fix localhost URLs for production
-          const wsUrl = endpoints.websocket.includes('localhost') 
-            ? 'wss://server-a7od.onrender.com' 
-            : endpoints.websocket;
-          
-          console.log('🔌 Setting WebSocket URL to:', wsUrl);
+          // Use production WebSocket URL - no localhost fallbacks in production
+          const wsUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL || endpoints.websocket;
           websocketService.updateServerUrl(wsUrl);
         }
       } catch (error) {

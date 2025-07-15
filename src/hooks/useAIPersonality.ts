@@ -10,7 +10,7 @@ interface UserEmotionalState {
 }
 
 interface AIPersonality {
-  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+  communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
   adaptivePrompts: string[];
   contextualHints: string[];
 }

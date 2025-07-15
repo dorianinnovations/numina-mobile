@@ -81,18 +81,29 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     setIsSignInSuccess(false);
     setAuthStatus('loading');
 
-    // Animate button press
+    // Ultra-smooth button press animation
     Animated.sequence([
-      Animated.timing(buttonScaleAnim, {
-        toValue: 0.98,
-        duration: 100,
-        useNativeDriver: false,
-      }),
-      Animated.timing(buttonScaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: false,
-      }),
+      Animated.parallel([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 0.92,
+          duration: 40,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 1.05,
+          duration: 60,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.parallel([
+        Animated.timing(buttonScaleAnim, {
+          toValue: 1,
+          duration: 90,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start();
 
     try {
@@ -447,7 +458,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 16,
     fontWeight: '400',
-    height: 38,
+    height: 42,
     fontFamily: 'Nunito_400Regular',
   },
   primaryButton: {

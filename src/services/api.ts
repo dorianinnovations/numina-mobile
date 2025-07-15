@@ -73,7 +73,7 @@ interface EmotionData {
 
 // AI Personality and Cloud Matching Interfaces
 interface PersonalityContext {
-  communicationStyle: 'empathetic' | 'direct' | 'collaborative' | 'encouraging';
+  communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
   emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
   adaptedResponse: boolean;
   userMoodDetected?: string;
@@ -577,13 +577,8 @@ class ApiService {
       console.log('✅ API: Growth summary response:', response);
       return response;
     } catch (error: any) {
-      console.log('❌ API: Growth insights error:', error);
-      console.log('Growth insights API not available, using mock data');
-      // Always return false success so mock data is used
-      return {
-        success: false,
-        error: 'Growth insights not available yet - using mock data'
-      };
+      // Return proper error without mock data fallback
+      throw new Error(`Growth insights API unavailable: ${error.message || error}`);
     }
   }
 
@@ -679,13 +674,8 @@ class ApiService {
       console.log('✅ API: Milestones response:', response);
       return response;
     } catch (error: any) {
-      console.log('❌ API: Milestones error:', error);
-      console.log('Milestones API not available, using mock data');
-      // Always return false success so mock data is used
-      return {
-        success: false,
-        error: 'Milestones not available yet - using mock data'
-      };
+      // Return proper error without mock data fallback
+      throw new Error(`Milestones API unavailable: ${error.message || error}`);
     }
   }
 
@@ -851,7 +841,7 @@ class ApiService {
               resolve({
                 content: fullContent,
                 personalityContext: personalityContext || {
-                  communicationStyle: 'empathetic',
+                  communicationStyle: 'supportive',
                   emotionalTone: 'supportive',
                   adaptedResponse: false
                 }
@@ -864,7 +854,7 @@ class ApiService {
                   resolve({
                     content: jsonResponse.data.response,
                     personalityContext: {
-                      communicationStyle: jsonResponse.data.tone || 'empathetic',
+                      communicationStyle: jsonResponse.data.tone || 'supportive',
                       emotionalTone: jsonResponse.data.tone || 'supportive',
                       adaptedResponse: true
                     }
