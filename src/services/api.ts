@@ -23,7 +23,7 @@ export const CHAT_API_CONFIG = {
   }
 };
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
 
 // Request timeout configuration
 const REQUEST_TIMEOUT = 10000; // 10 seconds
@@ -245,8 +245,11 @@ class ApiService {
         };
 
         const url = `${this.baseURL}${endpoint}`;
+        console.log(`🌐 API: Making request to ${url}`);
+        console.log(`🔑 API: Headers:`, headers);
         const response = await fetch(url, config);
         clearTimeout(timeoutId);
+        console.log(`📡 API: Response status: ${response.status}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'Network error' }));
@@ -515,9 +518,13 @@ class ApiService {
 
   // Sentiment data endpoints
   static async getSentimentInsights(): Promise<ApiResponse<any>> {
+    console.log('🔍 API: Checking sentiment insights endpoint...');
     try {
-      return await this.apiRequest('/sentiment-data/insights');
+      const response = await this.apiRequest('/sentiment-data/insights');
+      console.log('✅ API: Sentiment insights response:', response);
+      return response;
     } catch (error: any) {
+      console.log('❌ API: Sentiment insights error:', error);
       // If endpoint doesn't exist yet, return empty data instead of failing
       if (error.message?.includes('404') || error.message?.includes('Cannot GET')) {
         return {
@@ -553,6 +560,162 @@ class ApiService {
   // Sentiment snapshots - matching web app
   static async getSentimentSnapshots(timeRange: string = '10m'): Promise<ApiResponse<any>> {
     return this.apiRequest(`/sentiment-snapshots?timeRange=${timeRange}`);
+  }
+
+  // Growth Insights Dashboard endpoints
+  static async getPersonalGrowthSummary(timeframe: string = 'week'): Promise<ApiResponse<{
+    metrics: {
+      positivityRatio: number;
+      engagementScore: number;
+      topEmotions: Array<{ emotion: string; count: number }>;
+    };
+    aiInsights: string;
+  }>> {
+    console.log(`🔍 API: Requesting growth summary for timeframe: ${timeframe}`);
+    try {
+      const response = await this.apiRequest(`/personal-insights/growth-summary?timeframe=${timeframe}`);
+      console.log('✅ API: Growth summary response:', response);
+      return response;
+    } catch (error: any) {
+      console.log('❌ API: Growth insights error:', error);
+      console.log('Growth insights API not available, using mock data');
+      // Always return false success so mock data is used
+      return {
+        success: false,
+        error: 'Growth insights not available yet - using mock data'
+      };
+    }
+  }
+
+  // Generate personal growth summary with streaming
+  static async getPersonalGrowthSummaryStreaming(
+    timeframe: string = 'week',
+    onChunk: (chunk: any) => void
+  ): Promise<{ content: any; complete: boolean }> {
+    const token = AuthManager.getInstance().getCurrentToken();
+    const url = `${this.baseURL}/personal-insights/growth-summary?timeframe=${timeframe}&stream=true`;
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let lastProcessedIndex = 0;
+      let finalContent: any = null;
+      
+      xhr.open('GET', url, true);
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('Cache-Control', 'no-cache');
+      
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
+          const currentLength = xhr.responseText.length;
+          const newText = xhr.responseText.slice(lastProcessedIndex);
+          
+          if (newText) {
+            lastProcessedIndex = currentLength;
+            
+            // Process new chunks in real-time
+            const lines = newText.split('\n');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.substring(6).trim();
+                
+                if (data === '[DONE]') {
+                  console.log('🏁 Growth insights streaming completed');
+                  resolve({ content: finalContent, complete: true });
+                  return;
+                }
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  onChunk(parsed);
+                  
+                  if (parsed.type === 'complete') {
+                    finalContent = parsed.data;
+                  }
+                } catch (e) {
+                  console.warn('Error parsing growth insights chunk:', e);
+                }
+              }
+            }
+          }
+        }
+        
+        if (xhr.readyState === XMLHttpRequest.DONE) {
+          if (xhr.status === 200) {
+            resolve({ content: finalContent, complete: true });
+          } else {
+            reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+          }
+        }
+      };
+      
+      xhr.onerror = () => {
+        reject(new Error('Network error during growth insights streaming'));
+      };
+      
+      xhr.ontimeout = () => {
+        reject(new Error('Growth insights streaming request timed out'));
+      };
+      
+      xhr.timeout = 30000; // 30 seconds timeout
+      xhr.send();
+    });
+  }
+
+  static async getMilestones(): Promise<ApiResponse<{
+    milestones: Array<{
+      id: string;
+      title: string;
+      description: string;
+      achieved: boolean;
+      progress: number;
+      category: string;
+      celebratedAt?: string;
+    }>;
+  }>> {
+    console.log('🔍 API: Requesting milestones...');
+    try {
+      const response = await this.apiRequest('/personal-insights/milestones');
+      console.log('✅ API: Milestones response:', response);
+      return response;
+    } catch (error: any) {
+      console.log('❌ API: Milestones error:', error);
+      console.log('Milestones API not available, using mock data');
+      // Always return false success so mock data is used
+      return {
+        success: false,
+        error: 'Milestones not available yet - using mock data'
+      };
+    }
+  }
+
+  static async celebrateMilestone(milestoneId: string): Promise<ApiResponse<any>> {
+    return this.apiRequest(`/personal-insights/milestones/${milestoneId}/celebrate`, {
+      method: 'POST',
+    });
+  }
+
+  static async shareEmotionalState(targetUserId: string, emotion: string, intensity: number): Promise<ApiResponse<any>> {
+    return this.apiRequest('/social/share-emotion', {
+      method: 'POST',
+      body: JSON.stringify({
+        targetUserId,
+        emotion,
+        intensity,
+        shareType: 'check_in'
+      }),
+    });
+  }
+
+  static async requestSupport(intensity: number, context: string, anonymous: boolean = true): Promise<ApiResponse<any>> {
+    return this.apiRequest('/social/request-support', {
+      method: 'POST',
+      body: JSON.stringify({
+        intensity,
+        context,
+        anonymous
+      }),
+    });
   }
 
   // LLM Analytics endpoints
@@ -1041,6 +1204,153 @@ class ApiService {
   // NEW: Test API connectivity
   static async testAPI(): Promise<ApiResponse<any>> {
     return this.apiRequest('/api/test');
+  }
+
+  // ========== CASCADING RECOMMENDATIONS METHODS ==========
+  
+  // Generate cascading recommendations with reasoning trees
+  static async generateCascadingRecommendations(options: {
+    depth?: number;
+    focusArea?: string;
+    includeReasoningTree?: boolean;
+  } = {}): Promise<ApiResponse<any>> {
+    return this.apiRequest('/cascading-recommendations/generate', {
+      method: 'POST',
+      body: JSON.stringify({
+        depth: options.depth || 3,
+        focusArea: options.focusArea || 'general',
+        includeReasoningTree: options.includeReasoningTree !== false,
+        stream: false, // Use static version by default
+      }),
+    });
+  }
+
+  // Generate cascading recommendations with streaming
+  static async generateCascadingRecommendationsStreaming(
+    options: {
+      depth?: number;
+      focusArea?: string;
+      includeReasoningTree?: boolean;
+    } = {},
+    onChunk: (chunk: any) => void
+  ): Promise<{ content: any; complete: boolean }> {
+    const token = AuthManager.getInstance().getCurrentToken();
+    const url = `${this.baseURL}/cascading-recommendations/generate`;
+
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      let lastProcessedIndex = 0;
+      let finalContent: any = null;
+      
+      xhr.open('POST', url, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('Cache-Control', 'no-cache');
+      
+      xhr.onreadystatechange = () => {
+        if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
+          const currentLength = xhr.responseText.length;
+          const newText = xhr.responseText.slice(lastProcessedIndex);
+          
+          if (newText) {
+            lastProcessedIndex = currentLength;
+            
+            // Process new chunks in real-time
+            const lines = newText.split('\n');
+            
+            for (const line of lines) {
+              if (line.trim() && line.startsWith('data: ')) {
+                const content = line.substring(6).trim();
+                if (content !== '[DONE]') {
+                  try {
+                    const parsed = JSON.parse(content);
+                    onChunk(parsed);
+                    
+                    // Store final complete data
+                    if (parsed.type === 'complete') {
+                      finalContent = parsed.data;
+                    }
+                  } catch {
+                    // Handle non-JSON content
+                    if (content) {
+                      onChunk({ type: 'text', content });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      };
+      
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ content: finalContent, complete: true });
+        } else {
+          reject(new Error(`Streaming request failed: ${xhr.status}`));
+        }
+      };
+      
+      xhr.onerror = () => {
+        reject(new Error('Network error'));
+      };
+      
+      xhr.send(JSON.stringify({
+        depth: options.depth || 3,
+        focusArea: options.focusArea || 'general',
+        includeReasoningTree: options.includeReasoningTree !== false,
+        stream: true, // Enable streaming
+      }));
+    });
+  }
+
+  // Get user context for cascading recommendations
+  static async getCascadingContext(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/cascading-recommendations/context');
+  }
+
+  // ========== NUMINA PERSONALITY METHODS ==========
+  
+  // Get Numina's current emotional state
+  static async getNuminaCurrentState(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/numina-personality/current-state');
+  }
+
+  // Start continuous Numina updates (8 second intervals)
+  static async startNuminaUpdates(interval: number = 8000): Promise<ApiResponse<any>> {
+    return this.apiRequest('/numina-personality/continuous-updates', {
+      method: 'POST',
+      body: JSON.stringify({ interval }),
+    });
+  }
+
+  // Start rapid Numina updates (5 second intervals for active chat)
+  static async startRapidNuminaUpdates(): Promise<ApiResponse<any>> {
+    return this.apiRequest('/numina-personality/start-rapid-updates', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+  }
+
+  // React to user interaction
+  static async numinaReactToInteraction(userMessage: string, userEmotion?: string, context?: string): Promise<ApiResponse<any>> {
+    return this.apiRequest('/numina-personality/react-to-interaction', {
+      method: 'POST',
+      body: JSON.stringify({ userMessage, userEmotion, context }),
+    });
+  }
+
+  // Convenience methods for common HTTP operations
+  static async get(endpoint: string): Promise<ApiResponse<any>> {
+    return this.apiRequest(endpoint, { method: 'GET' });
+  }
+
+  static async post(endpoint: string, data: any = {}): Promise<ApiResponse<any>> {
+    return this.apiRequest(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 }
 

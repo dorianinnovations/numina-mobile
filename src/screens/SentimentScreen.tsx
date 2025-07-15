@@ -22,6 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth } from "../contexts/SimpleAuthContext";
+import WebSocketService from '../services/websocketService';
 
 const { width } = Dimensions.get('window');
 
@@ -31,48 +32,90 @@ interface SentimentScreenProps {
   onNavigateBack: () => void;
 }
 
-interface SentimentInsights {
-  currentResonance: {
-    dominantEmotion: string;
-    intensity: number;
-    participants: number;
-    trend: 'up' | 'down' | 'stable';
+
+interface RealGrowthData {
+  period: string;
+  timeframe: string;
+  generatedAt: string;
+  metrics: {
+    positivityRatio: number;
+    engagementScore: number;
+    avgSessionsPerDay: number;
+    avgIntensity: number;
+    topEmotions: Array<{ emotion: string; count: number }>;
   };
-  emotionBreakdown: Array<{
-    emotion: string;
-    percentage: number;
-    change: number;
-  }>;
-  insights: Array<{
-    type: string;
-    message: string;
-    confidence: number;
-  }>;
-  demographicSummary?: {
-    totalParticipants: number;
-    avgAge: number;
-    locationCount: number;
-  };
+  aiInsights: string;
 }
 
 export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
   const navigation = useNavigation<SentimentScreenNavigationProp>();
   const { logout } = useAuth();
-  const [insights, setInsights] = useState<SentimentInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [growthData, setGrowthData] = useState<RealGrowthData | null>(null);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [currentEmotion, setCurrentEmotion] = useState<string>('Calm');
+  const [emotionIntensity, setEmotionIntensity] = useState<number>(5);
+  const [emotionConfidence, setEmotionConfidence] = useState<number>(0);
+  const [lastRefreshTime, setLastRefreshTime] = useState<number>(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isStreamingGrowthData, setIsStreamingGrowthData] = useState(false);
+  const [streamingProgress, setStreamingProgress] = useState(0);
+  const [streamingStatus, setStreamingStatus] = useState<string>('');
 
   // Animation values
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    loadInsights();
-    // Set up polling for real-time updates
-    const interval = setInterval(loadInsights, 30000); // Update every 30 seconds
+    console.log('🎭 SentimentScreen: Component mounted, loading data...');
+    
+    // Test connectivity first
+    const testConnectivity = async () => {
+      try {
+        console.log('🔍 Testing server connectivity...');
+        const response = await fetch('https://server-a7od.onrender.com/health');
+        console.log('✅ Health check response:', response.status, response.statusText);
+        if (response.ok) {
+          const data = await response.text();
+          console.log('✅ Health check data:', data);
+        }
+
+        // Test authentication
+        console.log('🔍 Testing authentication...');
+        const authResponse = await ApiService.checkConnection();
+        console.log('🔑 Auth check result:', authResponse);
+        
+        // Test a protected endpoint
+        console.log('🔍 Testing protected endpoint...');
+        const profileResponse = await ApiService.getUserProfile();
+        console.log('👤 Profile response:', profileResponse);
+        
+      } catch (error) {
+        console.error('❌ Connectivity test failed:', error);
+      }
+    };
+    
+    testConnectivity();
+    loadGrowthData();
+    loadMilestones();
+    
+    // Set up polling for real-time updates (every 5 minutes to reduce load)
+    const interval = setInterval(() => {
+      console.log('🔄 SentimentScreen: Periodic refresh (5 min interval)...');
+      if (canRefresh()) {
+        loadGrowthData();
+        loadMilestones();
+      }
+    }, 300000); // Update every 5 minutes instead of 30 seconds
+
+    // Set up WebSocket listeners for real-time features
+    WebSocketService.addEventListener('milestone_achieved', handleMilestoneAchieved);
+    WebSocketService.addEventListener('milestone_celebrated', handleMilestoneCelebrated);
+    WebSocketService.addEventListener('emotional_share_received', handleEmotionalShareReceived);
+    WebSocketService.addEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
+    WebSocketService.addEventListener('numina_senses_updated', handleNuminaSensesUpdated);
 
     // Start animations
     Animated.loop(
@@ -96,101 +139,312 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       useNativeDriver: true,
     }).start();
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      WebSocketService.removeEventListener('milestone_achieved', handleMilestoneAchieved);
+      WebSocketService.removeEventListener('milestone_celebrated', handleMilestoneCelebrated);
+      WebSocketService.removeEventListener('emotional_share_received', handleEmotionalShareReceived);
+      WebSocketService.removeEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
+      WebSocketService.removeEventListener('numina_senses_updated', handleNuminaSensesUpdated);
+    };
   }, []);
 
-  const loadInsights = async () => {
-    setError(null);
-    
-    try {
-      const response = await ApiService.getSentimentInsights();
-      
-      if (response.success && response.data) {
-        setInsights(response.data);
-        setLastUpdated(new Date());
-      } else {
-        // If no data or error, use mock data as fallback
-        const mockInsights: SentimentInsights = {
-          currentResonance: {
-            dominantEmotion: 'Joy',
-            intensity: 7.2,
-            participants: 247,
-            trend: 'up'
-          },
-          emotionBreakdown: [
-            { emotion: 'Joy', percentage: 35, change: 5 },
-            { emotion: 'Calm', percentage: 28, change: 2 },
-            { emotion: 'Sadness', percentage: 15, change: -3 },
-            { emotion: 'Excitement', percentage: 12, change: 8 },
-            { emotion: 'Anxiety', percentage: 10, change: -2 }
-          ],
-          insights: [
-            {
-              type: 'pattern',
-              message: 'Community joy levels are 15% higher than last week',
-              confidence: 0.87
-            },
-            {
-              type: 'trend',
-              message: 'Evening meditation sessions show increased calm resonance',
-              confidence: 0.92
-            },
-            {
-              type: 'anomaly',
-              message: 'Unusual spike in collective excitement detected around 3 PM',
-              confidence: 0.78
-            }
-          ],
-          demographicSummary: {
-            totalParticipants: 1247,
-            avgAge: 32,
-            locationCount: 47
-          }
-        };
+  // Rate limiting function
+  const canRefresh = () => {
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTime;
+    const minRefreshInterval = 60000; // 1 minute minimum between refreshes
+    return timeSinceLastRefresh > minRefreshInterval;
+  };
 
-        // Check if the error is due to no data vs actual error
-        if (response.error?.includes('No data') || response.error?.includes('404')) {
-          setInsights(mockInsights);
-          setLastUpdated(new Date());
-        } else {
-          setError(response.error || 'Failed to load sentiment insights');
-        }
-      }
-    } catch (error: any) {
-      console.error('Error loading insights:', error);
-      setError(error.message || 'Failed to load sentiment insights');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+  const loadGrowthData = async () => {
+    if (!canRefresh() && !isInitialLoad) {
+      console.log('📈 SentimentScreen: Skipping refresh due to rate limit');
+      return;
     }
+    
+    setLastRefreshTime(Date.now());
+    console.log('📈 SentimentScreen: Loading growth data with streaming...');
+    
+    // Try streaming first, fall back to static if needed
+    try {
+      setIsStreamingGrowthData(true);
+      setStreamingProgress(0);
+      setStreamingStatus('Initializing...');
+      
+      const streamingResponse = await ApiService.getPersonalGrowthSummaryStreaming('week', (chunk) => {
+        // Handle streaming chunks with progress updates
+        if (chunk.type === 'status') {
+          console.log(`📊 Growth insights: ${chunk.message} (${chunk.progress}%)`);
+          setStreamingStatus(chunk.message);
+          setStreamingProgress(chunk.progress || 0);
+        } else if (chunk.type === 'complete') {
+          // Final data received
+          console.log('✅ SentimentScreen: Successfully loaded streaming growth data');
+          setStreamingStatus('Finalizing...');
+          setStreamingProgress(100);
+          
+          setGrowthData(chunk.data);
+          
+          // Small delay to show completion
+          setTimeout(() => {
+            setIsStreamingGrowthData(false);
+            setLoading(false);
+            setIsInitialLoad(false);
+          }, 500);
+        }
+      });
+
+      // Handle completion for any remaining processing
+      if (streamingResponse.complete && streamingResponse.content) {
+        console.log('✅ SentimentScreen: Streaming completed with final content');
+        setGrowthData(streamingResponse.content);
+        setIsStreamingGrowthData(false);
+        setLoading(false);
+        setIsInitialLoad(false);
+      }
+    } catch (error) {
+      console.error('❌ SentimentScreen: Error with streaming growth data, falling back:', error);
+      setIsStreamingGrowthData(false);
+      
+      // Fallback to static API
+      try {
+        const response = await ApiService.getPersonalGrowthSummary('week');
+        console.log('📈 SentimentScreen: Growth data API response (fallback):', response);
+        if (response.success && response.data) {
+          console.log('✅ SentimentScreen: Successfully loaded growth data (fallback)');
+          setGrowthData(response.data.data || response.data);
+          setLoading(false);
+          setIsInitialLoad(false);
+        } else {
+          throw new Error('Static API also failed');
+        }
+      } catch (fallbackError) {
+        console.log('📈 SentimentScreen: Using mock growth data due to complete failure');
+        // Final fallback to mock data
+        setGrowthData({
+          metrics: {
+            positivityRatio: 78,
+            engagementScore: 85,
+            topEmotions: [
+              { emotion: 'Joy', count: 12 },
+              { emotion: 'Calm', count: 8 },
+              { emotion: 'Excitement', count: 5 }
+            ]
+          },
+          aiInsights: 'Your positivity has increased 15% this week. Great progress on maintaining emotional balance!'
+        });
+        setLoading(false);
+        setIsInitialLoad(false);
+      }
+    }
+  };
+
+  const loadMilestones = async () => {
+    if (!canRefresh() && !isInitialLoad) {
+      console.log('🏆 SentimentScreen: Skipping milestones refresh due to rate limit');
+      return;
+    }
+    
+    console.log('🏆 SentimentScreen: Loading milestones...');
+    try {
+      const response = await ApiService.getMilestones();
+      console.log('🏆 SentimentScreen: Milestones API response:', response);
+      if (response.success && response.data) {
+        console.log('✅ SentimentScreen: Successfully loaded milestones');
+        const milestonesData = response.data.data?.milestones || response.data.milestones || [];
+        setMilestones(milestonesData);
+        console.log('🏆 SentimentScreen: Milestones state updated:', milestonesData);
+      } else {
+        console.log('🏆 SentimentScreen: No milestones from API, using mock data');
+        // Mock data as fallback
+        setMilestones([
+          {
+            id: '1',
+            title: '7-Day Streak',
+            description: 'Logged emotions for 7 consecutive days',
+            achieved: true,
+            progress: 100,
+            category: 'consistency',
+            celebratedAt: '2025-07-10'
+          },
+          {
+            id: '2',
+            title: 'Positivity Champion',
+            description: 'Maintained 80%+ positive emotions for a week',
+            achieved: true,
+            progress: 100,
+            category: 'mood'
+          },
+          {
+            id: '3',
+            title: 'Community Helper',
+            description: 'Supported 5 community members',
+            achieved: false,
+            progress: 60,
+            category: 'social'
+          },
+          {
+            id: '4',
+            title: 'Mindfulness Master',
+            description: 'Complete 10 mindfulness sessions',
+            achieved: false,
+            progress: 30,
+            category: 'wellness'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('❌ SentimentScreen: Error loading milestones:', error);
+      console.log('🏆 SentimentScreen: Using mock milestones due to error');
+      // Fallback to mock data on error
+      setMilestones([
+        {
+          id: '1',
+          title: '7-Day Streak',
+          description: 'Logged emotions for 7 consecutive days',
+          achieved: true,
+          progress: 100,
+          category: 'consistency',
+          celebratedAt: '2025-07-10'
+        },
+        {
+          id: '2',
+          title: 'Positivity Champion',
+          description: 'Maintained 80%+ positive emotions for a week',
+          achieved: true,
+          progress: 100,
+          category: 'mood'
+        },
+        {
+          id: '3',
+          title: 'Community Helper',
+          description: 'Supported 5 community members',
+          achieved: false,
+          progress: 60,
+          category: 'social'
+        },
+        {
+          id: '4',
+          title: 'Mindfulness Master',
+          description: 'Complete 10 mindfulness sessions',
+          achieved: false,
+          progress: 30,
+          category: 'wellness'
+        }
+      ]);
+    }
+  };
+
+  // WebSocket event handlers
+  const handleMilestoneAchieved = (data: any) => {
+    console.log('🏆 Milestone achieved:', data);
+    Alert.alert(
+      'Milestone Achieved! 🏆',
+      `Congratulations! You've achieved: ${data.title}`,
+      [
+        { text: 'Celebrate', onPress: () => celebrateMilestone(data) },
+        { text: 'OK', style: 'default' }
+      ]
+    );
+    // Only refresh if enough time has passed
+    if (canRefresh()) {
+      loadMilestones();
+    }
+  };
+
+  const handleMilestoneCelebrated = (data: any) => {
+    console.log('🎉 Milestone celebrated:', data);
+    Alert.alert('🎉', `Someone celebrated: ${data.title}`);
+  };
+
+  const handleEmotionalShareReceived = (data: any) => {
+    console.log('💝 Emotional share received:', data);
+    Alert.alert(
+      'Emotional Check-in',
+      `${data.fromUser?.username || 'Someone'} shared: ${data.emotion}`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleGrowthInsightsUpdated = (data: any) => {
+    console.log('📊 Growth insights updated:', data);
+    // Only refresh if enough time has passed
+    if (canRefresh()) {
+      loadGrowthData();
+    }
+  };
+
+  const handleNuminaSensesUpdated = (data: any) => {
+    console.log('🎭 Numina Senses updated:', data);
+    console.log(`Emotion detected: ${data.emotion} (${Math.round(data.confidence * 100)}% confident)`);
+    console.log(`Reasoning: ${data.reasoning}`);
+    
+    // Update current emotion state
+    setCurrentEmotion(data.emotion);
+    setEmotionIntensity(data.intensity || 5);
+    setEmotionConfidence(data.confidence || 0);
+    
+    // Optional: Show subtle notification for high confidence changes
+    if (data.confidence >= 0.8) {
+      console.log(`🎯 High confidence emotion change to: ${data.emotion}`);
+    }
+  };
+
+  const celebrateMilestone = (milestone: any) => {
+    console.log('🎉 Celebrating milestone:', milestone.title);
+    WebSocketService.celebrateMilestone(milestone.id, milestone.title, true);
+    ApiService.celebrateMilestone(milestone.id);
+  };
+
+  const shareCurrentEmotion = () => {
+    const confidenceText = emotionConfidence > 0 
+      ? `\n\n(AI detected with ${Math.round(emotionConfidence * 100)}% confidence)`
+      : '';
+    
+    Alert.alert(
+      'Share Your Feeling',
+      `Share your current ${currentEmotion} feeling with the community?${confidenceText}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Share', 
+          onPress: () => {
+            console.log('📤 Sharing emotion:', currentEmotion, 'intensity:', emotionIntensity);
+            WebSocketService.shareEmotionalState('community', currentEmotion, emotionIntensity);
+          }
+        }
+      ]
+    );
+  };
+
+  const requestSupport = () => {
+    Alert.alert(
+      'Request Support',
+      'Share your need for encouragement with the community?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Request Support', 
+          onPress: () => {
+            console.log('🆘 Requesting support');
+            WebSocketService.requestSupport(8, 'Need encouragement', true);
+          }
+        }
+      ]
+    );
   };
 
   const onRefresh = () => {
+    // Allow manual refresh regardless of rate limit
     setRefreshing(true);
-    loadInsights();
+    setLastRefreshTime(0); // Reset rate limit for manual refresh
+    Promise.all([
+      loadGrowthData(),
+      loadMilestones()
+    ]).finally(() => setRefreshing(false));
   };
 
-  const getTrendIcon = (trend: string) => {
-    switch (trend) {
-      case 'up':
-        return <Feather name="trending-up" size={20} color={NuminaColors.green} />;
-      case 'down':
-        return <Feather name="trending-down" size={20} color={NuminaColors.pink} />;
-      default:
-        return <Feather name="minus" size={20} color={NuminaColors.yellow} />;
-    }
-  };
-
-  const getEmotionColor = (emotion: string) => {
-    const emotionColors: { [key: string]: string } = {
-      'Joy': NuminaColors.yellow,
-      'Calm': NuminaColors.chatBlue[400],
-      'Sadness': NuminaColors.chatBlue[600],
-      'Excitement': NuminaColors.pink,
-      'Anxiety': NuminaColors.purple,
-    };
-    return emotionColors[emotion] || NuminaColors.green;
-  };
 
   const handleMenuAction = (key: string) => {
     switch (key) {
@@ -244,7 +498,15 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     }
   };
 
-  if (loading && !insights) {
+  console.log('🎭 SentimentScreen RENDER:', {
+    loading,
+    hasGrowthData: !!growthData,
+    milestonesCount: milestones.length
+  });
+
+  // Show loader during initial load or when both data sets are missing
+  if ((loading && isInitialLoad) || (!growthData && milestones.length === 0 && loading)) {
+    console.log('📊 SentimentScreen: Showing loading screen');
     return (
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -257,8 +519,34 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={NuminaColors.green} />
             <Text style={[styles.loadingText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[600] }]}>
-              Connecting to sentiment consciousness...
+              {isStreamingGrowthData ? streamingStatus : 'Loading your growth insights...'}
             </Text>
+            <Text style={[styles.loadingSubtext, { color: isDarkMode ? '#888' : '#666', marginTop: 8, fontSize: 12 }]}>
+              {isStreamingGrowthData ? 'Real-time AI analysis in progress...' : 'Analyzing your emotional patterns and progress'}
+            </Text>
+            
+            {isStreamingGrowthData && (
+              <View style={styles.progressContainer}>
+                <View style={[
+                  styles.progressBar,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
+                ]}>
+                  <View style={[
+                    styles.progressFill,
+                    { 
+                      width: `${streamingProgress}%`,
+                      backgroundColor: NuminaColors.green
+                    }
+                  ]} />
+                </View>
+                <Text style={[
+                  styles.progressText,
+                  { color: isDarkMode ? '#999999' : '#666666' }
+                ]}>
+                  {streamingProgress}%
+                </Text>
+              </View>
+            )}
           </View>
         </SafeAreaView>
       </PageBackground>
@@ -298,133 +586,225 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                   style={styles.titleIcon}
                 />
                 <Text style={[styles.title, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                  Sentiment Insights
+                  Your Growth Dashboard
                 </Text>
               </View>
               <Text style={[styles.subtitle, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
-                Real-time emotional resonance from the Numina community
+                Comprehensive view of your personal growth and insights
               </Text>
             </View>
 
-            {insights && (
-              <>
-                {/* Current Resonance Card */}
-                {insights.currentResonance && (
-                  <View style={[
-                    styles.resonanceCard,
-                    {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                    }
-                  ]}>
-                    <View style={styles.resonanceHeader}>
-                      <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-                        <View style={[styles.liveBadge, { backgroundColor: NuminaColors.green }]}>
-                          <View style={styles.liveDot} />
-                          <Text style={styles.liveText}>LIVE</Text>
-                        </View>
-                      </Animated.View>
-                      <Text style={[styles.participantCount, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
-                        {insights.currentResonance.participants || 0} participants
-                      </Text>
-                    </View>
 
-                    <View style={styles.resonanceContent}>
-                      <Text style={[styles.dominantEmotion, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                        {insights.currentResonance.dominantEmotion || 'Unknown'}
-                      </Text>
-                      <View style={styles.intensityContainer}>
-                        <Text style={[styles.intensityLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
-                          Intensity
-                        </Text>
-                        <Text style={[styles.intensityValue, { color: getEmotionColor(insights.currentResonance.dominantEmotion || 'Unknown') }]}>
-                          {(insights.currentResonance.intensity || 0).toFixed(1)}/10
-                        </Text>
-                        {getTrendIcon(insights.currentResonance.trend || 'stable')}
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* Emotion Breakdown */}
-                {insights.emotionBreakdown && insights.emotionBreakdown.length > 0 && (
+                {/* Growth Insights Dashboard */}
+                {growthData && (
                   <View style={[
-                    styles.breakdownCard,
-                    {
-                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
-                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                    }
-                  ]}>
-                    <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                      Emotion Distribution
-                    </Text>
-                    
-                    {insights.emotionBreakdown.map((emotion, index) => (
-                      <View key={index} style={styles.emotionRow}>
-                        <View style={styles.emotionInfo}>
-                          <Text style={[styles.emotionName, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
-                            {emotion.emotion}
-                          </Text>
-                          <Text style={[
-                            styles.emotionChange,
-                            { color: emotion.change > 0 ? NuminaColors.green : NuminaColors.pink }
-                          ]}>
-                            {emotion.change > 0 ? '+' : ''}{emotion.change}%
-                          </Text>
-                        </View>
-                        <View style={styles.emotionBarContainer}>
-                          <View 
-                            style={[
-                              styles.emotionBar,
-                              { 
-                                width: `${emotion.percentage}%`,
-                                backgroundColor: getEmotionColor(emotion.emotion)
-                              }
-                            ]} 
-                          />
-                        </View>
-                        <Text style={[styles.emotionPercentage, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
-                          {emotion.percentage}%
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                {/* AI Insights */}
-                {insights.insights && insights.insights.length > 0 && (
-                  <View style={[
-                    styles.insightsCard,
+                    styles.growthCard,
                     {
                       backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
                       borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
                     }
                   ]}>
                     <View style={styles.insightsHeader}>
-                      <Ionicons name="sparkles" size={24} color={NuminaColors.purple} />
+                      <MaterialCommunityIcons name="chart-line" size={24} color={NuminaColors.green} />
                       <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                        AI-Generated Insights
+                        Weekly Growth Insights
                       </Text>
                     </View>
-                    
-                    {insights.insights.map((insight, index) => (
-                      <View key={index} style={styles.insightItem}>
-                        <View style={[
-                          styles.insightBullet,
-                          { backgroundColor: `${NuminaColors.purple}20` }
-                        ]} />
-                        <View style={styles.insightContent}>
-                          <Text style={[styles.insightText, { color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600] }]}>
-                            {insight.message}
+
+                    {/* Period */}
+                    {growthData.period && (
+                      <Text style={[styles.periodText, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                        {growthData.period}
+                      </Text>
+                    )}
+
+                    {/* Growth Progress Ring */}
+                    <View style={styles.growthRingContainer}>
+                      <View style={[styles.growthRing, { borderColor: NuminaColors.green }]}>
+                        <Text style={[styles.growthPercentage, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
+                          {Math.round((growthData.metrics?.positivityRatio || 0) * 100)}%
+                        </Text>
+                        <Text style={[styles.growthLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          Positive
+                        </Text>
+                      </View>
+                      <View style={styles.growthMetrics}>
+                        <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
+                          Engagement: {Math.round((growthData.metrics?.engagementScore || 0) * 100)}%
+                        </Text>
+                        <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
+                          Sessions/Day: {(growthData.metrics?.avgSessionsPerDay || 0).toFixed(1)}
+                        </Text>
+                        <Text style={[styles.metricText, { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }]}>
+                          Avg Intensity: {(growthData.metrics?.avgIntensity || 0).toFixed(1)}/10
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* AI Insights */}
+                    {growthData.aiInsights && (
+                      <View style={styles.aiInsightsContainer}>
+                        <Text style={[styles.aiInsightsTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
+                          Your Personal AI Analysis
+                        </Text>
+                        <Text style={[styles.aiInsightText, { color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600] }]}>
+                          {growthData.aiInsights}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Milestone System */}
+                {milestones && milestones.length > 0 && (
+                  <View style={[
+                    styles.milestonesCard,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    }
+                  ]}>
+                    <View style={styles.insightsHeader}>
+                      <Ionicons name="trophy" size={24} color={NuminaColors.yellow} />
+                      <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
+                        Milestones
+                      </Text>
+                    </View>
+
+                    {/* Achieved Milestones */}
+                    <View style={styles.achievedMilestones}>
+                      {milestones.filter(m => m.achieved).map(milestone => (
+                        <TouchableOpacity 
+                          key={milestone.id}
+                          onPress={() => celebrateMilestone(milestone)}
+                          style={[styles.celebrationBadge, { backgroundColor: `${NuminaColors.yellow}20` }]}
+                        >
+                          <Text style={styles.badgeEmoji}>🏆</Text>
+                          <Text style={[styles.badgeText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
+                            {milestone.title}
                           </Text>
-                          <Text style={[styles.confidenceText, { color: isDarkMode ? NuminaColors.darkMode[500] : NuminaColors.darkMode[400] }]}>
-                            {(insight.confidence * 100).toFixed(0)}% confidence
-                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {/* Progress Milestones */}
+                    {milestones.filter(m => !m.achieved && m.progress > 0).map(milestone => (
+                      <View key={milestone.id} style={styles.progressMilestone}>
+                        <Text style={[styles.milestoneTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
+                          {milestone.title}
+                        </Text>
+                        <View style={styles.progressBarContainer}>
+                          <View 
+                            style={[
+                              styles.progressBar,
+                              { 
+                                width: `${milestone.progress}%`,
+                                backgroundColor: NuminaColors.green
+                              }
+                            ]} 
+                          />
                         </View>
+                        <Text style={[styles.progressText, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          {milestone.progress}% complete
+                        </Text>
                       </View>
                     ))}
                   </View>
                 )}
+
+                {/* Quick Stats Card */}
+                {growthData && (
+                  <View style={[
+                    styles.statsCard,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+                      borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                    }
+                  ]}>
+                    <View style={styles.insightsHeader}>
+                      <MaterialCommunityIcons name="chart-box" size={24} color={NuminaColors.purple} />
+                      <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
+                        Quick Stats
+                      </Text>
+                    </View>
+
+                    <View style={styles.statsGrid}>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: NuminaColors.green }]}>
+                          {Math.round((growthData.metrics?.positivityRatio || 0) * 100)}%
+                        </Text>
+                        <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          Positivity
+                        </Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: NuminaColors.chatBlue[400] }]}>
+                          {(growthData.metrics?.avgSessionsPerDay || 0).toFixed(1)}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          Sessions/Day
+                        </Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: NuminaColors.yellow }]}>
+                          {(growthData.metrics?.avgIntensity || 0).toFixed(1)}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          Avg Intensity
+                        </Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: NuminaColors.pink }]}>
+                          {Math.round((growthData.metrics?.engagementScore || 0) * 100)}%
+                        </Text>
+                        <Text style={[styles.statLabel, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                          Engagement
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Real-Time Social Features */}
+                <View style={[
+                  styles.socialCard,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+                  }
+                ]}>
+                  <View style={styles.insightsHeader}>
+                    <MaterialCommunityIcons name="heart-multiple" size={24} color={NuminaColors.pink} />
+                    <Text style={[styles.cardTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
+                      Connect & Share
+                    </Text>
+                  </View>
+
+                  <View style={styles.socialButtons}>
+                    {/* Share Current Emotion */}
+                    <TouchableOpacity onPress={shareCurrentEmotion} style={[styles.socialButton, { backgroundColor: `${NuminaColors.green}20` }]}>
+                      <MaterialCommunityIcons name="share" size={20} color={NuminaColors.green} />
+                      <View style={styles.emotionShareContent}>
+                        <Text style={[styles.socialButtonText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
+                          Share {currentEmotion} feeling →
+                        </Text>
+                        {emotionConfidence > 0 && (
+                          <Text style={[styles.confidenceText, { color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500] }]}>
+                            AI detected • {Math.round(emotionConfidence * 100)}% confident
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+
+                    {/* Request Support */}
+                    <TouchableOpacity onPress={requestSupport} style={[styles.socialButton, { backgroundColor: `${NuminaColors.pink}20` }]}>
+                      <Text style={styles.supportEmoji}>🆘</Text>
+                      <Text style={[styles.socialButtonText, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[700] }]}>
+                        Request Support
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
 
                 {/* Privacy Notice */}
                 <View style={[
@@ -440,26 +820,6 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
                   </Text>
                 </View>
 
-                {/* Last Updated */}
-                {lastUpdated && (
-                  <Text style={[styles.lastUpdated, { color: isDarkMode ? NuminaColors.darkMode[500] : NuminaColors.darkMode[400] }]}>
-                    Last updated: {lastUpdated.toLocaleTimeString()}
-                  </Text>
-                )}
-              </>
-            )}
-
-            {error && (
-              <View style={styles.errorContainer}>
-                <Feather name="alert-circle" size={24} color={NuminaColors.pink} />
-                <Text style={[styles.errorText, { color: NuminaColors.pink }]}>
-                  {error}
-                </Text>
-                <TouchableOpacity onPress={loadInsights} style={styles.retryButton}>
-                  <Text style={styles.retryText}>Retry</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
@@ -694,5 +1054,199 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
+  },
+  // Growth Insights styles
+  growthCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  growthRingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  growthRing: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  growthPercentage: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  growthLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  growthMetrics: {
+    flex: 1,
+  },
+  metricText: {
+    fontSize: 14,
+    fontFamily: 'Inter_500Medium',
+    marginBottom: 8,
+  },
+  aiInsightText: {
+    fontSize: 13,
+    fontFamily: 'Inter_400Regular',
+    lineHeight: 18,
+  },
+  periodText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  aiInsightsContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.03)',
+    borderRadius: 12,
+  },
+  aiInsightsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    marginBottom: 8,
+  },
+  // Milestone styles
+  milestonesCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  achievedMilestones: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  celebrationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  badgeEmoji: {
+    fontSize: 16,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  progressMilestone: {
+    marginBottom: 12,
+  },
+  milestoneTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    marginBottom: 8,
+  },
+  progressBarContainer: {
+    height: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    borderRadius: 3,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+  },
+  // Stats card styles
+  statsCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  statItem: {
+    width: '48%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  statValue: {
+    fontSize: 28,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+  },
+  // Social features styles
+  socialCard: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  socialButtons: {
+    gap: 12,
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  socialButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+  },
+  emotionShareContent: {
+    flex: 1,
+  },
+  supportEmoji: {
+    fontSize: 16,
+  },
+  loadingSubtext: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+  },
+  progressContainer: {
+    marginTop: 24,
+    width: '80%',
+    alignItems: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  progressText: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '500',
   },
 });
