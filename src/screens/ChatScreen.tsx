@@ -12,6 +12,8 @@ import {
   StatusBar,
   Alert,
   Share,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,11 +29,14 @@ import ChatService from '../services/chatService';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
+import { Header } from '../components/Header';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
+import { SearchThoughtIndicator } from '../components/SearchThoughtIndicator';
+import { useSearchIndicator } from '../hooks/useSearchIndicator';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -73,6 +78,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   // Numina Personality Integration - This starts the frequent updates!
   const numinaPersonality = useNuminaPersonality(true); // true = active chat session
+  
+  // Search Thought Indicator Integration
+  const {
+    searchResults,
+    isSearching,
+    updateFromStreamingContent,
+    updateFromFinalResponse,
+    resetSearchState,
+    hasActiveSearches,
+  } = useSearchIndicator();
   
   // Get adaptive placeholder from AI Personality
   const getAdaptivePlaceholderText = useCallback(() => {
@@ -131,6 +146,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const sendMessage = async () => {
     if (!inputText.trim() || !conversation) return;
 
+    // Reset search state for new message
+    resetSearchState();
+
     const userMessage: Message = {
       id: Date.now().toString(),
       text: inputText.trim(),
@@ -180,6 +198,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             // Validate partialResponse
             const safePartialResponse = partialResponse || '';
             
+            // Update search indicator with streaming content
+            updateFromStreamingContent(safePartialResponse);
+            
             // Update the AI message with streaming content
             const updatedAIMessage = {
               ...aiMessage,
@@ -207,6 +228,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         } else {
           finalResponseText = String(adaptiveResult || '');
         }
+        
+        // Update search indicator with final response to extract tool results
+        updateFromFinalResponse(finalResponseText);
       } else {
         // Fallback to traditional chat service
         const chatResult = await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
@@ -397,9 +421,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         showMenuButton={true}
         title="Numina"
         subtitle={
-          emotionalState 
+          hasActiveSearches || isSearching
+            ? `🔍 AI Thinking • ${searchResults.length} searches • Real-time insights`
+            : emotionalState 
             ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
-            : "Emotion Inference • Pattern Recognition • Deep Insights"
+            : "Live Search • Intelligent Tools • Deep Understanding"
         }
       >
         <PageBackground>
@@ -409,68 +435,72 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               backgroundColor="transparent"
               translucent={true}
             />
-          
-          <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-            {/* Messages Container */}
-          <KeyboardAvoidingView
-            style={styles.chatContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-          >
-            <FlatList
-              ref={flatListRef}
-              data={conversation?.messages || []}
-              renderItem={renderMessage}
-              keyExtractor={item => item?.id || Math.random().toString()}
-              style={styles.messagesList}
-              onContentSizeChange={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
-              onLayout={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.messagesContent}
-              extraData={conversation?.messages?.length || 0} // Force re-render on new messages
-              maintainVisibleContentPosition={{
-                minIndexForVisible: 0,
-                autoscrollToTopThreshold: 10,
-              }}
+            {/* Search Thought Indicator */}
+            {(hasActiveSearches || isSearching) && (
+              <View style={styles.searchIndicatorContainer}>
+                <SearchThoughtIndicator
+                  isSearching={isSearching}
+                  searchResults={searchResults}
+                  emotionalState={emotionalState}
+                />
+              </View>
+            )}
+            
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+              <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                {/* Messages Container */}
+                <KeyboardAvoidingView
+                  style={styles.chatContainer}
+                  behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                  keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+                >
+                  <FlatList
+                    ref={flatListRef}
+                    data={conversation?.messages || []}
+                    renderItem={renderMessage}
+                    keyExtractor={item => item?.id || Math.random().toString()}
+                    style={styles.messagesList}
+                    onContentSizeChange={() => {
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
+                    }}
+                    onLayout={() => {
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
+                    }}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.messagesContent}
+                    extraData={conversation?.messages?.length || 0} // Force re-render on new messages
+                    maintainVisibleContentPosition={{
+                      minIndexForVisible: 0,
+                      autoscrollToTopThreshold: 10,
+                    }}
+                  />
+
+                  {/* Enhanced AI-Powered Input */}
+                  <ChatInput
+                    value={inputText}
+                    onChangeText={setInputText}
+                    onSend={sendMessage}
+                    onVoiceStart={handleVoiceStart}
+                    onVoiceEnd={handleVoiceEnd}
+                    isLoading={isLoading || isAnalyzing}
+                    placeholder={getAdaptivePlaceholderText()}
+                    voiceEnabled={true}
+                    userEmotionalState={emotionalState || undefined}
+                  />
+                </KeyboardAvoidingView>
+              </Animated.View>
+            </TouchableWithoutFeedback>
+            {/* Conversation History */}
+            <ConversationHistory
+              visible={historyVisible}
+              onClose={() => setHistoryVisible(false)}
+              onSelectConversation={handleSelectConversation}
+              currentConversationId={conversation?.id}
             />
-
-
-            {/* Enhanced AI-Powered Input */}
-            <ChatInput
-              value={inputText}
-              onChangeText={setInputText}
-              onSend={sendMessage}
-              onVoiceStart={handleVoiceStart}
-              onVoiceEnd={handleVoiceEnd}
-              isLoading={isLoading || isAnalyzing}
-              placeholder={getAdaptivePlaceholderText()}
-              voiceEnabled={true}
-              userEmotionalState={emotionalState || undefined}
-              aiPersonality={aiPersonality as any || undefined}
-              onPersonalityUpdate={(personality) => {
-                // Handle personality updates
-              }}
-            />
-          </KeyboardAvoidingView>
-
-
-        </Animated.View>
-
-        {/* Conversation History */}
-        <ConversationHistory
-          visible={historyVisible}
-          onClose={() => setHistoryVisible(false)}
-          onSelectConversation={handleSelectConversation}
-          currentConversationId={conversation?.id}
-        />
           </SafeAreaView>
         </PageBackground>
       </ScreenWrapper>
@@ -489,6 +519,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  searchIndicatorContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    zIndex: 10,
   },
   chatContainer: {
     flex: 1,
