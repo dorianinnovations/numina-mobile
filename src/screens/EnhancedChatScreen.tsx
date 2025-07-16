@@ -10,6 +10,8 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,6 +34,8 @@ import batchApiService from '../services/batchApiService';
 import websocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
 import syncService from '../services/syncService';
 import appConfigService from '../services/appConfigService';
+import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
+import { AIToolExecutionStream } from '../components/AIToolExecutionStream';
 
 interface EnhancedChatScreenProps {
   onNavigateBack: () => void;
@@ -64,16 +68,39 @@ export const EnhancedChatScreen: React.FC<EnhancedChatScreenProps> = ({
   const [batchStats, setBatchStats] = useState(batchApiService.getStats());
   const [syncStatus, setSyncStatus] = useState<any>(null);
   
+  // Tool execution state
+  const [toolExecutions, setToolExecutions] = useState<ToolExecution[]>([]);
+  const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
+  const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
+  const toolExecutionService = ToolExecutionService.getInstance();
+  
   const flatListRef = useRef<FlatList>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Initialize enhanced features
   useEffect(() => {
     initializeEnhancedFeatures();
+    setupToolExecutionListeners();
     return () => {
       cleanup();
     };
   }, []);
+
+  // Setup tool execution listeners
+  const setupToolExecutionListeners = () => {
+    toolExecutionService.on('executionsUpdated', (executions: ToolExecution[]) => {
+      setToolExecutions(executions);
+    });
+
+    toolExecutionService.on('executionStarted', (execution: ToolExecution) => {
+      console.log('🔧 Tool execution started:', execution.toolName);
+      setIsToolStreamVisible(true);
+    });
+
+    toolExecutionService.on('executionCompleted', (execution: ToolExecution) => {
+      console.log('✅ Tool execution completed:', execution.toolName);
+    });
+  };
 
   const initializeEnhancedFeatures = async () => {
     try {
@@ -204,13 +231,27 @@ export const EnhancedChatScreen: React.FC<EnhancedChatScreenProps> = ({
     setInputText('');
     setIsLoading(true);
     setStreamingResponse('');
+    setCurrentAIMessage('');
+    
+    // Pre-detect potential tool executions from user message
+    const potentialTools = detectPotentialTools(messageText);
+    potentialTools.forEach(tool => {
+      toolExecutionService.startExecution(tool.name, tool.parameters);
+    });
     
     try {
-      // Get AI response with streaming
+      // Get AI response with streaming and tool execution tracking
       const aiResponse = await ChatService.sendMessage(
         messageText,
         (partialResponse) => {
           setStreamingResponse(partialResponse);
+          setCurrentAIMessage(partialResponse);
+          
+          // Process tool executions from streaming response
+          toolExecutionService.processStreamingToolResponse(partialResponse);
+          
+          // Auto-detect tool executions in the response
+          toolExecutionService.detectToolExecutionsInMessage(partialResponse);
         }
       );
       
@@ -233,13 +274,45 @@ export const EnhancedChatScreen: React.FC<EnhancedChatScreenProps> = ({
         websocketService.sendMessage(roomId, aiResponse, 'ai_response');
       }
       
+      // Clean up old executions
+      toolExecutionService.cleanupOldExecutions();
+      
     } catch (error) {
       console.error('Failed to send message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
     } finally {
       setIsLoading(false);
       setStreamingResponse('');
+      setCurrentAIMessage('');
     }
+  };
+
+  // Detect potential tools from user message
+  const detectPotentialTools = (message: string): Array<{name: string, parameters: any}> => {
+    const tools = [];
+    const lowerMessage = message.toLowerCase();
+    
+    // Web search detection
+    if (lowerMessage.includes('search') || lowerMessage.includes('find') || lowerMessage.includes('look up')) {
+      tools.push({ name: 'web_search', parameters: { query: message } });
+    }
+    
+    // Music detection
+    if (lowerMessage.includes('music') || lowerMessage.includes('song') || lowerMessage.includes('playlist')) {
+      tools.push({ name: 'music_recommendations', parameters: { query: message } });
+    }
+    
+    // Restaurant detection
+    if (lowerMessage.includes('restaurant') || lowerMessage.includes('dinner') || lowerMessage.includes('reservation')) {
+      tools.push({ name: 'reservation_booking', parameters: { query: message } });
+    }
+    
+    // Travel detection
+    if (lowerMessage.includes('travel') || lowerMessage.includes('trip') || lowerMessage.includes('vacation')) {
+      tools.push({ name: 'itinerary_generator', parameters: { query: message } });
+    }
+    
+    return tools;
   };
 
   const saveConversation = async (newMessages: Message[]) => {
@@ -415,53 +488,67 @@ export const EnhancedChatScreen: React.FC<EnhancedChatScreenProps> = ({
 
   return (
     <ChatErrorBoundary>
-      <ScreenWrapper>
+      <ScreenWrapper
+        showHeader={true}
+        showBackButton={true}
+        showMenuButton={true}
+        title="Enhanced Chat"
+        subtitle="Advanced conversational AI"
+      >
         <PageBackground />
         <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
           {renderHeader()}
           {renderPerformanceStats()}
-          
-          <KeyboardAvoidingView
-            style={styles.content}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={90}
-          >
-            <FlatList
-              ref={flatListRef}
-              data={displayMessages}
-              renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
-              style={styles.messagesList}
-              contentContainerStyle={styles.messagesContainer}
-              onContentSizeChange={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
-              onLayout={() => {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-              }}
-              showsVerticalScrollIndicator={false}
-              maintainVisibleContentPosition={{
-                minIndexForVisible: 0,
-                autoscrollToTopThreshold: 10,
-              }}
-            />
-            
-            {renderTypingIndicator()}
-            
-            <ChatInput
-              value={inputText}
-              onChangeText={handleInputChange}
-              onSend={handleSendMessage}
-              isLoading={isLoading}
-              placeholder="Type your message..."
-              theme={theme}
-              showSendButton={inputText.trim().length > 0}
-            />
-          </KeyboardAvoidingView>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <KeyboardAvoidingView
+              style={styles.content}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={90}
+            >
+              <FlatList
+                ref={flatListRef}
+                data={displayMessages}
+                renderItem={renderMessage}
+                keyExtractor={(item) => item.id}
+                style={styles.messagesList}
+                contentContainerStyle={styles.messagesContainer}
+                onContentSizeChange={() => {
+                  setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                  }, 100);
+                }}
+                onLayout={() => {
+                  setTimeout(() => {
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                  }, 100);
+                }}
+                showsVerticalScrollIndicator={false}
+                maintainVisibleContentPosition={{
+                  minIndexForVisible: 0,
+                  autoscrollToTopThreshold: 10,
+                }}
+              />
+              
+              {/* AI Tool Execution Stream */}
+              <AIToolExecutionStream
+                executions={toolExecutions}
+                isVisible={isToolStreamVisible}
+                onToggleVisibility={() => setIsToolStreamVisible(!isToolStreamVisible)}
+                currentMessage={currentAIMessage}
+              />
+              
+              {renderTypingIndicator()}
+              <ChatInput
+                value={inputText}
+                onChangeText={handleInputChange}
+                onSend={handleSendMessage}
+                isLoading={isLoading}
+                placeholder="Type your message..."
+                theme={theme}
+                showSendButton={inputText.trim().length > 0}
+              />
+            </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
         </SafeAreaView>
       </ScreenWrapper>
     </ChatErrorBoundary>

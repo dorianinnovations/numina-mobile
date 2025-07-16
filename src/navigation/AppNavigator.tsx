@@ -11,7 +11,7 @@ import { SignUpScreen } from "../screens/SignUpScreen";
 import { TutorialScreen } from "../screens/TutorialScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { AnalyticsScreen } from "../screens/AnalyticsScreen";
-import { StratosphereScreen } from "../screens/StratosphereScreen";
+import { WalletScreen } from "../screens/WalletScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { AboutScreen } from "../screens/AboutScreen";
@@ -32,7 +32,7 @@ export type RootStackParamList = {
   Chat: undefined;
   Analytics: undefined;
   Cloud: undefined;
-  Stratosphere: undefined;
+  Wallet: undefined;
   Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -258,13 +258,13 @@ export const AppNavigator: React.FC = () => {
         </Stack.Screen>
 
         <Stack.Screen
-          name="Stratosphere"
+          name="Wallet"
           options={{
             ...slideTransition,
           }}
         >
           {({ navigation }) => (
-            <StratosphereScreen onNavigateBack={() => navigation.goBack()} />
+            <WalletScreen onNavigateBack={() => navigation.goBack()} />
           )}
         </Stack.Screen>
 

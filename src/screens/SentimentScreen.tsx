@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -64,6 +64,10 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
   const [streamingProgress, setStreamingProgress] = useState(0);
   const [streamingStatus, setStreamingStatus] = useState<string>('');
 
+  const animationLoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // Data validation function to ensure metrics are properly bounded
   const validateGrowthData = (data: any): any => {
     if (!data || !data.metrics) return data;
@@ -93,6 +97,27 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
   const statsCardFadeAnim = useRef(new Animated.Value(0)).current;
   const socialCardFadeAnim = useRef(new Animated.Value(0)).current;
   const privacyCardFadeAnim = useRef(new Animated.Value(0)).current;
+
+  // CRITICAL FIX: Proper cleanup function
+  const cleanupResources = useCallback(() => {
+    // Clear animation loop
+    if (animationLoopRef.current) {
+      animationLoopRef.current.stop();
+      animationLoopRef.current = null;
+    }
+    
+    // Clear streaming timeout
+    if (streamingTimeoutRef.current) {
+      clearTimeout(streamingTimeoutRef.current);
+      streamingTimeoutRef.current = null;
+    }
+    
+    // Clear refresh interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     console.log('🎭 SentimentScreen: Component mounted, loading data...');
@@ -127,8 +152,8 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     loadGrowthData();
     loadMilestones();
     
-    // Set up polling for real-time updates (every 5 minutes to reduce load)
-    const interval = setInterval(() => {
+    // CRITICAL FIX: Store interval ref for proper cleanup
+    refreshIntervalRef.current = setInterval(() => {
       console.log('🔄 SentimentScreen: Periodic refresh (5 min interval)...');
       if (canRefresh()) {
         loadGrowthData();
@@ -143,8 +168,8 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     WebSocketService.addEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
     WebSocketService.addEventListener('numina_senses_updated', handleNuminaSensesUpdated);
 
-    // Start animations
-    Animated.loop(
+    // CRITICAL FIX: Store animation loop ref for proper cleanup
+    animationLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
           toValue: 1.1,
@@ -157,7 +182,8 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    animationLoopRef.current.start();
 
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -165,8 +191,29 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       useNativeDriver: true,
     }).start();
 
+    // CRITICAL FIX: Comprehensive cleanup
     return () => {
-      clearInterval(interval);
+      console.log('🎭 SentimentScreen: Component unmounting, cleaning up...');
+      
+      // Clear interval
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      
+      // Clear animation loop
+      if (animationLoopRef.current) {
+        animationLoopRef.current.stop();
+        animationLoopRef.current = null;
+      }
+      
+      // Clear streaming timeout
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+        streamingTimeoutRef.current = null;
+      }
+      
+      // Remove WebSocket listeners
       WebSocketService.removeEventListener('milestone_achieved', handleMilestoneAchieved);
       WebSocketService.removeEventListener('milestone_celebrated', handleMilestoneCelebrated);
       WebSocketService.removeEventListener('emotional_share_received', handleEmotionalShareReceived);
@@ -220,11 +267,12 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           
           setGrowthData(validateGrowthData(chunk.data));
           
-          // Small delay to show completion
-          setTimeout(() => {
+          // CRITICAL FIX: Store timeout ref for proper cleanup
+          streamingTimeoutRef.current = setTimeout(() => {
             setIsStreamingGrowthData(false);
             setLoading(false);
             setIsInitialLoad(false);
+            streamingTimeoutRef.current = null;
           }, 500);
         }
       });
@@ -548,8 +596,8 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       case 'cloud':
         navigation.navigate('Cloud');
         break;
-      case 'stratosphere':
-        navigation.navigate('Stratosphere');
+      case 'wallet':
+        navigation.navigate('Wallet');
         break;
       case 'sentiment':
         break; // Already on this screen

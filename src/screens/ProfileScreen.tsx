@@ -21,6 +21,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
 import { PageBackground } from '../components/PageBackground';
 import { Header } from '../components/Header';
+import { SubscriptionModal } from '../components/SubscriptionModal';
+import ApiService from '../services/api';
+import SpotifyService from '../services/spotifyService';
+import AutoPlaylistService from '../services/autoPlaylistService';
 
 const { width } = Dimensions.get('window');
 
@@ -39,6 +43,18 @@ interface UserProfile {
   isPublic: boolean;
   showEmotionalInsights: boolean;
   showActivityStatus: boolean;
+}
+
+interface SubscriptionData {
+  numinaTrace: {
+    isActive: boolean;
+    plan: string | null;
+    startDate: string;
+    endDate: string;
+    autoRenew: boolean;
+    nextBillingDate: string;
+    hasActiveSubscription: boolean;
+  };
 }
 
 const PERSONALITY_TYPES = [
@@ -62,6 +78,15 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [showInterestSelector, setShowInterestSelector] = useState(false);
   const [showPersonalitySelector, setShowPersonalitySelector] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(false);
+  const [spotifyConnected, setSpotifyConnected] = useState(false);
+  const [spotifyProfile, setSpotifyProfile] = useState<any>(null);
+  const [loadingSpotify, setLoadingSpotify] = useState(false);
+  const [playlistStats, setPlaylistStats] = useState<any>(null);
+  const [recentTracks, setRecentTracks] = useState<any[]>([]);
+  const [autoPlaylistService] = useState(() => AutoPlaylistService.getInstance());
   
   const [profile, setProfile] = useState<UserProfile>({
     profileImage: undefined,
@@ -78,7 +103,82 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   useEffect(() => {
     requestPermissions();
+    loadSubscriptionData();
+    checkSpotifyConnection();
+    loadPlaylistData();
   }, []);
+
+  const loadSubscriptionData = async () => {
+    try {
+      setLoadingSubscription(true);
+      const response = await ApiService.getSubscriptionStatus();
+      if (response.success) {
+        setSubscriptionData(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading subscription data:', error);
+    } finally {
+      setLoadingSubscription(false);
+    }
+  };
+
+  const checkSpotifyConnection = async () => {
+    try {
+      const isConnected = await SpotifyService.isConnected();
+      setSpotifyConnected(isConnected);
+      if (isConnected) {
+        const profile = await SpotifyService.getStoredUserProfile();
+        setSpotifyProfile(profile);
+      }
+    } catch (error) {
+      console.error('Error checking Spotify connection:', error);
+    }
+  };
+
+  const handleSpotifyConnect = async () => {
+    try {
+      setLoadingSpotify(true);
+      await SpotifyService.authenticateWithSpotify();
+      await checkSpotifyConnection();
+      Alert.alert('Success', 'Spotify account connected successfully!');
+    } catch (error: any) {
+      console.error('Spotify connection error:', error);
+      Alert.alert('Error', error.message || 'Failed to connect Spotify account');
+    } finally {
+      setLoadingSpotify(false);
+    }
+  };
+
+  const handleSpotifyDisconnect = async () => {
+    try {
+      setLoadingSpotify(true);
+      await SpotifyService.disconnectSpotify();
+      setSpotifyConnected(false);
+      setSpotifyProfile(null);
+      Alert.alert('Success', 'Spotify account disconnected successfully!');
+    } catch (error: any) {
+      console.error('Spotify disconnection error:', error);
+      Alert.alert('Error', error.message || 'Failed to disconnect Spotify account');
+    } finally {
+      setLoadingSpotify(false);
+    }
+  };
+
+  const loadPlaylistData = async () => {
+    try {
+      const [stats, tracks] = await Promise.all([
+        autoPlaylistService.getPlaylistStats(),
+        autoPlaylistService.getRecentTracks()
+      ]);
+      
+      setPlaylistStats(stats);
+      setRecentTracks(tracks.slice(0, 10)); // Show last 10 tracks
+      
+      console.log('📊 Playlist stats:', stats);
+    } catch (error) {
+      console.error('Error loading playlist data:', error);
+    }
+  };
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -147,6 +247,106 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }));
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const hasActiveSubscription = subscriptionData?.numinaTrace?.hasActiveSubscription || false;
+  const planName = subscriptionData?.numinaTrace?.plan || '';
+  const nextBillingDate = subscriptionData?.numinaTrace?.nextBillingDate || '';
+
+  const renderSubscriptionCard = () => (
+    <View style={[
+      styles.section,
+      {
+        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.9)',
+        borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.1)',
+      }
+    ]}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.subscriptionHeader}>
+          <FontAwesome5 name="crown" size={16} color="#FFD700" />
+          <Text style={[
+            styles.sectionTitle,
+            { color: isDarkMode ? '#ffffff' : '#000000' }
+          ]}>
+            Numina Trace
+          </Text>
+        </View>
+        {hasActiveSubscription && (
+          <View style={styles.activeBadge}>
+            <Text style={styles.activeText}>Active</Text>
+          </View>
+        )}
+      </View>
+      
+      {hasActiveSubscription ? (
+        <View style={styles.activeContent}>
+          <Text style={[
+            styles.planName,
+            { color: isDarkMode ? '#86efac' : '#10b981' }
+          ]}>
+            {planName.charAt(0).toUpperCase() + planName.slice(1)} Plan
+          </Text>
+          {nextBillingDate && (
+            <Text style={[
+              styles.nextBilling,
+              { color: isDarkMode ? '#bbbbbb' : '#666666' }
+            ]}>
+              Next billing: {formatDate(nextBillingDate)}
+            </Text>
+          )}
+          <View style={styles.features}>
+            <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+              ✓ All AI tools and features
+            </Text>
+            <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+              ✓ Restaurant reservations
+            </Text>
+            <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+              ✓ Playlist creation
+            </Text>
+            <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+              ✓ Travel planning
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.upgradePrompt}>
+          <Text style={[
+            styles.upgradeTitle,
+            { color: isDarkMode ? '#ffffff' : '#000000' }
+          ]}>
+            Unlock Premium Features
+          </Text>
+          <Text style={[
+            styles.upgradeDesc,
+            { color: isDarkMode ? '#bbbbbb' : '#666666' }
+          ]}>
+            Get access to all AI tools, advanced analytics, and more
+          </Text>
+          <TouchableOpacity 
+            style={[
+              styles.upgradeButton,
+              {
+                backgroundColor: isDarkMode ? '#86efac' : '#10b981',
+              }
+            ]}
+            onPress={() => setShowSubscriptionModal(true)}
+          >
+            <Text style={styles.upgradeButtonText}>
+              View Plans
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <PageBackground>
       <SafeAreaView style={styles.container}>
@@ -157,29 +357,24 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
         />
         
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={onNavigateBack}
-          >
-            <FontAwesome5 name="arrow-left" size={18} color={isDarkMode ? '#ffffff' : '#000000'} />
-          </TouchableOpacity>
-          
-          <Text style={[styles.headerTitle, { color: isDarkMode ? '#ffffff' : '#000000' }]}>
-            {editMode ? 'Edit Profile' : 'Profile'}
-          </Text>
-          
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={editMode ? saveProfile : () => setEditMode(true)}
-          >
-            <FontAwesome5 
-              name={editMode ? 'check' : 'edit'} 
-              size={18} 
-              color={isDarkMode ? '#86efac' : '#10b981'} 
-            />
-          </TouchableOpacity>
-        </View>
+        <Header 
+          title={editMode ? 'Edit Profile' : 'Profile'}
+          showBackButton={true}
+          showMenuButton={false}
+          onBackPress={onNavigateBack}
+          rightComponent={
+            <TouchableOpacity
+              style={styles.headerButton}
+              onPress={editMode ? saveProfile : () => setEditMode(true)}
+            >
+              <FontAwesome5 
+                name={editMode ? 'check' : 'edit'} 
+                size={18} 
+                color={isDarkMode ? '#86efac' : '#10b981'} 
+              />
+            </TouchableOpacity>
+          }
+        />
 
         <ScrollView 
           style={styles.scrollView}
@@ -326,6 +521,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               Member since {new Date(profile.joinDate).getFullYear()}
             </Text>
           </View>
+
+          {/* Subscription Status Card */}
+          {renderSubscriptionCard()}
 
           {/* Interests Section */}
           <View style={[
@@ -574,6 +772,106 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               </View>
             </View>
           </View>
+
+          {/* Spotify Integration Section */}
+          <View style={[
+            styles.section,
+            {
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255, 255, 255, 0.9)',
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0, 0, 0, 0.1)',
+            }
+          ]}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.subscriptionHeader}>
+                <FontAwesome5 name="spotify" size={16} color="#1DB954" />
+                <Text style={[
+                  styles.sectionTitle,
+                  { color: isDarkMode ? '#ffffff' : '#000000' }
+                ]}>
+                  Spotify
+                </Text>
+              </View>
+              {spotifyConnected && (
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeText}>Connected</Text>
+                </View>
+              )}
+            </View>
+            
+            {spotifyConnected ? (
+              <View style={styles.activeContent}>
+                <Text style={[
+                  styles.planName,
+                  { color: isDarkMode ? '#1DB954' : '#1DB954' }
+                ]}>
+                  {spotifyProfile?.display_name || 'Connected'}
+                </Text>
+                {spotifyProfile?.email && (
+                  <Text style={[
+                    styles.nextBilling,
+                    { color: isDarkMode ? '#bbbbbb' : '#666666' }
+                  ]}>
+                    {spotifyProfile.email}
+                  </Text>
+                )}
+                <View style={styles.features}>
+                  <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+                    ✓ Personalized music recommendations
+                  </Text>
+                  <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+                    ✓ Playlist creation and management
+                  </Text>
+                  <Text style={[styles.feature, { color: isDarkMode ? '#bbbbbb' : '#666666' }]}>
+                    ✓ Music-based mood analysis
+                  </Text>
+                </View>
+                <TouchableOpacity 
+                  style={[
+                    styles.upgradeButton,
+                    {
+                      backgroundColor: isDarkMode ? '#dc2626' : '#ef4444',
+                      marginTop: 16,
+                    }
+                  ]}
+                  onPress={handleSpotifyDisconnect}
+                  disabled={loadingSpotify}
+                >
+                  <Text style={styles.upgradeButtonText}>
+                    {loadingSpotify ? 'Disconnecting...' : 'Disconnect Spotify'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.upgradePrompt}>
+                <Text style={[
+                  styles.upgradeTitle,
+                  { color: isDarkMode ? '#ffffff' : '#000000' }
+                ]}>
+                  Connect Your Spotify
+                </Text>
+                <Text style={[
+                  styles.upgradeDesc,
+                  { color: isDarkMode ? '#bbbbbb' : '#666666' }
+                ]}>
+                  Get personalized music recommendations and let Numina create playlists for you
+                </Text>
+                <TouchableOpacity 
+                  style={[
+                    styles.upgradeButton,
+                    {
+                      backgroundColor: '#1DB954',
+                    }
+                  ]}
+                  onPress={handleSpotifyConnect}
+                  disabled={loadingSpotify}
+                >
+                  <Text style={styles.upgradeButtonText}>
+                    {loadingSpotify ? 'Connecting...' : 'Connect Spotify'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </ScrollView>
 
         {/* Image Picker Modal */}
@@ -805,6 +1103,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             </View>
           </BlurView>
         </Modal>
+
+        {/* Subscription Modal */}
+        <SubscriptionModal
+          visible={showSubscriptionModal}
+          onClose={() => setShowSubscriptionModal(false)}
+          onSubscribe={(plan) => {
+            console.log('Subscribed to plan:', plan);
+            loadSubscriptionData(); // Refresh subscription data
+          }}
+        />
       </SafeAreaView>
     </PageBackground>
   );
@@ -814,15 +1122,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
-    zIndex: 1000,
-  },
   headerButton: {
     width: 40,
     height: 40,
@@ -830,30 +1129,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     padding: 24,
-    paddingTop: 0,
+    paddingTop: 16,
     paddingBottom: 40,
   },
   profileHeader: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 24,
+    padding: 32,
     alignItems: 'center',
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowRadius: 8,
+    elevation: 3,
   },
   profileImageContainer: {
     width: 100,
@@ -891,7 +1185,7 @@ const styles = StyleSheet.create({
   bio: {
     fontSize: 16,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
     marginBottom: 12,
     lineHeight: 22,
@@ -905,12 +1199,12 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 14,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   joinDate: {
     fontSize: 12,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     textAlign: 'center',
   },
   editInput: {
@@ -918,7 +1212,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
     fontSize: 16,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   displayNameInput: {
     marginBottom: 12,
@@ -936,15 +1230,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   section: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: 20,
+    padding: 32,
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -955,7 +1249,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
   },
   editButton: {
     width: 32,
@@ -981,7 +1275,7 @@ const styles = StyleSheet.create({
   interestText: {
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   removeInterest: {
     marginLeft: 4,
@@ -998,12 +1292,12 @@ const styles = StyleSheet.create({
   personalityText: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   emptyText: {
     fontSize: 14,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     fontStyle: 'italic',
   },
   privacyOptions: {
@@ -1021,13 +1315,13 @@ const styles = StyleSheet.create({
   privacyOptionTitle: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
     marginBottom: 2,
   },
   privacyOptionDesc: {
     fontSize: 13,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     lineHeight: 18,
   },
   toggle: {
@@ -1061,7 +1355,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Nunito_600SemiBold',
     marginBottom: 20,
     textAlign: 'center',
   },
@@ -1079,7 +1373,7 @@ const styles = StyleSheet.create({
   imagePickerOptionText: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   cancelButton: {
     paddingVertical: 12,
@@ -1089,7 +1383,7 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   
   // Interest Selector Modal
@@ -1133,7 +1427,7 @@ const styles = StyleSheet.create({
   interestOptionText: {
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
   
   // Personality Selector Modal
@@ -1161,6 +1455,76 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
+  },
+  
+  // Subscription Card Styles
+  subscriptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  activeBadge: {
+    backgroundColor: '#10b981',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activeText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  activeContent: {
+    gap: 8,
+  },
+  planName: {
+    fontSize: 18,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  nextBilling: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+  },
+  features: {
+    gap: 4,
+    marginTop: 8,
+  },
+  feature: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+  },
+  upgradePrompt: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  upgradeTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    textAlign: 'center',
+  },
+  upgradeDesc: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  upgradeButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  upgradeButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
 });

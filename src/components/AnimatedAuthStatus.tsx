@@ -11,7 +11,7 @@ interface AnimatedAuthStatusProps {
 
 export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({ 
   status, 
-  color = '#4CAF50',
+  color = '#ffffff',
   size = 60,
   onAnimationComplete
 }) => {
@@ -54,17 +54,17 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
         Animated.spring(scaleAnim, {
           toValue: 1,
           friction: 4,
-          tension: 100,
+          tension: 50,
           useNativeDriver: true,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 150,
           useNativeDriver: true,
         }),
         Animated.timing(circleProgress, {
           toValue: 0.8,
-          duration: 800,
+          duration: 400,
           easing: Easing.out(Easing.cubic),
           useNativeDriver: true,
         }),

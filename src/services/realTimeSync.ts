@@ -93,6 +93,41 @@ class RealTimeSyncService extends SimpleEventEmitter {
   private commentsCache: Map<string, EventComment[]> = new Map();
   private userId: string | null = null;
 
+  // CRITICAL FIX: Configurable WebSocket URL with proper fallbacks
+  private getWebSocketUrl(): string {
+    // Priority order: environment variable > config service > default fallback
+    const envUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL;
+    const configUrl = process.env.EXPO_PUBLIC_WEBSOCKET_CONFIG_URL;
+    
+    if (envUrl) {
+      console.log('🔌 WebSocket: Using environment URL:', envUrl);
+      return envUrl;
+    }
+    
+    if (configUrl) {
+      console.log('🔌 WebSocket: Using config URL:', configUrl);
+      return configUrl;
+    }
+    
+    // CRITICAL FIX: Environment-specific fallbacks instead of hardcoded URL
+    const isDevelopment = __DEV__;
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    let fallbackUrl: string;
+    
+    if (isProduction) {
+      fallbackUrl = 'wss://api.numina.app/ws';
+    } else if (isDevelopment) {
+      fallbackUrl = 'ws://localhost:3001/ws';
+    } else {
+      // Staging or other environments
+      fallbackUrl = 'wss://staging-api.numina.app/ws';
+    }
+    
+    console.warn('🔌 WebSocket: Using fallback URL:', fallbackUrl);
+    return fallbackUrl;
+  }
+
   private constructor() {
     super();
     this.loadPendingEvents();
@@ -128,20 +163,27 @@ class RealTimeSyncService extends SimpleEventEmitter {
     }, 1000);
   }
 
-  // Connect to WebSocket
+  // CRITICAL FIX: Enhanced WebSocket connection with proper error handling
   private connect() {
     if (this.isConnected) {
+      console.log('🔌 WebSocket: Already connected, skipping connection attempt');
       return;
     }
 
     try {
-      // Production WebSocket URL - should be configured via environment variables
-      const wsUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL || 'wss://api.numina.app/ws';
+      const wsUrl = this.getWebSocketUrl();
+      console.log('🔌 WebSocket: Attempting connection to:', wsUrl);
+      
+      // CRITICAL FIX: Validate URL before attempting connection
+      if (!wsUrl || wsUrl.trim() === '') {
+        throw new Error('Invalid WebSocket URL configuration');
+      }
       
       // Attempt real WebSocket connection
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
+        console.log('🔌 WebSocket: Connection established successfully');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -154,20 +196,31 @@ class RealTimeSyncService extends SimpleEventEmitter {
         this.handleMessage(event.data);
       };
 
-      this.websocket.onclose = () => {
+      this.websocket.onclose = (event) => {
+        console.log('🔌 WebSocket: Connection closed:', event.code, event.reason);
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');
-        this.scheduleReconnect();
+        
+        // CRITICAL FIX: Only attempt reconnect if not a clean close
+        if (event.code !== 1000) {
+          this.scheduleReconnect();
+        }
       };
 
       this.websocket.onerror = (error) => {
+        console.error('🔌 WebSocket: Connection error:', error);
         this.emit('error', error);
-        // Fallback to simulation if WebSocket fails
-        this.simulateWebSocketConnection();
+        
+        // CRITICAL FIX: Fallback to simulation only if connection fails completely
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.warn('🔌 WebSocket: Max reconnection attempts reached, falling back to simulation');
+          this.simulateWebSocketConnection();
+        }
       };
     } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
+      console.error('🔌 WebSocket: Failed to create connection:', error);
+      this.emit('error', error);
       this.scheduleReconnect();
     }
   }

@@ -383,6 +383,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     <ScreenWrapper
       showHeader={true}
       showBackButton={true}
+      showMenuButton={true}
       title="Discover"
       subtitle="Find your tribe"
     >

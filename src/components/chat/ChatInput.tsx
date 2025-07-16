@@ -437,7 +437,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 3,
+    paddingHorizontal: 8,
     paddingTop: 0,
     paddingVertical: 0,
     paddingBottom: 0,
@@ -453,9 +453,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   floatingContainer: {
-    borderRadius: 16,
+    borderRadius: 22,
     borderWidth: 1,
-    paddingHorizontal: 8,
+    paddingHorizontal: 5,
     paddingVertical: 12,
     position: 'relative',
     overflow: 'hidden',
@@ -465,8 +465,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     marginBottom: 18,
-    zIndex: 10, // Above notification
-    height: 68, // Fixed height for the entire container
+    zIndex: 10, 
+    height: 68, 
     minHeight: 68,
     maxHeight: 68,
   },

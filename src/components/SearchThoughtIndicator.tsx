@@ -29,8 +29,7 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
   searchResults,
   emotionalState,
 }) => {
-  const { theme } = useTheme();
-  const isDark = theme === 'dark';
+  const { isDarkMode } = useTheme();
   
   // Animation values for the 3D cube
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -138,7 +137,7 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
   });
 
   return (
-    <View style={[styles.container, isDark ? styles.containerDark : styles.containerLight]}>
+    <View style={[styles.container, isDarkMode ? styles.containerDark : styles.containerLight]}>
       {/* 3D Cube Visualization */}
       <Animated.View 
         style={[
@@ -153,8 +152,8 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
         ]}
       >
         {/* Cube face */}
-        <View style={[styles.cubeFace, isDark ? styles.cubeFaceDark : styles.cubeFaceLight]}>
-          <Text style={[styles.cubeText, isDark ? styles.cubeTextDark : styles.cubeTextLight]}>
+        <View style={[styles.cubeFace, isDarkMode ? styles.cubeFaceDark : styles.cubeFaceLight]}>
+          <Text style={[styles.cubeText, isDarkMode ? styles.cubeTextDark : styles.cubeTextLight]}>
             {isSearching ? '🔍' : searchResults.length > 0 ? '✨' : '🧠'}
           </Text>
         </View>
@@ -162,11 +161,11 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
 
       {/* Status Text */}
       <View style={styles.textContainer}>
-        <Text style={[styles.statusText, isDark ? styles.statusTextDark : styles.statusTextLight]}>
+        <Text style={[styles.statusText, isDarkMode ? styles.statusTextDark : styles.statusTextLight]}>
           {displayText}
         </Text>
         {searchResults.length > 0 && (
-          <Text style={[styles.resultsCount, isDark ? styles.resultsCountDark : styles.resultsCountLight]}>
+          <Text style={[styles.resultsCount, isDarkMode ? styles.resultsCountDark : styles.resultsCountLight]}>
             {searchResults.length} search{searchResults.length !== 1 ? 'es' : ''} completed
           </Text>
         )}

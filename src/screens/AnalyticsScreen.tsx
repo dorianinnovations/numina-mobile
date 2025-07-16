@@ -322,7 +322,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               <TouchableOpacity
                 style={[
                   styles.trackButton,
-                  { backgroundColor: isDarkMode ? NuminaColors.chatBlue[200] : NuminaColors.chatBlue[200] }
+                  { 
+                    backgroundColor: isDarkMode ? '#2a2a2a' : '#add5fa',
+                    borderColor: isDarkMode ? '#444' : '#e0e0e0'
+                  }
                 ]}
                 onPress={() => {
                   NuminaAnimations.haptic.light();
@@ -330,8 +333,8 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name="add-circle" size={24} color={isDarkMode ? '#fff' : '#1a1a1a'} />
-                <Text style={[styles.trackButtonText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>Track New Emotion</Text>
+                <Ionicons name="add-circle" size={24} color="#fff" />
+                <Text style={[styles.trackButtonText, { color: '#fff' }]}>Track New Emotion</Text>
               </TouchableOpacity>
 
               {/* Key Metrics */}
@@ -743,6 +746,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 24,
     gap: 8,
+    borderWidth: 1,
   },
   trackButtonText: {
     fontSize: 16,

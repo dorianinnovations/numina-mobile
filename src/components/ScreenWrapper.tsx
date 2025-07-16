@@ -50,9 +50,9 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           navigation.push('Cloud');
         }
         break;
-      case 'stratosphere':
-        if (currentRoute !== 'Stratosphere') {
-          navigation.push('Stratosphere');
+      case 'wallet':
+        if (currentRoute !== 'Wallet') {
+          navigation.push('Wallet');
         }
         break;
       case 'sentiment':

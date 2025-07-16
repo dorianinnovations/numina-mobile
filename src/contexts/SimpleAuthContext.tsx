@@ -1,11 +1,24 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AuthManager, { AuthState, AuthResult } from '../services/authManager';
+import ApiService from '../services/api';
 
 /**
  * Simplified Authentication Context
  * Uses AuthManager as single source of truth
  * Eliminates race conditions and token clearing issues
  */
+
+interface SubscriptionData {
+  numinaTrace: {
+    isActive: boolean;
+    plan: string | null;
+    startDate: string;
+    endDate: string;
+    autoRenew: boolean;
+    nextBillingDate: string;
+    hasActiveSubscription: boolean;
+  };
+}
 
 interface AuthContextType {
   // Authentication state
@@ -16,6 +29,11 @@ interface AuthContextType {
   user: any | null;
   authToken: string | null;
 
+  // Subscription state
+  subscriptionData: SubscriptionData | null;
+  isSubscriptionLoading: boolean;
+  hasActiveSubscription: boolean;
+
   // Authentication methods
   login: (credentials: { email: string; password: string }) => Promise<AuthResult>;
   signUp: (credentials: { email: string; password: string; confirmPassword: string }) => Promise<AuthResult>;
@@ -24,6 +42,9 @@ interface AuthContextType {
   // Utility methods
   getCurrentUserId: () => string | null;
   getCurrentToken: () => string | null;
+  
+  // Subscription methods
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -50,6 +71,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   });
   const [loading, setLoading] = useState(false);
   
+  // Subscription state
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
+  
   const authManager = AuthManager.getInstance();
 
   // Subscribe to auth state changes
@@ -62,6 +87,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         isInitializing: newState.isInitializing
       });
       setAuthState(newState);
+
+      // Load subscription data when user becomes authenticated
+      if (newState.isAuthenticated && !authState.isAuthenticated) {
+        loadSubscriptionData();
+      }
+      
+      // Clear subscription data when user logs out
+      if (!newState.isAuthenticated && authState.isAuthenticated) {
+        setSubscriptionData(null);
+      }
     });
 
     // Initialize authentication on mount
@@ -69,6 +104,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     return unsubscribe;
   }, []);
+
+  // Load subscription data
+  const loadSubscriptionData = async () => {
+    try {
+      setIsSubscriptionLoading(true);
+      const response = await ApiService.getSubscriptionStatus();
+      if (response.success && response.data) {
+        setSubscriptionData(response.data);
+      } else {
+        console.error('[AuthContext] Failed to load subscription:', response.error);
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error loading subscription:', error);
+    } finally {
+      setIsSubscriptionLoading(false);
+    }
+  };
 
   const initializeAuth = async () => {
     console.log('[AuthContext] Initializing authentication...');
@@ -157,8 +209,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return authManager.getCurrentToken();
   };
 
+  // Refresh subscription data
+  const refreshSubscription = async (): Promise<void> => {
+    await loadSubscriptionData();
+  };
+
+  // Computed subscription status
+  const hasActiveSubscription = subscriptionData?.numinaTrace?.hasActiveSubscription || false;
+
   const value: AuthContextType = {
-    // State
+    // Authentication state
     isAuthenticated: authState.isAuthenticated,
     loading,
     userData: authState.user,
@@ -166,12 +226,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     user: authState.user,
     authToken: authState.token,
     
-    // Methods
+    // Subscription state
+    subscriptionData,
+    isSubscriptionLoading,
+    hasActiveSubscription,
+    
+    // Authentication methods
     login,
     signUp,
     logout,
     getCurrentUserId,
     getCurrentToken,
+    
+    // Subscription methods
+    refreshSubscription,
   };
 
   return (

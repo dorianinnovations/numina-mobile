@@ -46,21 +46,40 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
   // Performance optimization: Track last analysis time to avoid unnecessary calls
   const lastAnalysisRef = useRef<number>(0);
   const analysisDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // CRITICAL FIX: Add cleanup refs to prevent memory leaks
+  const isMountedRef = useRef<boolean>(true);
+  const pendingAnalysisRef = useRef<Promise<UserEmotionalState> | null>(null);
 
   const aiPersonalityService = AIPersonalityService.getInstance();
+
+  // CRITICAL FIX: Proper cleanup function
+  const cleanupResources = useCallback(() => {
+    if (analysisDebounceRef.current) {
+      clearTimeout(analysisDebounceRef.current);
+      analysisDebounceRef.current = null;
+    }
+  }, []);
 
   const analyzeEmotionalState = useCallback(async (): Promise<UserEmotionalState> => {
     const now = Date.now();
     
-         // Debounce rapid calls (within 5 seconds)
-     if (now - lastAnalysisRef.current < 5000) {
-       console.log('⏳ Debouncing emotional state analysis (last:', Math.round((now - lastAnalysisRef.current) / 1000), 's ago)');
-       return emotionalState || aiPersonalityService.getDefaultEmotionalState();
-     }
+    // Debounce rapid calls (within 5 seconds)
+    if (now - lastAnalysisRef.current < 5000) {
+      console.log('⏳ Debouncing emotional state analysis (last:', Math.round((now - lastAnalysisRef.current) / 1000), 's ago)');
+      return emotionalState || aiPersonalityService.getDefaultEmotionalState();
+    }
     
-    // Clear any pending debounce
+    // CRITICAL FIX: Clear any pending debounce
     if (analysisDebounceRef.current) {
       clearTimeout(analysisDebounceRef.current);
+      analysisDebounceRef.current = null;
+    }
+    
+    // CRITICAL FIX: Check if component is still mounted
+    if (!isMountedRef.current) {
+      console.log('⏳ Component unmounted, skipping analysis');
+      return emotionalState || aiPersonalityService.getDefaultEmotionalState();
     }
     
     setIsAnalyzing(true);
@@ -69,23 +88,42 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     
     try {
       const state = await aiPersonalityService.analyzeCurrentEmotionalState();
-      setEmotionalState(state);
+      
+      // CRITICAL FIX: Check if component is still mounted before updating state
+      if (isMountedRef.current) {
+        setEmotionalState(state);
+      }
+      
       return state;
     } catch (err: any) {
-      setError(err.message || 'Failed to analyze emotional state');
+      // CRITICAL FIX: Only update error state if component is still mounted
+      if (isMountedRef.current) {
+        setError(err.message || 'Failed to analyze emotional state');
+      }
       throw err;
     } finally {
-      setIsAnalyzing(false);
+      // CRITICAL FIX: Only update loading state if component is still mounted
+      if (isMountedRef.current) {
+        setIsAnalyzing(false);
+      }
     }
   }, [emotionalState]);
 
   const getPersonalityRecommendations = useCallback(async (): Promise<AIPersonality> => {
     try {
       const personality = await aiPersonalityService.getPersonalityRecommendations(emotionalState || undefined);
-      setAiPersonality(personality);
+      
+      // CRITICAL FIX: Check if component is still mounted before updating state
+      if (isMountedRef.current) {
+        setAiPersonality(personality);
+      }
+      
       return personality;
     } catch (err: any) {
-      setError(err.message || 'Failed to get personality recommendations');
+      // CRITICAL FIX: Only update error state if component is still mounted
+      if (isMountedRef.current) {
+        setError(err.message || 'Failed to get personality recommendations');
+      }
       throw err;
     }
   }, [emotionalState]);
@@ -97,7 +135,10 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       return await aiPersonalityService.sendAdaptiveChatMessage(prompt, onChunk);
     } catch (err: any) {
-      setError(err.message || 'Failed to send adaptive chat message');
+      // CRITICAL FIX: Only update error state if component is still mounted
+      if (isMountedRef.current) {
+        setError(err.message || 'Failed to send adaptive chat message');
+      }
       throw err;
     }
   }, []);
@@ -110,7 +151,10 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       await aiPersonalityService.submitPersonalityFeedback(messageId, feedback, style);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit feedback');
+      // CRITICAL FIX: Only update error state if component is still mounted
+      if (isMountedRef.current) {
+        setError(err.message || 'Failed to submit feedback');
+      }
       throw err;
     }
   }, []);
@@ -132,14 +176,27 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     await getPersonalityRecommendations();
   }, [analyzeEmotionalState, getPersonalityRecommendations]);
 
-  // Initialize on mount with debounced analysis
+  // CRITICAL FIX: Initialize on mount with proper cleanup
   useEffect(() => {
+    isMountedRef.current = true;
+    
     const initialize = async () => {
       try {
-        // Debounce the initial analysis to avoid blocking the UI
+        // CRITICAL FIX: Debounce the initial analysis to avoid blocking the UI
         analysisDebounceRef.current = setTimeout(async () => {
-          await analyzeEmotionalState();
-          await getPersonalityRecommendations();
+          // CRITICAL FIX: Check if component is still mounted before proceeding
+          if (!isMountedRef.current) {
+            console.log('⏳ Component unmounted during initialization, skipping');
+            return;
+          }
+          
+          try {
+            await analyzeEmotionalState();
+            await getPersonalityRecommendations();
+          } catch (err) {
+            // Silently handle initialization errors
+            console.warn('Failed to initialize AI personality:', err);
+          }
         }, 1000); // 1 second delay for initial load
       } catch (err) {
         // Silently handle initialization errors
@@ -149,10 +206,20 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
 
     initialize();
     
-    // Cleanup on unmount
+    // CRITICAL FIX: Comprehensive cleanup on unmount
     return () => {
+      console.log('🧹 useAIPersonality: Cleaning up resources');
+      isMountedRef.current = false;
+      
+      // Clear any pending timeouts
       if (analysisDebounceRef.current) {
         clearTimeout(analysisDebounceRef.current);
+        analysisDebounceRef.current = null;
+      }
+      
+      // Cancel any pending analysis
+      if (pendingAnalysisRef.current) {
+        pendingAnalysisRef.current = null;
       }
     };
   }, []);

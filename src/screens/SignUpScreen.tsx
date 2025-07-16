@@ -13,6 +13,7 @@ import {
   Dimensions,
   StatusBar,
   Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -164,16 +165,16 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       <PageBackground>
         <SafeAreaView style={styles.container}>
           <View style={styles.loadingContainer}>
-          <ActivityIndicator 
-            size="large" 
-            color={isDarkMode ? '#ffffff' : '#000000'} 
-          />
-          <Text style={[
-            styles.loadingText, 
-            { color: isDarkMode ? '#ffffff' : '#000000' }
-          ]}>
-            Creating account...
-          </Text>
+            <ActivityIndicator 
+              size="large" 
+              color={isDarkMode ? '#ffffff' : '#000000'} 
+            />
+            <Text style={[
+              styles.loadingText, 
+              { color: isDarkMode ? '#ffffff' : '#000000' }
+            ]}>
+              Creating account...
+            </Text>
           </View>
         </SafeAreaView>
       </PageBackground>
@@ -183,299 +184,300 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   return (
     <PageBackground>
       <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-        backgroundColor="transparent"
-        translucent={true} 
-      />
-      
-      {/* Header */}
-      <Header 
-        title="Numina"
-        showBackButton={true}
-        showMenuButton={true}
-        onBackPress={() => {
-          ScreenTransitions.slideOutRight(slideAnim, () => {
-            onNavigateBack();
-          });
-        }}
-        onMenuPress={(key: string) => {}}
-      />
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={{ flex: 1 }}>
+            <StatusBar 
+              barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+              backgroundColor="transparent"
+              translucent={true} 
+            />
+            
+            {/* Header */}
+            <Header 
+              title="Numina"
+              showBackButton={true}
+              showMenuButton={true}
+              onBackPress={() => {
+                ScreenTransitions.slideOutRight(slideAnim, () => {
+                  onNavigateBack();
+                });
+              }}
+              onMenuPress={(key: string) => {}}
+            />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateX: slideAnim },
-                { scale: scaleAnim },
-              ],
-            },
-          ]}
-        >
-          {/* Neumorphic form container */}
-          <View style={styles.formWrapper}>
-            <View style={[
-              styles.formContainer, 
-              isDarkMode ? {
-                backgroundColor: '#111111',
-                borderColor: '#222222',
-              } : styles.glassmorphic
-            ]}>
-              {/* Clean header */}
-              <View style={styles.header}>
-                <Animated.Text
-                  style={[
-                    styles.title,
-                    {
-                      color: isDarkMode ? '#ffffff' : '#000000',
-                      transform: [{ translateX: slideAnim.interpolate({
-                        inputRange: [-30, 0],
-                        outputRange: [-15, 0],
-                      })}],
-                    },
-                  ]}
-                >
-                  Ready to begin?
-                </Animated.Text>
-                <Text style={[
-                  styles.subtitle, 
-                  { color: isDarkMode ? '#888888' : '#666666' }
-                ]}>
-                  Create your Numina account for free
-                </Text>
-              </View>
-
-              {/* Form Content */}
-              <View style={styles.formContent}>
-                {/* Input fields */}
-                <View style={styles.inputGroup}>
-                <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
-                  <TextInput
-                    ref={emailInputRef}
-                    style={[
-                      styles.input,
-                      { 
-                        color: isDarkMode ? '#ffffff' : '#000000',
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                        borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                      }
-                    ]}
-                    placeholder="Email"
-                    placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                    returnKeyType="next"
-                    editable={!loading}
-                    onSubmitEditing={() => passwordInputRef.current?.focus()}
-                    onPressIn={() => {
-                      Animated.spring(emailInputScaleAnim, {
-                        toValue: 1.02,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                    onPressOut={() => {
-                      Animated.spring(emailInputScaleAnim, {
-                        toValue: 1,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                  />
-                </Animated.View>
-                <Animated.View style={{ transform: [{ scale: passwordInputScaleAnim }] }}>
-                  <TextInput
-                    ref={passwordInputRef}
-                    style={[
-                      styles.input,
-                      { 
-                        color: isDarkMode ? '#ffffff' : '#000000',
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                        borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                      }
-                    ]}
-                    placeholder="Password"
-                    placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                    returnKeyType="next"
-                    editable={!loading}
-                    onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-                    onPressIn={() => {
-                      Animated.spring(passwordInputScaleAnim, {
-                        toValue: 1.02,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                    onPressOut={() => {
-                      Animated.spring(passwordInputScaleAnim, {
-                        toValue: 1,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                  />
-                </Animated.View>
-                <Animated.View style={{ transform: [{ scale: confirmPasswordInputScaleAnim }] }}>
-                  <TextInput
-                    ref={confirmPasswordInputRef}
-                    style={[
-                      styles.input,
-                      { 
-                        color: isDarkMode ? '#ffffff' : '#000000',
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                        borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                      }
-                    ]}
-                    placeholder="Confirm Password"
-                    placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                    returnKeyType="done"
-                    editable={!loading}
-                    onSubmitEditing={() => {
-                      Keyboard.dismiss();
-                      handleSubmit();
-                    }}
-                    onPressIn={() => {
-                      Animated.spring(confirmPasswordInputScaleAnim, {
-                        toValue: 1.02,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                    onPressOut={() => {
-                      Animated.spring(confirmPasswordInputScaleAnim, {
-                        toValue: 1,
-                        useNativeDriver: true,
-                        speed: 50,
-                        bounciness: 8,
-                      }).start();
-                    }}
-                  />
-                </Animated.View>
-              </View>
-
-              {/* Sign Up Button with Animation */}
-              <View style={styles.buttonContainer}>
-                <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.primaryButton,
-                      {
-                        backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
-                        opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
-                      }
-                    ]}
-                    onPress={handleSubmit}
-                    disabled={loading || isSignUpSuccess}
-                    activeOpacity={0.9}
-                  >
-                    <View style={styles.buttonContent}>
-                      <View style={styles.buttonTextContainer}>
-                        <Text style={[
-                          styles.primaryButtonText, 
-                          { color: isDarkMode ? '#000000' : '#ffffff' }
-                        ]}>
-                          {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success' : 'Get Started'}
-                        </Text>
-                      </View>
-                      {authStatus !== 'idle' && (
-                        <View style={styles.spinnerContainer}>
-                          <AnimatedAuthStatus
-                            status={authStatus}
-                            color={isDarkMode ? '#000000' : '#ffffff'}
-                            size={16}
-                            onAnimationComplete={() => {
-                              if (authStatus === 'error') {
-                                setAuthStatus('idle');
-                              }
-                            }}
-                          />
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                </Animated.View>
-              </View>
-
-              {/* Sign In Link */}
-              <TouchableOpacity
-                style={styles.linkButton}
-                onPress={() => {
-                  ScreenTransitions.slideOutRight(slideAnim, () => {
-                    onNavigateToSignIn();
-                  });
-                }}
-                activeOpacity={0.7}
+            <KeyboardAvoidingView
+              style={styles.keyboardAvoid}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            >
+              <Animated.View
+                style={[
+                  styles.content,
+                  {
+                    opacity: fadeAnim,
+                    transform: [
+                      { translateX: slideAnim },
+                      { scale: scaleAnim },
+                    ],
+                  },
+                ]}
               >
-                <Text style={[
-                  styles.linkText, 
-                  { color: isDarkMode ? '#ffffff' : '#000000' }
-                ]}>
-                  Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>in</Text>
-                </Text>
-              </TouchableOpacity>
-
-              {/* Error Message */}
-              {error && (
-                <Animated.View
-                  style={[
-                    styles.messageContainer,
-                    {
-                      opacity: fadeAnim,
-                      transform: [{ translateY: slideAnim }],
-                    },
-                  ]}
-                >
-                  <Text style={styles.errorText}>{error}</Text>
-                </Animated.View>
-              )}
-
-                {/* Success Message */}
-                {success && (
-                  <Animated.View
-                    style={[
-                      styles.messageContainer,
-                      {
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }],
-                      },
-                    ]}
-                  >
-                    <View style={styles.successContent}>
-                      <FontAwesome5 name="check-circle" size={20} color="#10b981" />
-                      <Text style={[styles.successText, { color: '#10b981' }]}>
-                        Account created successfully! Redirecting...
+                {/* Neumorphic form container */}
+                <View style={styles.formWrapper}>
+                  <View style={[
+                    styles.formContainer, 
+                    isDarkMode ? {
+                      backgroundColor: '#111111',
+                      borderColor: '#222222',
+                    } : styles.glassmorphic
+                  ]}>
+                    {/* Clean header */}
+                    <View style={styles.header}>
+                      <Animated.Text
+                        style={[
+                          styles.title,
+                          {
+                            color: isDarkMode ? '#ffffff' : '#000000',
+                            transform: [{ translateX: slideAnim.interpolate({ inputRange: [-30, 0], outputRange: [-15, 0] }) }],
+                          },
+                        ]}
+                      >
+                        Ready to begin?
+                      </Animated.Text>
+                      <Text style={[
+                        styles.subtitle, 
+                        { color: isDarkMode ? '#888888' : '#666666' }
+                      ]}>
+                        Create your Numina account for free
                       </Text>
                     </View>
-                  </Animated.View>
-                )}
-              </View>
-            </View>
+
+                    {/* Form Content */}
+                    <View style={styles.formContent}>
+                      {/* Input fields */}
+                      <View style={styles.inputGroup}>
+                        <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
+                          <TextInput
+                            ref={emailInputRef}
+                            style={[
+                              styles.input,
+                              { 
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                              }
+                            ]}
+                            placeholder="Email"
+                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+                            returnKeyType="next"
+                            editable={!loading}
+                            onSubmitEditing={() => passwordInputRef.current?.focus()}
+                            onPressIn={() => {
+                              Animated.spring(emailInputScaleAnim, {
+                                toValue: 1.02,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                            onPressOut={() => {
+                              Animated.spring(emailInputScaleAnim, {
+                                toValue: 1,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                          />
+                        </Animated.View>
+                        <Animated.View style={{ transform: [{ scale: passwordInputScaleAnim }] }}>
+                          <TextInput
+                            ref={passwordInputRef}
+                            style={[
+                              styles.input,
+                              { 
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                              }
+                            ]}
+                            placeholder="Password"
+                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+                            returnKeyType="next"
+                            editable={!loading}
+                            onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
+                            onPressIn={() => {
+                              Animated.spring(passwordInputScaleAnim, {
+                                toValue: 1.02,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                            onPressOut={() => {
+                              Animated.spring(passwordInputScaleAnim, {
+                                toValue: 1,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                          />
+                        </Animated.View>
+                        <Animated.View style={{ transform: [{ scale: confirmPasswordInputScaleAnim }] }}>
+                          <TextInput
+                            ref={confirmPasswordInputRef}
+                            style={[
+                              styles.input,
+                              { 
+                                color: isDarkMode ? '#ffffff' : '#000000',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                              }
+                            ]}
+                            placeholder="Confirm Password"
+                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
+                            value={confirmPassword}
+                            onChangeText={setConfirmPassword}
+                            secureTextEntry
+                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+                            returnKeyType="done"
+                            editable={!loading}
+                            onSubmitEditing={() => {
+                              Keyboard.dismiss();
+                              handleSubmit();
+                            }}
+                            onPressIn={() => {
+                              Animated.spring(confirmPasswordInputScaleAnim, {
+                                toValue: 1.02,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                            onPressOut={() => {
+                              Animated.spring(confirmPasswordInputScaleAnim, {
+                                toValue: 1,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }).start();
+                            }}
+                          />
+                        </Animated.View>
+                      </View>
+
+                      {/* Sign Up Button with Animation */}
+                      <View style={styles.buttonContainer}>
+                        <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
+                          <TouchableOpacity
+                            style={[
+                              styles.primaryButton,
+                              {
+                                backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
+                                opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
+                              }
+                            ]}
+                            onPress={handleSubmit}
+                            disabled={loading || isSignUpSuccess}
+                            activeOpacity={0.9}
+                          >
+                            <View style={styles.buttonContent}>
+                              <View style={styles.buttonTextContainer}>
+                                <Text style={[
+                                  styles.primaryButtonText, 
+                                  { color: isDarkMode ? '#000000' : '#ffffff' }
+                                ]}>
+                                  {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success' : 'Get Started'}
+                                </Text>
+                              </View>
+                              {authStatus !== 'idle' && (
+                                <View style={styles.spinnerContainer}>
+                                  <AnimatedAuthStatus
+                                    status={authStatus}
+                                    color={isDarkMode ? '#000000' : '#ffffff'}
+                                    size={16}
+                                    onAnimationComplete={() => {
+                                      if (authStatus === 'error') {
+                                        setAuthStatus('idle');
+                                      }
+                                    }}
+                                  />
+                                </View>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                        </Animated.View>
+                      </View>
+
+                      {/* Sign In Link */}
+                      <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={() => {
+                          ScreenTransitions.slideOutRight(slideAnim, () => {
+                            onNavigateToSignIn();
+                          });
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.linkText, 
+                          { color: isDarkMode ? '#ffffff' : '#000000' }
+                        ]}>
+                          Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>in</Text>
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Error Message */}
+                      {error && (
+                        <Animated.View
+                          style={[
+                            styles.messageContainer,
+                            {
+                              opacity: fadeAnim,
+                              transform: [{ translateY: slideAnim }],
+                            },
+                          ]}
+                        >
+                          <Text style={styles.errorText}>{error}</Text>
+                        </Animated.View>
+                      )}
+
+                      {/* Success Message */}
+                      {success && (
+                        <Animated.View
+                          style={[
+                            styles.messageContainer,
+                            {
+                              opacity: fadeAnim,
+                              transform: [{ translateY: slideAnim }],
+                            },
+                          ]}
+                        >
+                          <View style={styles.successContent}>
+                            <FontAwesome5 name="check-circle" size={20} color="#10b981" />
+                            <Text style={[styles.successText, { color: '#10b981' }]}>
+                              Account created successfully! Redirecting...
+                            </Text>
+                          </View>
+                        </Animated.View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              </Animated.View>
+            </KeyboardAvoidingView>
           </View>
-        </Animated.View>
-      </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
       </SafeAreaView>
     </PageBackground>
   );
@@ -519,7 +521,6 @@ const styles = StyleSheet.create({
     shadowRadius: 32,
     elevation: 8,
   },
-
   header: {
     marginBottom: 32,
     alignItems: 'center',
@@ -570,7 +571,6 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     minHeight: 38,
-    
     justifyContent: 'center',
     alignItems: 'center',
   },
