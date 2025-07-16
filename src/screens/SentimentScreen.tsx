@@ -661,31 +661,8 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
               {isStreamingGrowthData ? streamingStatus : 'Loading your growth insights...'}
             </Text>
             <Text style={[styles.loadingSubtext, { color: isDarkMode ? '#888' : '#666', marginTop: 8, fontSize: 12 }]}>
-              {isStreamingGrowthData ? 'Real-time AI analysis in progress...' : 'Analyzing your emotional patterns and progress'}
+              {isStreamingGrowthData ? 'Thank you for your patience, Numina is fetching' : 'Analyzing your emotional patterns and progress'}
             </Text>
-            
-            {isStreamingGrowthData && (
-              <View style={styles.progressContainer}>
-                <View style={[
-                  styles.progressBarLoading,
-                  { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
-                ]}>
-                  <View style={[
-                    styles.progressFill,
-                    { 
-                      width: `${streamingProgress}%`,
-                      backgroundColor: NuminaColors.green
-                    }
-                  ]} />
-                </View>
-                <Text style={[
-                  styles.progressTextLoading,
-                  { color: isDarkMode ? '#999999' : '#666666' }
-                ]}>
-                  {streamingProgress}%
-                </Text>
-              </View>
-            )}
           </View>
         </SafeAreaView>
       </PageBackground>
@@ -1062,10 +1039,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 16,
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    marginBottom: 18,
+    letterSpacing: -0.3,
   },
   emotionRow: {
     flexDirection: 'row',
@@ -1205,37 +1183,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   growthPercentage: {
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: 'Inter_700Bold',
+    fontSize: 22,
+    fontWeight: '800',
+    fontFamily: 'Inter_800Bold',
+    letterSpacing: -0.5,
   },
   growthLabel: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    letterSpacing: 0.2,
   },
   growthMetrics: {
     flex: 1,
     minWidth: 0,
   },
   metricText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
     fontFamily: 'Inter_500Medium',
-    marginBottom: 8,
+    marginBottom: 10,
     flex: 1,
     flexWrap: 'wrap',
+    lineHeight: 20,
+    letterSpacing: -0.1,
   },
   aiInsightText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 18,
+    lineHeight: 22,
     flex: 1,
     flexWrap: 'wrap',
+    letterSpacing: -0.1,
   },
   periodText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    marginBottom: 16,
+    fontSize: 13,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    marginBottom: 18,
     textAlign: 'center',
+    letterSpacing: 0.3,
   },
   aiInsightsContainer: {
     marginTop: 16,
@@ -1244,10 +1231,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   aiInsightsTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: -0.2,
   },
   // Milestone styles
   milestonesCard: {

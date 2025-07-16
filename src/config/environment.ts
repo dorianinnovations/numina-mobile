@@ -14,8 +14,12 @@ const isDev = __DEV__;
 const releaseChannel = Constants.expoConfig?.updates?.requestHeaders?.['expo-channel-name'] || 'development';
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
+  console.log('🔧 Environment detection:', { isDev, releaseChannel, __DEV__ });
+  
   // Production configuration
   if (releaseChannel === 'production' || (!isDev && releaseChannel !== 'staging')) {
+    console.log('📱 Using PRODUCTION config');
+    console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
     return {
       API_BASE_URL: 'https://server-a7od.onrender.com',
       STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
@@ -29,6 +33,8 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
 
   // Staging configuration
   if (releaseChannel === 'staging') {
+    console.log('📱 Using STAGING config');
+    console.log('📡 API_BASE_URL: https://staging-server-a7od.onrender.com');
     return {
       API_BASE_URL: 'https://staging-server-a7od.onrender.com',
       STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_STAGING || '',
@@ -40,7 +46,9 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     };
   }
 
-  // Development configuration - ALWAYS use production server for auth consistency
+  // Development configuration - Use production server for auth consistency
+  console.log('📱 Using DEVELOPMENT config');
+  console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
   return {
     API_BASE_URL: 'https://server-a7od.onrender.com',
     STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_DEV || 'pk_test_dummy',

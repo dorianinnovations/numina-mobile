@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
+import ToolExecutionService, { ToolExecution } from '../../services/toolExecutionService';
 
 const { width } = Dimensions.get('window');
 
@@ -35,6 +36,9 @@ interface ChatInputProps {
     intensity: number;
     primaryEmotion?: string;
   };
+  // Tool execution props
+  toolExecutions?: ToolExecution[];
+  onToggleToolModal?: () => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -48,6 +52,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = "Share your thoughts...",
   voiceEnabled = true,
   userEmotionalState,
+  toolExecutions = [],
+  onToggleToolModal,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -55,10 +61,22 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [currentEmotion, setCurrentEmotion] = useState<string>('');
   const [lastNotificationTime, setLastNotificationTime] = useState<number>(0);
   
+  // Tool execution state
+  const [showToolStream, setShowToolStream] = useState(false);
+  const [currentToolText, setCurrentToolText] = useState<string>('');
+  const [zapIconScale] = useState(new Animated.Value(1));
+  const autoDismissTimer = useRef<NodeJS.Timeout | null>(null);
+  const toolExecutionService = ToolExecutionService.getInstance();
+  
+  // Check if there are active tool executions
+  const hasActiveTools = toolExecutions.some(exec => exec.status === 'executing');
+  const toolCount = toolExecutions.length;
+  
   // Animated values for smooth animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
   const sendButtonScale = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const zapPulseAnim = useRef(new Animated.Value(1)).current;
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
   const emotionSlideAnim = useRef(new Animated.Value(120)).current; // Start at bottom of phone
   const emotionOpacityAnim = useRef(new Animated.Value(0)).current; // Start invisible
@@ -89,6 +107,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       pulseAnim.setValue(1);
     }
   }, [isVoiceActive]);
+  
+  // Zap icon animation when tools are active
+  useEffect(() => {
+    if (hasActiveTools) {
+      const zapAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(zapPulseAnim, {
+            toValue: 1.3,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(zapPulseAnim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      zapAnimation.start();
+      return () => zapAnimation.stop();
+    } else {
+      zapPulseAnim.setValue(1);
+    }
+  }, [hasActiveTools]);
 
   // Watch for emotion changes and trigger notification
   useEffect(() => {
@@ -101,7 +143,251 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }
     }
   }, [userEmotionalState, currentEmotion]);
+  
+  // Tool notification system - proper notification behavior
+  useEffect(() => {
+    const activeExecutions = toolExecutions.filter(exec => exec.status === 'executing');
+    const completedExecutions = toolExecutions.filter(exec => exec.status === 'completed');
+    
+    if (activeExecutions.length > 0) {
+      // Show notification for active executions
+      const latestExecution = activeExecutions[activeExecutions.length - 1];
+      const toolText = getToolDisplayText(latestExecution);
+      setCurrentToolText(toolText);
+      showToolNotification();
+    } else if (completedExecutions.length > 0) {
+      // Show completion notification and auto-dismiss
+      const latestCompleted = completedExecutions[completedExecutions.length - 1];
+      const toolText = getToolDisplayText(latestCompleted);
+      setCurrentToolText(toolText);
+      showToolNotification();
+      
+      // Clear any existing timer
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+      }
+      
+      // Auto-dismiss after 2 seconds
+      autoDismissTimer.current = setTimeout(() => {
+        hideToolNotification();
+      }, 2000);
+    } else if (toolExecutions.length === 0 && showToolStream) {
+      // No executions, hide notification
+      hideToolNotification();
+    }
+  }, [toolExecutions]);
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoDismissTimer.current) {
+        clearTimeout(autoDismissTimer.current);
+      }
+    };
+  }, []);
+
+  const getToolDisplayText = (execution: ToolExecution): string => {
+    const { toolName, details, status } = execution;
+    const isExecuting = status === 'executing';
+    
+    // Helper function to get safe query text
+    const getQueryText = () => {
+      if (!details) return '';
+      return details.query || details.action || details.searchType || '';
+    };
+    
+    // Helper function to create search display text
+    const getSearchText = (action: string, emoji: string, completedEmoji: string) => {
+      const query = getQueryText();
+      if (isExecuting) {
+        return query ? `${emoji} ${action}: "${query}"` : `${emoji} ${action}...`;
+      } else {
+        return query ? `${completedEmoji} Found results for "${query}"` : `${completedEmoji} Search complete`;
+      }
+    };
+    
+    switch (toolName) {
+      // Search Tools
+      case 'web_search':
+        return getSearchText('Web search', '🔍', '✨');
+      case 'news_search':
+        return getSearchText('News search', '📡', '📺');
+      case 'social_search':
+        return getSearchText('Social search', '💬', '💭');
+      case 'academic_search':
+        return getSearchText('Academic search', '📚', '🎯');
+      case 'image_search':
+        return getSearchText('Image search', '🎨', '🖼️');
+      
+      // Music & Entertainment
+      case 'music_recommendations':
+        const musicQuery = getQueryText();
+        return isExecuting 
+          ? (musicQuery ? `🎵 Finding music for "${musicQuery}"` : `🎵 Finding music recommendations`)
+          : (musicQuery ? `🎶 Music found for "${musicQuery}"` : `🎶 Music recommendations ready`);
+      case 'spotify_playlist':
+        const playlistQuery = getQueryText();
+        return isExecuting 
+          ? (playlistQuery ? `🎧 Creating playlist: "${playlistQuery}"` : `🎧 Creating playlist`)
+          : `✅ Playlist created`;
+      
+      // Quick Utilities
+      case 'weather_check':
+        const location = details?.location || getQueryText();
+        return isExecuting 
+          ? (location ? `☀️ Checking weather for ${location}` : `☀️ Checking weather`)
+          : (location ? `🌈 Weather for ${location}` : `🌈 Weather info`);
+      case 'timezone_converter':
+        return isExecuting ? `🌍 Converting time zones` : `⏰ Time converted`;
+      case 'calculator':
+        const calculation = getQueryText();
+        return isExecuting 
+          ? (calculation ? `🧮 Calculating: ${calculation}` : `🧮 Calculating`)
+          : `✅ Calculation complete`;
+      case 'translation':
+        const translateText = getQueryText();
+        return isExecuting 
+          ? (translateText ? `🌐 Translating: "${translateText}"` : `🌐 Translating`)
+          : `🌍 Translation complete`;
+      
+      // Financial Tools
+      case 'stock_lookup':
+        const stockSymbol = getQueryText();
+        return isExecuting 
+          ? (stockSymbol ? `📊 Getting data for ${stockSymbol}` : `📊 Getting stock data`)
+          : (stockSymbol ? `💹 Data for ${stockSymbol}` : `💹 Stock info`);
+      case 'crypto_lookup':
+        const cryptoSymbol = getQueryText();
+        return isExecuting 
+          ? (cryptoSymbol ? `⚡ Getting ${cryptoSymbol} prices` : `⚡ Getting crypto prices`)
+          : (cryptoSymbol ? `₿ ${cryptoSymbol} data` : `₿ Crypto data`);
+      case 'currency_converter':
+        return isExecuting ? `💱 Converting currency` : `✅ Currency converted`;
+      
+      // Creative & Professional
+      case 'text_generator':
+        const textType = getQueryText();
+        return isExecuting 
+          ? (textType ? `✍️ Generating: "${textType}"` : `✍️ Generating content`)
+          : `📝 Content generated`;
+      case 'code_generator':
+        const codeType = getQueryText();
+        return isExecuting 
+          ? (codeType ? `💻 Writing ${codeType}` : `💻 Writing code`)
+          : `⚡ Code generated`;
+      case 'linkedin_helper':
+        const linkedinTopic = getQueryText();
+        return isExecuting 
+          ? (linkedinTopic ? `💼 Creating LinkedIn post about "${linkedinTopic}"` : `💼 Creating LinkedIn post`)
+          : `🎯 LinkedIn content ready`;
+      case 'email_assistant':
+        const emailTopic = getQueryText();
+        return isExecuting 
+          ? (emailTopic ? `✉️ Drafting email about "${emailTopic}"` : `✉️ Drafting email`)
+          : `📧 Email ready`;
+      
+      // Health & Wellness
+      case 'fitness_tracker':
+        const workoutType = getQueryText();
+        return isExecuting 
+          ? (workoutType ? `💪 Tracking ${workoutType}` : `💪 Tracking workout`)
+          : `🏆 Fitness logged`;
+      case 'nutrition_lookup':
+        const foodItem = getQueryText();
+        return isExecuting 
+          ? (foodItem ? `🥗 Analyzing ${foodItem}` : `🥗 Analyzing nutrition`)
+          : `📊 Nutrition info`;
+      
+      // Lifestyle Tools
+      case 'reservation_booking':
+        const restaurant = getQueryText();
+        return isExecuting 
+          ? (restaurant ? `🍽️ Booking table at ${restaurant}` : `🍽️ Booking table`)
+          : `✅ Reservation confirmed`;
+      case 'itinerary_generator':
+        const destination = getQueryText();
+        return isExecuting 
+          ? (destination ? `✈️ Planning trip to ${destination}` : `✈️ Planning trip`)
+          : `🗺️ Itinerary ready`;
+      case 'credit_management':
+        return isExecuting ? `💳 Managing credits` : `✅ Credits updated`;
+      
+      // Quick Generators
+      case 'qr_generator':
+        const qrContent = getQueryText();
+        return isExecuting 
+          ? (qrContent ? `📱 Creating QR code for "${qrContent}"` : `📱 Creating QR code`)
+          : `✅ QR code ready`;
+      case 'password_generator':
+        const passwordSpecs = getQueryText();
+        return isExecuting 
+          ? (passwordSpecs ? `🔐 Generating password (${passwordSpecs})` : `🔐 Generating secure password`)
+          : `✅ Password created`;
+      
+      default:
+        const displayName = toolName.replace(/_/g, ' ');
+        const query = getQueryText();
+        return isExecuting 
+          ? (query ? `⚡ ${displayName}: "${query}"` : `⚡ ${displayName}...`)
+          : (query ? `✓ ${displayName} complete` : `✓ ${displayName}`);
+    }
+  };
+
+  const showToolNotification = () => {
+    // Set state to showing
+    setShowToolStream(true);
+    
+    // Reset animation values to start position
+    emotionSlideAnim.setValue(120);
+    emotionOpacityAnim.setValue(0);
+    
+    // Slide in animation
+    Animated.parallel([
+      Animated.timing(emotionSlideAnim, {
+        toValue: -60,
+        duration: 250,
+        useNativeDriver: true,
+        easing: Easing.out(Easing.quad),
+      }),
+      Animated.timing(emotionOpacityAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideToolNotification = () => {
+    // Clear any existing auto-dismiss timer
+    if (autoDismissTimer.current) {
+      clearTimeout(autoDismissTimer.current);
+      autoDismissTimer.current = null;
+    }
+    
+    // Don't hide if not showing
+    if (!showToolStream) return;
+    
+    // Slide out animation
+    Animated.parallel([
+      Animated.timing(emotionSlideAnim, {
+        toValue: 120,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.quad),
+      }),
+      Animated.timing(emotionOpacityAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Reset state after animation
+      setShowToolStream(false);
+      setCurrentToolText('');
+      emotionSlideAnim.setValue(120);
+      emotionOpacityAnim.setValue(0);
+    });
+  };
 
   const showNotification = () => {
     const now = Date.now();
@@ -118,7 +404,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     Animated.parallel([
       Animated.timing(emotionSlideAnim, {
-        toValue: -87, // Lowered by 13% from -100
+        toValue: -60, // Lowered by 13% from -100
         duration: 200,
         useNativeDriver: true,
         easing: Easing.bezier(0.25, 0.46, 0.45, 0.94), 
@@ -231,6 +517,26 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     onSend();
   };
+  
+  const handleZapPress = async () => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    Animated.spring(zapIconScale, {
+      toValue: 0.9,
+      useNativeDriver: true,
+      tension: 300,
+      friction: 10,
+    }).start(() => {
+      Animated.spring(zapIconScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 300,
+        friction: 10,
+      }).start();
+    });
+    
+    onToggleToolModal?.();
+  };
 
   const handleInputFocus = () => {
     Animated.spring(inputFocusAnim, {
@@ -322,6 +628,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               }}
               placeholder={placeholder}
               placeholderTextColor={isDarkMode ? '#6b7280' : '#9ca3af'}
+              keyboardAppearance={isDarkMode ? 'dark' : 'light'}
               multiline={false}
               numberOfLines={1}
               maxLength={maxLength}
@@ -336,6 +643,60 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             />
           </Animated.View>
 
+          {/* Tools Zap Button */}
+          <View style={styles.zapButtonContainer}>
+            <TouchableOpacity
+              onPress={handleZapPress}
+              activeOpacity={0.7}
+              style={[
+                styles.zapButton,
+                hasActiveTools && {
+                  shadowColor: isDarkMode ? '#fbbf24' : '#f59e0b',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }
+              ]}
+            >
+              <Animated.View style={[
+                styles.zapIconContainer,
+                {
+                  transform: [
+                    { scale: zapIconScale },
+                    { scale: zapPulseAnim }
+                  ],
+                }
+              ]}>
+                <FontAwesome5
+                  name="bolt"
+                  size={18}
+                  color={hasActiveTools 
+                    ? (isDarkMode ? '#71c9fc' : '#71c9fc')
+                    : (isDarkMode ? '#6b7280' : '#9ca3af')
+                  }
+                />
+                {toolCount > 0 && (
+                  <View style={[
+                    styles.toolBadge,
+                    {
+                      backgroundColor: hasActiveTools 
+                        ? (isDarkMode ? '#fbbf24' : '#f59e0b')
+                        : (isDarkMode ? '#6b7280' : '#9ca3af')
+                    }
+                  ]}>
+                    <Text style={[
+                      styles.toolBadgeText,
+                      { color: isDarkMode ? '#1f2937' : '#ffffff' }
+                    ]}>
+                      {toolCount > 9 ? '9+' : toolCount}
+                    </Text>
+                  </View>
+                )}
+              </Animated.View>
+            </TouchableOpacity>
+          </View>
+          
           {/* Send Button */}
           <View style={styles.sendButtonContainer}>
             <TouchableOpacity
@@ -393,8 +754,51 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </Animated.View>
       )}
 
-      {/* Emotion Notification */}
-      {showEmotionNotification && currentEmotion && (
+      {/* Tool Stream Notification - Priority over emotion */}
+      {showToolStream && currentToolText && (
+        <TouchableOpacity
+          onPress={hideToolNotification}
+          activeOpacity={0.8}
+          style={styles.notificationWrapper}
+        >
+          <Animated.View style={[
+            styles.emotionNotification,
+            {
+              backgroundColor: isDarkMode ? 'rgba(26, 26, 26, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+              borderColor: isDarkMode ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.2)',
+              opacity: emotionOpacityAnim,
+              transform: [{ translateY: emotionSlideAnim }],
+            }
+          ]}>
+            <View style={[
+              styles.emotionDot,
+              { 
+                backgroundColor: isDarkMode ? '#22c55e' : '#16a34a',
+                opacity: 0.8 
+              }
+            ]} />
+            <Text 
+              style={[
+                styles.emotionText,
+                { color: isDarkMode ? '#ccc' : '#666' }
+              ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {currentToolText}
+            </Text>
+            <Text style={[
+              styles.tapHint,
+              { color: isDarkMode ? '#888' : '#aaa' }
+            ]}>
+              Dismiss
+            </Text>
+          </Animated.View>
+        </TouchableOpacity>
+      )}
+
+      {/* Emotion Notification - Only show when no tools active */}
+      {!showToolStream && showEmotionNotification && currentEmotion && (
         <TouchableOpacity
           onPress={handleNotificationPress}
           activeOpacity={0.8}
@@ -453,7 +857,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   floatingContainer: {
-    borderRadius: 22,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 5,
     paddingVertical: 12,
@@ -464,11 +868,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    marginBottom: 18,
+    marginBottom: 2,
     zIndex: 10, 
     height: 68, 
     minHeight: 68,
     maxHeight: 68,
+    justifyContent: 'center',
   },
   gradientOverlay: {
     position: 'absolute',
@@ -519,13 +924,46 @@ const styles = StyleSheet.create({
     fontSize: 18,
     letterSpacing: -0.2,
   },
+  zapButtonContainer: {
+    marginBottom: 2,
+    marginRight: 2,
+  },
+  zapButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  zapIconContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toolBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 14,
+  },
+  toolBadgeText: {
+    fontSize: 8,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   sendButtonContainer: {
     marginBottom: 2,
   },
   sendButton: {
-    width: 55,
-    height: 40,
-    borderRadius: 16,
+    width: 65,
+    height: 43,
+    borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
@@ -576,9 +1014,9 @@ const styles = StyleSheet.create({
   emotionNotification: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 16,
+    borderRadius: 10,
     borderWidth: 0.5,
     gap: 8,
     elevation: 4,

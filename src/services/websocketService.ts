@@ -80,9 +80,9 @@ class WebSocketService {
   constructor() {
     this.config = {
       serverUrl: 'wss://server-a7od.onrender.com',
-      reconnectionDelay: 5000,
-      maxReconnectionAttempts: 10,
-      timeout: 30000
+      reconnectionDelay: 10000,
+      maxReconnectionAttempts: 3,
+      timeout: 15000
     };
 
     this.connectionStatus = {
@@ -121,9 +121,8 @@ class WebSocketService {
         },
         transports: ['websocket', 'polling'],
         timeout: this.config.timeout,
-        reconnection: true,
-        reconnectionDelay: this.config.reconnectionDelay,
-        reconnectionAttempts: this.config.maxReconnectionAttempts
+        reconnection: false, // Disable auto-reconnection to control it manually
+        forceNew: true
       });
 
       // Set up event handlers immediately
@@ -146,12 +145,14 @@ class WebSocketService {
 
         this.socket?.once('connect_error', (error) => {
           clearTimeout(timeout);
-          console.error('WebSocket connection error:', error);
-          console.error('Connection details:', {
-            url: this.config.serverUrl,
-            transports: ['websocket', 'polling'],
-            hasToken: !!token
-          });
+          console.log('🔌 WebSocket connection failed - operating in offline mode');
+          
+          // Handle specific "User not found" error
+          if (error.message?.includes('User not found')) {
+            console.warn('🔐 User not found on server, clearing auth token');
+            SecureStorageService.clearToken();
+          }
+          
           this.connectionStatus.isConnecting = false;
           resolve(false);
         });
@@ -180,14 +181,9 @@ class WebSocketService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
+      console.log('🔌 WebSocket disconnected - operating in offline mode');
       this.connectionStatus.isConnected = false;
       this.emitToHandlers('connection_status', { connected: false, reason });
-      
-      if (reason === 'io server disconnect') {
-        // Server disconnected, try to reconnect
-        this.attemptReconnection();
-      }
     });
 
     this.socket.on('reconnect', (attemptNumber) => {

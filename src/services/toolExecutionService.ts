@@ -1,5 +1,43 @@
-import { EventEmitter } from 'events';
 import AutoPlaylistService from './autoPlaylistService';
+
+// Simple EventEmitter for React Native
+class SimpleEventEmitter {
+  private listeners: { [event: string]: Function[] } = {};
+
+  on(event: string, listener: Function) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(listener);
+  }
+
+  off(event: string, listener: Function) {
+    if (!this.listeners[event]) return;
+    const index = this.listeners[event].indexOf(listener);
+    if (index > -1) {
+      this.listeners[event].splice(index, 1);
+    }
+  }
+
+  emit(event: string, ...args: any[]) {
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach(listener => {
+      try {
+        listener(...args);
+      } catch (error) {
+        console.error('Error in event listener:', error);
+      }
+    });
+  }
+
+  removeAllListeners(event?: string) {
+    if (event) {
+      delete this.listeners[event];
+    } else {
+      this.listeners = {};
+    }
+  }
+}
 
 export interface ToolExecution {
   id: string;
@@ -27,7 +65,7 @@ export interface StreamingToolUpdate {
   timestamp: number;
 }
 
-class ToolExecutionService extends EventEmitter {
+class ToolExecutionService extends SimpleEventEmitter {
   private static instance: ToolExecutionService;
   private executions: Map<string, ToolExecution> = new Map();
   private currentExecutions: string[] = [];
@@ -44,6 +82,15 @@ class ToolExecutionService extends EventEmitter {
   startExecution(toolName: string, parameters: any = {}): string {
     const executionId = `${toolName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
+    // Extract query from various possible parameter sources
+    const extractQuery = (params: any): string => {
+      return params.query || params.action || params.searchType || params.mood || 
+             params.playlistName || params.restaurantName || params.destination || 
+             params.location || params.symbol || params.text || params.content || '';
+    };
+
+    const query = extractQuery(parameters);
+    
     const execution: ToolExecution = {
       id: executionId,
       toolName,
@@ -52,6 +99,8 @@ class ToolExecutionService extends EventEmitter {
       details: {
         parameters,
         action: this.getActionDescription(toolName, parameters),
+        query: query, // Store the extracted query for display purposes
+        searchType: parameters.searchType || 'general',
       },
       progress: 0,
     };
@@ -75,6 +124,19 @@ class ToolExecutionService extends EventEmitter {
     execution.status = 'executing';
     
     if (details) {
+      // Extract query from new details if not already set
+      if (!execution.details.query && details) {
+        const extractQuery = (params: any): string => {
+          return params.query || params.action || params.searchType || params.mood || 
+                 params.playlistName || params.restaurantName || params.destination || 
+                 params.location || params.symbol || params.text || params.content || '';
+        };
+        const newQuery = extractQuery(details);
+        if (newQuery) {
+          details.query = newQuery;
+        }
+      }
+      
       execution.details = { ...execution.details, ...details };
     }
 
@@ -199,6 +261,13 @@ class ToolExecutionService extends EventEmitter {
       .filter(Boolean) as ToolExecution[];
   }
 
+  // Get active executions (not completed or errored)
+  getActiveExecutions(): ToolExecution[] {
+    return Array.from(this.executions.values()).filter(
+      execution => execution.status !== 'completed' && execution.status !== 'error'
+    );
+  }
+
   // Clear all executions (for new conversation)
   clearExecutions(): void {
     this.executions.clear();
@@ -224,21 +293,69 @@ class ToolExecutionService extends EventEmitter {
 
   // Generate action description based on tool and parameters
   private getActionDescription(toolName: string, parameters: any): string {
+    // Extract query from various possible parameter sources
+    const extractQuery = (params: any): string => {
+      return params.query || params.action || params.searchType || params.mood || 
+             params.playlistName || params.restaurantName || params.destination || 
+             params.location || params.symbol || params.text || params.content || '';
+    };
+
+    const query = extractQuery(parameters);
+    
     switch (toolName) {
       case 'web_search':
-        return `Searching for: "${parameters.query || 'information'}"`;
+        return query ? `Searching for: "${query}"` : 'Searching web';
+      case 'news_search':
+        return query ? `Searching news for: "${query}"` : 'Searching news';
+      case 'social_search':
+        return query ? `Searching social media for: "${query}"` : 'Searching social media';
+      case 'academic_search':
+        return query ? `Searching academic sources for: "${query}"` : 'Searching academic sources';
+      case 'image_search':
+        return query ? `Searching images for: "${query}"` : 'Searching images';
       case 'music_recommendations':
-        return `Finding ${parameters.mood || 'music'} recommendations`;
+        return query ? `Finding music for: "${query}"` : 'Finding music recommendations';
       case 'spotify_playlist':
-        return `Creating Spotify playlist: "${parameters.playlistName || 'New Playlist'}"`;
+        return query ? `Creating playlist: "${query}"` : 'Creating playlist';
+      case 'weather_check':
+        return query ? `Checking weather for: ${query}` : 'Checking weather';
+      case 'timezone_converter':
+        return query ? `Converting time: ${query}` : 'Converting time zones';
+      case 'calculator':
+        return query ? `Calculating: ${query}` : 'Performing calculation';
+      case 'translation':
+        return query ? `Translating: "${query}"` : 'Translating text';
+      case 'stock_lookup':
+        return query ? `Getting stock data for: ${query}` : 'Getting stock data';
+      case 'crypto_lookup':
+        return query ? `Getting crypto data for: ${query}` : 'Getting crypto prices';
+      case 'currency_converter':
+        return query ? `Converting currency: ${query}` : 'Converting currency';
+      case 'text_generator':
+        return query ? `Generating text: "${query}"` : 'Generating content';
+      case 'code_generator':
+        return query ? `Writing code: ${query}` : 'Writing code';
+      case 'linkedin_helper':
+        return query ? `Creating LinkedIn post: "${query}"` : 'Creating LinkedIn post';
+      case 'email_assistant':
+        return query ? `Drafting email: "${query}"` : 'Drafting email';
+      case 'fitness_tracker':
+        return query ? `Tracking fitness: ${query}` : 'Tracking workout';
+      case 'nutrition_lookup':
+        return query ? `Analyzing nutrition: ${query}` : 'Analyzing nutrition';
       case 'reservation_booking':
-        return `Booking restaurant: ${parameters.restaurantName || 'searching options'}`;
+        return query ? `Booking table at: ${query}` : 'Booking restaurant';
       case 'itinerary_generator':
-        return `Planning trip to: ${parameters.destination || 'destination'}`;
+        return query ? `Planning trip to: ${query}` : 'Planning trip';
       case 'credit_management':
-        return `Managing credits: ${parameters.action || 'processing'}`;
+        return query ? `Managing credits: ${query}` : 'Managing credits';
+      case 'qr_generator':
+        return query ? `Creating QR code: "${query}"` : 'Creating QR code';
+      case 'password_generator':
+        return query ? `Generating password: ${query}` : 'Generating password';
       default:
-        return `Executing ${toolName.replace('_', ' ')}`;
+        const displayName = toolName.replace(/_/g, ' ');
+        return query ? `${displayName}: "${query}"` : `Executing ${displayName}`;
     }
   }
 

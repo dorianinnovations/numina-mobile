@@ -75,14 +75,14 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
   useEffect(() => {
     // Update display text based on current search or results
     if (isSearching) {
-      setDisplayText('🔍 Searching...');
+      setDisplayText('⚡ Searching...');
     } else if (searchResults.length > 0) {
       const current = searchResults[currentSearchIndex];
       if (current) {
         let text = '';
         switch (current.toolName) {
           case 'web_search':
-            text = `🌐 Found: ${current.query || 'results'}`;
+            text = `⚡ Found: ${current.query || 'results'}`;
             break;
           case 'music_recommendations':
             text = `🎵 Music: ${current.message || 'playlist ready'}`;
@@ -154,7 +154,7 @@ export const SearchThoughtIndicator: React.FC<SearchThoughtIndicatorProps> = ({
         {/* Cube face */}
         <View style={[styles.cubeFace, isDarkMode ? styles.cubeFaceDark : styles.cubeFaceLight]}>
           <Text style={[styles.cubeText, isDarkMode ? styles.cubeTextDark : styles.cubeTextLight]}>
-            {isSearching ? '🔍' : searchResults.length > 0 ? '✨' : '🧠'}
+            {isSearching ? '⚡' : searchResults.length > 0 ? '✨' : '🧠'}
           </Text>
         </View>
       </Animated.View>
@@ -184,9 +184,9 @@ const styles = StyleSheet.create({
     minHeight: 60,
   },
   containerLight: {
-    backgroundColor: `${NuminaColors.chatGreen[100]}40`,
+    backgroundColor: 'rgba(110, 197, 255, 0.10)',
     borderWidth: 1,
-    borderColor: `${NuminaColors.chatGreen[300]}60`,
+    borderColor: 'rgba(110, 197, 255, 0.22)',
   },
   containerDark: {
     backgroundColor: `${NuminaColors.chatPurple[900]}40`,
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cubeFaceLight: {
-    backgroundColor: `${NuminaColors.chatGreen[200]}60`,
-    borderColor: `${NuminaColors.chatGreen[400]}80`,
+    backgroundColor: 'rgba(110, 197, 255, 0.18)',
+    borderColor: 'rgba(110, 197, 255, 0.32)',
   },
   cubeFaceDark: {
     backgroundColor: `${NuminaColors.chatPurple[800]}60`,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cubeTextLight: {
-    color: NuminaColors.chatGreen[700],
+    color: '#6ec5ff',
   },
   cubeTextDark: {
     color: NuminaColors.chatPurple[300],
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statusTextLight: {
-    color: NuminaColors.chatGreen[800],
+    color: '#6ec5ff',
   },
   statusTextDark: {
     color: NuminaColors.chatPurple[200],
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   resultsCountLight: {
-    color: `${NuminaColors.chatGreen[600]}CC`,
+    color: '#6ec5ff',
   },
   resultsCountDark: {
     color: `${NuminaColors.chatPurple[400]}CC`,

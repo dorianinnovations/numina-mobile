@@ -18,7 +18,7 @@ interface AIPersonality {
 }
 
 interface PersonalityContext {
-  communicationStyle: string;
+  communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
   emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
   adaptedResponse: boolean;
   userMoodDetected?: string;
@@ -118,9 +118,9 @@ class AIPersonalityService {
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('AI analysis timeout')), 8000)
           )
-        ]);
+        ]) as any;
 
-        if (response.success && response.data) {
+        if (response && response.success && response.data) {
           this.currentEmotionalState = response.data;
           await this.cacheEmotionalState(response.data);
           return response.data;
@@ -176,7 +176,7 @@ class AIPersonalityService {
       
       if (response.success && response.data) {
         const personality = {
-          communicationStyle: response.data.communicationStyle,
+          communicationStyle: (response.data.communicationStyle as 'supportive' | 'direct' | 'collaborative' | 'encouraging') || 'supportive',
           adaptivePrompts: response.data.suggestedPrompts || [],
           contextualHints: response.data.contextualHints || [],
         };
@@ -202,29 +202,41 @@ class AIPersonalityService {
     const emotionalState = await this.analyzeCurrentEmotionalState();
     const personality = await this.getPersonalityRecommendations(emotionalState);
     
+    // Always create personality context based on current state
+    const defaultPersonalityContext: PersonalityContext = {
+      communicationStyle: personality.communicationStyle,
+      emotionalTone: this.getEmotionalTone(emotionalState),
+      adaptedResponse: true,
+      userMoodDetected: emotionalState.mood,
+      responsePersonalization: `Adapted for ${emotionalState.mood} mood`,
+    };
+    
     try {
       // Try adaptive chat endpoint first
-      return await ApiService.sendAdaptiveChatMessage(
+      const result = await ApiService.sendAdaptiveChatMessage(
         {
+          prompt: prompt,
           message: prompt,
           emotionalContext: emotionalState,
           personalityStyle: personality.communicationStyle,
           stream: true,
           temperature: 0.8,
         },
-        onChunk
+        (chunk, context) => {
+          // Use server context if provided, otherwise use our default
+          onChunk(chunk, context || defaultPersonalityContext);
+        }
       );
+      
+      // Ensure result has personality context
+      if (!result.personalityContext) {
+        console.log('🧠 No personality context from server, using default:', defaultPersonalityContext);
+        result.personalityContext = defaultPersonalityContext;
+      }
+      
+      return result;
     } catch (error) {
       console.error('Adaptive chat failed, falling back to standard:', error);
-      
-      // Fallback to standard chat with personality context
-      const personalityContext: PersonalityContext = {
-        communicationStyle: personality.communicationStyle,
-        emotionalTone: this.getEmotionalTone(emotionalState),
-        adaptedResponse: true,
-        userMoodDetected: emotionalState.mood,
-        responsePersonalization: `Adapted for ${emotionalState.mood} mood`,
-      };
       
       // Enhanced prompt with personality context
       const enhancedPrompt = this.enhancePromptWithPersonality(prompt, emotionalState, personality);
@@ -234,11 +246,11 @@ class AIPersonalityService {
         { prompt: enhancedPrompt },
         (chunk) => {
           fullContent = chunk;
-          onChunk(chunk, personalityContext);
+          onChunk(chunk, defaultPersonalityContext);
         }
       );
       
-      return { content: fullContent, personalityContext };
+      return { content: fullContent, personalityContext: defaultPersonalityContext };
     }
   }
 
@@ -349,15 +361,15 @@ class AIPersonalityService {
     
     switch (communicationStyle) {
       case 'supportive':
-        return "I'm here for you... what's in your heart? 💫";
+      return "Discuss, analyze, reflect";
       case 'collaborative':
-        return "Let's explore this together... what's happening?";
+      return "Explore, brainstorm, discover";
       case 'encouraging':
-        return "You've got this! What's on your mind? 🌟";
+      return "Achieve, inspire, thrive";
       case 'direct':
-        return "What would you like to talk about?";
+      return "Whats up?";
       default:
-        return "Share your thoughts with me...";
+      return "Share your thoughts";
     }
   }
 

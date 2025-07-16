@@ -45,13 +45,11 @@ const Stack = createStackNavigator<RootStackParamList>();
 const slideTransition = {
   gestureEnabled: true,
   gestureDirection: "horizontal" as const,
-  gestureResponseDistance: {
-    horizontal: 25, // Lower value for quicker response
-  },
+  gestureResponseDistance: 25, // Lower value for quicker response
   gestureVelocityImpact: 0.3, // Smooth velocity handling
   transitionSpec: {
     open: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 1000,
         damping: 500,
@@ -62,7 +60,7 @@ const slideTransition = {
       },
     },
     close: {
-      animation: 'spring',
+      animation: 'spring' as const,
       config: {
         stiffness: 1000,
         damping: 500,

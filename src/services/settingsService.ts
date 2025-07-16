@@ -123,6 +123,8 @@ class SettingsService {
       await Notifications.setNotificationHandler({
         handleNotification: async () => ({
           shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
           shouldPlaySound: true,
           shouldSetBadge: false,
         }),
@@ -153,9 +155,9 @@ class SettingsService {
           data: { type: 'daily_checkin' },
         },
         trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
           hour,
           minute,
-          repeats: true,
         },
       });
     } catch (error) {
@@ -176,10 +178,10 @@ class SettingsService {
           data: { type: 'weekly_report' },
         },
         trigger: {
-          weekday: 0, // Sunday
+          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+          weekday: 1, // Sunday (expo-notifications uses 1-7 where 1 is Sunday)
           hour: 10,
           minute: 0,
-          repeats: true,
         },
       });
     } catch (error) {

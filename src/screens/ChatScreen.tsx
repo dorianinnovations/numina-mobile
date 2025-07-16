@@ -35,6 +35,14 @@ import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
+
+// Enhanced services integration
+import batchApiService from '../services/batchApiService';
+import websocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
+import syncService from '../services/syncService';
+import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
+import { AIToolExecutionStream } from '../components/AIToolExecutionStream';
+import { ToolExecutionModal } from '../components/ToolExecutionModal';
 import { SearchThoughtIndicator } from '../components/SearchThoughtIndicator';
 import { useSearchIndicator } from '../hooks/useSearchIndicator';
 
@@ -57,6 +65,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [conversation, setConversation] = useState<Conversation | null>(initialConversation || null);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [headerPermanentlyHidden, setHeaderPermanentlyHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   // AI Personality Integration
   const {
@@ -101,8 +113,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [historyVisible, setHistoryVisible] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
+  
+  // Enhanced features state
+  const [isConnected, setIsConnected] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+  const [roomId] = useState<string>('general_chat');
+  const [batchStats, setBatchStats] = useState(batchApiService.getStats());
+  const [syncStatus, setSyncStatus] = useState<any>(null);
+  const [toolExecutions, setToolExecutions] = useState<ToolExecution[]>([]);
+  const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
+  const [isToolModalVisible, setIsToolModalVisible] = useState(false);
+  const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
+  const toolExecutionService = ToolExecutionService.getInstance();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Function to manually restore header with haptic feedback
+  const restoreHeader = async () => {
+    try {
+      console.log('🎯 Touch gesture triggered! Restoring header...');
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setHeaderVisible(true);
+      setHeaderPermanentlyHidden(false);
+      console.log('✅ Header restored successfully');
+    } catch (error) {
+      console.log('⚠️ Haptics failed, restoring header without haptics');
+      // Fallback if haptics fail
+      setHeaderVisible(true);
+      setHeaderPermanentlyHidden(false);
+    }
+  };
 
-  // Initialize conversation if none provided
+  // Initialize conversation and enhanced features
   useEffect(() => {
     if (!conversation) {
       const welcomeMessage: Message = {
@@ -117,12 +159,124 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       saveConversation(newConversation);
     }
 
+    // Initialize enhanced features
+    initializeEnhancedFeatures();
+    setupToolExecutionListeners();
+
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 1000,
       useNativeDriver: false,
     }).start();
+    
+    return () => {
+      cleanup();
+    };
   }, []);
+
+  // Initialize enhanced features
+  const initializeEnhancedFeatures = async () => {
+    try {
+      // Initialize WebSocket connection with better error handling
+      const connected = await websocketService.initialize();
+      setIsConnected(connected);
+      
+      if (connected) {
+        websocketService.joinRoom(roomId, 'general');
+        setupWebSocketListeners();
+        await loadInitialDataBatch();
+      } else {
+        console.log('🔄 WebSocket connection failed, continuing without real-time features');
+      }
+      
+      // Initialize sync service
+      await syncService.initialize();
+      const status = await syncService.getSyncStatus();
+      setSyncStatus(status);
+      
+    } catch (error) {
+      console.error('Failed to initialize enhanced features:', error);
+      // Continue without enhanced features if initialization fails
+    }
+  };
+  
+  // Setup tool execution listeners
+  const setupToolExecutionListeners = () => {
+    toolExecutionService.on('executionsUpdated', (executions: ToolExecution[]) => {
+      setToolExecutions(executions);
+    });
+
+    toolExecutionService.on('executionStarted', (execution: ToolExecution) => {
+      console.log('🔧 Tool execution started:', execution.toolName);
+      setIsToolStreamVisible(true);
+    });
+
+    toolExecutionService.on('executionCompleted', (execution: ToolExecution) => {
+      console.log('✅ Tool execution completed:', execution.toolName);
+    });
+  };
+  
+  // Setup WebSocket listeners
+  const setupWebSocketListeners = () => {
+    websocketService.addEventListener('connection_status', (data) => {
+      setIsConnected(data.connected);
+      if (data.connected) {
+        websocketService.joinRoom(roomId, 'general');
+      }
+    });
+
+    websocketService.addEventListener('user_joined', (data: UserPresence) => {
+      setOnlineUsers(prev => [...prev.filter(u => u.userId !== data.userId), data]);
+    });
+
+    websocketService.addEventListener('user_left', (data: UserPresence) => {
+      setOnlineUsers(prev => prev.filter(u => u.userId !== data.userId));
+    });
+
+    websocketService.addEventListener('user_typing', (data: UserPresence) => {
+      if (data.userId !== userData?.id) {
+        setTypingUsers(prev => new Set(prev).add(data.userId));
+      }
+    });
+
+    websocketService.addEventListener('user_stopped_typing', (data: UserPresence) => {
+      setTypingUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(data.userId);
+        return newSet;
+      });
+    });
+  };
+  
+  // Load initial data with batch API
+  const loadInitialDataBatch = async () => {
+    try {
+      const initialData = await batchApiService.getInitialData();
+      console.log('Initial data loaded:', {
+        profile: !!initialData.profile,
+        emotions: initialData.emotions?.length || 0,
+        analytics: !!initialData.analytics,
+        cloudEvents: initialData.cloudEvents?.length || 0
+      });
+      setBatchStats(batchApiService.getStats());
+    } catch (error) {
+      console.error('Failed to load initial data:', error);
+    }
+  };
+  
+  // Cleanup function
+  const cleanup = () => {
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    if (isConnected) {
+      websocketService.stopTyping(roomId);
+      websocketService.leaveRoom(roomId);
+    }
+    
+    syncService.cleanup();
+  };
 
   const saveConversation = useCallback(async (conv: Conversation) => {
     try {
@@ -163,8 +317,30 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     );
     
     setConversation(updatedConversation);
+    const messageText = inputText.trim();
     setInputText('');
     setIsLoading(true);
+    setCurrentAIMessage('');
+    
+    // Scroll to show the user's new message
+    setTimeout(() => {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }, 200);
+
+    // Send via WebSocket if connected (graceful fallback)
+    if (isConnected) {
+      try {
+        websocketService.sendMessage(roomId, messageText, 'text');
+      } catch (error) {
+        console.warn('WebSocket send failed, continuing without real-time sync:', error);
+      }
+    }
+    
+    // Pre-detect potential tool executions
+    const potentialTools = detectPotentialTools(messageText);
+    potentialTools.forEach(tool => {
+      toolExecutionService.startExecution(tool.name, tool.parameters);
+    });
 
     // Save conversation with user message
     await saveConversation(updatedConversation);
@@ -201,6 +377,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             // Update search indicator with streaming content
             updateFromStreamingContent(safePartialResponse);
             
+            // Update current AI message for tool execution
+            setCurrentAIMessage(safePartialResponse);
+            
+            // Hide header during streaming and make it sticky
+            setHeaderVisible(false);
+            setHeaderPermanentlyHidden(true);
+            
+            // Process tool executions from streaming response
+            toolExecutionService.processStreamingToolResponse(safePartialResponse);
+            toolExecutionService.detectToolExecutionsInMessage(safePartialResponse);
+            
             // Update the AI message with streaming content
             const updatedAIMessage = {
               ...aiMessage,
@@ -208,6 +395,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               isStreaming: true,
               personalityContext: context,
             };
+            
+            // Debug log personality context
+            if (context) {
+              console.log('🧠 CHAT: Streaming chunk with personality context:', context);
+            }
             
             // Update conversation with streaming response
             const streamingConversation = { ...currentConversation };
@@ -225,6 +417,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         if (adaptiveResult && typeof adaptiveResult === 'object') {
           finalResponseText = adaptiveResult.content || '';
           personalityContext = adaptiveResult.personalityContext || null;
+          console.log('🧠 CHAT: Adaptive result personality context:', personalityContext);
         } else {
           finalResponseText = String(adaptiveResult || '');
         }
@@ -233,9 +426,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         updateFromFinalResponse(finalResponseText);
       } else {
         // Fallback to traditional chat service
-        const chatResult = await ChatService.sendMessage(userMessage.text, (partialResponse: string) => {
+        const chatResult = await ChatService.sendMessage(messageText, (partialResponse: string) => {
           // Validate partialResponse
           const safePartialResponse = partialResponse || '';
+          
+          // Update current AI message for tool execution
+          setCurrentAIMessage(safePartialResponse);
+          
+          // Hide header during streaming and make it sticky
+          setHeaderVisible(false);
+          setHeaderPermanentlyHidden(true);
+          
+          // Process tool executions from streaming response
+          toolExecutionService.processStreamingToolResponse(safePartialResponse);
+          toolExecutionService.detectToolExecutionsInMessage(safePartialResponse);
           
           // Update the AI message with streaming content
           const updatedAIMessage = {
@@ -271,6 +475,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         personalityContext,
       };
       
+      console.log('🧠 CHAT: Final AI message with personality context:', {
+        hasPersonalityContext: !!personalityContext,
+        personalityContext: personalityContext
+      });
+      
+      // Send AI response via WebSocket (graceful fallback)
+      if (isConnected) {
+        try {
+          websocketService.sendMessage(roomId, finalResponseText, 'ai_response');
+        } catch (error) {
+          console.warn('WebSocket AI response send failed, continuing without real-time sync:', error);
+        }
+      }
+      
+      // Clean up old tool executions
+      toolExecutionService.cleanupOldExecutions();
+      
       // Update conversation with final response
       const finalConversation = { ...currentConversation };
       if (finalConversation.messages && finalConversation.messages.length > 0) {
@@ -282,6 +503,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
       
       setIsLoading(false);
+      setIsStreaming(false);
+      setCurrentAIMessage('');
+      
+      // Don't automatically restore header - let it stay hidden
     } catch (error: any) {
       console.error('Chat error:', error);
       
@@ -317,7 +542,99 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
       
       setIsLoading(false);
+      setIsStreaming(false);
+      setCurrentAIMessage('');
+      
+      // Don't automatically restore header after error - let it stay hidden
     }
+  };
+  
+  // Detect potential tools from user message
+  const detectPotentialTools = (message: string): Array<{name: string, parameters: any}> => {
+    const tools = [];
+    const lowerMessage = message.toLowerCase();
+    
+    // Web search detection
+    if (lowerMessage.includes('search') || lowerMessage.includes('find') || lowerMessage.includes('look up')) {
+      tools.push({ name: 'web_search', parameters: { query: message } });
+    }
+    
+    // Music detection
+    if (lowerMessage.includes('music') || lowerMessage.includes('song') || lowerMessage.includes('playlist')) {
+      tools.push({ name: 'music_recommendations', parameters: { query: message } });
+    }
+    
+    // Restaurant detection
+    if (lowerMessage.includes('restaurant') || lowerMessage.includes('dinner') || lowerMessage.includes('reservation')) {
+      tools.push({ name: 'reservation_booking', parameters: { query: message } });
+    }
+    
+    // Travel detection
+    if (lowerMessage.includes('travel') || lowerMessage.includes('trip') || lowerMessage.includes('vacation')) {
+      tools.push({ name: 'itinerary_generator', parameters: { query: message } });
+    }
+    
+    return tools;
+  };
+  
+  // Handle input changes with typing indicators
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+    
+    // Send typing indicator
+    if (isConnected && text.trim()) {
+      websocketService.startTyping(roomId);
+      
+      // Clear previous timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      
+      // Stop typing after 2 seconds of inactivity
+      typingTimeoutRef.current = setTimeout(() => {
+        websocketService.stopTyping(roomId);
+      }, 2000);
+    } else if (isConnected) {
+      websocketService.stopTyping(roomId);
+    }
+  };
+  
+  // Handle sync data
+  const handleSyncData = async () => {
+    try {
+      setIsLoading(true);
+      const result = await syncService.forceFullSync();
+      
+      if (result.success) {
+        Alert.alert('Success', 'Data synchronized successfully');
+        setSyncStatus(await syncService.getSyncStatus());
+      } else {
+        Alert.alert('Error', result.errors.join(', '));
+      }
+    } catch (error) {
+      console.error('Sync failed:', error);
+      Alert.alert('Error', 'Sync failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Render typing indicator
+  const renderTypingIndicator = () => {
+    if (typingUsers.size === 0) return null;
+    
+    const typingUserNames = Array.from(typingUsers).map(userId => {
+      const user = onlineUsers.find(u => u.userId === userId);
+      return user?.userData?.username || 'Someone';
+    });
+    
+    return (
+      <View style={[styles.typingIndicator, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.typingText, { color: theme.colors.secondary }]}>
+          {typingUserNames.join(', ')} {typingUserNames.length === 1 ? 'is' : 'are'} typing...
+        </Text>
+      </View>
+    );
   };
 
   // Removed generateAIResponse - now using real backend responses
@@ -419,6 +736,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         showHeader={true}
         showBackButton={false}
         showMenuButton={true}
+        showConversationsButton={true}
+        onConversationSelect={handleSelectConversation}
+        currentConversationId={conversation?.id}
         title="Numina"
         subtitle={
           hasActiveSearches || isSearching
@@ -427,6 +747,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
             : "Live Search • Intelligent Tools • Deep Understanding"
         }
+        headerProps={{
+          isVisible: headerVisible,
+          isStreaming: isStreaming,
+        }}
       >
         <PageBackground>
           <SafeAreaView style={styles.container}>
@@ -446,6 +770,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               </View>
             )}
             
+            {/* Header Restore Touch Area - Invisible - Outside TouchableWithoutFeedback */}
+            {headerPermanentlyHidden && (
+              <TouchableOpacity 
+                style={styles.headerRestoreArea}
+                onPress={restoreHeader}
+                activeOpacity={1}
+                onPressIn={() => console.log('🎯 Touch area pressed!')}
+              />
+            )}
+            
             <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
               <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
                 {/* Messages Container */}
@@ -461,14 +795,38 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     keyExtractor={item => item?.id || Math.random().toString()}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
-                      setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
+                      // Only scroll to end for user messages or initial conversation
+                      if (conversation?.messages && conversation.messages.length <= 2) {
+                        setTimeout(() => {
+                          flatListRef.current?.scrollToEnd({ animated: true });
+                        }, 100);
+                      }
+                    }}
+                    onScroll={(event) => {
+                      const currentScrollY = event.nativeEvent.contentOffset.y;
+                      const scrollDelta = currentScrollY - lastScrollY;
+                      
+                      // Hide header immediately when scrolling down and make it sticky
+                      if (scrollDelta > 0) {
+                        setHeaderVisible(false);
+                        setHeaderPermanentlyHidden(true);
+                      }
+                      // Only show header when scrolling up IF not permanently hidden
+                      else if (scrollDelta < 0) {
+                        if (!headerPermanentlyHidden && !isStreaming) {
+                          setHeaderVisible(true);
+                        }
+                      }
+                      
+                      setLastScrollY(currentScrollY);
                     }}
                     onLayout={() => {
-                      setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
+                      // Only scroll to end for initial conversation setup
+                      if (conversation?.messages && conversation.messages.length <= 2) {
+                        setTimeout(() => {
+                          flatListRef.current?.scrollToEnd({ animated: true });
+                        }, 100);
+                      }
                     }}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.messagesContent}
@@ -479,10 +837,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     }}
                   />
 
+                  {/* Tool Execution Modal */}
+                  <ToolExecutionModal
+                    visible={isToolModalVisible}
+                    onClose={() => setIsToolModalVisible(false)}
+                    toolExecutions={toolExecutions}
+                    currentMessage={currentAIMessage}
+                  />
+                  
+                  {renderTypingIndicator()}
+                  
                   {/* Enhanced AI-Powered Input */}
                   <ChatInput
                     value={inputText}
-                    onChangeText={setInputText}
+                    onChangeText={handleInputChange}
                     onSend={sendMessage}
                     onVoiceStart={handleVoiceStart}
                     onVoiceEnd={handleVoiceEnd}
@@ -490,6 +858,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     placeholder={getAdaptivePlaceholderText()}
                     voiceEnabled={true}
                     userEmotionalState={emotionalState || undefined}
+                    toolExecutions={toolExecutions}
+                    onToggleToolModal={() => setIsToolModalVisible(true)}
                   />
                 </KeyboardAvoidingView>
               </Animated.View>
@@ -534,12 +904,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   messagesContent: {
-    paddingTop: 100,
-    paddingBottom: 100,
+    paddingTop: 180,
+    paddingBottom: 120,
     flexGrow: 1,
   },
   loadingText: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  typingIndicator: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  typingText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  headerRestoreArea: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 150,
+    zIndex: 9999,
+    backgroundColor: 'transparent',
   },
 });

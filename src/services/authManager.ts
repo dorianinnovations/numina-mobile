@@ -113,6 +113,28 @@ class AuthManager {
       const response = await this.validateTokenWithServer(storedToken);
       if (!response.success) {
         console.log('[AuthManager] Token validation failed:', response.error);
+        
+        // Check if it's a network/timeout error - if so, work in offline mode
+        const isNetworkIssue = response.error?.includes('timeout') || 
+                              response.error?.includes('Network') ||
+                              response.error?.includes('fetch');
+        
+        if (isNetworkIssue) {
+          console.log('[AuthManager] Server unavailable - working in offline mode');
+          // Try to get stored user data for offline mode
+          const storedUser = await AsyncStorage.getItem('numina_user_data');
+          if (storedUser) {
+            try {
+              const userData = JSON.parse(storedUser);
+              await this.setAuthenticated(storedToken, userData);
+              return { success: true, user: userData };
+            } catch (parseError) {
+              console.log('[AuthManager] Could not parse stored user data');
+            }
+          }
+        }
+        
+        // For non-network errors (invalid token, etc), clear auth
         await this.clearStoredAuth();
         this.setUnauthenticated();
         return { success: false, error: response.error };
@@ -120,7 +142,7 @@ class AuthManager {
 
       // Step 3: Set authenticated state
       console.log('[AuthManager] Token validation successful');
-      this.setAuthenticated(storedToken, response.user!);
+      await this.setAuthenticated(storedToken, response.user!);
       return { success: true, user: response.user };
 
     } catch (error) {
@@ -141,16 +163,31 @@ class AuthManager {
       if (response.success && response.data) {
         // Normalize user data (server sends _id, we need id)
         const user = {
-          id: response.data._id || response.data.id,
-          email: response.data.email,
-          ...response.data
+          ...response.data,
+          id: (response.data as any)._id || response.data.id,
         };
         return { success: true, user };
       } else {
-        return { success: false, error: response.error || 'Profile fetch failed' };
+        // Handle specific server errors gracefully
+        const errorMsg = response.error || 'Profile fetch failed';
+        console.log('[AuthManager] Profile validation failed:', errorMsg);
+        return { success: false, error: errorMsg };
       }
-    } catch (error) {
-      return { success: false, error: `Validation request failed: ${error}` };
+    } catch (error: any) {
+      // Handle network timeouts gracefully - don't crash the app
+      const isTimeout = error?.name === 'AbortError' || error?.message?.includes('timeout');
+      const isNetworkError = error?.message?.includes('fetch') || error?.message?.includes('Network');
+      
+      if (isTimeout) {
+        console.log('[AuthManager] Token validation timed out - server may be unavailable');
+        return { success: false, error: 'Request timeout' };
+      } else if (isNetworkError) {
+        console.log('[AuthManager] Network error during token validation');
+        return { success: false, error: 'Network error' };
+      }
+      
+      console.log('[AuthManager] Unexpected validation error:', error);
+      return { success: false, error: `Validation request failed: ${error?.message || error}` };
     }
   }
 
@@ -171,9 +208,8 @@ class AuthManager {
 
         // Normalize user data
         const user = {
-          id: userData._id || userData.id,
-          email: userData.email,
-          ...userData
+          ...userData,
+          id: (userData as any)._id || userData.id,
         };
 
         // Store token and set authenticated state
@@ -181,7 +217,7 @@ class AuthManager {
         await AsyncStorage.setItem('numina_current_user_id', user.id);
         await this.storeUserData(user);
         
-        this.setAuthenticated(token, user);
+        await this.setAuthenticated(token, user);
         
         // Clear other users' data while preserving current user
         await this.clearOtherUsersData(user.id);
@@ -214,9 +250,8 @@ class AuthManager {
 
         // Normalize user data
         const user = {
-          id: userData._id || userData.id,
-          email: userData.email,
-          ...userData
+          ...userData,
+          id: (userData as any)._id || userData.id,
         };
 
         // Store token and set authenticated state
@@ -224,7 +259,7 @@ class AuthManager {
         await AsyncStorage.setItem('numina_current_user_id', user.id);
         await this.storeUserData(user);
         
-        this.setAuthenticated(token, user);
+        await this.setAuthenticated(token, user);
         
         // Clear other users' data (shouldn't be any for new user)
         await this.clearOtherUsersData(user.id);
@@ -251,7 +286,7 @@ class AuthManager {
   }
 
   // Set authenticated state
-  private setAuthenticated(token: string, user: any): void {
+  private async setAuthenticated(token: string, user: any): Promise<void> {
     this.authState = {
       isAuthenticated: true,
       isInitializing: false,
@@ -259,6 +294,14 @@ class AuthManager {
       token,
       lastValidation: Date.now()
     };
+    
+    // Store user data for offline mode
+    try {
+      await AsyncStorage.setItem('numina_user_data', JSON.stringify(user));
+    } catch (error) {
+      console.log('[AuthManager] Failed to store user data:', error);
+    }
+    
     this.notifyListeners();
   }
 

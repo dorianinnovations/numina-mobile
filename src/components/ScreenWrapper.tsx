@@ -11,8 +11,16 @@ interface ScreenWrapperProps {
   showHeader?: boolean;
   showBackButton?: boolean;
   showMenuButton?: boolean;
+  showConversationsButton?: boolean;
+  onConversationSelect?: (conversation: any) => void;
+  currentConversationId?: string;
   title?: string;
   subtitle?: string;
+  onBackPress?: () => void;
+  headerProps?: {
+    isVisible?: boolean;
+    isStreaming?: boolean;
+  };
 }
 
 type ScreenWrapperNavigationProp = StackNavigationProp<RootStackParamList>;
@@ -22,8 +30,13 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   showHeader = false,
   showBackButton = false,
   showMenuButton = false,
+  showConversationsButton = false,
+  onConversationSelect,
+  currentConversationId,
   title,
   subtitle,
+  onBackPress,
+  headerProps,
 }) => {
   const navigation = useNavigation<ScreenWrapperNavigationProp>();
   const { logout } = useAuth();
@@ -103,7 +116,9 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   };
 
   const handleBackPress = () => {
-    if (navigation.canGoBack()) {
+    if (onBackPress) {
+      onBackPress();
+    } else if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
       navigation.navigate('Chat');
@@ -118,8 +133,12 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           subtitle={subtitle}
           showBackButton={showBackButton}
           showMenuButton={showMenuButton}
+          showConversationsButton={showConversationsButton}
           onBackPress={handleBackPress}
           onMenuPress={handleMenuAction}
+          onConversationSelect={onConversationSelect}
+          currentConversationId={currentConversationId}
+          {...headerProps}
         />
       )}
       {children}

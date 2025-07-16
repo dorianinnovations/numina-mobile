@@ -32,16 +32,16 @@ export const NuminaColors = {
 
   // Chat Blue Scale
   chatBlue: {
-    50: '#525252',
-    100: '#CCE7FF',
-    200: '#99CCFF',
-    300: '#66B7FF',
-    400: '#339FFF',
-    500: '#0087FF',
-    600: '#006BCC',
-    700: '#004F99',
-    800: '#003366',
-    900: '#001833',
+    50: '#F0F8FF',
+    100: '#E6F3FF',
+    200: '#CCE7FF',
+    300: '#99CCFF',
+    400: '#66B7FF',
+    500: '#339FFF',
+    600: '#0087FF',
+    700: '#006BCC',
+    800: '#004F99',
+    900: '#003366',
   },
 
   // Chat Yellow Scale
@@ -108,6 +108,7 @@ export const NuminaColors = {
   green: '#6BCF7F',
   blue: '#4D96FF',
   purple: '#9B59B6',
+  pink: '#F472B6',
   lightBlue: '#87CEEB',
 
   // Semantic Colors
@@ -115,6 +116,11 @@ export const NuminaColors = {
   error: '#FF6B6B',
   warning: '#FFD93D',
   info: '#4D96FF',
+  
+  // Text Colors
+  primary: '#1a1a1a',
+  text: '#1a1a1a',
+  textSecondary: '#666666',
 };
 
 export const NuminaGradients = {

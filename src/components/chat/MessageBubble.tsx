@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
+import StreamingMarkdown from '../StreamingMarkdown';
 
 const { width } = Dimensions.get('window');
 
@@ -53,7 +54,7 @@ interface MessageBubbleProps {
   onPersonalityFeedback?: (feedback: 'helpful' | 'not_helpful' | 'love_it') => void;
 }
 
-// Component for rendering formatted bot messages
+// Component for rendering formatted bot messages with streaming energy pulse
 const BotMessageContent: React.FC<{
   text: string | undefined;
   previousLength: number;
@@ -64,153 +65,111 @@ const BotMessageContent: React.FC<{
   // Handle undefined text
   const safeText = text || '';
   
-  const renderFormattedText = (content: string) => {
-    const lines = content.split('\n');
-    const elements: React.ReactElement[] = [];
-    
-    lines.forEach((line, index) => {
-      if (line.trim() === '') {
-        elements.push(<View key={`space-${index}`} style={styles.lineSpacing} />);
-        return;
-      }
+  // Animated values for energy pulse effect
+  const pulseAnimation = useRef(new Animated.Value(0)).current;
+  const glowIntensity = useRef(new Animated.Value(0)).current;
+  const gradientPosition = useRef(new Animated.Value(0)).current;
+  
+  // Start energy pulse animation when streaming
+  useEffect(() => {
+    if (isStreaming) {
+      // Continuous energy pulse through text
+      const pulseLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnimation, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+          Animated.timing(pulseAnimation, {
+            toValue: 0,
+            duration: 1500,
+            useNativeDriver: false,
+          }),
+        ])
+      );
       
-      // H1 - Lines starting with # 
-      if (line.startsWith('# ')) {
-        elements.push(
-          <Text key={index} style={[
-            styles.h1Text,
-            { color: theme.colors.chat.aiMessage.text }
-          ]}>
-            {line.replace('# ', '')}
-          </Text>
-        );
-      }
-      // H2 - Lines starting with ##
-      else if (line.startsWith('## ')) {
-        elements.push(
-          <Text key={index} style={[
-            styles.h2Text,
-            { color: theme.colors.chat.aiMessage.text }
-          ]}>
-            {line.replace('## ', '')}
-          </Text>
-        );
-      }
-      // H3 - Lines starting with ###
-      else if (line.startsWith('### ')) {
-        elements.push(
-          <Text key={index} style={[
-            styles.h3Text,
-            { color: theme.colors.chat.aiMessage.text }
-          ]}>
-            {line.replace('### ', '')}
-          </Text>
-        );
-      }
-      // Bullet points - Lines starting with - or *
-      else if (line.startsWith('- ') || line.startsWith('* ')) {
-        elements.push(
-          <View key={index} style={styles.bulletContainer}>
-            <Text style={[
-              styles.bulletPoint,
-              { color: theme.colors.chat.aiMessage.text }
-            ]}>•</Text>
-            <Text style={[
-              styles.bulletText,
-              { color: theme.colors.chat.aiMessage.text }
-            ]}>
-              {line.replace(/^[\-\*] /, '')}
-            </Text>
-          </View>
-        );
-      }
-      // Numbered lists - Lines starting with numbers
-      else if (/^\d+\. /.test(line)) {
-        const match = line.match(/^(\d+)\. (.*)/);
-        if (match) {
-          elements.push(
-            <View key={index} style={styles.bulletContainer}>
-              <Text style={[
-                styles.bulletPoint,
-                { color: theme.colors.chat.aiMessage.text }
-              ]}>{match[1]}.</Text>
-              <Text style={[
-                styles.bulletText,
-                { color: theme.colors.chat.aiMessage.text }
-              ]}>
-                {match[2]}
-              </Text>
-            </View>
-          );
-        }
-      }
-      // Bold text **text**
-      else if (line.includes('**')) {
-        const parts = line.split('**');
-        const textElements: React.ReactElement[] = [];
-        parts.forEach((part, partIndex) => {
-          if (partIndex % 2 === 0) {
-            // Normal text
-            if (part) {
-              textElements.push(
-                <Text key={partIndex} style={[
-                  styles.regularText,
-                  { color: theme.colors.chat.aiMessage.text }
-                ]}>
-                  {part}
-                </Text>
-              );
-            }
-          } else {
-            // Bold text
-            textElements.push(
-              <Text key={partIndex} style={[
-                styles.boldText,
-                { color: theme.colors.chat.aiMessage.text }
-              ]}>
-                {part}
-              </Text>
-            );
-          }
-        });
-        elements.push(
-          <View key={index} style={styles.inlineTextContainer}>
-            {textElements}
-          </View>
-        );
-      }
-      // Regular paragraph text
-      else {
-        elements.push(
-          <Text key={index} style={[
-            styles.regularText,
-            { color: theme.colors.chat.aiMessage.text }
-          ]}>
-            {line}
-          </Text>
-        );
-      }
-    });
-    
-    return elements;
-  };
+      // Glow intensity pulse
+      const glowLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(glowIntensity, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: false,
+          }),
+          Animated.timing(glowIntensity, {
+            toValue: 0.3,
+            duration: 2000,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      
+      // Text color wave animation
+      const colorWaveLoop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(gradientPosition, {
+            toValue: 1,
+            duration: 1800,
+            useNativeDriver: false,
+          }),
+          Animated.timing(gradientPosition, {
+            toValue: 0,
+            duration: 1800,
+            useNativeDriver: false,
+          }),
+        ])
+      );
+      
+      pulseLoop.start();
+      glowLoop.start();
+      colorWaveLoop.start();
+      
+      return () => {
+        pulseLoop.stop();
+        glowLoop.stop();
+        colorWaveLoop.stop();
+      };
+    } else {
+      pulseAnimation.setValue(0);
+      glowIntensity.setValue(0);
+      gradientPosition.setValue(0);
+    }
+  }, [isStreaming]);
+  
+  // Create animated color for energy pulse and color wave
+  const animatedTextColor = Animated.add(pulseAnimation, gradientPosition).interpolate({
+    inputRange: [0, 0.3, 0.6, 1, 1.3, 1.6, 2],
+    outputRange: [
+      theme.isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(40, 40, 40, 0.95)',
+      theme.isDarkMode ? '#87CEEB' : '#4A90E2',
+      theme.isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
+      theme.isDarkMode ? '#98FB98' : '#32CD32',
+      theme.isDarkMode ? '#87CEEB' : '#4A90E2',
+      theme.isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
+      theme.isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(40, 40, 40, 0.95)',
+    ],
+  });
+  
+  const animatedGlow = glowIntensity.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 8],
+  });
   
   return (
     <View style={styles.botTextContainer}>
-      {/* Previous content at full opacity */}
-      <View>
-        {renderFormattedText(safeText.slice(0, previousLength))}
-      </View>
-      
-      {/* New content with fade animation */}
-      <Animated.View style={{ opacity: newContentOpacity }}>
-        {renderFormattedText(safeText.slice(previousLength))}
-      </Animated.View>
-      
-      {isStreaming && (
-        <Text style={[styles.streamingCursor, {
-          color: '#86c0ef',
-        }]}>|</Text>
+      {isStreaming ? (
+        <StreamingMarkdown
+          content={safeText}
+          isComplete={false}
+          showCursor={true}
+        />
+      ) : (
+        <StreamingMarkdown
+          content={safeText}
+          isComplete={true}
+          showCursor={false}
+        />
       )}
     </View>
   );
@@ -234,7 +193,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(-80)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
   const newContentOpacity = useRef(new Animated.Value(1)).current;
@@ -245,55 +204,59 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = message?.sender === 'user';
   const isAI = message?.sender === 'numina';
 
-  // Entry animation with stagger
+  // Entry animation with stagger - fall from top effect
   useEffect(() => {
-    const delay = index * 100; // Stagger animation based on index
+    const delay = index * 80;
+    
+    // Debug log
+    if (isAI) {
+      console.log(`🧠 BUBBLE: Message ${message.id} personality context:`, message.personalityContext);
+    }
     
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 400,
         delay,
         useNativeDriver: false,
       }),
-      Animated.timing(slideAnim, {
+      Animated.spring(slideAnim, {
         toValue: 0,
-        duration: 600,
         delay,
         useNativeDriver: false,
+        tension: 80,
+        friction: 8,
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 300,
         delay,
         useNativeDriver: false,
       }),
     ]).start();
-    
-    // Initialize timestamp opacity for user messages
     if (isUser) {
       timestampOpacity.setValue(1);
     }
-    
-    // Animate personality header for AI messages
     if (isAI && message.personalityContext) {
-      const personalityDelay = delay + 200; // Slight delay after main message animation
+      const personalityDelay = delay + 220;
       Animated.parallel([
-        Animated.timing(personalityHeaderOpacity, {
+        Animated.spring(personalityHeaderOpacity, {
           toValue: 1,
-          duration: 600,
           delay: personalityDelay,
           useNativeDriver: true,
+          speed: 12,
+          bounciness: 8,
         }),
-        Animated.timing(personalityHeaderSlide, {
+        Animated.spring(personalityHeaderSlide, {
           toValue: 0,
-          duration: 600,
           delay: personalityDelay,
           useNativeDriver: true,
+          speed: 12,
+          bounciness: 8,
         }),
       ]).start();
     }
-  }, [index, isUser, isAI, message.personalityContext]);
+  }, [index, isUser, isAI, message.personalityContext?.communicationStyle]);
 
   // Progressive fade-in for new content chunks and timestamp
   useEffect(() => {
@@ -337,10 +300,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         // Check if new content was added
         if (safeText.length > previousLength) {
           // Animate the new content fading in
-          newContentOpacity.setValue(0.3);
+          newContentOpacity.setValue(0.5);
           Animated.timing(newContentOpacity, {
             toValue: 1,
-            duration: 300,
+            duration: 150,
             useNativeDriver: true,
           }).start();
           
@@ -468,7 +431,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             duration: 500,
             useNativeDriver: true,
           }).start();
-        }, 300); // Small delay after message completion
+        }, 500); // Small delay after message completion
       }
     } catch (error) {
       console.error('Error in MessageBubble text effect:', error);
@@ -482,7 +445,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     setIsPressed(true);
     Animated.timing(pressAnim, {
       toValue: 0.98,
-      duration: 100,
+      duration: 50,
       useNativeDriver: false,
     }).start();
   };
@@ -491,7 +454,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     setIsPressed(false);
     Animated.timing(pressAnim, {
       toValue: 1,
-      duration: 100,
+      duration: 50,
       useNativeDriver: false,
     }).start();
   };
@@ -530,7 +493,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getPersonalityColor = (style: string) => {
     switch (style) {
-      case 'supportive': return '#87CEEB';
+      case 'supportive': return '#87c3eb';
       case 'direct': return '#4DABF7';
       case 'collaborative': return '#6BCF7F';
       case 'encouraging': return '#FFD93D';
@@ -540,7 +503,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   const getPersonalityIcon = (style: string) => {
     switch (style) {
-      case 'supportive': return 'heart';
+      case 'supportive': return 'brain';
       case 'direct': return 'bullseye';
       case 'collaborative': return 'users';
       case 'encouraging': return 'star';
@@ -673,7 +636,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               previousLength={previousLength}
               newContentOpacity={newContentOpacity}
               isStreaming={message.isStreaming}
-              theme={theme}
+              theme={{ isDarkMode }}
             />
             
             {/* AI Insight Section */}
@@ -773,6 +736,7 @@ const styles = StyleSheet.create({
   },
   botTextContainer: {
     width: '100%',
+    position: 'relative',
   },
   h1Text: {
     fontSize: 24,

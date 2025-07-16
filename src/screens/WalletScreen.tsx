@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { ShimmerText } from '../components/ShimmerText';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -296,166 +297,12 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
     }
   };
 
-  const handleExecuteTool = async (toolName: string, toolCost: number) => {
-    // Check if user can afford the tool
-    if (walletData && walletData.balance < toolCost) {
-      Alert.alert('Insufficient Funds', `You need ${formatCurrency(toolCost)} to use this tool. Your current balance is ${formatCurrency(walletData.balance)}.`);
-      return;
-    }
-
-    Alert.alert(
-      'Execute Tool',
-      `Execute ${toolName} for ${formatCurrency(toolCost)}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Execute', onPress: () => executeTool(toolName) }
-      ]
-    );
-  };
-
-  const executeTool = async (toolName: string) => {
-    try {
-      setLoading(true);
-      
-      // Get default arguments for different tools
-      const getDefaultArgs = (tool: string) => {
-        switch (tool) {
-          case 'spotify_playlist':
-            return {
-              playlistName: 'My Numina Playlist',
-              description: 'Generated via Numina mobile app',
-              mood: 'happy',
-              isPublic: false
-            };
-          case 'reservation_booking':
-            return {
-              restaurantName: 'Local Restaurant',
-              date: new Date().toISOString().split('T')[0],
-              time: '19:00',
-              partySize: 2,
-              specialRequests: 'Table for 2'
-            };
-          case 'itinerary_generator':
-            return {
-              destination: 'New York',
-              duration: 2,
-              budget: 500,
-              startDate: new Date().toISOString().split('T')[0],
-              interests: ['culture', 'food'],
-              includeAccommodation: true,
-              includeActivities: true,
-              includeRestaurants: true
-            };
-          default:
-            return {};
-        }
-      };
-
-      const response = await ApiService.executeToolWithPayment(toolName, getDefaultArgs(toolName));
-      
-      if (response.success) {
-        Alert.alert('Success', `${toolName} executed successfully!`);
-        await loadWalletData(); // Refresh to show updated balance
-      } else {
-        Alert.alert('Error', response.error || 'Failed to execute tool');
-      }
-    } catch (err) {
-      console.error('Error executing tool:', err);
-      Alert.alert('Error', 'Failed to execute tool');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const hasActiveSubscription = subscriptionData?.numinaTrace?.hasActiveSubscription || false;
   const subscriptionPlan = subscriptionData?.numinaTrace?.plan || '';
   const endDate = subscriptionData?.numinaTrace?.endDate || '';
 
-  const renderSubscriptionCard = () => (
-    <View style={[
-      styles.subscriptionCard,
-      {
-        backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-        borderColor: isDarkMode ? '#333' : '#e0e0e0',
-      }
-    ]}>
-      <View style={styles.subscriptionHeader}>
-        <FontAwesome5 name="crown" size={16} color="#FFD700" />
-        <Text style={[styles.subscriptionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-          Numina Trace
-        </Text>
-      </View>
-      {hasActiveSubscription ? (
-        <View style={styles.subscriptionActive}>
-          <Text style={[styles.subscriptionPlan, { color: isDarkMode ? '#86efac' : '#10b981' }]}>
-            {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)} Plan
-          </Text>
-          <Text style={[styles.subscriptionStatus, { color: isDarkMode ? '#aaa' : '#666' }]}>
-            Active until {formatSubscriptionDate(endDate)}
-          </Text>
-        </View>
-      ) : (
-        <TouchableOpacity 
-          style={styles.upgradePrompt}
-          onPress={() => setShowSubscriptionModal(true)}
-        >
-          <Text style={[styles.upgradeText, { color: isDarkMode ? '#86efac' : '#10b981' }]}>
-            Upgrade to unlock all features →
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
 
-  const renderWalletCard = () => (
-    <View style={[
-      styles.walletCard,
-      {
-        backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-        borderColor: isDarkMode ? '#333' : '#e0e0e0',
-      }
-    ]}>
-      <View style={styles.balanceSection}>
-        <Text style={[styles.balanceLabel, { color: isDarkMode ? '#888' : '#666' }]}>
-          Current Balance
-        </Text>
-        <Text style={[styles.balanceAmount, { color: isDarkMode ? '#fff' : '#000' }]}>
-          {walletData ? formatCurrency(walletData.balance) : '—'}
-        </Text>
-        <View style={styles.balanceInfo}>
-          <Text style={[styles.balanceDetail, { color: isDarkMode ? '#aaa' : '#666' }]}>
-            Today spent: {walletData ? formatCurrency(walletData.todaySpent) : '—'}
-          </Text>
-          <Text style={[styles.balanceDetail, { color: isDarkMode ? '#aaa' : '#666' }]}>
-            Daily limit remaining: {walletData ? formatCurrency(walletData.remainingDailyLimit) : '—'}
-          </Text>
-        </View>
-      </View>
-      
-      <View style={styles.statusSection}>
-        <View style={styles.statusItem}>
-          <FontAwesome5 
-            name={walletData?.isActive ? 'check-circle' : 'exclamation-circle'} 
-            size={16} 
-            color={walletData?.isActive ? '#10b981' : '#f59e0b'} 
-          />
-          <Text style={[styles.statusText, { color: isDarkMode ? '#fff' : '#000' }]}>
-            {walletData?.isActive ? 'Active' : 'Inactive'}
-          </Text>
-        </View>
-        <View style={styles.statusItem}>
-          <FontAwesome5 
-            name={walletData?.isVerified ? 'shield-alt' : 'shield-alt'} 
-            size={16} 
-            color={walletData?.isVerified ? '#10b981' : '#f59e0b'} 
-          />
-          <Text style={[styles.statusText, { color: isDarkMode ? '#fff' : '#000' }]}>
-            {walletData?.isVerified ? 'Verified' : 'Unverified'}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
 
   const renderAddFundsForm = () => (
     <View style={[
@@ -481,6 +328,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           ]}
           placeholder="Amount ($)"
           placeholderTextColor={isDarkMode ? '#666' : '#999'}
+          keyboardAppearance={isDarkMode ? 'dark' : 'light'}
           value={amount}
           onChangeText={setAmount}
           keyboardType="numeric"
@@ -497,6 +345,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           ]}
           placeholder="Card Number"
           placeholderTextColor={isDarkMode ? '#666' : '#999'}
+          keyboardAppearance={isDarkMode ? 'dark' : 'light'}
           value={cardNumber}
           onChangeText={(text) => setCardNumber(formatCardNumber(text))}
           keyboardType="number-pad"
@@ -516,6 +365,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
             ]}
             placeholder="MM/YY"
             placeholderTextColor={isDarkMode ? '#666' : '#999'}
+            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
             value={expiry}
             onChangeText={(text) => setExpiry(formatExpiry(text))}
             keyboardType="number-pad"
@@ -533,6 +383,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
             ]}
             placeholder="CVC"
             placeholderTextColor={isDarkMode ? '#666' : '#999'}
+            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
             value={cvc}
             onChangeText={setCvc}
             keyboardType="number-pad"
@@ -551,6 +402,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           ]}
           placeholder="Billing Address"
           placeholderTextColor={isDarkMode ? '#666' : '#999'}
+          keyboardAppearance={isDarkMode ? 'dark' : 'light'}
           value={address}
           onChangeText={setAddress}
           autoCapitalize="words"
@@ -584,6 +436,105 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
             {addingFunds ? 'Adding...' : 'Add Credits'}
           </Text>
         </TouchableOpacity>
+      </View>
+    </View>
+  );
+    const renderSubscriptionCard = () => (
+    <TouchableOpacity 
+      style={[
+        styles.subscriptionCard,
+        {
+          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+          borderColor: isDarkMode ? '#333' : '#e0e0e0',
+        }
+      ]}
+      onPress={() => setShowSubscriptionModal(true)}
+      activeOpacity={0.8}
+    >
+      <View style={styles.subscriptionHeader}>
+        <View style={styles.subscriptionTitleContainer}>
+          <FontAwesome5 name="gem" size={16} color="#add5fa" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.subscriptionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+              Numina{' '}
+            </Text>
+            <ShimmerText 
+              style={[styles.subscriptionTitle, { color: isDarkMode ? '#fff' : '#000' }]}
+            >
+              Aether
+            </ShimmerText>
+          </View>
+        </View>
+        <FontAwesome5 name="chevron-right" size={14} color={isDarkMode ? '#666' : '#999'} />
+      </View>
+      {hasActiveSubscription ? (
+        <View style={styles.subscriptionActive}>
+          <Text style={[styles.subscriptionPlan, { color: isDarkMode ? '#86efac' : '#10b981' }]}>
+            {subscriptionPlan.charAt(0).toUpperCase() + subscriptionPlan.slice(1)} Plan
+          </Text>
+          <Text style={[styles.subscriptionStatus, { color: isDarkMode ? '#aaa' : '#666' }]}>
+            Active until {formatSubscriptionDate(endDate)}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.upgradePrompt}>
+          <Text style={[styles.upgradeText, { color: isDarkMode ? '#86efac' : '#10b981' }]}>
+            Tap to explore premium plans
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
+
+  const renderWalletCard = () => (
+    <View style={[
+      styles.walletCard,
+      {
+        backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+        borderColor: isDarkMode ? '#333' : '#e0e0e0',
+      }
+    ]}>
+      <View style={styles.balanceSection}>
+        <Text style={[styles.balanceLabel, { color: isDarkMode ? '#888' : '#666' }]}>
+          Current Balance
+        </Text>
+        <Text style={[styles.balanceAmount, { color: isDarkMode ? '#fff' : '#000' }]}>
+          {walletData ? formatCurrency(walletData.balance) : '—'}
+        </Text>
+        <View style={styles.balanceInfo}>
+          <Text style={[styles.balanceDetail, { color: isDarkMode ? '#aaa' : '#666' }]}>
+            Today spent: {walletData ? formatCurrency(walletData.todaySpent) : '—'}
+          </Text>
+          <Text style={[styles.balanceDetail, { color: isDarkMode ? '#aaa' : '#666' }]}>
+            Daily limit remaining: {walletData ? formatCurrency(walletData.remainingDailyLimit) : '—'}
+          </Text>
+        </View>
+      </View>
+
+      
+      
+      <View style={styles.statusSection}>
+        <View style={styles.statusItem}>
+          <FontAwesome5 
+            name={walletData?.isActive ? 'check-circle' : 'exclamation-circle'} 
+            size={16} 
+            color={walletData?.isActive ? '#10b981' : '#f59e0b'} 
+          />
+          <Text style={[styles.statusText, { color: isDarkMode ? '#fff' : '#000' }]}>
+            {walletData?.isActive ? 'Active' : 'Inactive'}
+          </Text>
+        </View>
+        <View style={styles.statusItem}>
+          <FontAwesome5 
+            name={walletData?.isVerified ? 'shield-alt' : 'shield-alt'} 
+            size={16} 
+            color={walletData?.isVerified ? '#10b981' : '#f59e0b'} 
+          />
+          <Text style={[styles.statusText, { color: isDarkMode ? '#fff' : '#000' }]}>
+            {walletData?.isVerified ? 'Verified' : 'Unverified'}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -635,71 +586,77 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
     </View>
   );
 
-  const renderToolsSection = () => (
-    <View style={styles.toolsSection}>
-      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-        Available Tools
-      </Text>
-      
-      {tools.length === 0 ? (
-        <View style={styles.emptyState}>
-          <FontAwesome5 name="tools" size={48} color={isDarkMode ? '#666' : '#ccc'} />
-          <Text style={[styles.emptyStateText, { color: isDarkMode ? '#888' : '#666' }]}>
-            No tools available
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.toolsList}>
-          {tools.map((tool) => (
-            <View
-              key={tool.name}
-              style={[
-                styles.toolItem,
-                {
-                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-                  borderColor: isDarkMode ? '#333' : '#e0e0e0',
-                }
-              ]}
-            >
-              <View style={styles.toolInfo}>
-                <Text style={[styles.toolName, { color: isDarkMode ? '#fff' : '#000' }]}>
-                  {tool.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                </Text>
-                <Text style={[styles.toolDescription, { color: isDarkMode ? '#888' : '#666' }]}>
-                  {tool.description}
-                </Text>
-                <View style={styles.toolMeta}>
-                  <Text style={[styles.toolCategory, { color: isDarkMode ? '#aaa' : '#666' }]}>
-                    {tool.category}
-                  </Text>
-                  <Text style={[styles.toolCost, { color: isDarkMode ? '#80acff' : '#80acff' }]}>
-                    {tool.requiresPayment ? formatCurrency(tool.costPerExecution) : 'Free'}
-                  </Text>
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                style={[
-                  styles.toolExecuteButton,
-                  {
-                    backgroundColor: isDarkMode ? '#80acff' : '#80acff',
-                    opacity: loading ? 0.5 : 1,
-                  }
-                ]}
-                onPress={() => handleExecuteTool(tool.name, tool.costPerExecution)}
-                disabled={loading}
-              >
-                <FontAwesome5 name="play" size={12} color="#fff" />
-                <Text style={[styles.toolExecuteText, { color: '#fff' }]}>
-                  Execute
-                </Text>
-              </TouchableOpacity>
+  const renderToolsSection = () => {
+    return (
+      <View style={styles.toolsSection}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+          
+        </Text>
+        
+        {/* Investment/Support Section */}
+        <View style={[
+          styles.tierContainer,
+          {
+            backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+            borderColor: isDarkMode ? '#FFD700' : '#FFD700',
+            borderWidth: 1,
+          }
+        ]}>
+          <View style={styles.tierHeader}>
+            <View style={styles.tierTitleContainer}>
+              <FontAwesome5 name="rocket" size={20} color="#FFD700" />
+              <Text style={[
+                styles.tierTitle, 
+                { color: isDarkMode ? '#FFD700' : '#FFD700' }
+              ]}>
+                Founding Member
+              </Text>
             </View>
-          ))}
+          </View>
+          
+          <View style={styles.developmentNotice}>
+            <View style={styles.developmentIcon}>
+              <FontAwesome5 name="handshake" size={24} color={isDarkMode ? '#80acff' : '#80acff'} />
+            </View>
+            <View style={styles.developmentText}>
+              <Text style={[styles.developmentTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+                You're Building the Future
+              </Text>
+              <Text style={[styles.developmentDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
+                Your credits directly fund revolutionary AI that understands human emotion. Early supporters get lifetime access to premium features. 
+              </Text>
+            </View>
+          </View>
+          
+          <View style={styles.featurePreview}>
+            <Text style={[styles.featureTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+              Your Investment Unlocks:
+            </Text>
+            <View style={styles.featureList}>
+              <View style={styles.featureItem}>
+                <FontAwesome5 name="brain" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
+                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  Advanced agentic behavior tied to personal trends
+                </Text>
+              </View>
+              <View style={styles.featureItem}>
+                <FontAwesome5 name="chart-line" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
+                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  Deep emotional analytics for self-mastery
+                </Text>
+              </View>
+              <View style={styles.featureItem}>
+                <FontAwesome5 name="users" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
+                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  Enhanced social matching algorithms
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
-      )}
-    </View>
-  );
+      </View>
+    );
+  };
 
   return (
     <PageBackground>
@@ -821,11 +778,20 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
                 )}
               </View>
               
-              {/* Subscription Status Card */}
-              {renderSubscriptionCard()}
+              {/* Section Separator */}
+              <View style={styles.sectionSeparator}>
+                <View style={[styles.separatorLine, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]} />
+                <Text style={[styles.separatorText, { color: isDarkMode ? '#666' : '#999' }]}>
+                  Or
+                </Text>
+                <View style={[styles.separatorLine, { backgroundColor: isDarkMode ? '#333' : '#e0e0e0' }]} />
+              </View>
               
               {/* Add Funds Form */}
               {showAddFunds && renderAddFundsForm()}
+              
+              {/* Subscription Status Card */}
+              {renderSubscriptionCard()}
               
               {/* Available Tools */}
               {renderToolsSection()}
@@ -961,11 +927,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  sectionSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 32,
+    paddingHorizontal: 8,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+  },
+  separatorText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginHorizontal: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   addFundsForm: {
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     marginBottom: 20,
+    zIndex: 10,
+    elevation: 5,
   },
   formTitle: {
     fontSize: 18,
@@ -1020,56 +1005,128 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     marginTop: 40,
   },
-  toolsList: {
+  tierContainer: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  tierHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  tierTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  toolItem: {
-    flexDirection: 'row',
-    padding: 16,
+  tierTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  currentBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 12,
-    borderWidth: 1,
+  },
+  currentBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  upgradeBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  upgradeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tierTools: {
+    gap: 12,
+  },
+  toolIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  toolIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  toolInfo: {
+  toolIndicatorInfo: {
     flex: 1,
-    marginRight: 12,
   },
-  toolName: {
+  toolIndicatorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  toolIndicatorStatus: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  developmentNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(128, 172, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(128, 172, 255, 0.3)',
+  },
+  developmentIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(128, 172, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  developmentText: {
+    flex: 1,
+  },
+  developmentTitle: {
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
   },
-  toolDescription: {
+  developmentDescription: {
     fontSize: 14,
     fontWeight: '400',
-    marginBottom: 8,
     lineHeight: 20,
   },
-  toolMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  featurePreview: {
+    marginTop: 4,
   },
-  toolCategory: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
-  },
-  toolCost: {
+  featureTitle: {
     fontSize: 14,
     fontWeight: '600',
+    marginBottom: 12,
   },
-  toolExecuteButton: {
+  featureList: {
+    gap: 10,
+  },
+  featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    gap: 6,
+    gap: 12,
   },
-  toolExecuteText: {
-    fontSize: 12,
-    fontWeight: '600',
+  featureText: {
+    fontSize: 14,
+    fontWeight: '400',
+    flex: 1,
   },
   transactionSection: {
     marginBottom: 20,
@@ -1164,8 +1221,13 @@ const styles = StyleSheet.create({
   subscriptionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     marginBottom: 12,
+  },
+  subscriptionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   subscriptionTitle: {
     fontSize: 16,

@@ -12,7 +12,7 @@ const getMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat' },
   { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment' },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics' },
-  { icon: <Feather name="cloud" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Cloud', key: 'cloud' },
+  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud' },
   { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet' },
   { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile' },
   { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings' },

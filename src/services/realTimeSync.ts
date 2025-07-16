@@ -84,8 +84,8 @@ class RealTimeSyncService extends SimpleEventEmitter {
   private static instance: RealTimeSyncService;
   private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private maxReconnectAttempts = 2;
+  private reconnectDelay = 5000;
   private heartbeatInterval: any = null;
   private isConnected = false;
   private pendingEvents: SyncEvent[] = [];
@@ -116,15 +116,16 @@ class RealTimeSyncService extends SimpleEventEmitter {
     let fallbackUrl: string;
     
     if (isProduction) {
-      fallbackUrl = 'wss://api.numina.app/ws';
+      fallbackUrl = 'wss://server-a7od.onrender.com/ws';
     } else if (isDevelopment) {
-      fallbackUrl = 'ws://localhost:3001/ws';
+      // Don't use localhost in mobile app - use the same server
+      fallbackUrl = 'wss://server-a7od.onrender.com/ws';
     } else {
       // Staging or other environments
-      fallbackUrl = 'wss://staging-api.numina.app/ws';
+      fallbackUrl = 'wss://server-a7od.onrender.com/ws';
     }
     
-    console.warn('🔌 WebSocket: Using fallback URL:', fallbackUrl);
+    console.log('🔌 WebSocket RealTimeSync: Using fallback URL:', fallbackUrl);
     return fallbackUrl;
   }
 

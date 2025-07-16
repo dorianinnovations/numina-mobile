@@ -19,7 +19,7 @@ import { NuminaAnimations, ScreenTransitions } from '../utils/animations';
 import { Styling } from '../utils/styling';
 import { TextStyles } from '../utils/fonts';
 import { Header } from '../components/Header';
-import { GradientBackground } from '../components/GradientBackground';
+import { PageBackground } from '../components/PageBackground';
 
 
 const { width, height } = Dimensions.get('window');
@@ -116,7 +116,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   };
 
   return (
-    <GradientBackground>
+    <PageBackground>
       <SafeAreaView style={styles.container}>
         <StatusBar 
           barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
@@ -277,7 +277,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </View>
       </Animated.View>
       </SafeAreaView>
-    </GradientBackground>
+    </PageBackground>
   );
 };
 

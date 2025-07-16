@@ -115,7 +115,7 @@ class BatchApiService {
   /**
    * Process current batch queue
    */
-  private async processBatch(): void {
+  private async processBatch(): Promise<void> {
     if (this.queue.length === 0) return;
 
     const currentQueue = [...this.queue];
@@ -160,6 +160,7 @@ class BatchApiService {
               const queueResponse: ApiResponse<BatchResponse> = {
                 success: true,
                 data: {
+                  success: true,
                   batchId: response.data.batchId,
                   results: [response.data.results[i]],
                   timestamp: response.data.timestamp

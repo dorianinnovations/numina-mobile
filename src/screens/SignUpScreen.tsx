@@ -184,27 +184,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   return (
     <PageBackground>
       <SafeAreaView style={styles.container}>
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+          backgroundColor="transparent"
+          translucent={true}
+        />
+      
+        {/* Header */}
+        <Header 
+          title="Numina"
+          showBackButton={true}
+          showMenuButton={true}
+          onBackPress={() => {
+            ScreenTransitions.slideOutRight(slideAnim, () => {
+              onNavigateBack();
+            });
+          }}
+          onMenuPress={(key: string) => {}}
+        />
+
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={{ flex: 1 }}>
-            <StatusBar 
-              barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-              backgroundColor="transparent"
-              translucent={true} 
-            />
-            
-            {/* Header */}
-            <Header 
-              title="Numina"
-              showBackButton={true}
-              showMenuButton={true}
-              onBackPress={() => {
-                ScreenTransitions.slideOutRight(slideAnim, () => {
-                  onNavigateBack();
-                });
-              }}
-              onMenuPress={(key: string) => {}}
-            />
-
             <KeyboardAvoidingView
               style={styles.keyboardAvoid}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

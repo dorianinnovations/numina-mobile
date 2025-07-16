@@ -103,77 +103,88 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
             useNativeDriver: true,
           }),
         ]),
-        // Then morph to checkmark
+        // Then morph to checkmark with enhanced transition
         Animated.parallel([
-          // Fade out circle
+          // Smooth fade out circle with delay
           Animated.timing(circleOpacity, {
             toValue: 0,
-            duration: 300,
-            easing: Easing.in(Easing.cubic),
+            duration: 200,
+            delay: 100,
+            easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-          // Scale up container
+          // Enhanced scale animation
           Animated.sequence([
             Animated.timing(pulseScale, {
-              toValue: 1.2,
-              duration: 200,
+              toValue: 1.15,
+              duration: 150,
               easing: Easing.out(Easing.cubic),
               useNativeDriver: true,
             }),
             Animated.spring(pulseScale, {
               toValue: 1,
-              friction: 3,
-              tension: 100,
+              friction: 4,
+              tension: 120,
               useNativeDriver: true,
             }),
           ]),
-          // Draw checkmark
+          // Enhanced checkmark entrance
           Animated.sequence([
+            // Start small and grow
             Animated.timing(checkmarkScale, {
-              toValue: 1.3,
+              toValue: 0.8,
+              duration: 50,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+            Animated.timing(checkmarkScale, {
+              toValue: 1.2,
               duration: 200,
-              easing: Easing.out(Easing.back(2)),
+              easing: Easing.out(Easing.back(1.8)),
               useNativeDriver: true,
             }),
             Animated.spring(checkmarkScale, {
               toValue: 1,
-              friction: 4,
-              tension: 200,
+              friction: 5,
+              tension: 150,
               useNativeDriver: true,
             }),
           ]),
+          // Smooth checkmark draw with better timing
           Animated.timing(checkmarkProgress, {
             toValue: 1,
-            duration: 400,
-            delay: 100,
+            duration: 350,
+            delay: 150,
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-          // Glow effect
+          // Subtle glow effect
           Animated.sequence([
             Animated.timing(glowOpacity, {
-              toValue: 0.6,
-              duration: 300,
+              toValue: 0.4,
+              duration: 200,
+              delay: 100,
               useNativeDriver: true,
             }),
             Animated.timing(glowOpacity, {
               toValue: 0,
-              duration: 400,
+              duration: 500,
               useNativeDriver: true,
             }),
           ]),
-          // Bounce effect
+          // Refined bounce effect
           Animated.sequence([
             Animated.timing(bounceAnim, {
-              toValue: 1,
-              duration: 300,
-              easing: Easing.out(Easing.back(2)),
+              toValue: 0.8,
+              duration: 150,
+              delay: 100,
+              easing: Easing.out(Easing.back(1.5)),
               useNativeDriver: true,
             }),
             Animated.spring(bounceAnim, {
               toValue: 0,
-              friction: 3,
-              tension: 100,
+              friction: 4,
+              tension: 120,
               useNativeDriver: true,
             }),
           ]),
@@ -310,7 +321,7 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
 
-  const currentColor = status === 'error' ? '#F44336' : color;
+  const currentColor = status === 'error' ? '#F44336' : status === 'success' ? '#10b981' : color;
 
   if (status === 'idle') {
     return null;
@@ -326,6 +337,7 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
             { scale: scaleAnim },
             { scale: pulseScale },
             { translateX: shakeTransform },
+            { translateX: -8 }, // Move closer to text in -x direction
           ],
         },
       ]}
@@ -337,7 +349,6 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
           {
             width: size * 2,
             height: size * 2,
-            backgroundColor: currentColor,
             opacity: glowOpacity,
           },
         ]}
@@ -358,13 +369,6 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
             },
           ]}
         >
-          <View style={[styles.circleBackground, { 
-            width: size, 
-            height: size,
-            borderRadius: size / 2,
-            borderWidth: strokeWidth,
-            borderColor: `${currentColor}20`,
-          }]} />
           <Animated.View
             style={[
               styles.circleProgress,
@@ -473,9 +477,6 @@ const styles = StyleSheet.create({
     borderRadius: 50,
   },
   loaderContainer: {
-    position: 'absolute',
-  },
-  circleBackground: {
     position: 'absolute',
   },
   circleProgress: {

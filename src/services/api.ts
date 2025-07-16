@@ -1,5 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import AuthManager from './authManager';
+import ToolExecutionService from './toolExecutionService';
 
 /**
  * API Service for React Native
@@ -29,7 +30,7 @@ export const CHAT_API_CONFIG = {
 };
 
 // Request timeout configuration
-const REQUEST_TIMEOUT = 10000; // 10 seconds
+const REQUEST_TIMEOUT = 30000; // 30 seconds - increased for adaptive chat
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -835,6 +836,7 @@ class ApiService {
 
   static async sendAdaptiveChatMessage(
     message: ChatMessage & {
+      message?: string;
       emotionalContext?: UserEmotionalState;
       personalityStyle?: string;
     },
@@ -864,46 +866,62 @@ class ApiService {
       
       xhr.onreadystatechange = () => {
         try {
+          console.log('🔄 ADAPTIVE_CHAT: ReadyState changed to:', xhr.readyState, 'Status:', xhr.status);
+          
           if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
             const responseText = xhr.responseText || '';
             const currentLength = responseText.length;
             const newText = responseText.slice(lastProcessedIndex);
             
+            console.log('🔄 ADAPTIVE_CHAT: Response length:', currentLength, 'New text length:', newText.length);
+            
             if (newText) {
-              // Response chunk received
-              
+              console.log('🔄 ADAPTIVE_CHAT: New chunk received:', newText.length, 'chars');
               lastProcessedIndex = currentLength;
               const lines = newText.split('\n');
               
               for (const line of lines) {
                 if (line && line.trim() && line.startsWith('data: ')) {
                   const content = line.substring(6).trim();
-                  // Processing SSE line
+                  console.log('🔄 ADAPTIVE_CHAT: Processing SSE line:', content.substring(0, 100));
                   
                   if (content && content !== '[DONE]') {
                     try {
                       const parsed = JSON.parse(content);
-                      // JSON parsed successfully
+                      console.log('🔄 ADAPTIVE_CHAT: Parsed chunk:', { hasContent: !!parsed.content, type: typeof parsed });
                       
                       if (parsed && parsed.content) {
                         fullContent += parsed.content;
+                        console.log('🔄 ADAPTIVE_CHAT: Added content, total length:', fullContent.length);
+                        
+                        // Detect tool execution patterns from server response
+                        this.detectAndTriggerToolExecution(parsed.content);
+                        
                         onChunk(fullContent, personalityContext || undefined);
                       }
                       if (parsed && parsed.personalityContext) {
                         personalityContext = parsed.personalityContext;
+                        console.log('🧠 PERSONALITY: Found context in stream:', personalityContext);
                       }
                     } catch (parseError) {
-                      console.error('🔄 ADAPTIVE_CHAT_DEBUG: JSON parse failed', { 
-                        error: parseError.message, 
+                      console.error('🔄 ADAPTIVE_CHAT: JSON parse failed', { 
+                        error: (parseError as Error).message, 
                         content: content.substring(0, 200) 
                       });
-                      if (content) {
+                      // For non-JSON content (like plain text streaming), add directly
+                      if (content && content.length > 0) {
                         fullContent += content;
+                        console.log('🔄 ADAPTIVE_CHAT: Added raw content, total length:', fullContent.length);
+                        
+                        // Detect tool execution patterns from server response
+                        this.detectAndTriggerToolExecution(content);
+                        
                         onChunk(fullContent, personalityContext || undefined);
                       }
                     }
                   } else if (content === '[DONE]') {
-                    console.log('🔄 CHAT: Stream completed, content length:', fullContent.length);
+                    console.log('🔄 ADAPTIVE_CHAT: [DONE] received, but NOT closing connection - waiting for potential follow-up');
+                    // DON'T close connection here - wait for onload to handle completion
                   }
                 }
               }
@@ -943,7 +961,8 @@ class ApiService {
               });
             } else {
               console.log('🔄 ADAPTIVE_CHAT: No streaming content received');
-              console.log('🔄 ADAPTIVE_CHAT: Raw response:', xhr.responseText.substring(0, 500));
+              console.log('🔄 ADAPTIVE_CHAT: Raw response:', xhr.responseText);
+              console.log('🔄 ADAPTIVE_CHAT: Full response length:', xhr.responseText.length);
               // Handle JSON response format
               try {
                 const jsonResponse = JSON.parse(xhr.responseText);
@@ -955,7 +974,9 @@ class ApiService {
                     personalityContext: {
                       communicationStyle: jsonResponse.data.tone || 'supportive',
                       emotionalTone: jsonResponse.data.tone || 'supportive',
-                      adaptedResponse: true
+                      adaptedResponse: true,
+                      userMoodDetected: message.emotionalContext?.mood,
+                      responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`
                     }
                   });
                 } else {
@@ -977,8 +998,8 @@ class ApiService {
         }
       };
       
-      // Set timeout before sending
-      xhr.timeout = 30000; // 30 seconds
+      // Set timeout before sending - increased for tool execution
+      xhr.timeout = 120000; // 2 minutes for tool execution + follow-up
       
       const requestPayload = {
         ...CHAT_API_CONFIG.REQUEST_DEFAULTS,
@@ -1767,6 +1788,212 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  // Detect tool execution patterns from server streaming responses
+  private static detectAndTriggerToolExecution(content: string): void {
+    if (!content) return;
+
+    // Debug log (remove in production)
+    if (content.includes('🔍') || content.includes('🎵') || content.includes('📰')) {
+      console.log('🔧 API: Checking content for tool patterns:', content.substring(0, 200));
+    }
+
+    const toolExecutionService = ToolExecutionService.getInstance();
+    
+    // Tool execution patterns from server responses - VERY SPECIFIC to avoid false positives
+    const toolPatterns = [
+      // Music & Entertainment - Match server's exact patterns
+      { 
+        regex: /🎵\s*(Finding music recommendations|Getting music recommendations)/i, 
+        tool: 'music_recommendations', 
+        action: 'Finding music recommendations' 
+      },
+      { 
+        regex: /🎧\s*(Creating Spotify playlist|Creating playlist)/i, 
+        tool: 'spotify_playlist', 
+        action: 'Creating Spotify playlist' 
+      },
+      
+      // Search Variants - Match server's exact output patterns
+      { 
+        regex: /🔍\s*(Searching the web for:|Searching web for:|Web search for:)/i, 
+        tool: 'web_search', 
+        action: 'Searching the web' 
+      },
+      { 
+        regex: /📰\s*(Searching latest news:|News search for:|Finding latest news)/i, 
+        tool: 'news_search', 
+        action: 'Searching latest news' 
+      },
+      { 
+        regex: /🐦\s*(Searching (twitter|reddit|social media):|Social search for:)/i, 
+        tool: 'social_search', 
+        action: 'Searching social media' 
+      },
+      { 
+        regex: /🎓\s*(Searching academic papers:|Academic search for:|Research search)/i, 
+        tool: 'academic_search', 
+        action: 'Searching academic content' 
+      },
+      { 
+        regex: /🖼️\s*(Finding images:|Image search for:|Searching for images)/i, 
+        tool: 'image_search', 
+        action: 'Searching for images' 
+      },
+      
+      // Quick Utilities - Match exact server patterns
+      { 
+        regex: /🌤️\s*(Checking weather for:|Getting weather for:)/i, 
+        tool: 'weather_check', 
+        action: 'Checking weather' 
+      },
+      { 
+        regex: /🕐\s*(Converting time:|Time conversion:)/i, 
+        tool: 'timezone_converter', 
+        action: 'Converting time zones' 
+      },
+      { 
+        regex: /🧮\s*(Calculating:|Performing calculation:)/i, 
+        tool: 'calculator', 
+        action: 'Performing calculation' 
+      },
+      { 
+        regex: /🌐\s*(Translating to |Translation to )/i, 
+        tool: 'translation', 
+        action: 'Translating text' 
+      },
+      
+      // Financial Tools - Match exact server patterns  
+      { 
+        regex: /📈\s*(Getting [A-Z]+ stock data|Stock lookup for:)/i, 
+        tool: 'stock_lookup', 
+        action: 'Looking up stock data' 
+      },
+      { 
+        regex: /₿\s*(Getting [A-Z]+ crypto price|Crypto lookup for:)/i, 
+        tool: 'crypto_lookup', 
+        action: 'Looking up crypto prices' 
+      },
+      { 
+        regex: /💱\s*(Converting \d+.*?→|Currency conversion:)/i, 
+        tool: 'currency_converter', 
+        action: 'Converting currency' 
+      },
+      
+      // Creative & Professional - Match exact server patterns
+      { 
+        regex: /✍️\s*(Generating \w+ content:|Creating \w+ content:)/i, 
+        tool: 'text_generator', 
+        action: 'Generating text content' 
+      },
+      { 
+        regex: /💻\s*(Writing \w+ code:|Generating code:)/i, 
+        tool: 'code_generator', 
+        action: 'Generating code' 
+      },
+      { 
+        regex: /💼\s*(Creating LinkedIn \w+:|LinkedIn helper:)/i, 
+        tool: 'linkedin_helper', 
+        action: 'Creating LinkedIn content' 
+      },
+      { 
+        regex: /📧\s*(Drafting email:|Processing email:)/i, 
+        tool: 'email_assistant', 
+        action: 'Assisting with email' 
+      },
+      
+      // Health & Wellness - Match exact server patterns
+      { 
+        regex: /💪\s*(Logging fitness:|Tracking fitness:)/i, 
+        tool: 'fitness_tracker', 
+        action: 'Tracking fitness' 
+      },
+      { 
+        regex: /🥗\s*(Analyzing nutrition for:|Nutrition lookup for:)/i, 
+        tool: 'nutrition_lookup', 
+        action: 'Looking up nutrition info' 
+      },
+      
+      // Lifestyle Tools - Match exact server patterns
+      { 
+        regex: /🍽️\s*(Booking at |Booking reservation at)/i, 
+        tool: 'reservation_booking', 
+        action: 'Booking restaurant' 
+      },
+      { 
+        regex: /✈️\s*(Planning \d+-day trip|Travel planning for:)/i, 
+        tool: 'itinerary_generator', 
+        action: 'Planning travel' 
+      },
+      { 
+        regex: /💳\s*(Checking credits|Managing credits)/i, 
+        tool: 'credit_management', 
+        action: 'Managing credits' 
+      },
+      
+      // Quick Generators - Match exact server patterns
+      { 
+        regex: /📱\s*(Generating QR code for |Creating QR code)/i, 
+        tool: 'qr_generator', 
+        action: 'Generating QR code' 
+      },
+      { 
+        regex: /🔒\s*(Generating secure password|Creating password)/i, 
+        tool: 'password_generator', 
+        action: 'Generating password' 
+      },
+    ];
+
+    for (const pattern of toolPatterns) {
+      if (pattern.regex.test(content)) {
+        console.log(`🔧 API: Detected ${pattern.tool} execution from server response:`, content.substring(0, 100));
+        
+        // Check if we already have an active execution for this tool
+        const activeExecutions = toolExecutionService.getCurrentExecutions();
+        const existingExecution = activeExecutions.find(exec => 
+          exec.toolName === pattern.tool && exec.status !== 'completed' && exec.status !== 'error'
+        );
+        
+        if (!existingExecution) {
+          // Start new tool execution tracking
+          const executionId = toolExecutionService.startExecution(pattern.tool, { 
+            detectedFromServer: true,
+            serverMessage: content.trim()
+          });
+          console.log(`🔧 API: Started tracking ${pattern.tool} execution (${executionId})`);
+          
+          // Update progress to show it's executing
+          setTimeout(() => {
+            toolExecutionService.updateProgress(executionId, 50, { 
+              action: pattern.action,
+              serverResponse: content.trim()
+            });
+          }, 100);
+          
+          // Auto-complete faster for better UX
+          setTimeout(() => {
+            const execution = toolExecutionService.getAllExecutions().find(e => e.id === executionId);
+            if (execution && execution.status === 'executing') {
+              toolExecutionService.completeExecution(executionId, { 
+                success: true,
+                serverResponse: content.trim()
+              });
+            }
+          }, 1500);  // Reduced from 3 seconds to 1.5 seconds
+          
+        } else {
+          // Update existing execution
+          console.log(`🔧 API: Updating existing ${pattern.tool} execution`);
+          toolExecutionService.updateProgress(existingExecution.id, 75, { 
+            serverUpdate: content.trim()
+          });
+        }
+        
+        // Only trigger for the first match to avoid duplicates
+        break;
+      }
+    }
   }
 }
 

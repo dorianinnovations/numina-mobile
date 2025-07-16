@@ -203,7 +203,7 @@ export const useEmotionalAnalytics = () => {
       // Try API first
       const insights = await emotionalAnalyticsAPI.getDayInsights(day);
       if (insights) {
-        setDayInsights(prev => ({
+        setDayInsights((prev: any) => ({
           ...prev,
           [day]: insights
         }));
@@ -214,7 +214,7 @@ export const useEmotionalAnalytics = () => {
           return emotionDate.toLocaleDateString() === day;
         });
         
-        setDayInsights(prev => ({
+        setDayInsights((prev: any) => ({
           ...prev,
           [day]: dayEmotions
         }));

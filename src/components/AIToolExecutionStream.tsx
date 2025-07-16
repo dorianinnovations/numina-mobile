@@ -49,6 +49,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
   const { isDarkMode } = useTheme();
   const scrollViewRef = useRef<ScrollView>(null);
   const heightAnim = useRef(new Animated.Value(isVisible ? 200 : 0)).current;
+  const chevronRotation = useRef(new Animated.Value(0)).current;
   const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
 
   const getToolIcon = (toolName: string) => {
     switch (toolName) {
-      case 'web_search': return '🔍';
+      case 'web_search': return '⚡';
       case 'music_recommendations': return '🎵';
       case 'spotify_playlist': return '🎧';
       case 'reservation_booking': return '🍽️';
@@ -79,14 +80,13 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
       default: return '🔧';
     }
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'starting': return isDarkMode ? NuminaColors.chatPurple[400] : NuminaColors.chatGreen[500];
-      case 'executing': return isDarkMode ? NuminaColors.chatPurple[300] : NuminaColors.chatGreen[600];
-      case 'completed': return isDarkMode ? NuminaColors.success[400] : NuminaColors.success[600];
-      case 'error': return isDarkMode ? NuminaColors.error[400] : NuminaColors.error[600];
-      default: return isDarkMode ? NuminaColors.chatPurple[500] : NuminaColors.chatGreen[500];
+      case 'starting': return isDarkMode ? NuminaColors.chatPurple[200] : NuminaColors.chatGreen[300];
+      case 'executing': return isDarkMode ? NuminaColors.chatPurple[200] : NuminaColors.chatGreen[300];
+      case 'completed': return isDarkMode ? NuminaColors.success[200] : NuminaColors.success[300];
+      case 'error': return isDarkMode ? NuminaColors.error[200] : NuminaColors.error[300];
+      default: return isDarkMode ? NuminaColors.chatPurple[200] : NuminaColors.chatGreen[300];
     }
   };
 
@@ -158,15 +158,31 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
   const hasActiveTools = activeExecutions.length > 0;
 
   return (
-    <Animated.View style={[styles.container, { height: heightAnim }]}>
+    <Animated.View style={[
+      styles.container, 
+      { 
+        height: heightAnim, 
+        backgroundColor: isDarkMode ? '#121212' : '#ffffff',
+        borderColor: isDarkMode
+          ? 'rgba(255, 255, 255, 0.1)'
+          : 'rgba(0, 0, 0, 0.1)',
+      }
+    ]}>
       <LinearGradient
-        colors={isDarkMode ? [NuminaColors.chatPurple[900], NuminaColors.chatPurple[800]] : [NuminaColors.chatGreen[50], NuminaColors.chatGreen[100]]}
+        colors={isDarkMode ? ['#121212', '#0f0f0f'] : ['#ffffff', '#f8fafc']}
         style={styles.gradient}
       >
         {/* Header with Toggle */}
         <TouchableOpacity 
           style={styles.header} 
-          onPress={() => setIsExpanded(!isExpanded)}
+          onPress={() => {
+            setIsExpanded(!isExpanded);
+            Animated.timing(chevronRotation, {
+              toValue: isExpanded ? 0 : 1,
+              duration: 300,
+              useNativeDriver: true,
+            }).start();
+          }}
           activeOpacity={0.8}
         >
           <View style={styles.headerLeft}>
@@ -175,15 +191,25 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
                 {hasActiveTools ? '⚡' : '🧠'}
               </Text>
             </View>
-            <Text style={[styles.headerTitle, isDarkMode ? styles.textDark : styles.textLight]}>
-              AI Tools {hasActiveTools ? `(${activeExecutions.length} active)` : ''}
+            <Text style={[styles.headerTitle, isDarkMode ? { color: '#FFFFFF' } : { color: NuminaColors.darkMode[500] }]}>
+              Numina Tools {hasActiveTools ? `(${activeExecutions.length} active)` : ''}
             </Text>
           </View>
-          <FontAwesome5 
-            name={isExpanded ? 'chevron-down' : 'chevron-up'} 
-            size={12} 
-            color={isDarkMode ? NuminaColors.chatPurple[300] : NuminaColors.chatGreen[600]} 
-          />
+          <View style={styles.chevronContainer}>
+            <Animated.View style={[
+              styles.chevron,
+              { transform: [{ rotate: chevronRotation.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['0deg', '180deg']
+              })}] }
+            ]}>
+              <FontAwesome5 
+                name="chevron-up" 
+                size={14} 
+                color={isDarkMode ? '#FFFFFF' : NuminaColors.chatBlue[400]} 
+              />
+            </Animated.View>
+          </View>
         </TouchableOpacity>
 
         {/* Current AI Message */}
@@ -204,9 +230,9 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
           >
             {executions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={[styles.emptyStateText, isDarkMode ? styles.textSecondaryDark : styles.textSecondaryLight]}>
-                  Ready to execute AI tools...
-                </Text>
+                                  <Text style={[styles.emptyStateText, { color: NuminaColors.chatBlue[400] }]}>
+                    Numina's tools will appear here when active
+                  </Text>
               </View>
             ) : (
               executions.map(renderExecutionItem)
@@ -229,16 +255,17 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: width - 32,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    width: width - 44,
+    marginHorizontal: 1,
+    marginVertical: 18,
     borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 12,
+    elevation: 10,
+    borderWidth: 1,
   },
   gradient: {
     flex: 1,
@@ -272,6 +299,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: 'Nunito',
   },
   currentMessage: {
     marginTop: 8,
@@ -283,6 +311,7 @@ const styles = StyleSheet.create({
   currentMessageText: {
     fontSize: 12,
     fontStyle: 'italic',
+    fontFamily: 'Nunito',
   },
   executionsList: {
     marginTop: 8,
@@ -331,10 +360,12 @@ const styles = StyleSheet.create({
   toolName: {
     fontSize: 12,
     fontWeight: '600',
+    fontFamily: 'Nunito',
   },
   executionDetails: {
     fontSize: 10,
     marginTop: 1,
+    fontFamily: 'Nunito',
   },
   statusInfo: {
     alignItems: 'flex-end',
@@ -342,10 +373,12 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 9,
     fontWeight: '700',
+    fontFamily: 'Nunito',
   },
   timingText: {
     fontSize: 9,
     marginTop: 1,
+    fontFamily: 'Nunito',
   },
   quickStats: {
     marginTop: 8,
@@ -353,6 +386,7 @@ const styles = StyleSheet.create({
   },
   quickStatsText: {
     fontSize: 10,
+    fontFamily: 'Nunito',
   },
   emptyState: {
     padding: 20,
@@ -361,6 +395,7 @@ const styles = StyleSheet.create({
   emptyStateText: {
     fontSize: 12,
     fontStyle: 'italic',
+    fontFamily: 'Nunito',
   },
   textDark: {
     color: NuminaColors.chatPurple[100],
@@ -373,5 +408,11 @@ const styles = StyleSheet.create({
   },
   textSecondaryLight: {
     color: NuminaColors.chatGreen[600],
+  },
+  chevronContainer: {
+    padding: 8,
+    borderRadius: 6,
+  },
+  chevron: {
   },
 });

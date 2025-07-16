@@ -493,13 +493,13 @@ export const ScreenTransitions = {
     Animated.parallel([
       Animated.timing(value, {
         toValue: 0,
-        duration: 125,
+        duration: 62,
         useNativeDriver: true,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
       }),
       Animated.timing(scaleValue, {
         toValue: 0.9,
-        duration: 125,
+        duration: 62,
         useNativeDriver: true,
         easing: (t: number) => 1 - Math.pow(1 - t, 3),
       }),

@@ -72,9 +72,9 @@ export const useNuminaPersonality = (isActive: boolean = true) => {
   const triggerImmediateUpdate = async () => {
     try {
       const response = await ApiService.get('/numina-personality/current-state');
-      if (response.success && response.numinaState) {
+      if (response.success && response.data) {
         // Manually trigger WebSocket event for immediate update
-        WebSocketService.emit('numina_senses_updated', response.numinaState);
+        (WebSocketService as any).emit && (WebSocketService as any).emit('numina_senses_updated', response.data);
       }
     } catch (error) {
       console.error('❌ Failed to trigger immediate update:', error);

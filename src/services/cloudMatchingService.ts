@@ -82,14 +82,21 @@ class CloudMatchingService {
       });
 
       if (response.success && response.data) {
-        // Ensure response.data is an array
+        // Transform server events to CloudEvent format
         const eventsArray = Array.isArray(response.data) ? response.data : [];
-        const enhancedEvents = await this.enhanceEventsWithAI(eventsArray, emotionalState);
-        this.cachedEvents = enhancedEvents;
-        await this.cacheEvents(enhancedEvents);
-        return enhancedEvents;
+        const transformedEvents = this.transformServerEventsToCloudEvents(eventsArray);
+        this.cachedEvents = transformedEvents;
+        await this.cacheEvents(transformedEvents);
+        return transformedEvents;
       } else {
-        // Fallback to mock data with AI enhancement
+        console.log('Cloud events API response:', response);
+        // Check cached events first
+        const cached = await this.getCachedEvents();
+        if (cached.length > 0) {
+          return cached;
+        }
+        // Only fallback to mock data if no cached events exist
+        console.log('No cached events found, generating mock data as fallback');
         return this.generateMockEventsWithAI(emotionalState);
       }
     } catch (error) {
@@ -98,6 +105,74 @@ class CloudMatchingService {
       const cached = await this.getCachedEvents();
       return cached.length > 0 ? cached : this.generateMockEventsWithAI();
     }
+  }
+
+  // Transform server Event model to CloudEvent format
+  private transformServerEventsToCloudEvents(serverEvents: any[]): CloudEvent[] {
+    return serverEvents.map(serverEvent => {
+      const event: CloudEvent = {
+        id: serverEvent._id || serverEvent.id,
+        title: serverEvent.title,
+        description: serverEvent.description,
+        type: this.mapCategoryToType(serverEvent.category),
+        date: new Date(serverEvent.dateTime.start).toLocaleDateString(),
+        time: new Date(serverEvent.dateTime.start).toLocaleTimeString(),
+        location: serverEvent.location?.city || serverEvent.location?.address || 'Virtual',
+        maxParticipants: serverEvent.maxParticipants || 50,
+        currentParticipants: serverEvent.participantCount || 0,
+        hostId: serverEvent.organizer?._id || serverEvent.organizer,
+        hostName: serverEvent.organizer?.profile?.name || 'Event Host',
+        // AI enhancement from server compatibility analysis
+        aiMatchScore: serverEvent.compatibility?.compatibilityScore || 0,
+        emotionalCompatibility: this.mapRecommendationToCompatibility(serverEvent.compatibility?.recommendationStrength),
+        personalizedReason: serverEvent.compatibility?.reasons?.join(', ') || 'Good match for your interests',
+        moodBoostPotential: serverEvent.compatibility?.moodBoostPrediction || serverEvent.emotionalContext?.moodBoostPotential || 5,
+        communityVibe: this.getCommunityVibe(this.mapCategoryToType(serverEvent.category)),
+        suggestedConnections: [], // Will be populated by separate API call
+        aiInsights: `${serverEvent.compatibility?.recommendationStrength || 'medium'} compatibility match`,
+        growthOpportunity: this.getGrowthOpportunity(serverEvent.category),
+      };
+      return event;
+    });
+  }
+
+  // Map server category to mobile app event type
+  private mapCategoryToType(category: string): string {
+    const categoryMap: { [key: string]: string } = {
+      'wellness': 'fitness_wellness',
+      'social': 'food_dining',
+      'creative': 'creative_arts',
+      'outdoor': 'outdoor_activity',
+      'learning': 'tech_learning',
+      'fitness': 'fitness_wellness',
+      'mindfulness': 'fitness_wellness',
+      'community': 'cultural_exploration',
+    };
+    return categoryMap[category] || 'hobby_interest';
+  }
+
+  // Map server recommendation strength to mobile compatibility
+  private mapRecommendationToCompatibility(strength?: string): 'high' | 'medium' | 'low' {
+    switch (strength) {
+      case 'high': return 'high';
+      case 'low': return 'low';
+      default: return 'medium';
+    }
+  }
+
+  // Generate growth opportunity based on event category
+  private getGrowthOpportunity(category: string): string {
+    const growthMap: { [key: string]: string } = {
+      'wellness': 'Develop mindfulness and stress management skills',
+      'social': 'Build meaningful connections and social confidence',
+      'creative': 'Explore artistic expression and creative thinking',
+      'outdoor': 'Challenge yourself physically and connect with nature',
+      'learning': 'Expand knowledge and professional skills',
+      'fitness': 'Improve physical health and energy levels',
+      'mindfulness': 'Cultivate inner peace and emotional balance',
+      'community': 'Contribute to your community and find purpose',
+    };
+    return growthMap[category] || 'Discover new interests and expand your horizons';
   }
 
   // Analyze compatibility for a specific event
@@ -138,16 +213,84 @@ class CloudMatchingService {
         maxResults: options.maxResults || 10,
       });
 
-      if (response.success && response.data?.users) {
-        await this.cacheUserMatches(response.data.users);
-        return response.data.users;
+      if (response.success && response.data) {
+        // Transform server response to CompatibleUser format
+        const users = Array.isArray(response.data) ? response.data : [];
+        const compatibleUsers = this.transformServerUsersToCompatibleUsers(users);
+        await this.cacheUserMatches(compatibleUsers);
+        return compatibleUsers;
       } else {
-        // Generate mock compatible users
+        console.log('Compatible users API response:', response);
+        // Check cached matches first
+        const cached = await this.getCachedUserMatches();
+        if (cached.length > 0) {
+          return cached;
+        }
+        // Fallback to mock data only if no cached data
+        console.log('No cached user matches, generating mock data as fallback');
         return this.generateMockCompatibleUsers(emotionalState, options.interests);
       }
     } catch (error) {
       console.error('Error finding compatible users:', error);
-      return this.generateMockCompatibleUsers();
+      const cached = await this.getCachedUserMatches();
+      return cached.length > 0 ? cached : this.generateMockCompatibleUsers();
+    }
+  }
+
+  // Transform server user compatibility results to CompatibleUser format
+  private transformServerUsersToCompatibleUsers(serverUsers: any[]): CompatibleUser[] {
+    return serverUsers.map(serverUser => {
+      const compatibleUser: CompatibleUser = {
+        id: serverUser.userId,
+        name: serverUser.userProfile?.name || serverUser.userEmail?.split('@')[0] || 'Anonymous User',
+        compatibilityScore: serverUser.compatibility.compatibilityScore || 0,
+        sharedInterests: this.extractSharedInterests(serverUser.compatibility),
+        emotionalCompatibility: this.formatEmotionalCompatibility(serverUser.compatibility),
+        connectionReason: serverUser.compatibility.strengths?.join(', ') || 'Similar interests and values',
+      };
+      return compatibleUser;
+    });
+  }
+
+  // Extract shared interests from compatibility analysis
+  private extractSharedInterests(compatibility: any): string[] {
+    const activities = compatibility.suggestedActivities || [];
+    const strengths = compatibility.strengths || [];
+    return [...activities, ...strengths].slice(0, 3); // Limit to 3 interests
+  }
+
+  // Format emotional compatibility for display
+  private formatEmotionalCompatibility(compatibility: any): string {
+    const harmony = compatibility.compatibilityFactors?.emotionalHarmony || 5;
+    if (harmony >= 8) return 'Excellent emotional harmony';
+    if (harmony >= 6) return 'Good emotional balance';
+    return 'Complementary emotional styles';
+  }
+
+  // Add missing cache methods
+  private async getCachedUserMatches(): Promise<CompatibleUser[]> {
+    try {
+      const userId = await SecureStorageService.getItem('userId');
+      if (!userId) return [];
+      
+      const cacheKey = getCacheKeys(userId).userMatches;
+      const cached = await AsyncStorage.getItem(cacheKey);
+      return cached ? JSON.parse(cached) : [];
+    } catch (error) {
+      console.error('Error getting cached user matches:', error);
+      return [];
+    }
+  }
+
+  private async cacheUserMatches(users: CompatibleUser[]): Promise<void> {
+    try {
+      const userId = await SecureStorageService.getItem('userId');
+      if (!userId) return;
+      
+      const cacheKey = getCacheKeys(userId).userMatches;
+      await AsyncStorage.setItem(cacheKey, JSON.stringify(users));
+    } catch (error) {
+      console.error('Error caching user matches:', error);
     }
   }
 

@@ -56,12 +56,102 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       const response = await ApiService.getSubscriptionPricing();
       if (response.success && response.data?.plans) {
         setPlans(response.data.plans);
-        // Default to yearly plan
-        setSelectedPlan('yearly');
+        // Default to monthly plan
+        setSelectedPlan('monthly');
+      } else {
+        // Fallback to hardcoded plans
+        const fallbackPlans: PricingPlan[] = [
+          {
+            name: 'basic',
+            displayName: 'Core',
+            price: 19.99,
+            currency: 'USD',
+            duration: '/month',
+            features: [
+              'Basic AI Tools',
+              'Limited Conversations',
+              'Standard Support'
+            ]
+          },
+          {
+            name: 'premium',
+            displayName: 'Pro',
+            price: 49.99,
+            currency: 'USD',
+            duration: '/month',
+            savings: 'Most Popular',
+            features: [
+              'All AI Tools',
+              'Unlimited Conversations',
+              'Priority Support',
+              'Advanced Analytics'
+            ]
+          },
+          {
+            name: 'enterprise',
+            displayName: 'Prestige',
+            price: 199.99,
+            currency: 'USD',
+            duration: '/month',
+            features: [
+              'Everything in Premium',
+              'Custom AI Models',
+              'Enterprise Support',
+              'API Access',
+              'Custom Integrations'
+            ]
+          }
+        ];
+        setPlans(fallbackPlans);
+        setSelectedPlan('premium');
       }
     } catch (error) {
       console.error('Error loading pricing:', error);
-      Alert.alert('Error', 'Failed to load subscription plans');
+      // Use fallback plans on error
+      const fallbackPlans: PricingPlan[] = [
+        {
+          name: 'basic',
+          displayName: 'Core',
+          price: 19.99,
+          currency: 'USD',
+          duration: '/month',
+          features: [
+            'Basic AI Tools',
+            'Limited Conversations',
+            'Standard Support'
+          ]
+        },
+        {
+          name: 'premium',
+          displayName: 'Pro',
+          price: 49.99,
+          currency: 'USD',
+          duration: '/month',
+          savings: 'Most Popular',
+          features: [
+            'All AI Tools',
+            'Unlimited Conversations',
+            'Priority Support',
+            'Advanced Analytics'
+          ]
+        },
+        {
+          name: 'enterprise',
+          displayName: 'Prestige',
+          price: 199.99,
+          currency: 'USD',
+          duration: '/month',
+          features: [
+            'Everything in Premium',
+            'Custom AI Models',
+            'Enterprise Support',
+            'API Access',
+            'Custom Integrations'
+          ]
+        }
+      ];
+      setPlans(fallbackPlans);
+      setSelectedPlan('premium');
     } finally {
       setLoading(false);
     }
@@ -112,7 +202,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   const renderPlanCard = (plan: PricingPlan) => {
     const isSelected = selectedPlan === plan.name;
-    const isPopular = plan.name === 'yearly';
+    const isPopular = plan.name === 'premium';
     
     return (
       <TouchableOpacity
@@ -122,7 +212,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {
             backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
             borderColor: isSelected 
-              ? (isDarkMode ? '#86efac' : '#10b981')
+              ? (isDarkMode ? '#add5fa' : '#add5fa')
               : (isDarkMode ? '#333' : '#e0e0e0'),
             borderWidth: isSelected ? 2 : 1,
           }
@@ -145,7 +235,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {plan.savings && (
             <Text style={[
               styles.planSavings,
-              { color: isDarkMode ? '#86efac' : '#10b981' }
+              { color: isDarkMode ? '#add5fa' : '#add5fa' }
             ]}>
               {plan.savings}
             </Text>
@@ -173,7 +263,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               <FontAwesome5 
                 name="check" 
                 size={12} 
-                color={isDarkMode ? '#86efac' : '#10b981'} 
+                color={isDarkMode ? '#add5fa' : '#add5fa'} 
               />
               <Text style={[
                 styles.featureText,
@@ -187,7 +277,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         
         {isSelected && (
           <View style={styles.selectedIndicator}>
-            <FontAwesome5 name="check-circle" size={20} color={isDarkMode ? '#86efac' : '#10b981'} />
+            <FontAwesome5 name="check-circle" size={20} color={isDarkMode ? '#add5fa' : '#add5fa'} />
           </View>
         )}
       </TouchableOpacity>
@@ -212,12 +302,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           {/* Header */}
           <View style={styles.modalHeader}>
             <View style={styles.headerTitle}>
-              <FontAwesome5 name="crown" size={20} color="#FFD700" />
+              <FontAwesome5 name="gem" size={20} color="#add5fa" />
               <Text style={[
                 styles.modalTitle,
                 { color: isDarkMode ? '#ffffff' : '#000000' }
               ]}>
-                Upgrade to Numina Trace
+Upgrade to Numina Aether
               </Text>
             </View>
             <TouchableOpacity
@@ -234,12 +324,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
               styles.modalDescription,
               { color: isDarkMode ? '#bbbbbb' : '#666666' }
             ]}>
-              Unlock the full power of Numina with access to AI tools, advanced features, and premium support.
+              Unlock the full power of Numina with access to Numina Tools, advanced features, and premium support.
             </Text>
 
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={isDarkMode ? '#86efac' : '#10b981'} />
+                <ActivityIndicator size="large" color={isDarkMode ? '#add5fa' : '#add5fa'} />
                 <Text style={[
                   styles.loadingText,
                   { color: isDarkMode ? '#888888' : '#666666' }
@@ -262,13 +352,15 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                   styles.subscribeButton,
                   {
                     backgroundColor: selectedPlan 
-                      ? (isDarkMode ? '#86efac' : '#10b981')
+                      ? (isDarkMode ? '#add5fa' : '#add5fa')
                       : (isDarkMode ? '#333333' : '#cccccc'),
                     opacity: subscribing ? 0.7 : 1,
                   }
                 ]}
-                onPress={handleSubscribe}
-                disabled={!selectedPlan || subscribing}
+                onPress={selectedPlan ? handleSubscribe : () => {
+                  Alert.alert('No Plan Selected', 'Please select a subscription plan to continue.');
+                }}
+                disabled={subscribing}
               >
                 {subscribing ? (
                   <ActivityIndicator size="small" color="#ffffff" />
@@ -302,7 +394,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: width * 0.95,
-    maxHeight: '90%',
+    maxHeight: '95%',
     borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
@@ -333,7 +425,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     paddingHorizontal: 20,
-    maxHeight: 500,
+    maxHeight: 600,
   },
   modalDescription: {
     fontSize: 16,
@@ -354,10 +446,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_500Medium',
   },
   plansContainer: {
-    gap: 16,
+    gap: 20,
   },
   planCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 20,
     position: 'relative',
     shadowColor: '#000',
@@ -370,7 +462,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     left: 20,
-    backgroundColor: '#10b981',
+    backgroundColor: '#add5fa',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
@@ -439,8 +531,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   subscribeButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    width: '100%',
+    height: 37,
+    borderRadius: 8,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -451,8 +545,9 @@ const styles = StyleSheet.create({
   },
   subscribeButtonText: {
     color: '#ffffff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: -0.3,
     fontFamily: 'Inter_600SemiBold',
   },
   footerNote: {

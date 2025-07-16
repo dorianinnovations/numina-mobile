@@ -52,7 +52,7 @@ const FILTER_CATEGORIES = [
   { id: 'all', label: 'All', icon: 'apps' },
   { id: 'ai-matched', label: 'For You', icon: 'sparkles' },
   { id: 'nearby', label: 'Nearby', icon: 'location-outline' },
-  { id: 'today', label: 'Today', icon: 'calendar-today' },
+  { id: 'today', label: 'Today', icon: 'calendar-outline' },
   { id: 'joined', label: 'Joined', icon: 'checkmark-circle' },
 ];
 
@@ -422,6 +422,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                 ]}
                 placeholder="Search events..."
                 placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
               />
@@ -432,6 +433,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
               )}
             </View>
 
+            
             {/* Filter Toggle */}
             <TouchableOpacity
               style={[
@@ -596,6 +598,28 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
               />
             )}
           </Animated.View>
+          
+          {/* Floating POST Button */}
+          <TouchableOpacity
+            style={[
+              styles.floatingPostButton,
+              {
+                backgroundColor: NuminaColors.purple,
+                shadowColor: NuminaColors.purple,
+              }
+            ]}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              // TODO: Navigate to create event screen
+              console.log('Create new event');
+            }}
+          >
+            <Ionicons 
+              name="pencil" 
+              size={24} 
+              color="#fff" 
+            />
+          </TouchableOpacity>
         </SafeAreaView>
       </PageBackground>
     </ScreenWrapper>
@@ -615,7 +639,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     borderRadius: 16,
     borderWidth: 1,
-    gap: 16,
+    gap: 12,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -635,6 +659,21 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontFamily: 'Inter_400Regular',
+  },
+  floatingPostButton: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    zIndex: 100,
   },
   filterToggle: {
     padding: 14,

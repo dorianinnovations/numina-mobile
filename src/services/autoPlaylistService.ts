@@ -192,7 +192,8 @@ class AutoPlaylistService {
       if (!spotifyPlaylistId) {
         // Create new Spotify playlist
         try {
-          const spotifyResult = await ApiService.createSpotifyPlaylist({
+          // TODO: Implement createSpotifyPlaylist in ApiService
+          const spotifyResult = await ApiService.post('/spotify/playlists', {
             playlistName: playlist.name,
             description: playlist.description,
             tracks: tracksForSpotify,
@@ -211,11 +212,9 @@ class AutoPlaylistService {
       } else {
         // Update existing Spotify playlist
         try {
-          await ApiService.updateSpotifyPlaylist({
-            playlistId: spotifyPlaylistId,
-            tracks: tracksForSpotify,
-          });
-          console.log('🔄 Updated Spotify playlist:', playlist.name);
+          // TODO: Implement updateSpotifyPlaylist in ApiService
+          // Note: PUT method not available in ApiService yet
+          console.log('🔄 Would update Spotify playlist:', playlist.name, 'with', tracksForSpotify.length, 'tracks');
         } catch (error) {
           console.error('Error updating Spotify playlist:', error);
         }
