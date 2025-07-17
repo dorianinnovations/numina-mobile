@@ -234,6 +234,7 @@ export const Header: React.FC<HeaderProps> = ({
             </View>
 
             <View style={styles.rightSection}>
+
               {showBackButton && (
                                   <TouchableOpacity
                     style={[

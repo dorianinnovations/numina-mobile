@@ -6,6 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * Migrated from localStorage to AsyncStorage for React Native
  */
 
+import { MessageAttachment } from '../types/message';
+
 export interface Message {
   id: string;
   text: string;
@@ -13,6 +15,9 @@ export interface Message {
   timestamp: string;
   mood?: string;
   isStreaming?: boolean;
+  attachments?: MessageAttachment[];
+  hasFileContext?: boolean;
+  personalityContext?: any;
 }
 
 export interface Conversation {

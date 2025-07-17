@@ -36,4 +36,6 @@ web-build/
 
 # OS
 .DS_Store
-Thumbs.db
+Thumbs.dbbuild-test/
+dist/
+*.log

@@ -17,13 +17,16 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
 import ToolExecutionService, { ToolExecution } from '../../services/toolExecutionService';
+import { FileUploadService } from '../../services/fileUploadService';
+import { MessageAttachment, UploadProgress } from '../../types/message';
+import { AttachmentPreview } from './AttachmentPreview';
 
 const { width } = Dimensions.get('window');
 
 interface ChatInputProps {
   value: string;
   onChangeText: (text: string) => void;
-  onSend: () => void;
+  onSend: (attachments?: MessageAttachment[]) => void;
   onVoiceStart?: () => void;
   onVoiceEnd?: () => void;
   isLoading?: boolean;
@@ -39,6 +42,11 @@ interface ChatInputProps {
   // Tool execution props
   toolExecutions?: ToolExecution[];
   onToggleToolModal?: () => void;
+  // File attachment props
+  attachments?: MessageAttachment[];
+  onAttachmentsChange?: (attachments: MessageAttachment[]) => void;
+  enableFileUpload?: boolean;
+  maxAttachments?: number;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -54,6 +62,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   userEmotionalState,
   toolExecutions = [],
   onToggleToolModal,
+  attachments = [],
+  onAttachmentsChange,
+  enableFileUpload = true,
+  maxAttachments = 5,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -67,6 +79,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [zapIconScale] = useState(new Animated.Value(1));
   const autoDismissTimer = useRef<NodeJS.Timeout | null>(null);
   const toolExecutionService = ToolExecutionService.getInstance();
+  const fileUploadService = FileUploadService.getInstance();
+  
+  // File attachment state
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Check if there are active tool executions
   const hasActiveTools = toolExecutions.some(exec => exec.status === 'executing');
@@ -83,6 +100,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   
   // Computed values
   const isInputEmpty = !value.trim();
+  const hasAttachments = attachments.length > 0;
+  const canSend = (!isInputEmpty || hasAttachments) && !isLoading && !isUploading;
 
   // Voice recording animation
   useEffect(() => {
@@ -497,7 +516,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSendPress = async () => {
-    if (!value.trim() || isLoading) return;
+    if (!canSend) return;
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -515,7 +534,43 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }).start();
     });
 
-    onSend();
+    // Upload attachments if any are pending
+    let finalAttachments = attachments;
+    if (hasAttachments) {
+      const pendingAttachments = attachments.filter(a => a.uploadStatus === 'pending');
+      
+      if (pendingAttachments.length > 0) {
+        setIsUploading(true);
+        try {
+          const uploadedAttachments = await fileUploadService.uploadFiles(
+            pendingAttachments,
+            (overall, individual) => {
+              setUploadProgress(individual);
+            }
+          );
+          
+          // Update attachments with uploaded versions
+          finalAttachments = attachments.map(attachment => {
+            const uploaded = uploadedAttachments.find(u => u.id === attachment.id);
+            return uploaded || attachment;
+          });
+          
+          onAttachmentsChange?.(finalAttachments);
+        } catch (error) {
+          console.error('Upload failed:', error);
+          // Continue with send even if upload fails
+        } finally {
+          setIsUploading(false);
+        }
+      }
+    }
+
+    onSend(finalAttachments);
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    const newAttachments = attachments.filter(a => a.id !== attachmentId);
+    onAttachmentsChange?.(newAttachments);
   };
   
   const handleZapPress = async () => {
@@ -643,6 +698,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
             />
           </Animated.View>
 
+
           {/* Tools Zap Button */}
           <View style={styles.zapButtonContainer}>
             <TouchableOpacity
@@ -701,14 +757,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <View style={styles.sendButtonContainer}>
             <TouchableOpacity
               onPress={handleSendPress}
-              disabled={isInputEmpty || isLoading}
+              disabled={!canSend}
               activeOpacity={0.7}
               style={styles.sendButtonContainer}
             >
               <Animated.View style={[
                 styles.sendButton,
                 {
-                  backgroundColor: (!isInputEmpty && !isLoading)
+                  backgroundColor: canSend
                     ? (isDarkMode ? '#6ec5ff' : '#6ec5ff')
                     : (isDarkMode ? '#8acbff' : '#acdcff'),
                   borderColor: 'transparent',
@@ -716,10 +772,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 }
               ]}>
                 <FontAwesome5
-                  name={isLoading ? "circle-notch" : "arrow-up"}
+                  name={isLoading || isUploading ? "circle-notch" : "arrow-up"}
                   size={18}
                   color={isDarkMode ? '#ffffff' : '#616161'}
-                  style={isLoading ? { transform: [{ rotate: '45deg' }] } : {}}
+                  style={isLoading || isUploading ? { transform: [{ rotate: '45deg' }] } : {}}
                 />
               </Animated.View>
             </TouchableOpacity>
@@ -835,6 +891,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </Animated.View>
         </TouchableOpacity>
       )}
+
+      {/* Attachment Preview */}
+      {hasAttachments && (
+        <AttachmentPreview
+          attachments={attachments}
+          uploadProgress={uploadProgress}
+          onRemoveAttachment={handleRemoveAttachment}
+        />
+      )}
+
     </View>
   );
 };

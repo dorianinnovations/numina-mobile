@@ -29,7 +29,7 @@ interface UseAIPersonalityReturn {
   isAnalyzing: boolean;
   analyzeEmotionalState: () => Promise<UserEmotionalState>;
   getPersonalityRecommendations: () => Promise<AIPersonality>;
-  sendAdaptiveChatMessage: (prompt: string, onChunk: (chunk: string, context?: PersonalityContext) => void) => Promise<{ content: string; personalityContext: PersonalityContext }>;
+  sendAdaptiveChatMessage: (prompt: string, onChunk: (chunk: string, context?: PersonalityContext) => void, attachments?: any[]) => Promise<{ content: string; personalityContext: PersonalityContext }>;
   submitFeedback: (messageId: string, feedback: 'helpful' | 'not_helpful' | 'love_it', style: string) => Promise<void>;
   getContextualSuggestions: () => string[];
   getAdaptivePlaceholder: () => string;
@@ -130,10 +130,11 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
 
   const sendAdaptiveChatMessage = useCallback(async (
     prompt: string,
-    onChunk: (chunk: string, context?: PersonalityContext) => void
+    onChunk: (chunk: string, context?: PersonalityContext) => void,
+    attachments?: any[]
   ): Promise<{ content: string; personalityContext: PersonalityContext }> => {
     try {
-      return await aiPersonalityService.sendAdaptiveChatMessage(prompt, onChunk);
+      return await aiPersonalityService.sendAdaptiveChatMessage(prompt, onChunk, attachments);
     } catch (err: any) {
       // CRITICAL FIX: Only update error state if component is still mounted
       if (isMountedRef.current) {

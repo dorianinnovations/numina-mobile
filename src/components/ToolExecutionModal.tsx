@@ -15,6 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { ToolExecution } from '../services/toolExecutionService';
 import { AIToolExecutionStream } from './AIToolExecutionStream';
+import { FileUploadService } from '../services/fileUploadService';
+import { MessageAttachment } from '../types/message';
 import * as Haptics from 'expo-haptics';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -24,6 +26,7 @@ interface ToolExecutionModalProps {
   onClose: () => void;
   toolExecutions: ToolExecution[];
   currentMessage: string;
+  onAttachmentSelected?: (attachment: MessageAttachment) => void;
 }
 
 export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
@@ -31,9 +34,16 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   onClose,
   toolExecutions,
   currentMessage,
+  onAttachmentSelected,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isClosing, setIsClosing] = useState(false);
+  const fileUploadService = FileUploadService.getInstance();
+  
+  // Animation refs for upload buttons
+  const cameraButtonScale = useRef(new Animated.Value(1)).current;
+  const photoLibraryButtonScale = useRef(new Animated.Value(1)).current;
+  const fileButtonScale = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(screenHeight * 0.3)).current;
   const backgroundOpacity = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -158,6 +168,79 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
     }
   };
 
+  // Beautiful heavy button animation with slight bounce - 70% faster
+  const animateButton = (buttonScale: Animated.Value, callback: () => void) => {
+    Animated.sequence([
+      // Heavy press down - 70% faster
+      Animated.timing(buttonScale, {
+        toValue: 0.85,
+        duration: 30, // 100ms * 0.3 = 30ms
+        useNativeDriver: true,
+      }),
+      // Slight bounce back up with spring - much snappier
+      Animated.spring(buttonScale, {
+        toValue: 1.02,
+        useNativeDriver: true,
+        tension: 500, // Increased from 300 for faster response
+        friction: 6,  // Reduced from 10 for less damping
+      }),
+      // Settle to normal with gentle bounce - faster settle
+      Animated.spring(buttonScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 400, // Increased from 200 for faster response
+        friction: 5,  // Reduced from 8 for quicker settle
+      }),
+    ]).start(() => {
+      callback();
+    });
+  };
+
+  const handleCameraUpload = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    animateButton(cameraButtonScale, async () => {
+      try {
+        const attachment = await fileUploadService.takePhoto();
+        if (attachment && onAttachmentSelected) {
+          onAttachmentSelected(attachment);
+          handleClose();
+        }
+      } catch (error) {
+        console.error('Camera upload failed:', error);
+      }
+    });
+  };
+
+  const handlePhotoLibraryUpload = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    animateButton(photoLibraryButtonScale, async () => {
+      try {
+        const attachment = await fileUploadService.pickPhoto();
+        if (attachment && onAttachmentSelected) {
+          onAttachmentSelected(attachment);
+          handleClose();
+        }
+      } catch (error) {
+        console.error('Photo library upload failed:', error);
+      }
+    });
+  };
+
+  const handleFileUpload = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    animateButton(fileButtonScale, async () => {
+      try {
+        const attachment = await fileUploadService.pickDocument();
+        if (attachment && onAttachmentSelected) {
+          onAttachmentSelected(attachment);
+          handleClose();
+        }
+      } catch (error) {
+        console.error('File upload failed:', error);
+      }
+    });
+  };
+
   const activeExecutions = toolExecutions.filter(exec => exec.status === 'executing');
   const completedExecutions = toolExecutions.filter(exec => exec.status === 'completed');
   const failedExecutions = toolExecutions.filter(exec => exec.status === 'error');
@@ -237,26 +320,48 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                 <View style={styles.headerRight}>
                   {/* Upload Buttons */}
                   <View style={styles.uploadButtons}>
-                    <TouchableOpacity
-                      style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
-                      onPress={() => console.log('Photo upload')}
-                    >
-                      <FontAwesome5
-                        name="camera"
-                        size={18}
-                        color={isDarkMode ? '#71c9fc' : '#71c9fc'}
-                      />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
-                      onPress={() => console.log('File upload')}
-                    >
-                      <FontAwesome5
-                        name="paperclip"
-                        size={18}
-                        color={isDarkMode ? '#71c9fc' : '#71c9fc'}
-                      />
-                    </TouchableOpacity>
+                    <Animated.View style={{ transform: [{ scale: cameraButtonScale }] }}>
+                      <TouchableOpacity
+                        style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
+                        onPress={handleCameraUpload}
+                        activeOpacity={0.8}
+                      >
+                        <FontAwesome5
+                          name="camera-retro"
+                          size={18}
+                          solid
+                          color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                        />
+                      </TouchableOpacity>
+                    </Animated.View>
+                    <Animated.View style={{ transform: [{ scale: photoLibraryButtonScale }] }}>
+                      <TouchableOpacity
+                        style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
+                        onPress={handlePhotoLibraryUpload}
+                        activeOpacity={0.8}
+                      >
+                        <FontAwesome5
+                          name="images"
+                          size={18}
+                          solid
+                          color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                        />
+                      </TouchableOpacity>
+                    </Animated.View>
+                    <Animated.View style={{ transform: [{ scale: fileButtonScale }] }}>
+                      <TouchableOpacity
+                        style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
+                        onPress={handleFileUpload}
+                        activeOpacity={0.8}
+                      >
+                        <FontAwesome5
+                          name="file-upload"
+                          size={18}
+                          solid
+                          color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                        />
+                      </TouchableOpacity>
+                    </Animated.View>
                     <TouchableOpacity
                       style={[styles.uploadButton, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }]}
                       onPress={() => console.log('Music upload')}

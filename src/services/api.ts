@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import AuthManager from './authManager';
+import SecureAuthManager from './secureAuthManager';
 import ToolExecutionService from './toolExecutionService';
 
 /**
@@ -65,6 +65,16 @@ interface ChatMessage {
   temperature?: number;
   n_predict?: number;
   stop?: string[];
+  files?: FileAttachment[];
+}
+
+interface FileAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  extractedText?: string;
 }
 
 interface EmotionData {
@@ -265,8 +275,16 @@ class ApiService {
     
     for (let attempt = 1; attempt <= retryAttempts; attempt++) {
       try {
-        // Get token from AuthManager (single source of truth)
-        const token = await AuthManager.getInstance().getCurrentToken();
+        // Get token from AuthManager (single source of truth) - handle circular dependency
+        let token: string | null = null;
+        try {
+          token = await SecureAuthManager.getInstance().getCurrentToken();
+        } catch (error) {
+          // Ignore errors during auth calls to prevent circular dependency issues
+          if (!endpoint.includes('/login') && !endpoint.includes('/signup')) {
+            console.warn('Could not get token for API request:', endpoint);
+          }
+        }
         
         // Default headers with security headers
         const defaultHeaders: Record<string, string> = {
@@ -311,7 +329,7 @@ class ApiService {
               !endpoint.includes('/sentiment-data') &&  // Don't logout on sentiment data errors
               !endpoint.includes('/analytics/llm')) {    // Don't logout on LLM errors
             // Use AuthManager for consistent auth clearing
-            await AuthManager.getInstance().logout();
+            await SecureAuthManager.getInstance().logout();
             throw new Error('Authentication expired');
           }
           
@@ -439,13 +457,19 @@ class ApiService {
     });
   }
 
-  static async signUp(credentials: SignUpCredentials): Promise<ApiResponse<{
+  static async signup(credentials: SignUpCredentials): Promise<ApiResponse<{
     token: string;
     data: { user: UserData };
   }>> {
     return this.apiRequest('/signup', {
       method: 'POST',
       body: JSON.stringify(credentials),
+    });
+  }
+
+  static async logout(): Promise<ApiResponse> {
+    return this.apiRequest('/logout', {
+      method: 'POST',
     });
   }
 
@@ -459,7 +483,7 @@ class ApiService {
     message: ChatMessage, 
     onChunk: (chunk: string) => void
   ): Promise<string> {
-    const token = await AuthManager.getInstance().getCurrentToken();
+    const token = await SecureAuthManager.getInstance().getCurrentToken();
     
     // Always use production URL
     const chatUrl = CHAT_API_CONFIG.PRODUCTION_URL;
@@ -650,7 +674,7 @@ class ApiService {
     timeframe: string = 'week',
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = await AuthManager.getInstance().getCurrentToken();
+    const token = await SecureAuthManager.getInstance().getCurrentToken();
     const url = `${this.baseURL}/personal-insights/growth-summary?timeframe=${timeframe}&stream=true`;
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -842,15 +866,23 @@ class ApiService {
     },
     onChunk: (chunk: string, context?: PersonalityContext) => void
   ): Promise<{ content: string; personalityContext: PersonalityContext }> {
-    const token = await AuthManager.getInstance().getCurrentToken();
+    const token = await SecureAuthManager.getInstance().getCurrentToken();
     const chatUrl = `${this.baseURL}/ai/adaptive-chat`;
+
+    // Validate message content - prevent empty messages
+    const messageText = message.message || message.prompt || '';
+    if (!messageText.trim()) {
+      console.error('🔄 ADAPTIVE_CHAT: Empty message detected, rejecting request');
+      throw new Error('Cannot send empty message to adaptive chat');
+    }
 
     console.log('🔄 ADAPTIVE_CHAT: Starting request to:', chatUrl);
     console.log('🔄 ADAPTIVE_CHAT: Message payload:', {
-      message: message.message || message.prompt,
+      message: messageText,
       hasEmotionalContext: !!message.emotionalContext,
       personalityStyle: message.personalityStyle,
-      stream: message.stream
+      stream: message.stream,
+      messageLength: messageText.length
     });
 
     return new Promise((resolve, reject) => {
@@ -1234,7 +1266,7 @@ class ApiService {
 
   // Validate token on app startup
   static async validateToken(): Promise<ApiResponse<UserData>> {
-    const token = await AuthManager.getInstance().getCurrentToken();
+    const token = await SecureAuthManager.getInstance().getCurrentToken();
     
     if (!token) {
       return {
@@ -1350,7 +1382,7 @@ class ApiService {
     } = {},
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = await AuthManager.getInstance().getCurrentToken();
+    const token = await SecureAuthManager.getInstance().getCurrentToken();
     const url = `${this.baseURL}/cascading-recommendations/generate`;
 
     return new Promise((resolve, reject) => {
@@ -1994,6 +2026,157 @@ class ApiService {
         break;
       }
     }
+  }
+
+  // File Upload API
+  static async uploadFile(file: FormData): Promise<ApiResponse<{ url: string; extractedText?: string }>> {
+    try {
+      // Get token from AuthManager
+      const token = await SecureAuthManager.getInstance().getCurrentToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required for file upload'
+        };
+      }
+
+      const response = await fetch(`${this.baseURL}/upload`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type for FormData, let the browser set it with boundary
+        },
+        body: file,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        return {
+          success: false,
+          error: errorData.message || `Upload failed with status ${response.status}`
+        };
+      }
+
+      const data = await response.json();
+      return {
+        success: true,
+        data: {
+          url: data.url,
+          extractedText: data.extractedText
+        }
+      };
+    } catch (error) {
+      this.logError('uploadFile', error, '/upload');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Upload failed'
+      };
+    }
+  }
+
+  // Enhanced chat message with file support
+  static async sendChatMessageWithFiles(
+    message: ChatMessage & { files?: FileAttachment[] },
+    onChunk?: (chunk: string) => void
+  ): Promise<void> {
+    try {
+      const token = await SecureAuthManager.getInstance().getCurrentToken();
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+
+      // Build the request body with file context
+      const requestBody = {
+        ...message,
+        prompt: this.buildPromptWithFileContext(message.prompt, message.files),
+        stream: true,
+      };
+
+      // Remove files from request body as they're now embedded in prompt
+      delete requestBody.files;
+
+      const response = await fetch(CHAT_API_CONFIG.PRODUCTION_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...SECURITY_HEADERS,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Chat request failed: ${response.statusText}`);
+      }
+
+      // Handle streaming response
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6);
+              if (data === '[DONE]') continue;
+              
+              try {
+                const parsed = JSON.parse(data);
+                if (parsed.choices && parsed.choices[0]?.delta?.content) {
+                  onChunk?.(parsed.choices[0].delta.content);
+                }
+              } catch (e) {
+                // Skip invalid JSON lines
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.logError('sendChatMessageWithFiles', error, '/completion');
+      throw error;
+    }
+  }
+
+  // Build prompt with file context
+  private static buildPromptWithFileContext(prompt: string, files?: FileAttachment[]): string {
+    if (!files || files.length === 0) {
+      return prompt;
+    }
+
+    let contextualPrompt = prompt;
+    
+    // Add file context at the beginning
+    const fileContext = files.map(file => {
+      let context = `[File: ${file.name} (${file.type}, ${this.formatFileSize(file.size)})]`;
+      
+      if (file.extractedText) {
+        context += `\nContent: ${file.extractedText.slice(0, 2000)}${file.extractedText.length > 2000 ? '...' : ''}`;
+      }
+      
+      return context;
+    }).join('\n\n');
+
+    contextualPrompt = `${fileContext}\n\nUser Query: ${prompt}`;
+    
+    return contextualPrompt;
+  }
+
+  // Helper to format file size
+  private static formatFileSize(bytes: number): string {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   }
 }
 

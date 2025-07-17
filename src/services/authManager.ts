@@ -1,10 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './api';
 
 /**
- * Centralized Authentication Manager
- * Single source of truth for authentication state
- * Prevents race conditions and token clearing issues
+ * SECURE Cloud-Only Authentication Manager
+ * NO LOCAL STORAGE - All auth data stored server-side only
+ * Memory-only session management to prevent data persistence
  */
 
 interface AuthState {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AuthManager, { AuthState, AuthResult } from '../services/authManager';
+import SecureAuthManager, { SecureAuthState, AuthResult } from '../services/secureAuthManager';
 import ApiService from '../services/api';
 
 /**
@@ -62,11 +62,12 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [authState, setAuthState] = useState<AuthState>({
+  const [authState, setAuthState] = useState<SecureAuthState>({
     isAuthenticated: false,
     isInitializing: true,
     user: null,
-    token: null,
+    sessionToken: null,
+    sessionExpiry: null,
     lastValidation: 0
   });
   const [loading, setLoading] = useState(false);
@@ -75,15 +76,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
   
-  const authManager = AuthManager.getInstance();
+  const secureAuthManager = SecureAuthManager.getInstance();
 
   // Subscribe to auth state changes
   useEffect(() => {
-    const unsubscribe = authManager.subscribe((newState) => {
-      console.log('[AuthContext] Auth state updated:', {
+    const unsubscribe = secureAuthManager.subscribe((newState) => {
+      console.log('🔐 AUTH CONTEXT: Secure auth state updated:', {
         isAuthenticated: newState.isAuthenticated,
         hasUser: !!newState.user,
-        hasToken: !!newState.token,
+        hasSessionToken: !!newState.sessionToken,
         isInitializing: newState.isInitializing
       });
       setAuthState(newState);
@@ -99,8 +100,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    // Initialize authentication on mount
-    initializeAuth();
+    // Initialize secure authentication on mount
+    initializeSecureAuth();
 
     return unsubscribe;
   }, []);
@@ -122,19 +123,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const initializeAuth = async () => {
-    console.log('[AuthContext] Initializing authentication...');
+  const initializeSecureAuth = async () => {
+    console.log('🔐 AUTH CONTEXT: Initializing secure authentication...');
     
     try {
-      const result = await authManager.initializeAuth();
+      const result = await secureAuthManager.initializeAuth();
       
       if (result.success) {
-        console.log('[AuthContext] Authentication initialized successfully');
+        console.log('🔐 AUTH CONTEXT: Secure authentication initialized successfully');
       } else {
-        console.log('[AuthContext] No valid authentication found:', result.error);
+        console.log('🔐 AUTH CONTEXT: Fresh session - user must login');
       }
     } catch (error) {
-      console.error('[AuthContext] Authentication initialization failed:', error);
+      console.error('🔐 AUTH CONTEXT: Secure authentication initialization failed:', error);
     }
   };
 
@@ -144,7 +145,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[AuthContext] Login attempt for:', credentials.email);
     
     try {
-      const result = await authManager.login(credentials);
+      const result = await secureAuthManager.login(credentials);
       
       if (result.success) {
         console.log('[AuthContext] Login successful');
@@ -167,7 +168,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[AuthContext] Sign up attempt for:', credentials.email);
     
     try {
-      const result = await authManager.signUp(credentials);
+      const result = await secureAuthManager.signUp(credentials);
       
       if (result.success) {
         console.log('[AuthContext] Sign up successful');
@@ -190,23 +191,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('[AuthContext] Logout initiated');
     
     try {
-      await authManager.logout();
-      console.log('[AuthContext] Logout completed');
+      await secureAuthManager.logout();
+      console.log('🔐 AUTH CONTEXT: Secure logout completed');
     } catch (error) {
-      console.error('[AuthContext] Logout error:', error);
+      console.error('🔐 AUTH CONTEXT: Secure logout error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Get current user ID
+  // Get current user ID (secure)
   const getCurrentUserId = (): string | null => {
-    return authManager.getCurrentUserId();
+    return secureAuthManager.getCurrentUserId();
   };
 
-  // Get current token
+  // Get current session token (secure)
   const getCurrentToken = (): string | null => {
-    return authManager.getCurrentToken();
+    return secureAuthManager.getCurrentToken();
   };
 
   // Refresh subscription data
@@ -224,7 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     userData: authState.user,
     isInitializing: authState.isInitializing,
     user: authState.user,
-    authToken: authState.token,
+    authToken: authState.sessionToken,
     
     // Subscription state
     subscriptionData,

@@ -277,21 +277,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             returnKeyType="next"
                             editable={!loading}
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
-                            onPressIn={() => {
-                              Animated.spring(emailInputScaleAnim, {
-                                toValue: 1.02,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onFocus={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(emailInputScaleAnim, {
+                                  toValue: 1.02,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
-                            onPressOut={() => {
-                              Animated.spring(emailInputScaleAnim, {
-                                toValue: 1,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onBlur={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(emailInputScaleAnim, {
+                                  toValue: 1,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
                           />
                         </Animated.View>
@@ -315,21 +321,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             returnKeyType="next"
                             editable={!loading}
                             onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-                            onPressIn={() => {
-                              Animated.spring(passwordInputScaleAnim, {
-                                toValue: 1.02,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onFocus={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(passwordInputScaleAnim, {
+                                  toValue: 1.02,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
-                            onPressOut={() => {
-                              Animated.spring(passwordInputScaleAnim, {
-                                toValue: 1,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onBlur={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(passwordInputScaleAnim, {
+                                  toValue: 1,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
                           />
                         </Animated.View>
@@ -356,21 +368,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               Keyboard.dismiss();
                               handleSubmit();
                             }}
-                            onPressIn={() => {
-                              Animated.spring(confirmPasswordInputScaleAnim, {
-                                toValue: 1.02,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onFocus={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(confirmPasswordInputScaleAnim, {
+                                  toValue: 1.02,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
-                            onPressOut={() => {
-                              Animated.spring(confirmPasswordInputScaleAnim, {
-                                toValue: 1,
-                                useNativeDriver: true,
-                                speed: 50,
-                                bounciness: 8,
-                              }).start();
+                            onBlur={() => {
+                              // Only animate on mobile, not web
+                              if (Platform.OS !== 'web') {
+                                Animated.spring(confirmPasswordInputScaleAnim, {
+                                  toValue: 1,
+                                  useNativeDriver: true,
+                                  speed: 50,
+                                  bounciness: 8,
+                                }).start();
+                              }
                             }}
                           />
                         </Animated.View>

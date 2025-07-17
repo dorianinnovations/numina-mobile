@@ -194,10 +194,11 @@ class AIPersonalityService {
     return this.generateLocalPersonalityRecommendations(state);
   }
 
-  // Send adaptive chat message with personality context
+  // Send adaptive chat message with personality context and optional attachments
   async sendAdaptiveChatMessage(
     prompt: string,
-    onChunk: (chunk: string, context?: PersonalityContext) => void
+    onChunk: (chunk: string, context?: PersonalityContext) => void,
+    attachments?: any[]
   ): Promise<{ content: string; personalityContext: PersonalityContext }> {
     const emotionalState = await this.analyzeCurrentEmotionalState();
     const personality = await this.getPersonalityRecommendations(emotionalState);
@@ -212,7 +213,7 @@ class AIPersonalityService {
     };
     
     try {
-      // Try adaptive chat endpoint first
+      // Try adaptive chat endpoint first with attachments support
       const result = await ApiService.sendAdaptiveChatMessage(
         {
           prompt: prompt,
@@ -221,6 +222,7 @@ class AIPersonalityService {
           personalityStyle: personality.communicationStyle,
           stream: true,
           temperature: 0.8,
+          attachments: attachments, // Pass attachments to backend
         },
         (chunk, context) => {
           // Use server context if provided, otherwise use our default

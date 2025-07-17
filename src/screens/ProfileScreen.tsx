@@ -24,6 +24,7 @@ import { useAuth } from "../contexts/SimpleAuthContext";
 import { PageBackground } from '../components/PageBackground';
 import { Header } from '../components/Header';
 import ApiService from '../services/api';
+import CloudStorageService, { UploadProgress } from '../services/cloudStorageService';
 
 const { width } = Dimensions.get('window');
 
@@ -106,6 +107,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showInterestSelector, setShowInterestSelector] = useState(false);
   const [showPersonalitySelector, setShowPersonalitySelector] = useState(false);
   const [showCoverImagePicker, setShowCoverImagePicker] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    profile?: UploadProgress;
+    cover?: UploadProgress;
+  }>({});
+  const [isUploading, setIsUploading] = useState(false);
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [showSocialLinksEditor, setShowSocialLinksEditor] = useState(false);
   const [showContactInfoEditor, setShowContactInfoEditor] = useState(false);
@@ -197,7 +203,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
           aspect: imageType === 'cover' ? [16, 9] : [1, 1],
-          quality: 0.7,
+          quality: 0.8,
           base64: false,
         });
       } else {
@@ -205,30 +211,81 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           mediaTypes: ImagePicker.MediaTypeOptions.Images,
           allowsEditing: true,
           aspect: imageType === 'cover' ? [16, 9] : [1, 1],
-          quality: 0.7,
+          quality: 0.8,
           base64: false,
         });
       }
 
       if (!result.canceled && result.assets[0]) {
-        const updatedProfile = imageType === 'cover' 
-          ? { ...profile, coverImage: result.assets[0].uri }
-          : { ...profile, profileImage: result.assets[0].uri };
+        const localUri = result.assets[0].uri;
+        const userId = userData?.id;
         
-        setProfile(updatedProfile);
+        if (!userId) {
+          Alert.alert('Error', 'User not authenticated. Please log in again.');
+          return;
+        }
+
+        // Set uploading state
+        setIsUploading(true);
         
-        // Persist to storage
-        await AsyncStorage.setItem('userProfile', JSON.stringify(updatedProfile));
-        
+        // Close picker modal
         if (imageType === 'cover') {
           setShowCoverImagePicker(false);
         } else {
           setShowImagePicker(false);
         }
+
+        // Show local image immediately for better UX
+        const tempProfile = imageType === 'cover' 
+          ? { ...profile, coverImage: localUri }
+          : { ...profile, profileImage: localUri };
+        setProfile(tempProfile);
+
+        console.log(`🔄 Uploading ${imageType} image to cloud storage...`);
+
+        // Upload to cloud storage
+        const uploadResult = await CloudStorageService.uploadUserImage(
+          localUri,
+          userId,
+          imageType === 'cover' ? 'banner' : 'profile',
+          (progress) => {
+            setUploadProgress(prev => ({
+              ...prev,
+              [imageType]: progress
+            }));
+          }
+        );
+
+        if (uploadResult.success && uploadResult.url) {
+          // Update profile with cloud URL
+          const updatedProfile = imageType === 'cover' 
+            ? { ...profile, coverImage: uploadResult.url }
+            : { ...profile, profileImage: uploadResult.url };
+          
+          setProfile(updatedProfile);
+          
+          // Persist to storage
+          await AsyncStorage.setItem('userProfile', JSON.stringify(updatedProfile));
+          
+          console.log(`✅ ${imageType} image uploaded successfully:`, uploadResult.url);
+          Alert.alert('Success', `${imageType === 'cover' ? 'Banner' : 'Profile picture'} uploaded successfully!`);
+          
+        } else {
+          // Revert to previous image on upload failure
+          setProfile(profile);
+          console.error(`❌ ${imageType} image upload failed:`, uploadResult.error);
+          Alert.alert('Upload Failed', uploadResult.error || 'Failed to upload image. Please try again.');
+        }
+
+        // Reset upload state
+        setIsUploading(false);
+        setUploadProgress(prev => ({ ...prev, [imageType]: undefined }));
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to select image. Please try again.');
+      console.error('Error picking/uploading image:', error);
+      Alert.alert('Error', 'Failed to select or upload image. Please try again.');
+      setIsUploading(false);
+      setUploadProgress({});
     }
   };
 
@@ -374,7 +431,26 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 onPress={() => setShowCoverImagePicker(true)}
               >
                 {profile.coverImage ? (
-                  <Image source={{ uri: profile.coverImage }} style={styles.coverPhotoImage} />
+                  <>
+                    <Image source={{ uri: profile.coverImage }} style={styles.coverPhotoImage} />
+                    {uploadProgress.cover && (
+                      <View style={styles.uploadOverlay}>
+                        <View style={styles.uploadProgressContainer}>
+                          <Text style={styles.uploadProgressText}>
+                            Uploading... {uploadProgress.cover.percentage}%
+                          </Text>
+                          <View style={styles.uploadProgressBar}>
+                            <View 
+                              style={[
+                                styles.uploadProgressFill, 
+                                { width: `${uploadProgress.cover.percentage}%` }
+                              ]} 
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <LinearGradient
                     colors={[profile.customization.themeColor + '40', profile.customization.themeColor + '20']}
@@ -443,7 +519,18 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 onPress={() => setShowImagePicker(true)}
               >
                 {profile.profileImage ? (
-                  <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
+                  <>
+                    <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
+                    {uploadProgress.profile && (
+                      <View style={styles.profileUploadOverlay}>
+                        <View style={styles.uploadProgressContainer}>
+                          <Text style={[styles.uploadProgressText, { fontSize: 12 }]}>
+                            {uploadProgress.profile.percentage}%
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <FontAwesome5 
                     name="user" 
@@ -3016,5 +3103,51 @@ const styles = StyleSheet.create({
     borderColor: '#ffffff',
     borderTopColor: 'transparent',
     // Add animation via transform property
+  },
+  
+  // Upload progress overlay styles
+  uploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  profileUploadOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 50,
+  },
+  uploadProgressContainer: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  uploadProgressText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  uploadProgressBar: {
+    width: 120,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  uploadProgressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+    borderRadius: 2,
   },
 });

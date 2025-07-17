@@ -1,0 +1,351 @@
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { Platform } from 'react-native';
+import { MessageAttachment, FileUploadOptions, UploadProgress } from '../types/message';
+import ApiService from './api';
+
+export class FileUploadService {
+  private static instance: FileUploadService;
+  private uploadQueue: Map<string, UploadProgress> = new Map();
+  private activeUploads: Set<string> = new Set();
+
+  public static getInstance(): FileUploadService {
+    if (!FileUploadService.instance) {
+      FileUploadService.instance = new FileUploadService();
+    }
+    return FileUploadService.instance;
+  }
+
+  private defaultOptions: FileUploadOptions = {
+    maxSizeBytes: 5 * 1024 * 1024, // 5MB
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp', 'text/plain', 'application/pdf'],
+    compressionQuality: 0.8,
+    enableImageProcessing: true,
+    enableTextExtraction: true,
+  };
+
+  // Request permissions for camera and media library
+  public async requestPermissions(): Promise<boolean> {
+    try {
+      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      return cameraStatus === 'granted' && mediaStatus === 'granted';
+    } catch (error) {
+      console.error('Permission request failed:', error);
+      return false;
+    }
+  }
+
+  // Take photo with camera
+  public async takePhoto(): Promise<MessageAttachment | null> {
+    try {
+      const hasPermissions = await this.requestPermissions();
+      if (!hasPermissions) {
+        throw new Error('Camera permissions not granted');
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return null;
+      }
+
+      return this.createAttachmentFromImageAsset(result.assets[0]);
+    } catch (error) {
+      console.error('Camera capture failed:', error);
+      throw new Error('Failed to capture photo');
+    }
+  }
+
+  // Pick photo from gallery
+  public async pickPhoto(): Promise<MessageAttachment | null> {
+    try {
+      const hasPermissions = await this.requestPermissions();
+      if (!hasPermissions) {
+        throw new Error('Media library permissions not granted');
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.9,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return null;
+      }
+
+      return this.createAttachmentFromImageAsset(result.assets[0]);
+    } catch (error) {
+      console.error('Photo picking failed:', error);
+      throw new Error('Failed to pick photo');
+    }
+  }
+
+  // Pick document file
+  public async pickDocument(): Promise<MessageAttachment | null> {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['text/plain', 'application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return null;
+      }
+
+      const asset = result.assets[0];
+      return this.createAttachmentFromDocumentAsset(asset);
+    } catch (error) {
+      console.error('Document picking failed:', error);
+      throw new Error('Failed to pick document');
+    }
+  }
+
+  // Compress and optimize image
+  private async compressImage(uri: string, quality: number = 0.8): Promise<string> {
+    try {
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1024 } }], // Resize to max 1024px width
+        {
+          compress: quality,
+          format: ImageManipulator.SaveFormat.JPEG,
+        }
+      );
+      return result.uri;
+    } catch (error) {
+      console.error('Image compression failed:', error);
+      return uri; // Return original if compression fails
+    }
+  }
+
+  // Create attachment from image picker result
+  private async createAttachmentFromImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<MessageAttachment> {
+    const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+    const fileName = asset.uri.split('/').pop() || `image_${Date.now()}.jpg`;
+    
+    // Compress image if it's too large
+    let processedUri = asset.uri;
+    if (fileInfo.exists && fileInfo.size && fileInfo.size > 1024 * 1024) { // > 1MB
+      processedUri = await this.compressImage(asset.uri, this.defaultOptions.compressionQuality);
+    }
+
+    const processedInfo = await FileSystem.getInfoAsync(processedUri);
+
+    return {
+      id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'image',
+      name: fileName,
+      size: processedInfo.exists ? processedInfo.size || 0 : 0,
+      uri: processedUri,
+      mimeType: 'image/jpeg',
+      uploadStatus: 'pending',
+      width: asset.width,
+      height: asset.height,
+    };
+  }
+
+  // Create attachment from document picker result
+  private async createAttachmentFromDocumentAsset(asset: DocumentPicker.DocumentPickerAsset): Promise<MessageAttachment> {
+    const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+    
+    // Validate file size
+    if (fileInfo.exists && fileInfo.size && fileInfo.size > this.defaultOptions.maxSizeBytes) {
+      throw new Error(`File too large. Maximum size is ${this.defaultOptions.maxSizeBytes / (1024 * 1024)}MB`);
+    }
+
+    // Determine attachment type
+    let attachmentType: MessageAttachment['type'] = 'document';
+    if (asset.mimeType?.startsWith('image/')) {
+      attachmentType = 'image';
+    } else if (asset.mimeType === 'text/plain') {
+      attachmentType = 'text';
+    }
+
+    return {
+      id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: attachmentType,
+      name: asset.name,
+      size: asset.size || 0,
+      uri: asset.uri,
+      mimeType: asset.mimeType || 'application/octet-stream',
+      uploadStatus: 'pending',
+    };
+  }
+
+  // Extract text from document (for text files and simple processing)
+  public async extractTextFromFile(attachment: MessageAttachment): Promise<string> {
+    try {
+      if (attachment.type === 'text' && attachment.mimeType === 'text/plain') {
+        const content = await FileSystem.readAsStringAsync(attachment.uri);
+        return content;
+      }
+      
+      // For other file types, we'll need server-side processing
+      // This is a placeholder for future OCR/PDF text extraction
+      return '';
+    } catch (error) {
+      console.error('Text extraction failed:', error);
+      return '';
+    }
+  }
+
+  // Upload file to server
+  public async uploadFile(
+    attachment: MessageAttachment,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<MessageAttachment> {
+    try {
+      // Prevent duplicate uploads
+      if (this.activeUploads.has(attachment.id)) {
+        throw new Error('Upload already in progress');
+      }
+
+      this.activeUploads.add(attachment.id);
+      
+      // Update status to uploading
+      const updatedAttachment = { ...attachment, uploadStatus: 'uploading' as const };
+      
+      if (onProgress) {
+        onProgress({
+          attachmentId: attachment.id,
+          progress: 0,
+          status: 'uploading',
+        });
+      }
+
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      
+      // For React Native, we need to format the file object correctly
+      const fileObject = {
+        uri: Platform.OS === 'ios' ? attachment.uri.replace('file://', '') : attachment.uri,
+        type: attachment.mimeType,
+        name: attachment.name,
+      } as any;
+
+      formData.append('file', fileObject);
+      formData.append('type', attachment.type);
+      formData.append('attachmentId', attachment.id);
+
+      // Upload to server using ApiService
+      const result = await ApiService.uploadFile(formData);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Upload failed');
+      }
+
+      // Update progress to complete
+      if (onProgress) {
+        onProgress({
+          attachmentId: attachment.id,
+          progress: 100,
+          status: 'uploaded',
+        });
+      }
+
+      return {
+        ...updatedAttachment,
+        uploadStatus: 'uploaded',
+        serverUrl: result.data?.url,
+        processedText: result.data?.extractedText,
+      };
+
+    } catch (error) {
+      console.error('Upload failed:', error);
+      
+      if (onProgress) {
+        onProgress({
+          attachmentId: attachment.id,
+          progress: 0,
+          status: 'error',
+          error: error instanceof Error ? error.message : 'Upload failed',
+        });
+      }
+
+      throw error;
+    } finally {
+      this.activeUploads.delete(attachment.id);
+    }
+  }
+
+  // Upload multiple files with progress tracking
+  public async uploadFiles(
+    attachments: MessageAttachment[],
+    onProgress?: (overall: number, individual: UploadProgress[]) => void
+  ): Promise<MessageAttachment[]> {
+    const results: MessageAttachment[] = [];
+    const progressMap: Map<string, UploadProgress> = new Map();
+    
+    // Initialize progress tracking
+    attachments.forEach(attachment => {
+      progressMap.set(attachment.id, {
+        attachmentId: attachment.id,
+        progress: 0,
+        status: 'pending',
+      });
+    });
+
+    try {
+      // Upload files sequentially to avoid overwhelming the server
+      for (const attachment of attachments) {
+        const result = await this.uploadFile(attachment, (progress) => {
+          progressMap.set(attachment.id, progress);
+          
+          if (onProgress) {
+            const progressArray = Array.from(progressMap.values());
+            const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+            onProgress(overallProgress, progressArray);
+          }
+        });
+        
+        results.push(result);
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Batch upload failed:', error);
+      throw error;
+    }
+  }
+
+  // Validate file before upload
+  public validateFile(attachment: MessageAttachment, options?: Partial<FileUploadOptions>): string | null {
+    const opts = { ...this.defaultOptions, ...options };
+
+    // Check file size
+    if (attachment.size > opts.maxSizeBytes) {
+      return `File too large. Maximum size is ${opts.maxSizeBytes / (1024 * 1024)}MB`;
+    }
+
+    // Check file type
+    if (!opts.allowedTypes.includes(attachment.mimeType)) {
+      return `File type not supported. Allowed types: ${opts.allowedTypes.join(', ')}`;
+    }
+
+    return null; // Valid
+  }
+
+  // Get upload progress for a file
+  public getUploadProgress(attachmentId: string): UploadProgress | null {
+    return this.uploadQueue.get(attachmentId) || null;
+  }
+
+  // Cancel upload (placeholder for future implementation)
+  public async cancelUpload(attachmentId: string): Promise<void> {
+    this.activeUploads.delete(attachmentId);
+    this.uploadQueue.delete(attachmentId);
+    // TODO: Implement actual upload cancellation
+  }
+}

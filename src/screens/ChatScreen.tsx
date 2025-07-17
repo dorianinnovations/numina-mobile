@@ -25,6 +25,7 @@ import { NuminaColors } from '../utils/colors';
 import { ChatInput } from '../components/chat/ChatInput';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import ConversationStorageService, { Message, Conversation } from '../services/conversationStorage';
+import { MessageAttachment } from '../types/message';
 import ChatService from '../services/chatService';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { PageBackground } from '../components/PageBackground';
@@ -127,6 +128,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // File attachment state
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   
   // Function to manually restore header with haptic feedback
   const restoreHeader = async () => {
@@ -297,8 +301,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   }, [onConversationUpdate]);
 
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || !conversation) return;
+  const sendMessage = async (messageAttachments?: MessageAttachment[]) => {
+    if ((!inputText.trim() && !messageAttachments?.length) || !conversation) return;
 
     // Reset search state for new message
     resetSearchState();
@@ -308,6 +312,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       text: inputText.trim(),
       sender: 'user',
       timestamp: new Date().toISOString(),
+      attachments: messageAttachments,
+      hasFileContext: messageAttachments && messageAttachments.length > 0,
     };
 
     // Add user message to conversation
@@ -319,6 +325,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setConversation(updatedConversation);
     const messageText = inputText.trim();
     setInputText('');
+    setAttachments([]); // Clear attachments after sending
     setIsLoading(true);
     setCurrentAIMessage('');
     
@@ -410,7 +417,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               setConversation(streamingConversation);
               currentConversation = streamingConversation;
             }
-          }
+          },
+          userMessage.attachments // Pass attachments for GPT-4o vision analysis
         );
         
         // Handle the response properly - it's an object with content and personalityContext
@@ -843,6 +851,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onClose={() => setIsToolModalVisible(false)}
                     toolExecutions={toolExecutions}
                     currentMessage={currentAIMessage}
+                    onAttachmentSelected={(attachment) => {
+                      const newAttachments = [...attachments, attachment];
+                      setAttachments(newAttachments);
+                    }}
                   />
                   
                   {renderTypingIndicator()}
@@ -860,6 +872,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     userEmotionalState={emotionalState || undefined}
                     toolExecutions={toolExecutions}
                     onToggleToolModal={() => setIsToolModalVisible(true)}
+                    attachments={attachments}
+                    onAttachmentsChange={setAttachments}
+                    enableFileUpload={true}
+                    maxAttachments={5}
                   />
                 </KeyboardAvoidingView>
               </Animated.View>

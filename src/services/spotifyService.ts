@@ -3,7 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ApiService from './api';
+// Dynamic import to prevent circular dependency
 
 // Complete the auth session for web browsers
 WebBrowser.maybeCompleteAuthSession();
@@ -242,6 +242,7 @@ class SpotifyService {
 
   private async sendTokensToBackend(tokens: SpotifyTokens, profile: SpotifyUserProfile): Promise<void> {
     try {
+      const { default: ApiService } = await import('./api');
       await ApiService.connectSpotifyAccount({
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -309,6 +310,7 @@ class SpotifyService {
       await this.clearStoredTokens();
       
       // Notify backend
+      const { default: ApiService } = await import('./api');
       await ApiService.disconnectSpotifyAccount();
       
       console.log('🎵 Spotify account disconnected');
