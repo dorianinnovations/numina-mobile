@@ -48,6 +48,7 @@ const desktopTransition = {
       cardStyle: {
         opacity: current.progress,
         transform: [],
+        backgroundColor: 'transparent', // Let the theme handle background
       },
     };
   },
@@ -156,6 +157,17 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer
       ref={navigationRef}
+      theme={{
+        dark: isDarkMode,
+        colors: {
+          primary: '#6ec5ff',
+          background: isDarkMode ? '#000000' : '#ffffff',
+          card: isDarkMode ? '#000000' : '#ffffff',
+          text: isDarkMode ? '#ffffff' : '#000000',
+          border: isDarkMode ? '#333333' : '#e5e5e5',
+          notification: '#ff6b6b',
+        },
+      }}
       onReady={() => {
         routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name || '';
         console.log('🚀 NAVIGATION READY:', routeNameRef.current);

@@ -14,7 +14,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback, // <-- add this
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+// Desktop: No haptics needed for web
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { Header } from '../components/Header';
@@ -46,6 +46,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const [localLoading, setLocalLoading] = useState(false);
   const [isSignInSuccess, setIsSignInSuccess] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [showSlowServerMessage, setShowSlowServerMessage] = useState(false);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -69,24 +71,40 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     slideAnim.setValue(0); // Start in final position for navigation compatibility
   }, []);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [timeoutId]);
+
   const handleSubmit = async () => {
     // Dismiss keyboard when form is submitted
     Keyboard.dismiss();
     
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields');
-      // Error haptic for validation failure
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Desktop: No haptics needed for web
       return;
     }
 
-    // Medium haptic for form submission
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Desktop: No haptics needed for web
 
     setError('');
     setLocalLoading(true);
     setIsSignInSuccess(false);
     setAuthStatus('loading');
+    setShowSlowServerMessage(false);
+
+    // Start 15-second timeout for slow server message
+    const timeout = setTimeout(() => {
+      if (localLoading) {
+        setShowSlowServerMessage(true);
+      }
+    }, 15000);
+    setTimeoutId(timeout);
 
     // Ultra-smooth button press animation
     Animated.sequence([
@@ -120,8 +138,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       });
 
       if (result.success) {
-        // Success haptic for successful login
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        // Desktop: No haptics needed for web
         
         setIsSignInSuccess(true);
         setAuthStatus('success');
@@ -131,8 +148,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           onSignInSuccess();
         }, 800);
       } else {
-        // Error haptic for login failure
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        // Desktop: No haptics needed for web
         
         setError(result.error || 'Invalid email or password');
         setIsSignInSuccess(false);
@@ -142,8 +158,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         }, 2000);
       }
     } catch (err: any) {
-      // Error haptic for unexpected errors
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      // Desktop: No haptics needed for web
       
       setError(err.message || 'An unexpected error occurred during sign-in.');
       setIsSignInSuccess(false);
@@ -153,6 +168,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       }, 2000);
     } finally {
       setLocalLoading(false);
+      setShowSlowServerMessage(false);
+      
+      // Clear timeout when request completes
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        setTimeoutId(null);
+      }
     }
   };
 
@@ -407,6 +429,26 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           <Text style={styles.errorText}>{error}</Text>
                         </Animated.View>
                       )}
+
+                      {/* Slow Server Message */}
+                      {showSlowServerMessage && !error && (
+                        <Animated.View
+                          style={[
+                            styles.slowServerContainer,
+                            {
+                              opacity: fadeAnim,
+                              transform: [{ translateY: slideAnim }],
+                            },
+                          ]}
+                        >
+                          <Text style={[
+                            styles.slowServerText,
+                            { color: isDarkMode ? '#fbbf24' : '#d97706' }
+                          ]}>
+                            Server may be slow, please wait...
+                          </Text>
+                        </Animated.View>
+                      )}
                     </View>
                   </View>
                 </View>
@@ -531,6 +573,15 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: '#dc2626',
+    textAlign: 'center',
+    fontWeight: '500',
+    fontSize: 14,
+    fontFamily: 'Nunito_500Medium',
+  },
+  slowServerContainer: {
+    marginTop: 16,
+  },
+  slowServerText: {
     textAlign: 'center',
     fontWeight: '500',
     fontSize: 14,

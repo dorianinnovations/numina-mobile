@@ -128,9 +128,31 @@ const App: React.FC = () => {
 
         /* Desktop-optimized page transitions and animations */
         @media (pointer: fine) {
-          /* Smooth page transitions */
+          /* Smooth page transitions with dark mode support */
           .react-navigation-screen {
             transition: opacity 0.15s ease-in-out !important;
+          }
+
+          /* Dark mode page transitions - prevent white flash */
+          @media (prefers-color-scheme: dark) {
+            body, html, #root {
+              background-color: #000000 !important;
+            }
+            
+            .react-navigation-screen {
+              background-color: #000000 !important;
+            }
+          }
+
+          /* Light mode page transitions */
+          @media (prefers-color-scheme: light) {
+            body, html, #root {
+              background-color: #ffffff !important;
+            }
+            
+            .react-navigation-screen {
+              background-color: #ffffff !important;
+            }
           }
 
           /* Reduce motion for desktop users who prefer it */
@@ -170,9 +192,47 @@ const App: React.FC = () => {
           div[data-testid*="screen"] {
             transition: opacity 0.15s ease-in-out !important;
           }
+
+          /* React Navigation container dark mode support */
+          .react-navigation-container {
+            background-color: inherit !important;
+          }
+
+          /* All React Native Views respect theme */
+          div[style*="position: absolute"],
+          div[style*="flex: 1"] {
+            background-color: inherit !important;
+          }
+        }
+
+        /* Universal dark mode background fix */
+        @media (prefers-color-scheme: dark) {
+          * {
+            background-color: inherit !important;
+          }
+          
+          /* Root elements must be dark */
+          body, html, #root, #__next {
+            background-color: #000000 !important;
+            color: #ffffff !important;
+          }
+        }
+
+        /* Universal light mode background fix */
+        @media (prefers-color-scheme: light) {
+          /* Root elements must be light */
+          body, html, #root, #__next {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+          }
         }
       `;
       document.head.appendChild(style);
+
+      // Set initial theme-based background color
+      const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.style.backgroundColor = isDarkMode ? '#000000' : '#ffffff';
+      document.body.style.backgroundColor = isDarkMode ? '#000000' : '#ffffff';
 
       // CRITICAL FIX: JavaScript handler for input field click activation
       const handleInputClick = (event: Event) => {
