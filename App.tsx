@@ -11,12 +11,39 @@ const App: React.FC = () => {
       // Inject CSS fixes for React Native Web issues
       const style = document.createElement('style');
       style.textContent = `
-        /* Fix text input focus issues */
+        /* Fix text input focus issues - CRITICAL for single click activation */
         input, textarea {
           outline: none !important;
           user-select: text !important;
           cursor: text !important;
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          -ms-user-select: text !important;
           -webkit-tap-highlight-color: transparent !important;
+          pointer-events: auto !important;
+          touch-action: manipulation !important;
+        }
+
+        /* React Native Web TextInput specific fixes */
+        div[data-focusable="true"] input,
+        div[data-focusable="true"] textarea,
+        input[data-testid="chat-input"],
+        .react-native-web-text-input {
+          user-select: text !important;
+          -webkit-user-select: text !important;
+          pointer-events: auto !important;
+          cursor: text !important;
+          touch-action: manipulation !important;
+          -webkit-tap-highlight-color: transparent !important;
+        }
+
+        /* Force text input behavior on all React Native inputs */
+        div[style*="border"] input,
+        div[role="textbox"] input {
+          user-select: text !important;
+          -webkit-user-select: text !important;
+          cursor: text !important;
+          pointer-events: auto !important;
         }
 
         /* Remove unwanted button overlays */
@@ -32,13 +59,33 @@ const App: React.FC = () => {
           outline: none !important;
         }
 
-        /* Ensure proper text input behavior */
+        /* Ensure proper text input behavior - CRITICAL FIX */
         div[data-focusable="true"] input,
         div[data-focusable="true"] textarea {
           user-select: text !important;
           -webkit-user-select: text !important;
           pointer-events: auto !important;
           cursor: text !important;
+          touch-action: manipulation !important;
+        }
+
+        /* Fix React Native Web text input containers */
+        div[data-focusable="true"],
+        div[style*="position: relative"] {
+          pointer-events: auto !important;
+        }
+
+        /* Override React Native Web's input event blocking */
+        div[style*="text"] input {
+          pointer-events: auto !important;
+          user-select: text !important;
+          -webkit-user-select: text !important;
+          cursor: text !important;
+        }
+
+        /* Force click activation for all text inputs */
+        input[type="text"]:not(:focus) {
+          pointer-events: auto !important;
         }
 
         /* Remove mobile-style hover effects on web */
@@ -126,6 +173,27 @@ const App: React.FC = () => {
         }
       `;
       document.head.appendChild(style);
+
+      // CRITICAL FIX: JavaScript handler for input field click activation
+      const handleInputClick = (event: Event) => {
+        const target = event.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          // Force focus on click
+          (target as HTMLInputElement).focus();
+          // Prevent any parent handlers from interfering
+          event.stopPropagation();
+        }
+      };
+
+      // Add click handlers to ensure text inputs activate on first click
+      document.addEventListener('click', handleInputClick, true);
+      document.addEventListener('mousedown', handleInputClick, true);
+
+      // Cleanup function
+      return () => {
+        document.removeEventListener('click', handleInputClick, true);
+        document.removeEventListener('mousedown', handleInputClick, true);
+      };
     }
   }, []);
 

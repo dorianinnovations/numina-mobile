@@ -701,6 +701,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 inputRange: [0, 1],
                 outputRange: [0, 1],
               }),
+              // Web fix: Ensure container doesn't block text input
+              ...(Platform.OS === 'web' && {
+                pointerEvents: 'auto',
+              }),
             }
           ]}>
             <TextInput
@@ -716,6 +720,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                     outlineStyle: 'none',
                     userSelect: 'text',
                     cursor: 'text',
+                    WebkitUserSelect: 'text',
+                    WebkitTapHighlightColor: 'transparent',
+                    pointerEvents: 'auto',
                   }),
                 }
               ]}
@@ -749,6 +756,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 autoCorrect: 'off',
                 spellCheck: false,
                 accessibilityRole: 'textbox',
+                'data-focusable': 'true',
+                'data-testid': 'chat-input',
+                tabIndex: 0,
               })}
             />
           </Animated.View>
