@@ -267,12 +267,16 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'rgba(255, 255, 255, 0.1)' 
                           : 'rgba(255, 255, 255, 0.3)',
                         marginLeft: showBackButton ? 12 : 0,
-                        // Enhanced neuromorphic shadow
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 2,
-                        elevation: 3,
+                        // Web-compatible shadow (no white box glitch)
+                        ...(Platform.OS === 'web' ? {
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                        } : {
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.25,
+                          shadowRadius: 2,
+                          elevation: 3,
+                        }),
                       }
                     ]}
                     onPress={handleConversationsButtonPress}
@@ -300,12 +304,16 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'rgba(255, 255, 255, 0.1)' 
                           : 'rgba(255, 255, 255, 0.3)',
                         marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
-                        // Enhanced neuromorphic shadow
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 2,
-                        elevation: 3,
+                        // Web-compatible shadow (no white box glitch)
+                        ...(Platform.OS === 'web' ? {
+                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                        } : {
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.25,
+                          shadowRadius: 2,
+                          elevation: 3,
+                        }),
                       }
                     ]}
                     onPress={handleMenuButtonPress}
@@ -428,10 +436,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 2,
-    elevation: 3,
+    // Web-compatible shadows (no white box glitch)
+    ...(Platform.OS === 'web' ? {
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+    } : {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.25,
+      shadowRadius: 2,
+      elevation: 3,
+    }),
   },
 });

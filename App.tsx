@@ -63,6 +63,21 @@ const App: React.FC = () => {
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
+
+        /* Fix React Native Web shadow glitches - prevent white boxes */
+        div[style*="shadow"] {
+          background: transparent !important;
+        }
+
+        /* Remove any unwanted shadow backgrounds */
+        div[style*="elevation"] {
+          background: transparent !important;
+        }
+
+        /* Ensure icons don't get white backgrounds from shadows */
+        svg, i, span[role="img"] {
+          background: transparent !important;
+        }
       `;
       document.head.appendChild(style);
     }
