@@ -10,8 +10,9 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Linking,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
@@ -182,7 +183,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     });
   };
 
-  const handleExploreButtonPress = () => {
+  const handleAppStorePress = () => {
     Animated.sequence([
       Animated.timing(exploreButtonPressScale, {
         toValue: 0.95,
@@ -196,11 +197,11 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onNavigateToTutorial();
+      Linking.openURL('https://apps.apple.com/app/numina');
     });
   };
 
-  const handleSignUpButtonPress = () => {
+  const handlePlayStorePress = () => {
     Animated.sequence([
       Animated.timing(signUpButtonPressScale, {
         toValue: 0.95,
@@ -214,7 +215,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      onNavigateToSignUp();
+      Linking.openURL('https://play.google.com/store/apps/details?id=com.numina');
     });
   };
 
@@ -352,7 +353,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 shadowOffset: { width: 0, height: 4 },
                 elevation: 6,
               }]}
-              onPress={handleExploreButtonPress}
+              onPress={handleAppStorePress}
               activeOpacity={0.9}
             >
                 <View
@@ -369,17 +370,20 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     }
                   ]}
                 >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
-                  ]}>
-                    Explore Numina
-                  </Text>
+                  <View style={styles.buttonContent}>
+                    <FontAwesome5 name="apple" size={18} color={isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500]} />
+                    <Text style={[
+                      styles.primaryButtonText, 
+                      { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                    ]}>
+                      Download for iOS
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
           </Animated.View>
 
-          {/* Create Account Button */}
+          {/* Play Store Button */}
           <Animated.View 
             style={{ 
               opacity: signUpButtonOpacity,
@@ -397,7 +401,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 shadowOffset: { width: 0, height: 3 },
                 elevation: 5,
               }]}
-              onPress={handleSignUpButtonPress}
+              onPress={handlePlayStorePress}
               activeOpacity={0.9}
             >
                 <View
@@ -414,59 +418,40 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     }
                   ]}
                 >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
-                  ]}>
-                    Create Account
-                  </Text>
+                  <View style={styles.buttonContent}>
+                    <FontAwesome5 name="google-play" size={18} color={isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500]} />
+                    <Text style={[
+                      styles.primaryButtonText, 
+                      { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                    ]}>
+                      Download for Android
+                    </Text>
+                  </View>
                 </View>
               </TouchableOpacity>
           </Animated.View>
 
-          {/* Sign In Button */}
+          {/* Sign In Link */}
           <Animated.View 
             style={{ 
               opacity: signInButtonOpacity,
               transform: [
-                { scale: signInButtonPressScale },
                 { translateY: signInButtonY }
               ]
             }}
           >
             <TouchableOpacity
-              style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? 'rgba(255,255,255,0.2)' : '#000',
-                shadowOpacity: isDarkMode ? 0.2 : 0.1,
-                shadowRadius: 4,
-                shadowOffset: { width: 0, height: 2 },
-                elevation: 4,
-              }]}
+              style={styles.loginLink}
               onPress={handleSignInButtonPress}
-              activeOpacity={0.9}
+              activeOpacity={0.7}
             >
-                <View
-                  style={[
-                    styles.primaryButton,
-                    {
-                      backgroundColor: isDarkMode 
-                        ? '#2a2a2a'
-                        : '#ffffff',
-                      borderColor: isDarkMode 
-                        ? '#343333'
-                        : 'rgba(255, 255, 255, 0.7)',
-                      borderWidth: 1,
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500] }
-                  ]}>
-                    Sign In
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              <Text style={[
+                styles.loginLinkText, 
+                { color: isDarkMode ? '#999999' : '#666666' }
+              ]}>
+                Already have an account? Sign in
+              </Text>
+            </TouchableOpacity>
           </Animated.View>
 
         </Animated.View>
@@ -568,6 +553,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     letterSpacing: -0.5,
+    fontFamily: 'Nunito_400Regular',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  loginLink: {
+    marginTop: 16,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  loginLinkText: {
+    fontSize: 14,
+    fontWeight: '400',
+    letterSpacing: -0.3,
     fontFamily: 'Nunito_400Regular',
   },
 

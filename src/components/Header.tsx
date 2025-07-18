@@ -232,22 +232,33 @@ export const Header: React.FC<HeaderProps> = ({
 
               {showBackButton && (
                                   <TouchableOpacity
-                    style={[
-                      styles.iconButton,
-                      {
-                        backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
-                      }
-                    ]}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(173, 216, 230, 0.3)' 
+                        : 'rgba(173, 216, 230, 0.8)',
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.4)',
+                      ...(Platform.OS === 'web' && {
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                        // Firefox-specific fixes
+                        MozBackgroundClip: 'padding-box',
+                        backgroundClip: 'padding-box',
+                      }),
+                    }}
                     onPress={handleBackArrowPress}
                     activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <AnimatedBackArrow
-                      color={isDarkMode ? '#6ec5ff' : '#ffffff'}
+                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
                       size={16}
                       isPressed={backArrowPressed}
                     />
@@ -257,35 +268,36 @@ export const Header: React.FC<HeaderProps> = ({
               {showConversationsButton && (
                 <Animated.View style={{ transform: [{ scale: conversationsButtonScale }] }}>
                   <TouchableOpacity
-                    style={[
-                      styles.iconButton,
-                      {
-                        backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
-                        marginLeft: showBackButton ? 12 : 0,
-                        // Web-compatible shadow (no white box glitch)
-                        ...(Platform.OS === 'web' ? {
-                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                        } : {
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.25,
-                          shadowRadius: 2,
-                          elevation: 3,
-                        }),
-                      }
-                    ]}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(173, 216, 230, 0.3)' 
+                        : 'rgba(173, 216, 230, 0.8)',
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.4)',
+                      marginLeft: showBackButton ? 12 : 0,
+                      ...(Platform.OS === 'web' && {
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                        // Firefox-specific fixes
+                        MozBackgroundClip: 'padding-box',
+                        backgroundClip: 'padding-box',
+                      }),
+                    }}
                     onPress={handleConversationsButtonPress}
                     activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <MaterialCommunityIcons
                       name="forum-outline"
                       size={16}
-                      color={isDarkMode ? '#6ec5ff' : '#ffffff'}
+                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
                     />
                   </TouchableOpacity>
                 </Animated.View>
@@ -294,34 +306,35 @@ export const Header: React.FC<HeaderProps> = ({
               {showMenuButton && (
                 <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
                   <TouchableOpacity
-                    style={[
-                      styles.iconButton,
-                      {
-                        backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
-                        marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
-                        // Web-compatible shadow (no white box glitch)
-                        ...(Platform.OS === 'web' ? {
-                          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                        } : {
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: 0.25,
-                          shadowRadius: 2,
-                          elevation: 3,
-                        }),
-                      }
-                    ]}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 8,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      backgroundColor: isDarkMode 
+                        ? 'rgba(173, 216, 230, 0.3)' 
+                        : 'rgba(173, 216, 230, 0.8)',
+                      borderColor: isDarkMode 
+                        ? 'rgba(255, 255, 255, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.4)',
+                      marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                      ...(Platform.OS === 'web' && {
+                        backdropFilter: 'blur(10px)',
+                        WebkitBackdropFilter: 'blur(10px)',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
+                        // Firefox-specific fixes
+                        MozBackgroundClip: 'padding-box',
+                        backgroundClip: 'padding-box',
+                      }),
+                    }}
                     onPress={handleMenuButtonPress}
                     activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <AnimatedHamburger
                       isOpen={menuVisible}
-                      color={isDarkMode ? '#6ec5ff' : '#ffffff'}
+                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
                       size={16}
                     />
                   </TouchableOpacity>
@@ -436,6 +449,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    backgroundColor: 'transparent', // Default transparent background
     // Web-compatible shadows (no white box glitch)
     ...(Platform.OS === 'web' ? {
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',

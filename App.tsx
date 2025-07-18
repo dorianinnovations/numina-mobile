@@ -113,17 +113,17 @@ const App: React.FC = () => {
 
         /* Fix React Native Web shadow glitches - prevent white boxes */
         div[style*="shadow"] {
-          background: transparent !important;
+          background-color: transparent !important;
         }
 
         /* Remove any unwanted shadow backgrounds */
         div[style*="elevation"] {
-          background: transparent !important;
+          background-color: transparent !important;
         }
 
         /* Ensure icons don't get white backgrounds from shadows */
         svg, i, span[role="img"] {
-          background: transparent !important;
+          background-color: transparent !important;
         }
 
         /* Desktop-optimized page transitions and animations */
@@ -207,10 +207,6 @@ const App: React.FC = () => {
 
         /* Universal dark mode background fix */
         @media (prefers-color-scheme: dark) {
-          * {
-            background-color: inherit !important;
-          }
-          
           /* Root elements must be dark */
           body, html, #root, #__next {
             background-color: #000000 !important;

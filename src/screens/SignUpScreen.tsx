@@ -1,206 +1,33 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Animated,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
   StatusBar,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Modal,
+  Linking,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
-import { useAuth } from "../contexts/SimpleAuthContext";
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
-import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
-import { TermsOfService } from '../components/TermsOfService';
-
-const { width } = Dimensions.get('window');
+import { NuminaColors } from '../utils/colors';
 
 interface SignUpScreenProps {
   onNavigateBack: () => void;
   onSignUpSuccess: () => void;
   onNavigateToSignIn: () => void;
+  onNavigateToHero?: () => void;
 }
 
 export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   onNavigateBack,
   onSignUpSuccess,
   onNavigateToSignIn,
+  onNavigateToHero,
 }) => {
   const { theme, isDarkMode } = useTheme();
-  const { signUp, loading: authLoading } = useAuth();
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [isSignUpSuccess, setIsSignUpSuccess] = useState(false);
-  const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [showTermsModal, setShowTermsModal] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  
-  // Use either auth loading or local loading
-  const loading = authLoading || localLoading;
-
-  // Animation refs
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
-  const buttonScaleAnim = useRef(new Animated.Value(1)).current;
-  const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
-  const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
-  const confirmPasswordInputScaleAnim = useRef(new Animated.Value(1)).current;
-  
-  // Input refs
-  const emailInputRef = useRef<TextInput>(null);
-  const passwordInputRef = useRef<TextInput>(null);
-  const confirmPasswordInputRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    // Fast tech entry - no conflicting animations with navigation
-    fadeAnim.setValue(1);
-    scaleAnim.setValue(1);
-    slideAnim.setValue(0); // Start in final position for navigation compatibility
-  }, []);
-
-  const handleSubmit = async () => {
-    // Dismiss keyboard when form is submitted
-    Keyboard.dismiss();
-    
-    if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
-      setError('Please fill in all fields');
-      // Error haptic for validation failure
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      // Error haptic for validation failure
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      // Error haptic for validation failure
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      return;
-    }
-
-    // Heavy haptic for account creation (important action)
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-
-    setError('');
-    setSuccess(false);
-    setIsSignUpSuccess(false);
-    setLocalLoading(true);
-    setAuthStatus('loading');
-
-    // Ultra-smooth button press animation
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(buttonScaleAnim, {
-          toValue: 0.92,
-          duration: 40,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1.05,
-          duration: 60,
-          useNativeDriver: true,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(buttonScaleAnim, {
-          toValue: 1,
-          duration: 90,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start();
-
-    try {
-      const result = await signUp({
-        email: email.trim(),
-        password: password.trim(),
-        confirmPassword: confirmPassword.trim(),
-      });
-
-      if (result.success) {
-        // Success haptic for successful account creation
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        setSuccess(true);
-        setIsSignUpSuccess(true);
-        setAuthStatus('success');
-        
-        setTimeout(() => {
-          onSignUpSuccess();
-        }, 1500);
-      } else {
-        // Error haptic for signup failure
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        setError(result.error || 'An error occurred during sign up');
-        setIsSignUpSuccess(false);
-        setAuthStatus('error');
-        setTimeout(() => {
-          setAuthStatus('idle');
-        }, 2000);
-      }
-    } catch (err: any) {
-      // Error haptic for unexpected errors
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      
-      setError(err.message || 'An error occurred during sign up');
-      setIsSignUpSuccess(false);
-      setAuthStatus('error');
-      setTimeout(() => {
-        setAuthStatus('idle');
-      }, 2000);
-    } finally {
-      setLocalLoading(false);
-    }
-  };
-
-  // Loading screen with minimal design
-  if (loading) {
-    return (
-      <PageBackground>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator 
-              size="large" 
-              color={isDarkMode ? '#ffffff' : '#000000'} 
-            />
-            <Text style={[
-              styles.loadingText, 
-              { color: isDarkMode ? '#ffffff' : '#000000' }
-            ]}>
-              Creating account...
-            </Text>
-          </View>
-        </SafeAreaView>
-      </PageBackground>
-    );
-  }
 
   return (
     <PageBackground>
@@ -210,403 +37,87 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
           backgroundColor="transparent"
           translucent={true}
         />
-      
-        {/* Header */}
-        <Header 
-          title="Numina"
-          showBackButton={true}
-          showMenuButton={true}
-          showAuthOptions={false}
-          onBackPress={() => {
-            onNavigateBack();
-          }}
-          onMenuPress={(key: string) => {}}
-        />
-
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <View style={{ flex: 1 }}>
-            <KeyboardAvoidingView
-              style={styles.keyboardAvoid}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-            >
-              <Animated.View
-                style={[
-                  styles.content,
-                  {
-                    opacity: fadeAnim,
-                    transform: [
-                      { translateX: slideAnim },
-                      { scale: scaleAnim },
-                    ],
-                  },
-                ]}
-              >
-                {/* Neumorphic form container */}
-                <View style={styles.formWrapper}>
-                  <View style={[
-                    styles.formContainer, 
-                    isDarkMode ? {
-                      backgroundColor: '#111111',
-                      borderColor: '#222222',
-                    } : styles.glassmorphic
-                  ]}>
-                    {/* Clean header */}
-                    <View style={styles.header}>
-                      <Animated.Text
-                        style={[
-                          styles.title,
-                          {
-                            color: isDarkMode ? '#ffffff' : '#000000',
-                            transform: [{ translateX: slideAnim.interpolate({ inputRange: [-30, 0], outputRange: [-15, 0] }) }],
-                          },
-                        ]}
-                      >
-                        Ready to begin?
-                      </Animated.Text>
-                      <Text style={[
-                        styles.subtitle, 
-                        { color: isDarkMode ? '#888888' : '#666666' }
-                      ]}>
-                        Create your Numina account for free
-                      </Text>
-                    </View>
-
-                    {/* Form Content */}
-                    <View style={styles.formContent}>
-                      {/* Input fields */}
-                      <View style={styles.inputGroup}>
-                        <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
-                          <TextInput
-                            ref={emailInputRef}
-                            style={[
-                              styles.input,
-                              { 
-                                color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                              }
-                            ]}
-                            placeholder="Email"
-                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                            value={email}
-                            onChangeText={setEmail}
-                            autoCapitalize="none"
-                            keyboardType="email-address"
-                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                            returnKeyType="next"
-                            editable={!loading}
-                            onSubmitEditing={() => passwordInputRef.current?.focus()}
-                            onFocus={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(emailInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                            onBlur={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(emailInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                          />
-                        </Animated.View>
-                        <Animated.View style={{ transform: [{ scale: passwordInputScaleAnim }] }}>
-                          <TextInput
-                            ref={passwordInputRef}
-                            style={[
-                              styles.input,
-                              { 
-                                color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                              }
-                            ]}
-                            placeholder="Password"
-                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                            returnKeyType="next"
-                            editable={!loading}
-                            onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
-                            onFocus={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(passwordInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                            onBlur={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(passwordInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                          />
-                        </Animated.View>
-                        <Animated.View style={{ transform: [{ scale: confirmPasswordInputScaleAnim }] }}>
-                          <TextInput
-                            ref={confirmPasswordInputRef}
-                            style={[
-                              styles.input,
-                              { 
-                                color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
-                              }
-                            ]}
-                            placeholder="Confirm Password"
-                            placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
-                            value={confirmPassword}
-                            onChangeText={setConfirmPassword}
-                            secureTextEntry
-                            keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                            returnKeyType="done"
-                            editable={!loading}
-                            onSubmitEditing={() => {
-                              Keyboard.dismiss();
-                              handleSubmit();
-                            }}
-                            onFocus={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(confirmPasswordInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                            onBlur={() => {
-                              // Only animate on mobile, not web
-                              if (Platform.OS !== 'web') {
-                                Animated.spring(confirmPasswordInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
-                              }
-                            }}
-                          />
-                        </Animated.View>
-                      </View>
-
-                      {/* Terms of Service Checkbox (Optional) */}
-                      <View style={styles.termsContainer}>
-                        <TouchableOpacity
-                          style={styles.termsCheckboxContainer}
-                          onPress={() => {
-                            // Light haptic for checkbox toggle
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            setTermsAccepted(!termsAccepted);
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <View style={[
-                            styles.termsCheckbox,
-                            {
-                              backgroundColor: termsAccepted 
-                                ? (isDarkMode ? '#add5fa' : '#007AFF')
-                                : 'transparent',
-                              borderColor: termsAccepted 
-                                ? (isDarkMode ? '#add5fa' : '#007AFF')
-                                : (isDarkMode ? '#666666' : '#cccccc'),
-                            }
-                          ]}>
-                            {termsAccepted && (
-                              <FontAwesome5 
-                                name="check" 
-                                size={10} 
-                                color={isDarkMode ? '#000000' : '#ffffff'} 
-                              />
-                            )}
-                          </View>
-                          <Text style={[
-                            styles.termsCheckboxText,
-                            { color: isDarkMode ? '#ffffff' : '#000000' }
-                          ]}>
-                            I agree to the{' '}
-                            <Text 
-                              style={[
-                                styles.termsLinkText, 
-                                { color: isDarkMode ? '#add5fa' : '#007AFF' }
-                              ]}
-                              onPress={() => setShowTermsModal(true)}
-                            >
-                              Terms of Service
-                            </Text>
-                            {' '}(optional)
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {/* Sign Up Button with Animation */}
-                      <View style={styles.buttonContainer}>
-                        <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
-                          <TouchableOpacity
-                            style={[
-                              styles.primaryButton,
-                              {
-                                backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
-                                opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
-                              }
-                            ]}
-                            onPress={handleSubmit}
-                            disabled={loading || isSignUpSuccess}
-                            activeOpacity={0.9}
-                          >
-                            <View style={styles.buttonContent}>
-                              <View style={styles.buttonTextContainer}>
-                                <Text style={[
-                                  styles.primaryButtonText, 
-                                  { color: isDarkMode ? '#000000' : '#ffffff' }
-                                ]}>
-                                  {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success' : 'Get Started'}
-                                </Text>
-                              </View>
-                              {authStatus !== 'idle' && (
-                                <View style={styles.spinnerContainer}>
-                                  <AnimatedAuthStatus
-                                    status={authStatus}
-                                    color={isDarkMode ? '#000000' : '#ffffff'}
-                                    size={16}
-                                    onAnimationComplete={() => {
-                                      if (authStatus === 'error') {
-                                        setAuthStatus('idle');
-                                      }
-                                    }}
-                                  />
-                                </View>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        </Animated.View>
-                      </View>
-
-                      {/* Sign In Link */}
-                      <TouchableOpacity
-                        style={styles.linkButton}
-                        onPress={() => {
-                          // Light haptic for navigation
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          onNavigateToSignIn();
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.linkText, 
-                          { color: isDarkMode ? '#ffffff' : '#000000' }
-                        ]}>
-                          Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>in</Text>
-                        </Text>
-                      </TouchableOpacity>
-
-                      {/* Error Message */}
-                      {error && (
-                        <Animated.View
-                          style={[
-                            styles.messageContainer,
-                            {
-                              opacity: fadeAnim,
-                              transform: [{ translateY: slideAnim }],
-                            },
-                          ]}
-                        >
-                          <Text style={styles.errorText}>{error}</Text>
-                        </Animated.View>
-                      )}
-
-                      {/* Success Message */}
-                      {success && (
-                        <Animated.View
-                          style={[
-                            styles.messageContainer,
-                            {
-                              opacity: fadeAnim,
-                              transform: [{ translateY: slideAnim }],
-                            },
-                          ]}
-                        >
-                          <View style={styles.successContent}>
-                            <FontAwesome5 name="check-circle" size={20} color="#10b981" />
-                            <Text style={[styles.successText, { color: '#10b981' }]}>
-                              Account created successfully! Redirecting...
-                            </Text>
-                          </View>
-                        </Animated.View>
-                      )}
-                    </View>
-                  </View>
-                </View>
-              </Animated.View>
-            </KeyboardAvoidingView>
-          </View>
-        </TouchableWithoutFeedback>
         
-        {/* Terms of Service Modal */}
-        <Modal
-          visible={showTermsModal}
-          animationType="slide"
-          presentationStyle="pageSheet"
-          onRequestClose={() => setShowTermsModal(false)}
-        >
-          <SafeAreaView style={[
-            styles.modalContainer,
-            { backgroundColor: isDarkMode ? '#000000' : '#ffffff' }
+        <Header 
+          title="Sign Up"
+          showBackButton={true}
+          onBackPress={onNavigateBack}
+        />
+        
+        <View style={styles.content}>
+          <View style={[
+            styles.card,
+            {
+              backgroundColor: isDarkMode ? '#111111' : 'rgba(255, 255, 255, 0.25)',
+              borderColor: isDarkMode ? '#222222' : 'rgba(255, 255, 255, 0.3)',
+            }
           ]}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
+            <Text style={[
+              styles.title,
+              { color: isDarkMode ? '#ffffff' : '#000000' }
+            ]}>
+              Join Numina
+            </Text>
+            
+            <Text style={[
+              styles.subtitle,
+              { color: isDarkMode ? '#888888' : '#666666' }
+            ]}>
+              Download the mobile app to create your account and explore
+            </Text>
+            
+            <View style={styles.buttonsContainer}>
               <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => {
-                  // Light haptic for modal close
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setShowTermsModal(false);
-                }}
+                style={[
+                  styles.appStoreButton,
+                  {
+                    backgroundColor: isDarkMode ? '#add5fa' : '#add5fa',
+                  }
+                ]}
+                onPress={() => Linking.openURL('https://apps.apple.com/app/numina')}
+                activeOpacity={0.8}
               >
-                <FontAwesome5 
-                  name="times" 
-                  size={20} 
-                  color={isDarkMode ? '#ffffff' : '#000000'} 
-                />
+                <View style={styles.buttonContent}>
+                  <FontAwesome5 name="apple" size={18} color={isDarkMode ? '#000000' : '#ffffff'} />
+                  <Text style={[styles.buttonText, { color: isDarkMode ? '#000000' : '#ffffff' }]}>
+                    App Store
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.appStoreButton,
+                  {
+                    backgroundColor: isDarkMode ? '#add5fa' : '#add5fa',
+                  }
+                ]}
+                onPress={() => Linking.openURL('https://play.google.com/store/apps/details?id=com.numina')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.buttonContent}>
+                  <FontAwesome5 name="google-play" size={18} color={isDarkMode ? '#000000' : '#ffffff'} />
+                  <Text style={[styles.buttonText, { color: isDarkMode ? '#000000' : '#ffffff' }]}>
+                    Play Store
+                  </Text>
+                </View>
               </TouchableOpacity>
             </View>
             
-            {/* Terms Component */}
-            <TermsOfService
-              onAccept={(accepted) => {
-                setTermsAccepted(accepted);
-                if (accepted) {
-                  setTimeout(() => setShowTermsModal(false), 500);
-                }
-              }}
-              accepted={termsAccepted}
-            />
-          </SafeAreaView>
-        </Modal>
+            <TouchableOpacity
+              style={styles.loginLink}
+              onPress={onNavigateToSignIn}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.loginLinkText,
+                { color: isDarkMode ? '#999999' : '#666666' }
+              ]}>
+                Already have an account? Sign in
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </SafeAreaView>
     </PageBackground>
   );
@@ -616,22 +127,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  keyboardAvoid: {
+  content: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: 24,
-    paddingVertical: 32,
   },
-  content: {
+  card: {
     width: '100%',
-    maxWidth: 380,
-    alignSelf: 'center',
-  },
-  formWrapper: {
-    position: 'relative',
-    width: '100%',
-  },
-  formContainer: {
+    maxWidth: 400,
     borderRadius: 16,
     padding: 32,
     borderWidth: 1,
@@ -641,182 +145,52 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  glassmorphic: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 32,
-    elevation: 8,
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontSize: 28,
+    fontWeight: 'bold',
     textAlign: 'center',
-    letterSpacing: -1.5,
-    fontFamily: 'Nunito_700Bold',
+    marginBottom: 12,
+    fontFamily: 'CrimsonPro_700Bold',
   },
   subtitle: {
     fontSize: 16,
     textAlign: 'center',
-    lineHeight: 24,
-    fontWeight: '400',
+    marginBottom: 32,
+    lineHeight: 22,
     fontFamily: 'Nunito_400Regular',
   },
-  formContent: {
-    gap: 24,
-  },
-  inputGroup: {
+  buttonsContainer: {
     gap: 16,
+    marginBottom: 24,
   },
-  input: {
-    paddingHorizontal: 16,
+  appStoreButton: {
+    borderRadius: 8,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: 8,
-    fontSize: 16,
-    fontWeight: '400',
-    height: 42,
-    fontFamily: 'Nunito_400Regular',
-  },
-  primaryButton: {
-    width: '100%',
-    height: 37,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  buttonContainer: {
-    minHeight: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-  },
-  buttonTextContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spinnerContainer: {
-    width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-    fontFamily: 'Nunito_500Medium',
-  },
-  linkButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  linkText: {
-    fontSize: 14,
-    fontWeight: '400',
-    textAlign: 'center',
-    fontFamily: 'Nunito_400Regular',
-  },
-  linkTextBold: {
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  messageContainer: {
-    marginTop: 16,
-  },
-  errorText: {
-    color: '#dc2626',
-    textAlign: 'center',
-    fontWeight: '500',
-    fontSize: 14,
-    fontFamily: 'Nunito_500Medium',
-  },
-  successContent: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
     gap: 10,
   },
-  successText: {
-    textAlign: 'center',
-    fontWeight: '500',
-    fontSize: 14,
-    fontFamily: 'Nunito_500Medium',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingText: {
+  buttonText: {
     fontSize: 16,
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
   },
-  termsContainer: {
-    marginVertical: 8,
-  },
-  termsCheckboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-  },
-  termsCheckbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 3,
-    borderWidth: 2,
+  loginLink: {
+    paddingVertical: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
   },
-  termsCheckboxText: {
+  loginLinkText: {
     fontSize: 14,
     fontWeight: '400',
-    flex: 1,
-    lineHeight: 20,
     fontFamily: 'Nunito_400Regular',
-  },
-  termsLinkText: {
-    fontWeight: '600',
-    textDecorationLine: 'underline',
-    fontFamily: 'Nunito_600SemiBold',
-  },
-  modalContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

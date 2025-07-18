@@ -10,6 +10,7 @@ import {
   Dimensions,
   StatusBar,
   Platform,
+  Linking,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -75,7 +76,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     });
   }, []);
   
-  const handleSignUpPress = () => {
+  const handleAppStorePress = () => {
     Animated.spring(buttonScale1, {
       toValue: 1.02,
       useNativeDriver: true,
@@ -88,12 +89,12 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         speed: 50,
         bounciness: 8,
       }).start(() => {
-        onNavigateToSignUp();
+        Linking.openURL('https://apps.apple.com/app/numina');
       });
     });
   };
   
-  const handleSignInPress = () => {
+  const handlePlayStorePress = () => {
     Animated.spring(buttonScale2, {
       toValue: 1.02,
       useNativeDriver: true,
@@ -106,7 +107,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         speed: 50,
         bounciness: 8,
       }).start(() => {
-        onNavigateToSignIn();
+        Linking.openURL('https://play.google.com/store/apps/details?id=com.numina');
       });
     });
   };
@@ -218,13 +219,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 letterSpacing: -0.4,
               }
             ]}>
-              Create an account or sign in to explore the world of Numina.
+              Download the Numina mobile app to get started.
             </Text>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.buttonsContainer}>
-            {/* Create Account Button */}
+            {/* App Store Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale1 }] }}>
               <TouchableOpacity
                 style={[
@@ -234,19 +235,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     borderColor: isDarkMode ? '#add5fa' : 'rgb(238, 238, 238)',
                   }
                 ]}
-                onPress={handleSignUpPress}
+                onPress={handleAppStorePress}
                 activeOpacity={0.7}
               >
-                <Text style={[
-                  styles.primaryButtonText, 
-                  { color: isDarkMode ? '#000000' : '#ffffff' }
-                ]}>
-                  Create Account
-                </Text>
+                <View style={styles.buttonContent}>
+                  <FontAwesome5 name="apple" size={16} color={isDarkMode ? '#000000' : '#ffffff'} />
+                  <Text style={[
+                    styles.primaryButtonText, 
+                    { color: isDarkMode ? '#000000' : '#ffffff' }
+                  ]}>
+                    App Store
+                  </Text>
+                </View>
               </TouchableOpacity>
             </Animated.View>
 
-            {/* Sign In Button */}
+            {/* Play Store Button */}
             <Animated.View style={{ transform: [{ scale: buttonScale2 }] }}>
               <TouchableOpacity
                 style={[
@@ -256,17 +260,34 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     borderColor: isDarkMode ? '#23272b' : 'rgb(231, 231, 231)',
                   }
                 ]}
-                onPress={handleSignInPress}
+                onPress={handlePlayStorePress}
                 activeOpacity={0.7}
               >
-                <Text style={[
-                  styles.secondaryButtonText, 
-                  { color: isDarkMode ? '#ffffff' : '#333333' }
-                ]}>
-                  Sign In
-                </Text>
+                <View style={styles.buttonContent}>
+                  <FontAwesome5 name="google-play" size={16} color={isDarkMode ? '#ffffff' : '#333333'} />
+                  <Text style={[
+                    styles.secondaryButtonText, 
+                    { color: isDarkMode ? '#ffffff' : '#333333' }
+                  ]}>
+                    Play Store
+                  </Text>
+                </View>
               </TouchableOpacity>
             </Animated.View>
+
+            {/* Small Login Link */}
+            <TouchableOpacity
+              style={styles.loginLink}
+              onPress={onNavigateToSignIn}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.loginLinkText, 
+                { color: isDarkMode ? '#999999' : '#666666' }
+              ]}>
+                Already have an account? Sign in
+              </Text>
+            </TouchableOpacity>
           </View>
           </View>
         </View>
@@ -404,6 +425,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: -0.2,
     fontFamily: 'Nunito_500Medium',
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loginLink: {
+    marginTop: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  loginLinkText: {
+    fontSize: 12,
+    fontWeight: '400',
+    letterSpacing: -0.2,
+    fontFamily: 'Nunito_400Regular',
   },
   backButton: {
     paddingHorizontal: 16,

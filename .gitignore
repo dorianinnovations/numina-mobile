@@ -39,3 +39,6 @@ web-build/
 Thumbs.dbbuild-test/
 dist/
 *.log
+
+# Local Netlify folder
+.netlify
