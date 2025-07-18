@@ -6,7 +6,7 @@
     "start": "expo start --web",
     "dev": "expo start --web",
     "build": "expo export --platform web",
-    "build:production": "expo export --platform web --prod",
+    "build:production": "expo export --platform web",
     "serve": "npx serve dist",
     "test": "jest",
     "test:watch": "jest --watch",

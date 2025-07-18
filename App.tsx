@@ -78,6 +78,52 @@ const App: React.FC = () => {
         svg, i, span[role="img"] {
           background: transparent !important;
         }
+
+        /* Desktop-optimized page transitions and animations */
+        @media (pointer: fine) {
+          /* Smooth page transitions */
+          .react-navigation-screen {
+            transition: opacity 0.15s ease-in-out !important;
+          }
+
+          /* Reduce motion for desktop users who prefer it */
+          @media (prefers-reduced-motion: reduce) {
+            * {
+              animation-duration: 0.01s !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01s !important;
+            }
+          }
+
+          /* Smooth scrolling for better desktop UX */
+          html {
+            scroll-behavior: smooth;
+          }
+
+          /* Desktop hover states for clickable elements */
+          div[role="button"]:hover,
+          button:hover {
+            transform: scale(1.02) !important;
+            transition: transform 0.1s ease !important;
+          }
+
+          div[role="button"]:active,
+          button:active {
+            transform: scale(0.98) !important;
+          }
+
+          /* Desktop focus indicators */
+          div[role="button"]:focus-visible,
+          button:focus-visible {
+            outline: 2px solid #6ec5ff !important;
+            outline-offset: 2px !important;
+          }
+
+          /* Smooth opacity transitions for content loading */
+          div[data-testid*="screen"] {
+            transition: opacity 0.15s ease-in-out !important;
+          }
+        }
       `;
       document.head.appendChild(style);
     }

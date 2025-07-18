@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
-import { StatusBar, View, Text, ActivityIndicator } from "react-native";
+import { StatusBar, View, Text, ActivityIndicator, Platform } from "react-native";
 
 // Screens
 import { HeroLandingScreen } from "../screens/HeroLandingScreen";
@@ -41,11 +41,39 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-// Just use the fucking default iOS transition that actually works
-const workingTransition = {
+// Desktop-optimized transitions: instant/fade for web, iOS slide for mobile
+const desktopTransition = {
+  cardStyleInterpolator: ({ current, layouts }: any) => {
+    return {
+      cardStyle: {
+        opacity: current.progress,
+        transform: [],
+      },
+    };
+  },
+  transitionSpec: {
+    open: {
+      animation: 'timing',
+      config: {
+        duration: 150,
+      },
+    },
+    close: {
+      animation: 'timing', 
+      config: {
+        duration: 100,
+      },
+    },
+  },
+  gestureEnabled: false,
+};
+
+const mobileTransition = {
   ...TransitionPresets.SlideFromRightIOS,
   gestureEnabled: true,
 };
+
+const platformTransition = Platform.OS === 'web' ? desktopTransition : mobileTransition;
 
 export const AppNavigator: React.FC = () => {
   const { isDarkMode } = useTheme();
@@ -152,13 +180,13 @@ export const AppNavigator: React.FC = () => {
         initialRouteName={isAuthenticated ? "Chat" : "Hero"}
         screenOptions={{
           headerShown: false,
-          ...workingTransition,
+          ...platformTransition,
         }}
       >
         <Stack.Screen
           name="Hero"
           options={{
-            ...workingTransition,
+            ...platformTransition,
             gestureEnabled: false, // Disable back gesture on root screen
           }}
         >
@@ -177,7 +205,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Welcome"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -192,7 +220,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignIn"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -211,7 +239,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignUp"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -226,7 +254,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Tutorial"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -248,7 +276,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Chat"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -259,7 +287,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Analytics"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -286,7 +314,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Cloud"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -313,7 +341,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Wallet"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -340,7 +368,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Sentiment"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -367,7 +395,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Profile"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -382,7 +410,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Settings"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (
@@ -409,7 +437,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="About"
           options={{
-            ...workingTransition,
+            ...platformTransition,
           }}
         >
           {({ navigation }) => (

@@ -37,6 +37,7 @@ import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
+import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 
 // Enhanced services integration
 import getBatchApiService from '../services/batchApiService';
@@ -126,6 +127,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   // UBPM insights state
   const [ubpmInsights, setUbpmInsights] = useState<any[]>([]);
+
+  // Desktop keyboard navigation
+  useKeyboardNavigation({
+    onBack: () => navigation.goBack(),
+    onHome: () => navigation.navigate('Hero'),
+    onSettings: () => navigation.navigate('Settings'),
+    onAnalytics: () => navigation.navigate('Analytics'),
+  });
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
