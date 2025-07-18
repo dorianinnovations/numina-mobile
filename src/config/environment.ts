@@ -16,42 +16,12 @@ const releaseChannel = Constants.expoConfig?.updates?.requestHeaders?.['expo-cha
 const getEnvironmentConfig = (): EnvironmentConfig => {
   console.log('🔧 Environment detection:', { isDev, releaseChannel, __DEV__ });
   
-  // Production configuration
-  if (releaseChannel === 'production' || (!isDev && releaseChannel !== 'staging')) {
-    console.log('📱 Using PRODUCTION config');
-    console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
-    return {
-      API_BASE_URL: 'https://server-a7od.onrender.com',
-      STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
-      ENVIRONMENT: 'production',
-      ENABLE_LOGGING: false,
-      SSL_PINNING_ENABLED: true,
-      BIOMETRIC_AUTH_ENABLED: true,
-      WALLET_FEATURES_ENABLED: true,
-    };
-  }
-
-  // Staging configuration
-  if (releaseChannel === 'staging') {
-    console.log('📱 Using STAGING config');
-    console.log('📡 API_BASE_URL: https://staging-server-a7od.onrender.com');
-    return {
-      API_BASE_URL: 'https://staging-server-a7od.onrender.com',
-      STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_STAGING || '',
-      ENVIRONMENT: 'staging',
-      ENABLE_LOGGING: true,
-      SSL_PINNING_ENABLED: true,
-      BIOMETRIC_AUTH_ENABLED: true,
-      WALLET_FEATURES_ENABLED: true,
-    };
-  }
-
-  // Development configuration - Use production server for auth consistency
-  console.log('📱 Using DEVELOPMENT config');
+  // Always use production server - mobile app connects via tunnel
+  console.log('📱 Using PRODUCTION server (mobile app via tunnel)');
   console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
   return {
     API_BASE_URL: 'https://server-a7od.onrender.com',
-    STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY_DEV || 'pk_test_dummy',
+    STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
     ENVIRONMENT: 'development',
     ENABLE_LOGGING: true,
     SSL_PINNING_ENABLED: false,

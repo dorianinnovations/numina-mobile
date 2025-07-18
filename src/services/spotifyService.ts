@@ -439,4 +439,14 @@ class SpotifyService {
   }
 }
 
-export default new SpotifyService();
+// Lazy instantiation to prevent blocking app startup
+let instance: SpotifyService | null = null;
+
+export const getSpotifyService = (): SpotifyService => {
+  if (!instance) {
+    instance = new SpotifyService();
+  }
+  return instance;
+};
+
+export default getSpotifyService;

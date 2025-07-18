@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SpotifyService from './spotifyService';
-import ApiService from './api';
 
 export interface RecommendedTrack {
   id: string;
@@ -193,19 +192,22 @@ class AutoPlaylistService {
         // Create new Spotify playlist
         try {
           // TODO: Implement createSpotifyPlaylist in ApiService
-          const spotifyResult = await ApiService.post('/spotify/playlists', {
-            playlistName: playlist.name,
-            description: playlist.description,
-            tracks: tracksForSpotify,
-            isPublic: false,
-          });
+          // Temporarily disabled to fix circular dependency
+          console.log('🚧 Spotify playlist creation temporarily disabled');
+          
+          // const spotifyResult = await ApiService.post('/spotify/playlists', {
+          //   playlistName: playlist.name,
+          //   description: playlist.description,
+          //   tracks: tracksForSpotify,
+          //   isPublic: false,
+          // });
 
-          if (spotifyResult.success && spotifyResult.data) {
-            spotifyPlaylistId = spotifyResult.data.playlistId;
-            playlist.spotifyPlaylistId = spotifyPlaylistId;
-            await this.savePlaylist(playlist);
-            console.log('✅ Created Spotify playlist:', playlist.name);
-          }
+          // if (spotifyResult.success && spotifyResult.data) {
+          //   spotifyPlaylistId = spotifyResult.data.playlistId;
+          //   playlist.spotifyPlaylistId = spotifyPlaylistId;
+          //   await this.savePlaylist(playlist);
+          //   console.log('✅ Created Spotify playlist:', playlist.name);
+          // }
         } catch (error) {
           console.error('Error creating Spotify playlist:', error);
         }

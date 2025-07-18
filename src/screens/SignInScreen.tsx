@@ -14,12 +14,13 @@ import {
   Keyboard,
   TouchableWithoutFeedback, // <-- add this
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
-import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
+import { NuminaColors } from '../utils/colors';
 
 const { width } = Dimensions.get('window');
 
@@ -62,10 +63,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Entry animation - slide in from right for forward navigation
+    // Fast tech entry - no conflicting animations with navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
-    ScreenTransitions.slideInRight(slideAnim);
+    slideAnim.setValue(0); // Start in final position for navigation compatibility
   }, []);
 
   const handleSubmit = async () => {
@@ -74,8 +75,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     
     if (!email.trim() || !password.trim()) {
       setError('Please fill in all fields');
+      // Error haptic for validation failure
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+
+    // Medium haptic for form submission
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     setError('');
     setLocalLoading(true);
@@ -114,15 +120,20 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       });
 
       if (result.success) {
+        // Success haptic for successful login
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
         setIsSignInSuccess(true);
         setAuthStatus('success');
         
         setTimeout(() => {
-          ScreenTransitions.slideOutLeft(slideAnim, () => {
-            onSignInSuccess();
-          });
-        }, 1500);
+          // Fast success navigation - let navigation handle transition
+          onSignInSuccess();
+        }, 800);
       } else {
+        // Error haptic for login failure
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
         setError(result.error || 'Invalid email or password');
         setIsSignInSuccess(false);
         setAuthStatus('error');
@@ -131,6 +142,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         }, 2000);
       }
     } catch (err: any) {
+      // Error haptic for unexpected errors
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      
       setError(err.message || 'An unexpected error occurred during sign-in.');
       setIsSignInSuccess(false);
       setAuthStatus('error');
@@ -156,10 +170,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         title="Numina"
         showBackButton={true}
         showMenuButton={true}
+        showAuthOptions={false}
         onBackPress={() => {
-          ScreenTransitions.slideOutRight(slideAnim, () => {
-            onNavigateBack();
-          });
+          // Fast exit - let navigation handle the transition
+          onNavigateBack();
         }}
         onTitlePress={onNavigateToHero}
         onMenuPress={(key: string) => {}}
@@ -324,7 +338,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           style={[
                             styles.primaryButton,
                             {
-                              backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
+                              backgroundColor: '#add5fa',
                               opacity: (loading || isSignInSuccess) ? 0.9 : 1,
                             }
                           ]}
@@ -336,7 +350,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             <View style={styles.buttonTextContainer}>
                               <Text style={[
                                 styles.primaryButtonText, 
-                                { color: isDarkMode ? '#000000' : '#ffffff' }
+                                { color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff' }
                               ]}>
                                 {loading ? 'Signing In' : isSignInSuccess ? 'Success!' : 'Sign In'}
                               </Text>
@@ -345,7 +359,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               <View style={styles.spinnerContainer}>
                                 <AnimatedAuthStatus
                                   status={authStatus}
-                                  color={isDarkMode ? '#000000' : '#ffffff'}
+                                  color={isDarkMode ? NuminaColors.darkMode[600] : '#ffffff'}
                                   size={16}
                                   onAnimationComplete={() => {
                                     if (authStatus === 'error') {
@@ -364,9 +378,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     <TouchableOpacity
                       style={styles.linkButton}
                       onPress={() => {
-                        ScreenTransitions.slideOutLeft(slideAnim, () => {
-                          onNavigateToSignUp();
-                        });
+                        // Light haptic for navigation
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        // Fast navigation - let navigation handle transition
+                        onNavigateToSignUp();
                       }}
                       activeOpacity={0.7}
                     >

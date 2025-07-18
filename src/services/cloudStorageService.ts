@@ -217,5 +217,15 @@ class CloudStorageService {
   }
 }
 
-export default new CloudStorageService();
+// Lazy instantiation to prevent AWS SDK loading at startup
+let instance: CloudStorageService | null = null;
+
+export const getCloudStorageService = (): CloudStorageService => {
+  if (!instance) {
+    instance = new CloudStorageService();
+  }
+  return instance;
+};
+
+export default getCloudStorageService;
 export { CloudUploadResult, UploadProgress };

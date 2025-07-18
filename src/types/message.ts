@@ -4,6 +4,7 @@ export interface MessageAttachment {
   name: string;
   size: number;
   uri: string;
+  url?: string; // For server-side processing (GPT-4o vision expects this)
   mimeType: string;
   uploadStatus: 'pending' | 'uploading' | 'uploaded' | 'error';
   uploadProgress?: number;

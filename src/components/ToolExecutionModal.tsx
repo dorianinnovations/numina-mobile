@@ -18,6 +18,7 @@ import { AIToolExecutionStream } from './AIToolExecutionStream';
 import { FileUploadService } from '../services/fileUploadService';
 import { MessageAttachment } from '../types/message';
 import * as Haptics from 'expo-haptics';
+import { Easing } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -27,6 +28,8 @@ interface ToolExecutionModalProps {
   toolExecutions: ToolExecution[];
   currentMessage: string;
   onAttachmentSelected?: (attachment: MessageAttachment) => void;
+  ubpmInsights?: any[];
+  onAcknowledgeUBPM?: (insightId: string) => void;
 }
 
 export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
@@ -35,6 +38,8 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   toolExecutions,
   currentMessage,
   onAttachmentSelected,
+  ubpmInsights = [],
+  onAcknowledgeUBPM,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isClosing, setIsClosing] = useState(false);
@@ -96,38 +101,41 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
     
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsClosing(true);
-    
-    // Awesome close animation with multiple effects
-    Animated.parallel([
-      // Fast background fade
-      Animated.timing(backgroundOpacity, {
-        toValue: 0,
-        duration: 120,
-        useNativeDriver: true,
-      }),
-      // Content fade out quickly
+
+    // Fast, vertical-only exit animation: slide down, fade out, slight rotate, no scale
+    Animated.sequence([
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: screenHeight * 0.9,
+          duration: 120,
+          easing: Easing.bezier(0.22, 1, 0.36, 1),
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(contentOpacity, {
+          toValue: 0.2,
+          duration: 120,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]),
+      // Finish fading out after slide is done for trailing effect
       Animated.timing(contentOpacity, {
         toValue: 0,
         duration: 100,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      // Slide down with velocity
-      Animated.timing(slideAnim, {
-        toValue: screenHeight * 0.8,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-      // Scale down with bounce effect
-      Animated.spring(scaleAnim, {
-        toValue: 0.7,
-        tension: 180,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-      // Rotate slightly for dynamic effect
-      Animated.timing(rotateAnim, {
-        toValue: 1,
-        duration: 160,
+      // Background fade out after modal is mostly gone
+      Animated.timing(backgroundOpacity, {
+        toValue: 0,
+        duration: 90,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -171,25 +179,24 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   // Beautiful heavy button animation with slight bounce - 70% faster
   const animateButton = (buttonScale: Animated.Value, callback: () => void) => {
     Animated.sequence([
-      // Heavy press down - 70% faster
       Animated.timing(buttonScale, {
         toValue: 0.85,
-        duration: 30, // 100ms * 0.3 = 30ms
+        duration: 30, 
         useNativeDriver: true,
       }),
-      // Slight bounce back up with spring - much snappier
+      // Slight bounce back up with spring 
       Animated.spring(buttonScale, {
         toValue: 1.02,
         useNativeDriver: true,
-        tension: 500, // Increased from 300 for faster response
-        friction: 6,  // Reduced from 10 for less damping
+        tension: 500, 
+        friction: 6,  
       }),
       // Settle to normal with gentle bounce - faster settle
       Animated.spring(buttonScale, {
         toValue: 1,
         useNativeDriver: true,
-        tension: 400, // Increased from 200 for faster response
-        friction: 5,  // Reduced from 8 for quicker settle
+        tension: 400, 
+        friction: 5,  
       }),
     ]).start(() => {
       callback();
@@ -313,7 +320,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                     styles.headerTitle,
                     { color: isDarkMode ? '#f9fafb' : '#1f2937' }
                   ]}>
-                    Action Bar
+                    Spawner
                   </Text>
                 </View>
                 
@@ -439,9 +446,11 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
               >
                 <AIToolExecutionStream
                   executions={toolExecutions}
+                  ubpmInsights={ubpmInsights}
                   isVisible={true}
                   onToggleVisibility={() => {}}
                   currentMessage={currentMessage}
+                  onAcknowledgeUBPM={onAcknowledgeUBPM}
                 />
               </ScrollView>
             </SafeAreaView>

@@ -36,6 +36,8 @@ interface HeaderProps {
   subtitle?: string;
   isVisible?: boolean;
   isStreaming?: boolean;
+  onRestoreHeader?: () => void;
+  showAuthOptions?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -51,6 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   isVisible = true,
   isStreaming = false,
+  onRestoreHeader,
+  showAuthOptions = true,
 }) => {
   const { isDarkMode } = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -80,6 +84,9 @@ export const Header: React.FC<HeaderProps> = ({
   
   useEffect(() => {
     const targetOpacity = isVisible ? 1 : 0.05;
+    
+    // Stop any ongoing animation to prevent conflicts
+    visibilityAnim.stopAnimation();
     
     Animated.timing(visibilityAnim, {
       toValue: targetOpacity,
@@ -167,73 +174,61 @@ export const Header: React.FC<HeaderProps> = ({
     setConversationsVisible(false);
   };
 
-
-  return (
-    <>
-      <Animated.View
-        style={[
-          styles.header,
-          {
-            opacity: visibilityAnim,
-          },
-        ]}
-      >
-        <BlurView
-          intensity={isDarkMode ? 40 : 60}
-          tint={isDarkMode ? 'dark' : 'default'}
-          style={[
-            styles.blurContainer,
-            {
-              borderColor: isDarkMode 
-                ? 'rgba(255, 255, 255, 0.1)' 
-                : 'rgba(0, 0, 0, 0.1)',
-            },
-          ]}
-        >
-          <View style={styles.headerContent}>
-            <View style={styles.leftSection}>
-              <TouchableOpacity 
-                style={styles.logoContainer}
-                onPress={onTitlePress}
-                activeOpacity={onTitlePress ? 0.7 : 1}
-                disabled={!onTitlePress}
-              >
-                <OptimizedImage 
-                  source={numinaLogo} 
-                  style={[
-                    styles.logo,
-                    {
-                      opacity: isDarkMode ? 1 : 0.9,
-                    }
-                  ]}
-                  resizeMode="contain"
-                  showLoader={false}
-                  preload={false}
-                />
-                <Text style={[
-                  styles.numinaText,
-                  {
-                    color: isDarkMode ? '#ffffff' : '#586266eb',
-                  }
-                ]}>
-                  {title || 'Numina'}
-                </Text>
-              </TouchableOpacity>
-              
-              {subtitle && (
-                <Text style={[
-                  styles.headerSubtitle,
-                  { 
-                    color: isDarkMode ? '#888888' : '#666666',
-                    marginLeft: 4,
-                  }
-                ]}>
-                  {subtitle}
-                </Text>
-              )}
-            </View>
-
-            <View style={styles.rightSection}>
+  const headerContent = (
+    <BlurView
+      intensity={isDarkMode ? 40 : 60}
+      tint={isDarkMode ? 'dark' : 'default'}
+      style={[
+        styles.blurContainer,
+        {
+          borderColor: isDarkMode 
+            ? 'rgba(255, 255, 255, 0.1)' 
+            : 'rgba(0, 0, 0, 0.1)',
+        },
+      ]}
+    >
+      <View style={styles.headerContent}>
+        <View style={styles.leftSection}>
+          <TouchableOpacity 
+            style={styles.logoContainer}
+            onPress={onTitlePress}
+            activeOpacity={onTitlePress ? 0.7 : 1}
+            disabled={!onTitlePress}
+          >
+            <OptimizedImage 
+              source={numinaLogo} 
+              style={[
+                styles.logo,
+                {
+                  opacity: isDarkMode ? 1 : 0.9,
+                }
+              ]}
+              resizeMode="contain"
+              showLoader={false}
+              preload={false}
+            />
+            <Text style={[
+              styles.numinaText,
+              {
+                color: isDarkMode ? '#ffffff' : '#586266eb',
+              }
+            ]}>
+              {title || 'Numina'}
+            </Text>
+          </TouchableOpacity>
+          {subtitle && (
+            <Text style={[
+              styles.headerSubtitle,
+              { 
+                color: isDarkMode ? '#888888' : '#666666',
+                marginLeft: 4,
+              }
+            ]}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+        <View style={styles.rightSection}>
 
               {showBackButton && (
                                   <TouchableOpacity
@@ -272,12 +267,12 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'rgba(255, 255, 255, 0.1)' 
                           : 'rgba(255, 255, 255, 0.3)',
                         marginLeft: showBackButton ? 12 : 0,
-                        // Explicit glow properties to match menu button exactly
+                        // Enhanced neuromorphic shadow
                         shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
-                        elevation: 2,
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 2,
+                        elevation: 3,
                       }
                     ]}
                     onPress={handleConversationsButtonPress}
@@ -305,12 +300,12 @@ export const Header: React.FC<HeaderProps> = ({
                           ? 'rgba(255, 255, 255, 0.1)' 
                           : 'rgba(255, 255, 255, 0.3)',
                         marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
-                        // Explicit glow properties to ensure perfect matching
+                        // Enhanced neuromorphic shadow
                         shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 4,
-                        elevation: 2,
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 2,
+                        elevation: 3,
                       }
                     ]}
                     onPress={handleMenuButtonPress}
@@ -325,8 +320,31 @@ export const Header: React.FC<HeaderProps> = ({
                 </Animated.View>
               )}
             </View>
-          </View>
-        </BlurView>
+        </View>
+      </BlurView>
+    );
+
+  return (
+    <>
+      <Animated.View
+        style={[
+          styles.header,
+          {
+            opacity: visibilityAnim,
+          },
+        ]}
+      >
+        {!isVisible && onRestoreHeader ? (
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={0.8}
+            onPress={onRestoreHeader}
+          >
+            {headerContent}
+          </TouchableOpacity>
+        ) : (
+          headerContent
+        )}
       </Animated.View>
       
       <HeaderMenu
@@ -334,6 +352,7 @@ export const Header: React.FC<HeaderProps> = ({
         onClose={() => setMenuVisible(false)}
         onAction={handleMenuAction}
         menuButtonPosition={menuButtonPosition}
+        showAuthOptions={showAuthOptions}
       />
       
       <ConversationHistory
@@ -403,16 +422,16 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   iconButton: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });

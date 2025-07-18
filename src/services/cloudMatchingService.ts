@@ -1,7 +1,7 @@
 import ApiService from './api';
 import AIPersonalityService, { UserEmotionalState } from './aiPersonalityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SecureStorageService from './secureStorage';
+import CloudAuth from './cloudAuth';
 
 interface CloudEvent {
   id: string;
@@ -573,7 +573,7 @@ class CloudMatchingService {
   // Caching methods
   private async cacheEvents(events: CloudEvent[]): Promise<void> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         console.warn('No user ID found, cannot cache events');
         return;
@@ -591,7 +591,7 @@ class CloudMatchingService {
 
   private async getCachedEvents(): Promise<CloudEvent[]> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         return [];
       }
@@ -613,7 +613,7 @@ class CloudMatchingService {
 
   private async cacheCompatibilityAnalysis(eventId: string, analysis: CompatibilityAnalysis): Promise<void> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) return;
       
       const cacheKeys = getCacheKeys(userId);
@@ -631,7 +631,7 @@ class CloudMatchingService {
 
   private async cacheUserMatches(users: CompatibleUser[]): Promise<void> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) return;
       
       const cacheKeys = getCacheKeys(userId);

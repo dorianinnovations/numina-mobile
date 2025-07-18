@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,695 +6,909 @@ import {
   StyleSheet,
   SafeAreaView,
   Animated,
-  Image,
   Dimensions,
   ScrollView,
   StatusBar,
-  Platform,
+  Easing,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
-import { NuminaColors } from '../utils/colors';
-import { ScreenTransitions, NuminaAnimations, NuminaEasing } from '../utils/animations';
+import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
-// Removed OptimizedImage for simpler rendering
+import { NuminaColors } from '../utils/colors';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-// Elegant opacity-based animation constants
-const ANIMATION_TIMING = {
-  INSTANT: 120,
-  FAST: 200,
-  SMOOTH: 300,
-  ENTRANCE: 400,
+// Ultra-fast animation timings for pleasure responses
+const PLEASURE_TIMINGS = {
+  INSTANT: 50,      // Instant response
+  SNAP: 80,         // Quick snap
+  SMOOTH: 120,      // Buttery smooth
+  ELEGANT: 180,     // Elegant transition
+  BREATHE: 300,     // Natural breathing
 };
 
-const EASING_PRESETS = {
-  entrance: NuminaEasing.smooth,
-  exit: NuminaEasing.smooth,
-  elegant: NuminaEasing.neumorphicEntrance,
-  bounce: NuminaEasing.neumorphicBounce,
+// Pleasure easing curves - using only guaranteed basic easing functions
+const PLEASURE_EASING = {
+  snap: Easing.out(Easing.quad),
+  bounce: Easing.out(Easing.back(1.7)),
+  elastic: Easing.out(Easing.back(2)),
+  smooth: Easing.out(Easing.quad),
+  breathe: Easing.inOut(Easing.quad),
 };
 
-// Import character images for each tutorial step
-const happyNuminaImage = require('../assets/images/happynumina.png');
-const numinaPuzzledImage = require('../assets/images/numinapuzzled.png');
-const numinaContentImage = require('../assets/images/numinacontent.png');
-const numinaShadesImage = require('../assets/images/numinashades.png');
+// Helper function for feature descriptions
+const getFeatureDescription = (feature: string, stepId: number): string => {
+  const descriptions: { [key: string]: string } = {
+    // UBPM Intelligence
+    "Real-time behavioral analysis": "AI learns your communication style, decision patterns, and preferences as you interact",
+    "Adaptive AI personality": "Your assistant's tone and approach evolves to match your personality and mood",
+    "Pattern recognition engine": "Identifies recurring themes in your conversations and behavioral tendencies",
+    "Predictive insights": "Anticipates your needs and suggests relevant information before you ask",
+    
+    // AI Tools
+    "Web search & research": "Access real-time information from across the internet with intelligent summarization",
+    "Real-time data lookup": "Get live updates on stocks, crypto, weather, news, and market data instantly",
+    "Content generation": "Create text, code, emails, and creative content with context-aware AI assistance",
+    "Smart automation": "Automate repetitive tasks with natural language commands and intelligent workflows",
+    
+    // Emotional Analytics
+    "Weekly emotion reports": "Comprehensive analysis of your emotional patterns with visual insights and trends",
+    "Stress pattern detection": "Identify triggers, peak stress times, and environmental factors affecting your mood",
+    "Growth recommendations": "Personalized suggestions for emotional wellness and personal development",
+    "Mood correlation insights": "Understand how your emotions relate to activities, people, and life events"
+  };
+  
+  return descriptions[feature] || "Advanced AI capabilities designed to enhance your digital experience";
+};
 
-// Preload all tutorial images
-const tutorialImages = [happyNuminaImage, numinaPuzzledImage, numinaContentImage, numinaShadesImage];
-
+// Tutorial steps with authentic mass-appeal messaging
 const tutorialSteps = [
   {
     id: 1,
-    title: "Intelligent Conversations",
-    description: "Meet Numina, your AI companion that thinks like you do. Every conversation creates new connections, helping you discover insights you never knew existed. It's like having a brilliant friend who remembers everything and helps you see patterns in your thoughts.",
-    image: happyNuminaImage,
-    character: "Friendly Numina",
+    title: "Numina Actually Knows You",
+    description: "While others track surface metrics, Numina learns how you really think. Not invasive—just observant. Like a good friend who remembers what matters.",
+    icon: "activity",
     features: [
-      { text: "Smart conversation memory", icon: "cpu" },
-      { text: "Context-aware responses", icon: "layers" },
-      { text: "Personalized insights", icon: "map" },
-      { text: "Natural language understanding", icon: "brain" }
-    ],
-    progress: { current: 1, total: 5 }
+      "Real personality understanding",
+      "Privacy-first intelligence",
+      "Growth insights that matter"
+    ]
   },
   {
     id: 2,
-    title: "Predictive Intelligence",
-    description: "Numina doesn't just respond—it anticipates. By understanding your patterns and preferences, it can suggest ideas and solutions before you even think to ask. It's like having a crystal ball that actually works.",
-    image: numinaPuzzledImage,
-    character: "Focused Numina",
+    title: "Just Talk Normally",
+    description: "No commands to learn. Say 'find pizza and check the weather'—Numina handles both in one response. 25+ tools working invisibly.",
+    icon: "tool",
     features: [
-      { text: "Smart suggestions", icon: "clock" },
-      { text: "Pattern recognition", icon: "trending-up" },
-      { text: "Proactive assistance", icon: "grid" },
-      { text: "Personalized predictions", icon: "target" }
-    ],
-    progress: { current: 2, total: 5 }
+      "Natural conversation works",
+      "25+ tools, zero syntax",
+      "Real-time streaming results"
+    ]
   },
   {
     id: 3,
-    title: "Creative Discovery",
-    description: "Unlock new ways of thinking with Numina's creative engine. It combines your ideas with vast knowledge to reveal connections and possibilities you might never discover alone. Every chat becomes a journey of discovery.",
-    image: numinaContentImage,
-    character: "Creative Numina",
+    title: "Remembers What Matters",
+    description: "Every conversation builds on the last. Your preferences, goals, context—remembered smartly while keeping costs low for everyone.",
+    icon: "clock",
     features: [
-      { text: "Creative brainstorming", icon: "compass" },
-      { text: "Knowledge synthesis", icon: "shuffle" },
-      { text: "Innovation catalyst", icon: "award" },
-      { text: "Deep research assistant", icon: "search" }
-    ],
-    progress: { current: 3, total: 5 }
+      "Context that helps",
+      "Smart cost optimization",
+      "Memory that grows with you"
+    ]
   },
   {
     id: 4,
-    title: "Global Intelligence Network",
-    description: "Connect with the collective wisdom of humanity through Numina's global network. Your conversations contribute to and benefit from a living knowledge base that grows smarter with every interaction worldwide.",
-    image: numinaShadesImage,
-    character: "Wise Numina",
+    title: "Fast Enough to Keep Up",
+    description: "Enterprise-grade performance, personal pricing. Sub-second responses because waiting kills conversations.",
+    icon: "zap",
     features: [
-      { text: "Global knowledge access", icon: "globe" },
-      { text: "Community insights", icon: "users" },
-      { text: "Real-time learning", icon: "server" },
-      { text: "Collaborative intelligence", icon: "wifi" }
-    ],
-    progress: { current: 4, total: 5 }
+      "Under 1-second responses",
+      "Enterprise performance",
+      "85% instant cache hits"
+    ]
   },
   {
     id: 5,
-    title: "Your AI Partner",
-    description: "Ready to start your journey with Numina? This is where AI meets human creativity in perfect harmony. Your thoughts and Numina's intelligence will work together to unlock possibilities you've only dreamed of.",
-    image: happyNuminaImage,
-    character: "Ready Numina",
+    title: "Your Thinking Partner",
+    description: "Not replacing human connection—supporting it. Real intelligence, real help, whenever you're ready to begin.",
+    icon: "heart",
     features: [
-      { text: "Seamless collaboration", icon: "heart" },
-      { text: "Natural conversations", icon: "message-circle" },
-      { text: "Creative partnership", icon: "edit-3" },
-      { text: "Endless possibilities", icon: "navigation" }
-    ],
-    progress: { current: 5, total: 5 },
-    interface: "chat"
-  },
- ];
+      "Always here, never pushy",
+      "Real conversations, real results",
+      "Ready when you are"
+    ]
+  }
+];
 
 interface TutorialScreenProps {
   onNavigateHome: () => void;
   onStartChat: () => void;
+  onTitlePress?: () => void;
+  onMenuPress?: (key: string) => void;
 }
 
 export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   onNavigateHome,
   onStartChat,
+  onTitlePress,
+  onMenuPress,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [interactionCount, setInteractionCount] = useState(0);
-  const [discoveredFeatures, setDiscoveredFeatures] = useState<Set<string>>(new Set());
-  const [completedInteractions, setCompletedInteractions] = useState<Set<string>>(new Set());
   
-  // Dynamic background animations
-  const backgroundPulse1 = useRef(new Animated.Value(0)).current;
-  const backgroundPulse2 = useRef(new Animated.Value(0)).current;
-  const backgroundPulse3 = useRef(new Animated.Value(0)).current;
-  const backgroundRotate = useRef(new Animated.Value(0)).current;
-  const particleFloat1 = useRef(new Animated.Value(0)).current;
-  const particleFloat2 = useRef(new Animated.Value(0)).current;
-  const particleFloat3 = useRef(new Animated.Value(0)).current;
+  // Core animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  
+  // Card animations with rich pleasure effects
+  const cardScale = useRef(new Animated.Value(0.92)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const cardFloat = useRef(new Animated.Value(0)).current;
+  const cardGlow = useRef(new Animated.Value(0)).current;
+  
+  // Icon pleasure animations
+  const iconScale = useRef(new Animated.Value(0.7)).current;
+  const iconRotate = useRef(new Animated.Value(0)).current;
+  const iconPulse = useRef(new Animated.Value(0)).current;
+  const iconFloat = useRef(new Animated.Value(0)).current;
+  
+  // Button micro-interactions
+  const buttonScale = useRef(new Animated.Value(1)).current;
+  const buttonGlow = useRef(new Animated.Value(0)).current;
+  const buttonPress = useRef(new Animated.Value(0)).current;
+  
+  // Progress dot animations
+  const progressAnims = useRef(tutorialSteps.map(() => new Animated.Value(0))).current;
+  
+  // Feature list stagger animations with flying neural connectors
+  const featureAnims = useRef([0, 1, 2].map((_, index) => ({
+    opacity: new Animated.Value(0),
+    translateY: new Animated.Value(15),
+    scale: new Animated.Value(0.95),
+    connectorGlow: new Animated.Value(0),
+    connectorPulse: new Animated.Value(0),
+    connectorWidth: new Animated.Value(0),
+    neuralSpark: new Animated.Value(0),
+    // Orderly erratic values - each connector has unique behavior
+    erraticFlicker: new Animated.Value(0),
+    erraticPulse: new Animated.Value(0),
+    erraticGlow: new Animated.Value(0),
+    // Flying and movement animations
+    flyingX: new Animated.Value(0),
+    flyingY: new Animated.Value(0),
+    flyingRotate: new Animated.Value(0),
+    flyingScale: new Animated.Value(1),
+    neuralFlow: new Animated.Value(0),
+    orbitAngle: new Animated.Value(0),
+    dimensionalShift: new Animated.Value(0),
+    particleTrail: new Animated.Value(0),
+    waveRipple: new Animated.Value(0),
+    // Unique timing per connector based on index
+    baseDelay: 800 + (index * 400), // 800ms, 1200ms, 1600ms, 2000ms
+    flickerInterval: 1500 + (index * 300), // Varying flicker speeds
+    pulseOffset: index * 0.25, // Phase offset for wave effect
+    flyingPattern: index % 4, // 0=circular, 1=figure8, 2=spiral, 3=chaotic
+  }))).current;
+  
+  // Ambient background animations
+  const ambientPulse1 = useRef(new Animated.Value(0)).current;
+  const ambientPulse2 = useRef(new Animated.Value(0)).current;
+  const ambientFloat = useRef(new Animated.Value(0)).current;
 
-  // Elegant opacity-based animation values
-  const masterFadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const contentOpacityAnim = useRef(new Animated.Value(0)).current;
-  const characterOpacityAnim = useRef(new Animated.Value(0)).current;
-  const characterScaleAnim = useRef(new Animated.Value(0.95)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  
-  // Individual bullet point animations - staggered roll-in from bottom
-  const bulletPoint1Opacity = useRef(new Animated.Value(0)).current;
-  const bulletPoint1Transform = useRef(new Animated.Value(20)).current;
-  const bulletPoint2Opacity = useRef(new Animated.Value(0)).current;
-  const bulletPoint2Transform = useRef(new Animated.Value(20)).current;
-  const bulletPoint3Opacity = useRef(new Animated.Value(0)).current;
-  const bulletPoint3Transform = useRef(new Animated.Value(20)).current;
-  const bulletPoint4Opacity = useRef(new Animated.Value(0)).current;
-  const bulletPoint4Transform = useRef(new Animated.Value(20)).current;
-  
-  // Feature animations - elegant stagger with opacity only
-  const featuresOpacityAnim = useRef(new Animated.Value(0)).current;
-  
-  // Navigation button animations - subtle scale only
-  const prevButtonScale = useRef(new Animated.Value(1)).current;
-  const nextButtonScale = useRef(new Animated.Value(1)).current;
-  
-  // Content transform for subtle movement (maximum 8px)
-  const contentTransformAnim = useRef(new Animated.Value(0)).current;
-
-  // Removed complex image preloading for simpler approach
-
-  // Elegant entrance animation - pure opacity with minimal scale
+  // Ultra-smooth entrance sequence
   useEffect(() => {
-    const entranceSequence = Animated.sequence([
-      // Master fade in
-      Animated.timing(masterFadeAnim, {
-        toValue: 1,
-        duration: ANIMATION_TIMING.ENTRANCE,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.entrance,
-      }),
-      
-      // Content opacity with subtle scale
-      Animated.parallel([
-        Animated.timing(contentOpacityAnim, {
-          toValue: 1,
-          duration: ANIMATION_TIMING.FAST,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
-        }),
-        Animated.timing(contentTransformAnim, {
-          toValue: 1,
-          duration: ANIMATION_TIMING.FAST,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
-        }),
-      ]),
-      
-      // Character elegant appearance
-      Animated.parallel([
-        Animated.timing(characterOpacityAnim, {
-          toValue: 1,
-          duration: ANIMATION_TIMING.SMOOTH,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
-        }),
-        Animated.timing(characterScaleAnim, {
-          toValue: 1,
-          duration: ANIMATION_TIMING.SMOOTH,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
-        }),
-      ]),
-      
-    ]);
-
-    entranceSequence.start(() => {
-      // Start bullet point animations after main content is visible
-      animateBulletPoints(tutorialSteps[currentStep]).start();
-    });
-
-    // Progress bar animation
-    Animated.timing(progressAnim, {
-      toValue: (currentStep + 1) / tutorialSteps.length,
-      duration: ANIMATION_TIMING.SMOOTH,
-      useNativeDriver: false,
-      easing: EASING_PRESETS.elegant,
-    }).start();
-
-    return () => {
-      entranceSequence.stop();
-    };
-  }, []);
-
-  // Staggered bullet point animations - roll in from bottom with 600ms duration
-  const animateBulletPoints = useCallback((step: any) => {
-    const bulletAnims = [
-      { opacity: bulletPoint1Opacity, transform: bulletPoint1Transform },
-      { opacity: bulletPoint2Opacity, transform: bulletPoint2Transform },
-      { opacity: bulletPoint3Opacity, transform: bulletPoint3Transform },
-      { opacity: bulletPoint4Opacity, transform: bulletPoint4Transform },
-    ];
-
-    // Reset all bullet points
-    bulletAnims.forEach(anim => {
-      anim.opacity.setValue(0);
-      anim.transform.setValue(20);
-    });
-
-    // Create staggered animations for each bullet point
-    const staggeredAnimations = step.features.map((_: any, index: number) => {
-      if (index < bulletAnims.length) {
-        return Animated.parallel([
-          Animated.timing(bulletAnims[index].opacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-          Animated.timing(bulletAnims[index].transform, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-        ]);
-      }
-      return null;
-    }).filter(Boolean);
-
-    // Stagger the animations with 150ms delay between each
-    return Animated.stagger(150, staggeredAnimations);
-  }, [bulletPoint1Opacity, bulletPoint1Transform, bulletPoint2Opacity, bulletPoint2Transform,
-      bulletPoint3Opacity, bulletPoint3Transform, bulletPoint4Opacity, bulletPoint4Transform]);
-
-  // Update progress when step changes - smooth and elegant
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: (currentStep + 1) / tutorialSteps.length,
-      duration: ANIMATION_TIMING.FAST,
-      useNativeDriver: false,
-      easing: EASING_PRESETS.elegant,
-    }).start();
-  }, [currentStep]);
-
-  // Elegant step transition - pure opacity crossfade with minimal movement
-  const animateStepTransition = useCallback((direction: number) => {
-    if (isTransitioning) return;
+    fadeAnim.setValue(1);
+    ScreenTransitions.slideInLeft(slideAnim);
     
-    setIsTransitioning(true);
-    NuminaAnimations.haptic.light();
-
-    // Elegant exit - fade out with subtle scale
-    const exitSequence = Animated.parallel([
-      Animated.timing(contentOpacityAnim, {
-        toValue: 0,
-        duration: ANIMATION_TIMING.FAST,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      }),
-      Animated.timing(characterOpacityAnim, {
-        toValue: 0,
-        duration: ANIMATION_TIMING.FAST,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      }),
-      Animated.timing(characterScaleAnim, {
-        toValue: 0.95,
-        duration: ANIMATION_TIMING.FAST,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      }),
-      Animated.timing(featuresOpacityAnim, {
-        toValue: 0,
-        duration: ANIMATION_TIMING.INSTANT,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      }),
-      // Subtle content movement (max 8px)
-      Animated.timing(contentTransformAnim, {
-        toValue: direction > 0 ? -0.2 : 1.2,
-        duration: ANIMATION_TIMING.FAST,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      }),
-      // Reset all bullet points to hidden immediately
-      Animated.parallel([
-        Animated.timing(bulletPoint1Opacity, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.INSTANT,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bulletPoint2Opacity, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.INSTANT,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bulletPoint3Opacity, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.INSTANT,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bulletPoint4Opacity, {
-          toValue: 0,
-          duration: ANIMATION_TIMING.INSTANT,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]);
-
-    exitSequence.start(() => {
-      // Update step
-      setCurrentStep(prev => prev + direction);
-      
-      // Reset for entrance
-      contentTransformAnim.setValue(direction > 0 ? 1.2 : -0.2);
-      
-      // Elegant entrance - staggered opacity with smooth scale
-      const entranceSequence = Animated.sequence([
-        // Content fades in with smooth transform
-        Animated.parallel([
-          Animated.timing(contentOpacityAnim, {
-            toValue: 1,
-            duration: ANIMATION_TIMING.SMOOTH,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-          Animated.timing(contentTransformAnim, {
-            toValue: 1,
-            duration: ANIMATION_TIMING.SMOOTH,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-        ]),
-        
-        // Character elegant appearance
-        Animated.parallel([
-          Animated.timing(characterOpacityAnim, {
-            toValue: 1,
-            duration: ANIMATION_TIMING.SMOOTH,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-          Animated.timing(characterScaleAnim, {
-            toValue: 1,
-            duration: ANIMATION_TIMING.SMOOTH,
-            useNativeDriver: true,
-            easing: EASING_PRESETS.elegant,
-          }),
-        ]),
-      ]);
-
-      // Features elegant fade in
-      const featuresSequence = Animated.timing(featuresOpacityAnim, {
-        toValue: 1,
-        duration: ANIMATION_TIMING.SMOOTH,
-        useNativeDriver: true,
-        easing: EASING_PRESETS.elegant,
-      });
-
-      entranceSequence.start(() => {
-        // Start bullet point animations after main content transitions
-        animateBulletPoints(tutorialSteps[currentStep]).start(() => {
-          setIsTransitioning(false);
-        });
-      });
-    });
-  }, [isTransitioning, currentStep]);
-
-  // Ultra-smooth button press animations
-  const handleButtonPress = useCallback((button: 'prev' | 'next', action: () => void) => {
-    const scaleAnim = button === 'prev' ? prevButtonScale : nextButtonScale;
-    
-    // Haptic feedback
-    NuminaAnimations.haptic.light();
-    
-    // Ultra-smooth press animation with bounce
+    // Instant card appearance with pleasure bounce
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 0.92,
-          duration: 80,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
-          toValue: 1.05,
-          duration: 120,
-          useNativeDriver: true,
-          easing: EASING_PRESETS.bounce,
-        }),
-      ]),
-      Animated.parallel([
-        Animated.timing(scaleAnim, {
+        Animated.timing(cardOpacity, {
           toValue: 1,
-          duration: 180,
+          duration: PLEASURE_TIMINGS.INSTANT,
+          easing: PLEASURE_EASING.snap,
           useNativeDriver: true,
-          easing: EASING_PRESETS.elegant,
+        }),
+        Animated.spring(cardScale, {
+          toValue: 1.02,
+          tension: 120,
+          friction: 6,
+          useNativeDriver: true,
         }),
       ]),
+      Animated.spring(cardScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 8,
+        useNativeDriver: true,
+      }),
     ]).start();
-
-    // Execute action with slight delay for better feel
+    
+    // Instant icon with elastic pleasure
     setTimeout(() => {
-      action();
-    }, 100);
-  }, []);
-
-  const nextStep = useCallback(() => {
-    if (currentStep < tutorialSteps.length - 1 && !isTransitioning) {
-      animateStepTransition(1);
-    }
-  }, [currentStep, isTransitioning, animateStepTransition]);
-
-  const prevStep = useCallback(() => {
-    if (currentStep > 0 && !isTransitioning) {
-      animateStepTransition(-1);
-    }
-  }, [currentStep, isTransitioning, animateStepTransition]);
-
-  const handleFinishTutorial = useCallback(() => {
-    NuminaAnimations.haptic.success();
-    ScreenTransitions.fadeOutScale(masterFadeAnim, characterScaleAnim, () => {
-      onStartChat();
+      Animated.sequence([
+        Animated.spring(iconScale, {
+          toValue: 1.15,
+          tension: 150,
+          friction: 4,
+          useNativeDriver: true,
+        }),
+        Animated.spring(iconScale, {
+          toValue: 1,
+          tension: 120,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, PLEASURE_TIMINGS.SNAP);
+    
+    // Animate progress dots with stagger
+    progressAnims.forEach((anim, index) => {
+      if (index === 0) {
+        setTimeout(() => {
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 120,
+            friction: 6,
+            useNativeDriver: true,
+          }).start();
+        }, PLEASURE_TIMINGS.SMOOTH + index * 30);
+      }
     });
-  }, [masterFadeAnim, characterScaleAnim, onStartChat]);
-
-  // Interactive feature handlers
-  const handleFeaturePress = useCallback((feature: any, index: number) => {
-    NuminaAnimations.haptic.light();
-    setInteractionCount(prev => prev + 1);
-    setDiscoveredFeatures(prev => new Set([...prev, feature.text]));
-    setCompletedInteractions(prev => new Set([...prev, `feature-${currentStep}-${index}`]));
     
-    // Animate feature interaction
-    const scaleAnim = new Animated.Value(1);
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    // Stagger feature animations
+    setTimeout(() => {
+      animateFeatures();
+    }, PLEASURE_TIMINGS.ELEGANT);
     
-    console.log(`✨ Feature discovered: ${feature.text}`);
-  }, [currentStep]);
+    // Start ambient animations
+    startAmbientAnimations();
+  }, []);
 
-  const handleShakeGesture = useCallback(() => {
-    if (currentStep === 2) { // Discovery Engine step
-      NuminaAnimations.haptic.medium();
-      const randomFeatures = ['Smart Suggestions', 'Pattern Discovery', 'Adaptive UI', 'Learning Insights'];
-      const randomFeature = randomFeatures[Math.floor(Math.random() * randomFeatures.length)];
-      setDiscoveredFeatures(prev => new Set([...prev, randomFeature]));
-      setCompletedInteractions(prev => new Set([...prev, 'shake-discovery']));
-      console.log(`🎲 Random discovery: ${randomFeature}`);
+  // Pleasure-focused step transition
+  useEffect(() => {
+    if (currentStep > 0) {
+      // Instant icon transition with micro-bounce
+      Animated.sequence([
+        Animated.timing(iconScale, {
+          toValue: 0.85,
+          duration: PLEASURE_TIMINGS.INSTANT,
+          easing: PLEASURE_EASING.snap,
+          useNativeDriver: true,
+        }),
+        Animated.spring(iconScale, {
+          toValue: 1.08,
+          tension: 140,
+          friction: 5,
+          useNativeDriver: true,
+        }),
+        Animated.spring(iconScale, {
+          toValue: 1,
+          tension: 120,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      // Progress dot animation
+      progressAnims.forEach((anim, index) => {
+        if (index === currentStep) {
+          Animated.spring(anim, {
+            toValue: 1,
+            tension: 150,
+            friction: 6,
+            useNativeDriver: true,
+          }).start();
+        } else if (index === currentStep - 1) {
+          Animated.timing(anim, {
+            toValue: 0.6,
+            duration: PLEASURE_TIMINGS.SMOOTH,
+            easing: PLEASURE_EASING.smooth,
+            useNativeDriver: true,
+          }).start();
+        }
+      });
+      
+      // Re-animate features
+      setTimeout(() => {
+        animateFeatures();
+      }, PLEASURE_TIMINGS.SNAP);
     }
   }, [currentStep]);
-
-  const handleLongPressFeature = useCallback((feature: any) => {
-    NuminaAnimations.haptic.heavy();
-    setCompletedInteractions(prev => new Set([...prev, `saved-${feature.text}`]));
-    console.log(`💾 Saved feature: ${feature.text}`);
-  }, []);
-
-  // Dynamic background animation loop
-  useEffect(() => {
-    // Continuous pulsing animations with different timings
-    const pulse1Loop = Animated.loop(
+  
+  // Advanced neural feature animation with connector effects
+  const animateFeatures = () => {
+    featureAnims.forEach((anim, index) => {
+      // Reset all animations
+      anim.opacity.setValue(0);
+      anim.translateY.setValue(15);
+      anim.scale.setValue(0.95);
+      anim.connectorGlow.setValue(0);
+      anim.connectorPulse.setValue(0);
+      anim.connectorWidth.setValue(0);
+      anim.neuralSpark.setValue(0);
+      
+      // Animate with advanced stagger
+      setTimeout(() => {
+        // Main feature animation
+        Animated.parallel([
+          Animated.timing(anim.opacity, {
+            toValue: 1,
+            duration: PLEASURE_TIMINGS.SMOOTH,
+            easing: PLEASURE_EASING.smooth,
+            useNativeDriver: true,
+          }),
+          Animated.spring(anim.translateY, {
+            toValue: 0,
+            tension: 120,
+            friction: 8,
+            useNativeDriver: true,
+          }),
+          Animated.spring(anim.scale, {
+            toValue: 1,
+            tension: 140,
+            friction: 6,
+            useNativeDriver: true,
+          }),
+        ]).start();
+        
+        // Neural connector sequence
+        setTimeout(() => {
+          // 1. Width expansion
+          Animated.timing(anim.connectorWidth, {
+            toValue: 1,
+            duration: 200,
+            easing: PLEASURE_EASING.snap,
+            useNativeDriver: false,
+          }).start();
+          
+          // 2. Glow activation
+          setTimeout(() => {
+            Animated.timing(anim.connectorGlow, {
+              toValue: 1,
+              duration: 150,
+              easing: PLEASURE_EASING.smooth,
+              useNativeDriver: false,
+            }).start();
+            
+            // 3. Neural spark
+            setTimeout(() => {
+              Animated.sequence([
+                Animated.timing(anim.neuralSpark, {
+                  toValue: 1,
+                  duration: 300,
+                  easing: PLEASURE_EASING.smooth,
+                  useNativeDriver: true,
+                }),
+                Animated.timing(anim.neuralSpark, {
+                  toValue: 0,
+                  duration: 200,
+                  easing: PLEASURE_EASING.smooth,
+                  useNativeDriver: true,
+                }),
+              ]).start();
+              
+              // 4. Start orderly erratic behaviors
+              // Base pulse with unique timing per connector
+              Animated.loop(
+                Animated.sequence([
+                  Animated.timing(anim.connectorPulse, {
+                    toValue: 1,
+                    duration: 1200 + (index * 200), // Varying speeds
+                    easing: PLEASURE_EASING.breathe,
+                    useNativeDriver: false,
+                  }),
+                  Animated.timing(anim.connectorPulse, {
+                    toValue: 0,
+                    duration: 1200 + (index * 200),
+                    easing: PLEASURE_EASING.breathe,
+                    useNativeDriver: false,
+                  }),
+                ])
+              ).start();
+              
+              // Erratic flicker - random intensity bursts
+              const startErraticFlicker = () => {
+                const nextFlicker = () => {
+                  const delay = 500 + Math.random() * 2500;
+                  setTimeout(() => {
+                    Animated.sequence([
+                      Animated.timing(anim.erraticFlicker, {
+                        toValue: 0.3 + Math.random() * 0.7,
+                        duration: 80 + Math.random() * 120,
+                        easing: PLEASURE_EASING.snap,
+                        useNativeDriver: false,
+                      }),
+                      Animated.timing(anim.erraticFlicker, {
+                        toValue: 0,
+                        duration: 200 + Math.random() * 300,
+                        easing: PLEASURE_EASING.smooth,
+                        useNativeDriver: false,
+                      }),
+                    ]).start(() => nextFlicker());
+                  }, delay);
+                };
+                setTimeout(nextFlicker, anim.baseDelay);
+              };
+              
+              // Erratic glow surges
+              const startErraticGlow = () => {
+                const nextGlow = () => {
+                  const delay = 1000 + Math.random() * 4000;
+                  setTimeout(() => {
+                    Animated.sequence([
+                      Animated.timing(anim.erraticGlow, {
+                        toValue: 0.6 + Math.random() * 0.4,
+                        duration: 150 + Math.random() * 200,
+                        easing: PLEASURE_EASING.snap,
+                        useNativeDriver: false,
+                      }),
+                      Animated.timing(anim.erraticGlow, {
+                        toValue: 0,
+                        duration: 400 + Math.random() * 600,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: false,
+                      }),
+                    ]).start(() => nextGlow());
+                  }, delay);
+                };
+                setTimeout(nextGlow, anim.baseDelay + 300);
+              };
+              
+              // Erratic pulse variations - sometimes double pulses
+              const startErraticPulse = () => {
+                const nextPulse = () => {
+                  const delay = 2000 + Math.random() * 3000;
+                  setTimeout(() => {
+                    const isDouble = Math.random() > 0.7;
+                    if (isDouble) {
+                      // Double pulse
+                      Animated.sequence([
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0.6,
+                          duration: 120,
+                          easing: PLEASURE_EASING.snap,
+                          useNativeDriver: false,
+                        }),
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0,
+                          duration: 80,
+                          easing: PLEASURE_EASING.smooth,
+                          useNativeDriver: false,
+                        }),
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0.8,
+                          duration: 100,
+                          easing: PLEASURE_EASING.snap,
+                          useNativeDriver: false,
+                        }),
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0,
+                          duration: 200,
+                          easing: PLEASURE_EASING.breathe,
+                          useNativeDriver: false,
+                        }),
+                      ]).start(() => nextPulse());
+                    } else {
+                      // Single pulse with random intensity
+                      Animated.sequence([
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0.4 + Math.random() * 0.4,
+                          duration: 100 + Math.random() * 100,
+                          easing: PLEASURE_EASING.snap,
+                          useNativeDriver: false,
+                        }),
+                        Animated.timing(anim.erraticPulse, {
+                          toValue: 0,
+                          duration: 200 + Math.random() * 200,
+                          easing: PLEASURE_EASING.smooth,
+                          useNativeDriver: false,
+                        }),
+                      ]).start(() => nextPulse());
+                    }
+                  }, delay);
+                };
+                setTimeout(nextPulse, anim.baseDelay + 600);
+              };
+              
+              // Flying and movement behaviors
+              const startFlyingAnimations = () => {
+                // Continuous orbital movement with unique patterns per connector
+                const flyingPattern = anim.flyingPattern;
+                
+                if (flyingPattern === 0) {
+                  // Circular orbit
+                  Animated.loop(
+                    Animated.timing(anim.orbitAngle, {
+                      toValue: 1,
+                      duration: 8000 + (index * 1000), // Varying orbit speeds
+                      easing: Easing.linear,
+                      useNativeDriver: true,
+                    })
+                  ).start();
+                } else if (flyingPattern === 1) {
+                  // Figure-8 pattern
+                  Animated.loop(
+                    Animated.sequence([
+                      Animated.timing(anim.flyingX, {
+                        toValue: 3,
+                        duration: 2000,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(anim.flyingX, {
+                        toValue: -3,
+                        duration: 4000,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(anim.flyingX, {
+                        toValue: 0,
+                        duration: 2000,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: true,
+                      }),
+                    ])
+                  ).start();
+                  
+                  Animated.loop(
+                    Animated.sequence([
+                      Animated.timing(anim.flyingY, {
+                        toValue: -2,
+                        duration: 4000,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(anim.flyingY, {
+                        toValue: 2,
+                        duration: 4000,
+                        easing: PLEASURE_EASING.breathe,
+                        useNativeDriver: true,
+                      }),
+                    ])
+                  ).start();
+                } else if (flyingPattern === 2) {
+                  // Spiral pattern
+                  Animated.loop(
+                    Animated.parallel([
+                      Animated.timing(anim.orbitAngle, {
+                        toValue: 1,
+                        duration: 6000,
+                        easing: Easing.linear,
+                        useNativeDriver: true,
+                      }),
+                      Animated.sequence([
+                        Animated.timing(anim.flyingScale, {
+                          toValue: 1.5,
+                          duration: 3000,
+                          easing: PLEASURE_EASING.breathe,
+                          useNativeDriver: true,
+                        }),
+                        Animated.timing(anim.flyingScale, {
+                          toValue: 0.5,
+                          duration: 3000,
+                          easing: PLEASURE_EASING.breathe,
+                          useNativeDriver: true,
+                        }),
+                      ]),
+                    ])
+                  ).start();
+                } else {
+                  // Chaotic movement
+                  const chaosMove = () => {
+                    const randomX = (Math.random() - 0.5) * 8;
+                    const randomY = (Math.random() - 0.5) * 4;
+                    const randomRotate = Math.random() * 360;
+                    const duration = 1000 + Math.random() * 2000;
+                    
+                    Animated.parallel([
+                      Animated.timing(anim.flyingX, {
+                        toValue: randomX,
+                        duration: duration,
+                        easing: PLEASURE_EASING.elastic,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(anim.flyingY, {
+                        toValue: randomY,
+                        duration: duration,
+                        easing: PLEASURE_EASING.elastic,
+                        useNativeDriver: true,
+                      }),
+                      Animated.timing(anim.flyingRotate, {
+                        toValue: randomRotate,
+                        duration: duration,
+                        easing: PLEASURE_EASING.smooth,
+                        useNativeDriver: true,
+                      }),
+                    ]).start(() => chaosMove());
+                  };
+                  setTimeout(chaosMove, 500 + (index * 200));
+                }
+                
+                // Neural flow animation
+                Animated.loop(
+                  Animated.sequence([
+                    Animated.timing(anim.neuralFlow, {
+                      toValue: 1,
+                      duration: 2000 + (index * 300),
+                      easing: PLEASURE_EASING.smooth,
+                      useNativeDriver: true,
+                    }),
+                    Animated.timing(anim.neuralFlow, {
+                      toValue: 0,
+                      duration: 2000 + (index * 300),
+                      easing: PLEASURE_EASING.smooth,
+                      useNativeDriver: true,
+                    }),
+                  ])
+                ).start();
+                
+                // Dimensional shift effect
+                const dimensionalShift = () => {
+                  const nextShift = () => {
+                    const delay = 3000 + Math.random() * 5000;
+                    setTimeout(() => {
+                      Animated.sequence([
+                        Animated.timing(anim.dimensionalShift, {
+                          toValue: 1,
+                          duration: 300,
+                          easing: PLEASURE_EASING.snap,
+                          useNativeDriver: true,
+                        }),
+                        Animated.timing(anim.dimensionalShift, {
+                          toValue: 0,
+                          duration: 500,
+                          easing: PLEASURE_EASING.breathe,
+                          useNativeDriver: true,
+                        }),
+                      ]).start(() => nextShift());
+                    }, delay);
+                  };
+                  nextShift();
+                };
+                
+                // Particle trail effect
+                Animated.loop(
+                  Animated.sequence([
+                    Animated.timing(anim.particleTrail, {
+                      toValue: 1,
+                      duration: 1500,
+                      easing: Easing.linear,
+                      useNativeDriver: true,
+                    }),
+                    Animated.timing(anim.particleTrail, {
+                      toValue: 0,
+                      duration: 100,
+                      easing: Easing.linear,
+                      useNativeDriver: true,
+                    }),
+                  ])
+                ).start();
+                
+                // Wave ripple effect
+                const waveRipple = () => {
+                  const nextRipple = () => {
+                    const delay = 2000 + Math.random() * 4000;
+                    setTimeout(() => {
+                      Animated.timing(anim.waveRipple, {
+                        toValue: 1,
+                        duration: 800,
+                        easing: PLEASURE_EASING.smooth,
+                        useNativeDriver: true,
+                      }).start(() => {
+                        anim.waveRipple.setValue(0);
+                        nextRipple();
+                      });
+                    }, delay);
+                  };
+                  nextRipple();
+                };
+                
+                setTimeout(dimensionalShift, 1000 + (index * 500));
+                setTimeout(waveRipple, 1500 + (index * 300));
+              };
+              
+              // Start all behaviors with offsets
+              setTimeout(startErraticFlicker, 200 + (index * 100));
+              setTimeout(startErraticGlow, 800 + (index * 150));
+              setTimeout(startErraticPulse, 1200 + (index * 200));
+              setTimeout(startFlyingAnimations, 1600 + (index * 250));
+            }, 100);
+          }, 50);
+        }, index * 20);
+      }, index * 60); // Staggered entry
+    });
+  };
+  
+  // Continuous ambient pleasure animations
+  const startAmbientAnimations = () => {
+    // Subtle card float
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(backgroundPulse1, {
+        Animated.timing(cardFloat, {
           toValue: 1,
           duration: 4000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
-        Animated.timing(backgroundPulse1, {
+        Animated.timing(cardFloat, {
           toValue: 0,
           duration: 4000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
       ])
-    );
-
-    const pulse2Loop = Animated.loop(
+    ).start();
+    
+    // Icon breathing pulse
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(backgroundPulse2, {
+        Animated.timing(iconPulse, {
+          toValue: 1,
+          duration: 2500,
+          easing: PLEASURE_EASING.breathe,
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconPulse, {
+          toValue: 0,
+          duration: 2500,
+          easing: PLEASURE_EASING.breathe,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+    
+    // Ambient background pulses
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(ambientPulse1, {
           toValue: 1,
           duration: 6000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
-        Animated.timing(backgroundPulse2, {
+        Animated.timing(ambientPulse1, {
           toValue: 0,
           duration: 6000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
       ])
-    );
-
-    const pulse3Loop = Animated.loop(
+    ).start();
+    
+    Animated.loop(
       Animated.sequence([
-        Animated.timing(backgroundPulse3, {
+        Animated.timing(ambientPulse2, {
           toValue: 1,
           duration: 8000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
-        Animated.timing(backgroundPulse3, {
+        Animated.timing(ambientPulse2, {
           toValue: 0,
           duration: 8000,
+          easing: PLEASURE_EASING.breathe,
           useNativeDriver: true,
         }),
       ])
-    );
+    ).start();
+  };
 
-    // Slow rotation
-    const rotateLoop = Animated.loop(
-      Animated.timing(backgroundRotate, {
-        toValue: 1,
-        duration: 60000,
+  // Ultra-responsive button interactions
+  const handleNext = () => {
+    if (currentStep < tutorialSteps.length - 1) {
+      // Satisfying haptic feedback
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      
+      // Instant pleasure response
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 0.92,
+          duration: PLEASURE_TIMINGS.INSTANT,
+          easing: PLEASURE_EASING.snap,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonScale, {
+          toValue: 1.02,
+          tension: 150,
+          friction: 4,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonScale, {
+          toValue: 1,
+          tension: 120,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      // Instant step change for maximum responsiveness
+      setTimeout(() => {
+        setCurrentStep(prev => prev + 1);
+      }, PLEASURE_TIMINGS.INSTANT);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      // Light haptic for backward navigation
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Quick reverse animation
+      Animated.sequence([
+        Animated.timing(buttonScale, {
+          toValue: 0.94,
+          duration: PLEASURE_TIMINGS.INSTANT,
+          easing: PLEASURE_EASING.snap,
+          useNativeDriver: true,
+        }),
+        Animated.spring(buttonScale, {
+          toValue: 1,
+          tension: 140,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      
+      setTimeout(() => {
+        setCurrentStep(prev => prev - 1);
+      }, PLEASURE_TIMINGS.INSTANT);
+    }
+  };
+
+  const handleFinish = () => {
+    // Success haptic for completion
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    
+    // Ultra-fast completion animation
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.92,
+        duration: 30, // Ultra fast
+        easing: PLEASURE_EASING.snap,
         useNativeDriver: true,
-      })
-    );
-
-    // Floating particles
-    const floatLoop1 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(particleFloat1, {
-          toValue: 1,
-          duration: 10000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particleFloat1, {
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1.05,
+        duration: 40, // Ultra fast
+        easing: PLEASURE_EASING.snap,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 30, // Ultra fast
+        easing: PLEASURE_EASING.smooth,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Instant exit transition
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 10000,
+          duration: 60, // Much faster
+          easing: PLEASURE_EASING.snap,
           useNativeDriver: true,
         }),
-      ])
-    );
-
-    const floatLoop2 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(particleFloat2, {
-          toValue: 1,
-          duration: 12000,
+        Animated.timing(cardScale, {
+          toValue: 0.9,
+          duration: 60, // Much faster
+          easing: PLEASURE_EASING.snap,
           useNativeDriver: true,
         }),
-        Animated.timing(particleFloat2, {
-          toValue: 0,
-          duration: 12000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    const floatLoop3 = Animated.loop(
-      Animated.sequence([
-        Animated.timing(particleFloat3, {
-          toValue: 1,
-          duration: 14000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(particleFloat3, {
-          toValue: 0,
-          duration: 14000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    pulse1Loop.start();
-    pulse2Loop.start();
-    pulse3Loop.start();
-    rotateLoop.start();
-    floatLoop1.start();
-    floatLoop2.start();
-    floatLoop3.start();
-
-    return () => {
-      pulse1Loop.stop();
-      pulse2Loop.stop();
-      pulse3Loop.stop();
-      rotateLoop.stop();
-      floatLoop1.stop();
-      floatLoop2.stop();
-      floatLoop3.stop();
-    };
-  }, []);
+      ]).start(() => {
+        onStartChat();
+      });
+    });
+  };
 
   const step = tutorialSteps[currentStep];
-
-  // Elegant animation interpolations - pure opacity with minimal scale
-  const characterTransforms = {
-    opacity: characterOpacityAnim,
-    transform: [
-      {
-        scale: characterScaleAnim,
-      },
-    ],
-  };
-  
-  // Content transforms with subtle movement (max 8px)
-  const contentTransforms = {
-    opacity: contentOpacityAnim,
-    transform: [
-      {
-        translateY: contentTransformAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [8, 0],
-        }),
-      },
-    ],
-  };
-  
-  // Individual bullet point transforms - staggered roll-in from bottom
-  const getBulletPointTransforms = (index: number) => {
-    const bulletAnims = [
-      { opacity: bulletPoint1Opacity, transform: bulletPoint1Transform },
-      { opacity: bulletPoint2Opacity, transform: bulletPoint2Transform },
-      { opacity: bulletPoint3Opacity, transform: bulletPoint3Transform },
-      { opacity: bulletPoint4Opacity, transform: bulletPoint4Transform },
-    ];
-    
-    const anim = bulletAnims[index];
-    if (!anim) return { 
-      opacity: 0,
-      transform: [{ translateY: 20 }],
-    };
-    
-    return {
-      opacity: anim.opacity,
-      transform: [
-        {
-          translateY: anim.transform,
-        },
-      ],
-    };
-  };
-
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  const isLastStep = currentStep === tutorialSteps.length - 1;
 
   return (
-      <PageBackground>
+    <PageBackground>
       <SafeAreaView style={styles.container}>
         <StatusBar 
           barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
@@ -702,493 +916,574 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
           translucent={true}
         />
       
-      {/* Header */}
-      <Header 
-        title="Numina"
-        showBackButton={true}
-        showMenuButton={true}
-        onBackPress={() => {
-          ScreenTransitions.slideOutRight(slideAnim, () => {
+        {/* Header */}
+        <Header 
+          title="Numina"
+          showBackButton={true}
+          showMenuButton={true}
+          showAuthOptions={false}
+          onBackPress={() => {
             onNavigateHome();
-          });
-        }}
-        onTitlePress={onNavigateHome}
-        onMenuPress={(key: string) => {}}
-      />
+          }}
+          onTitlePress={onTitlePress}
+          onMenuPress={onMenuPress}
+        />
 
-      {/* Dynamic Living Background */}
-      <View style={styles.backgroundEffects}>
-        {/* Neural Network Pulses */}
-        <Animated.View 
-          style={[
-            styles.neuralPulse1, 
+        {/* Numina Neural Background */}
+        <Animated.View style={[styles.neuralBackground, { opacity: ambientPulse1.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.9] }) }]}>
+          {/* Synaptic Network */}
+          <Animated.View style={[
+            styles.synapticNode,
+            styles.synapticNode1,
             { 
-              backgroundColor: isDarkMode 
-                ? NuminaColors.chatYellow[400] + '12'
-                : NuminaColors.chatYellow[300] + '18',
-              opacity: backgroundPulse1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.3, 0.8],
-              }),
+              backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
               transform: [{
-                scale: backgroundPulse1.interpolate({
+                scale: ambientPulse1.interpolate({
                   inputRange: [0, 1],
                   outputRange: [0.8, 1.2],
-                }),
-              }],
+                })
+              }]
             }
-          ]} 
-        />
+          ]} />
+          <View style={[
+            styles.synapticConnection,
+            styles.connection1,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.3)' : 'rgba(59,130,246,0.3)' }
+          ]} />
+        </Animated.View>
         
-        <Animated.View 
-          style={[
-            styles.neuralPulse2, 
+        <Animated.View style={[styles.neuralBackground, { 
+          opacity: ambientPulse2.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] }),
+          transform: [{
+            translateY: ambientFloat.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, -8],
+            })
+          }]
+        }]}>
+          {/* Emotional Wavelength */}
+          <View style={[
+            styles.emotionalWave,
+            styles.emotionalWave1,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)' }
+          ]} />
+          <Animated.View style={[
+            styles.emotionalWave,
+            styles.emotionalWave2,
             { 
-              backgroundColor: isDarkMode 
-                ? NuminaColors.chatBlue[400] + '15'
-                : NuminaColors.chatBlue[300] + '20',
-              opacity: backgroundPulse2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.2, 0.7],
-              }),
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.15)' : 'rgba(59,130,246,0.15)',
               transform: [{
-                scale: backgroundPulse2.interpolate({
+                scaleX: ambientPulse2.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [1.0, 1.4],
-                }),
-              }],
+                  outputRange: [1, 1.3],
+                })
+              }]
             }
-          ]} 
-        />
-
-        <Animated.View 
-          style={[
-            styles.neuralPulse3, 
+          ]} />
+        </Animated.View>
+        
+        <Animated.View style={[styles.neuralBackground, { 
+          opacity: ambientPulse1.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.5] }),
+          transform: [{
+            rotate: ambientPulse1.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', '15deg'],
+            })
+          }]
+        }]}>
+          {/* Memory Fragment */}
+          <View style={[
+            styles.memoryFragment,
             { 
-              backgroundColor: isDarkMode 
-                ? NuminaColors.chatGreen[400] + '10'
-                : NuminaColors.chatGreen[300] + '15',
-              opacity: backgroundPulse3.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.1, 0.6],
-              }),
-              transform: [{
-                scale: backgroundPulse3.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.6, 1.0],
-                }),
-              }],
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.1)' : 'rgba(59,130,246,0.1)',
+              borderColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)',
             }
-          ]} 
-        />
+          ]} />
+        </Animated.View>
 
-        {/* Rotating Consciousness Grid */}
+        {/* Flexible Content Layout */}
         <Animated.View
           style={[
-            styles.consciousnessGrid,
+            styles.flexibleLayout,
             {
-              transform: [{
-                rotate: backgroundRotate.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '360deg'],
-                }),
-              }],
-            }
-          ]}
-        >
-          <LinearGradient
-            colors={isDarkMode 
-              ? [NuminaColors.chatBlue[500] + '08', NuminaColors.chatYellow[500] + '08', NuminaColors.chatGreen[500] + '08']
-              : [NuminaColors.chatBlue[400] + '12', NuminaColors.chatYellow[400] + '12', NuminaColors.chatGreen[400] + '12']
-            }
-            style={styles.gridGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          />
-        </Animated.View>
-
-        {/* Floating Thought Particles */}
-        <Animated.View 
-          style={[
-            styles.thoughtParticle1,
-            {
-              opacity: particleFloat1.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.4, 0.9],
-              }),
-              transform: [
-                {
-                  translateY: particleFloat1.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [height * 0.8, -height * 0.2],
-                  }),
-                },
-                {
-                  translateX: particleFloat1.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, width * 0.3],
-                  }),
-                }
-              ],
-            }
-          ]}
-        >
-          <LinearGradient
-            colors={[NuminaColors.chatYellow[400] + '80', NuminaColors.chatYellow[600] + '40']}
-            style={styles.particleGradient}
-          />
-        </Animated.View>
-
-        <Animated.View 
-          style={[
-            styles.thoughtParticle2,
-            {
-              opacity: particleFloat2.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.3, 0.8],
-              }),
-              transform: [
-                {
-                  translateY: particleFloat2.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [height * 0.9, -height * 0.1],
-                  }),
-                },
-                {
-                  translateX: particleFloat2.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [width * 0.7, width * 0.1],
-                  }),
-                }
-              ],
-            }
-          ]}
-        >
-          <LinearGradient
-            colors={[NuminaColors.chatBlue[400] + '70', NuminaColors.chatBlue[600] + '30']}
-            style={styles.particleGradient}
-          />
-        </Animated.View>
-
-        <Animated.View 
-          style={[
-            styles.thoughtParticle3,
-            {
-              opacity: particleFloat3.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.2, 0.7],
-              }),
-              transform: [
-                {
-                  translateY: particleFloat3.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [height * 0.6, -height * 0.4],
-                  }),
-                },
-                {
-                  translateX: particleFloat3.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [width * 0.2, width * 0.8],
-                  }),
-                }
-              ],
-            }
-          ]}
-        >
-          <LinearGradient
-            colors={[NuminaColors.chatGreen[400] + '60', NuminaColors.chatGreen[600] + '20']}
-            style={styles.particleGradient}
-          />
-        </Animated.View>
-      </View>
-
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: masterFadeAnim,
+              opacity: fadeAnim,
               transform: [{ translateX: slideAnim }],
             },
           ]}
         >
-          {/* Tutorial Card */}
-          <View style={[
-            styles.tutorialCard, 
-            { 
-              backgroundColor: isDarkMode 
-                ? 'rgba(18, 18, 18, 1)'
-                : 'rgba(255, 255, 255, 0.3)',
-              borderColor: isDarkMode 
-                ? 'rgba(40, 40, 40, 1)'
-                : 'rgba(255, 255, 255, 0.2)',
-            }
-          ]}>
-            {/* Enhanced Progress Bar */}
-            <View style={[
-              styles.progressBarContainer, 
-              { backgroundColor: isDarkMode ? NuminaColors.darkMode[800] : NuminaColors.darkMode[100] }
+          {/* Content Area with Text Wrapping */}
+          <Animated.View
+            style={[
+              styles.contentArea,
+              {
+                opacity: cardOpacity,
+                transform: [
+                  { scale: cardScale },
+                  { 
+                    translateY: cardFloat.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -2],
+                    })
+                  },
+                ],
+              },
+            ]}
+          >
+            {/* Step Number Badge */}
+            <View style={styles.stepBadge}>
+              <Text style={[
+                styles.stepNumber,
+                { color: isDarkMode ? '#add5fa' : '#3b82f6' }
+              ]}>
+                {String(currentStep + 1).padStart(2, '0')}
+              </Text>
+              <View style={[
+                styles.stepDivider,
+                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
+              ]} />
+              <Text style={[
+                styles.stepTotal,
+                { color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }
+              ]}>
+                {String(tutorialSteps.length).padStart(2, '0')}
+              </Text>
+            </View>
+
+            {/* Main Title */}
+            <Text style={[
+              styles.creativeTitle,
+              { color: isDarkMode ? '#ffffff' : '#000000' }
             ]}>
+              {step.title}
+            </Text>
+
+            {/* Description */}
+            <Text style={[
+              styles.creativeDescription,
+              { color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }
+            ]}>
+              {step.description}
+            </Text>
+
+            {/* Neural Interface Display */}
+            {/* Neural Interface Display */}
+            <View style={styles.neuralInterface}>
+              {step.features.map((feature, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.neuralNode,
+                    {
+                      opacity: featureAnims[index]?.opacity || 1,
+                      transform: [
+                        { translateY: featureAnims[index]?.translateY || 0 },
+                        { scale: featureAnims[index]?.scale || 1 },
+                      ],
+                    }
+                  ]}
+                >
+                  {/* Flying Neural Connector Container */}
+                  <Animated.View style={[
+                    styles.neuralConnectorContainer,
+                    {
+                      transform: [
+                        // Flying movements based on pattern
+                        { 
+                          translateX: featureAnims[index]?.flyingPattern === 0 
+                            ? featureAnims[index]?.orbitAngle.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 360],
+                              }).interpolate({
+                                inputRange: [0, 90, 180, 270, 360],
+                                outputRange: [0, 1, 0, -1, 0],
+                              }) || 0
+                            : Animated.multiply(
+                                featureAnims[index]?.flyingX || 0,
+                                0.5
+                              )
+                        },
+                        { 
+                          translateY: featureAnims[index]?.flyingPattern === 0
+                            ? featureAnims[index]?.orbitAngle.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 360],
+                              }).interpolate({
+                                inputRange: [0, 90, 180, 270, 360],
+                                outputRange: [0, -0.5, 0, 0.5, 0],
+                              }) || 0
+                            : Animated.multiply(
+                                featureAnims[index]?.flyingY || 0,
+                                0.5
+                              )
+                        },
+                        { 
+                          rotate: featureAnims[index]?.flyingRotate.interpolate({
+                            inputRange: [0, 360],
+                            outputRange: ['0deg', '360deg'],
+                          }) || '0deg'
+                        },
+                        { 
+                          scale: Animated.multiply(
+                            featureAnims[index]?.flyingScale || 1,
+                            Animated.add(
+                              1,
+                              Animated.multiply(
+                                featureAnims[index]?.dimensionalShift || 0,
+                                0.3
+                              )
+                            )
+                          )
+                        },
+                      ],
+                    }
+                  ]}>
+                    {/* Base connector with width animation */}
+                    <Animated.View style={[
+                      styles.baseConnector,
+                      {
+                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        width: featureAnims[index]?.connectorWidth.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 2],
+                        }) || 2,
+                      }
+                    ]} />
+                    
+                    {/* Glow layer with erratic surges */}
+                    <Animated.View style={[
+                      styles.connectorGlow,
+                      {
+                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        opacity: Animated.add(
+                          featureAnims[index]?.connectorGlow.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 0.4],
+                          }) || 0,
+                          Animated.multiply(
+                            featureAnims[index]?.erraticGlow || 0,
+                            0.3
+                          )
+                        ),
+                        width: Animated.add(
+                          featureAnims[index]?.connectorGlow.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [2, 6],
+                          }) || 2,
+                          featureAnims[index]?.erraticGlow.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 3],
+                          }) || 0
+                        ),
+                      }
+                    ]} />
+                    
+                    {/* Pulse layer with erratic variations */}
+                    <Animated.View style={[
+                      styles.connectorPulse,
+                      {
+                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
+                        opacity: Animated.add(
+                          featureAnims[index]?.connectorPulse.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 0.6],
+                          }) || 0,
+                          featureAnims[index]?.erraticPulse || 0
+                        ),
+                      }
+                    ]} />
+                    
+                    {/* Erratic flicker overlay */}
+                    <Animated.View style={[
+                      styles.connectorFlicker,
+                      {
+                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
+                        opacity: featureAnims[index]?.erraticFlicker || 0,
+                      }
+                    ]} />
+                    
+                    {/* Neural spark */}
+                    <Animated.View style={[
+                      styles.neuralSpark,
+                      {
+                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
+                        opacity: featureAnims[index]?.neuralSpark || 0,
+                        transform: [{
+                          translateY: featureAnims[index]?.neuralSpark.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [8, -8],
+                          }) || 0,
+                        }],
+                      }
+                    ]} />
+                    
+                    {/* Data points */}
+                    <Animated.View style={[
+                      styles.connectorDataPoint,
+                      styles.dataPointTop,
+                      {
+                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        opacity: featureAnims[index]?.connectorGlow.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 0.7],
+                        }) || 0,
+                      }
+                    ]} />
+                    
+                    <Animated.View style={[
+                      styles.connectorDataPoint,
+                      styles.dataPointBottom,
+                      {
+                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        opacity: featureAnims[index]?.connectorPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 0.5],
+                        }) || 0,
+                      }
+                    ]} />
+                    
+                    {/* Flying particle trails */}
+                    <Animated.View style={[
+                      styles.particleTrail,
+                      {
+                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        opacity: featureAnims[index]?.particleTrail.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 0.6],
+                        }) || 0,
+                        transform: [{
+                          translateY: featureAnims[index]?.particleTrail.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, -20],
+                          }) || 0,
+                        }],
+                      }
+                    ]} />
+                    
+                    {/* Neural flow streams */}
+                    <Animated.View style={[
+                      styles.neuralFlowStream,
+                      {
+                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
+                        opacity: featureAnims[index]?.neuralFlow.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 0.8],
+                        }) || 0,
+                        transform: [{
+                          scaleY: featureAnims[index]?.neuralFlow.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 1.5],
+                          }) || 1,
+                        }],
+                      }
+                    ]} />
+                    
+                    {/* Wave ripple effect */}
+                    <Animated.View style={[
+                      styles.waveRipple,
+                      {
+                        borderColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                        opacity: featureAnims[index]?.waveRipple.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 0],
+                        }) || 0,
+                        transform: [{
+                          scale: featureAnims[index]?.waveRipple.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.5, 3],
+                          }) || 1,
+                        }],
+                      }
+                    ]} />
+                  </Animated.View>
+                  <View style={styles.nodeContent}>
+                    <Text style={[
+                      styles.nodeLabel,
+                      { color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)' }
+                    ]}>
+                      {feature}
+                    </Text>
+                  </View>
+                </Animated.View>
+              ))}
+            </View>
+
+          </Animated.View>
+
+          {/* Visual Element - Positioned Absolutely */}
+          <Animated.View
+            style={[
+              styles.visualElement,
+              {
+                opacity: cardOpacity,
+              },
+            ]}
+          >
+            {/* Neural Processing Core */}
+            <View style={styles.neuralCore}>
+              {/* Scanning Grid */}
+              <View style={[
+                styles.scanningGrid,
+                {
+                  borderColor: isDarkMode ? 'rgba(173, 213, 250, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                }
+              ]}>
+                {/* Grid Lines */}
+                <View style={[styles.gridLine, styles.gridHorizontal, { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]} />
+                <View style={[styles.gridLine, styles.gridVertical, { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.1)' : 'rgba(59, 130, 246, 0.1)' }]} />
+              </View>
+              
+              {/* Core Processing Unit */}
               <Animated.View
                 style={[
-                  styles.progressBar,
-                  { width: progressWidth },
+                  styles.processingCore,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.9)',
+                    borderColor: isDarkMode ? 'rgba(173, 213, 250, 0.3)' : 'rgba(59, 130, 246, 0.3)',
+                    transform: [
+                      { scale: iconScale },
+                      { 
+                        translateY: iconFloat.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, -1],
+                        })
+                      },
+                    ],
+                  },
                 ]}
               >
-                <LinearGradient
-                  colors={[NuminaColors.chatYellow[300], NuminaColors.chatBlue[300]]}
-                  style={styles.progressGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+                <Feather
+                  name={step.icon as any}
+                  size={28}
+                  color={isDarkMode ? '#add5fa' : '#3b82f6'}
                 />
               </Animated.View>
+
+              {/* Data Points */}
+              <Animated.View style={[
+                styles.dataPoint,
+                styles.dataPoint1,
+                {
+                  backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                  opacity: iconPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.4, 0.8],
+                  }),
+                }
+              ]} />
+              
+              <Animated.View style={[
+                styles.dataPoint,
+                styles.dataPoint2,
+                {
+                  backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                  opacity: iconPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.2, 0.6],
+                  }),
+                  transform: [{
+                    scale: iconPulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    })
+                  }],
+                }
+              ]} />
             </View>
-            
 
-
-            {/* Step Content with elegant animations */}
-            <Animated.View style={[styles.stepContent, contentTransforms]}>
-              {/* Enhanced Character Animation */}
-              <Animated.View
-                style={[styles.characterContainer, characterTransforms]}
-              >
-                {/* Character glow effect */}
-                <View style={[
-                  styles.characterGlow,
-                  { 
-                    backgroundColor: isDarkMode 
-                      ? 'transparent'
-                      : NuminaColors.chatYellow[300] + '30',
-                  }
-                ]} />
-                <Image
-                  source={step.image}
-                  style={styles.characterImage}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-
-              {/* Text Content */}
-              <View style={styles.textContent}>
-                <Text 
-                  style={[
-                    styles.stepTitle, 
-                    { 
-                      color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
-                    }
-                  ]}
-                >
-                  {step.title}
-                </Text>
-
-                <Text 
-                  style={[
-                    styles.stepDescription, 
-                    { 
-                      color: isDarkMode ? '#999999' : NuminaColors.darkMode[400],
-                    }
-                  ]}
-                >
-                  {step.description}
-                </Text>
-
-                {/* Interactive Features List with discovery elements */}
-                <View style={styles.featuresList}>
-                  {step.features.map((feature, index) => {
-                    const isDiscovered = discoveredFeatures.has(feature.text);
-                    const isInteracted = completedInteractions.has(`feature-${currentStep}-${index}`);
-                    
-                    return (
-                      <TouchableOpacity
-                        key={feature.text}
-                        onPress={() => handleFeaturePress(feature, index)}
-                        onLongPress={() => handleLongPressFeature(feature)}
-                        activeOpacity={0.8}
-                      >
-                        <Animated.View
-                          style={[
-                            styles.featureItem,
-                            { 
-                              backgroundColor: isInteracted 
-                                ? (isDarkMode ? NuminaColors.chatBlue[900] + '40' : NuminaColors.chatBlue[100] + '60')
-                                : (isDarkMode ? 'rgba(40, 40, 40, 1)' : 'rgba(255, 255, 255, 0.6)'),
-                              borderColor: isInteracted
-                                ? (isDarkMode ? NuminaColors.chatBlue[500] + '60' : NuminaColors.chatBlue[300] + '60')
-                                : (isDarkMode ? 'rgba(50, 50, 50, 1)' : 'rgba(255, 255, 255, 0.6)'),
-                              borderWidth: isInteracted ? 2 : 1,
-                            },
-                            getBulletPointTransforms(index),
-                          ]}
-                        >
-                          <View 
-                            style={[
-                              styles.featureFeather, 
-                              { 
-                                backgroundColor: isInteracted
-                                  ? (isDarkMode ? NuminaColors.chatBlue[400] + '30' : NuminaColors.chatBlue[300] + '30')
-                                  : (isDarkMode ? NuminaColors.chatYellow[300] + '1A' : NuminaColors.chatYellow[400] + '1A'),
-                              }
-                            ]}
-                          >
-                            <Feather 
-                              name={feature.icon as any} 
-                              size={16} 
-                              color={isInteracted 
-                                ? (isDarkMode ? NuminaColors.chatBlue[300] : NuminaColors.chatBlue[500])
-                                : (isDarkMode ? NuminaColors.chatYellow[300] : NuminaColors.chatYellow[400])
-                              } 
-                            />
-                          </View>
-                          <Text style={[
-                            styles.featureText, 
-                            { 
-                              color: isInteracted 
-                                ? (isDarkMode ? NuminaColors.chatBlue[200] : NuminaColors.chatBlue[700])
-                                : (isDarkMode ? '#ffffff' : NuminaColors.darkMode[700]),
-                              fontWeight: isInteracted ? '600' : '500'
-                            }
-                          ]}>
-                            {feature.text}
-                          </Text>
-                          {isInteracted && (
-                            <View style={styles.discoveryBadge}>
-                              <Feather 
-                                name="check-circle" 
-                                size={12} 
-                                color={isDarkMode ? NuminaColors.chatBlue[300] : NuminaColors.chatBlue[500]} 
-                              />
-                            </View>
-                          )}
-                        </Animated.View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                  
-                  {/* Discovery Counter */}
-                  {discoveredFeatures.size > 0 && (
-                    <Animated.View 
-                      style={[
-                        styles.discoveryCounter,
-                        { 
-                          backgroundColor: isDarkMode 
-                            ? NuminaColors.chatGreen[900] + '40'
-                            : NuminaColors.chatGreen[100] + '80',
-                          borderColor: isDarkMode 
-                            ? NuminaColors.chatGreen[500] + '60'
-                            : NuminaColors.chatGreen[300] + '60',
-                        }
-                      ]}
-                    >
-                      <Feather 
-                        name="compass" 
-                        size={14} 
-                        color={isDarkMode ? NuminaColors.chatGreen[300] : NuminaColors.chatGreen[600]} 
-                      />
-                      <Text style={[
-                        styles.discoveryText,
-                        { color: isDarkMode ? NuminaColors.chatGreen[200] : NuminaColors.chatGreen[700] }
-                      ]}>
-                        {discoveredFeatures.size} discoveries made
-                      </Text>
-                    </Animated.View>
-                  )}
+            {/* Progress Visualization */}
+            <View style={styles.progressVisualization}>
+              {tutorialSteps.map((_, index) => (
+                <View key={index} style={styles.progressLine}>
+                  <Animated.View
+                    style={[
+                      styles.progressSegment,
+                      {
+                        backgroundColor: index <= currentStep 
+                          ? (isDarkMode ? '#add5fa' : '#3b82f6')
+                          : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                        transform: [{ scale: progressAnims[index] }],
+                      },
+                    ]}
+                  />
                 </View>
-              </View>
-            </Animated.View>
-          </View>
+              ))}
+            </View>
+          </Animated.View>
 
-
-          {/* Enhanced Navigation with Share */}
-          <View style={styles.navigation}>
-
-
-            <LinearGradient
-              colors={isDarkMode 
-                ? [NuminaColors.chatBlue[300], NuminaColors.chatBlue[400]]
-                : [NuminaColors.chatBlue[200], NuminaColors.chatBlue[300]]
-              }
-              style={styles.navigationContainer}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          {/* Action Buttons - Full Width */}
+          <View style={styles.fullWidthButtonContainer}>
+            <Animated.View 
+              style={{ 
+                transform: [{ scale: buttonScale }],
+                width: '100%',
+              }}
             >
-              {/* Previous Button */}
-              <Animated.View style={{ transform: [{ scale: prevButtonScale }] }}>
+              <View style={styles.primaryButtonContainer}>
                 <TouchableOpacity
                   style={[
-                    styles.navButton,
-                    styles.prevButton,
-                    { opacity: currentStep === 0 ? 0.5 : 1 },
+                    styles.primaryButton,
+                    {
+                      backgroundColor: '#add5fa',
+                    }
                   ]}
-                  onPress={() => handleButtonPress('prev', prevStep)}
-                  disabled={currentStep === 0 || isTransitioning}
-                  activeOpacity={0.7}
+                  onPress={() => {
+                    console.log('Button pressed!');
+                    if (isLastStep) {
+                      handleFinish();
+                    } else {
+                      handleNext();
+                    }
+                  }}
+                  activeOpacity={0.95}
                 >
-                  <Feather 
-                    name="chevron-left" 
-                    size={20} 
-                    color="#ffffff" 
-                  />
                   <Text style={[
-                    styles.navButtonText, 
-                    { color: '#ffffff' }
+                    styles.primaryButtonText, 
+                    { color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff' }
                   ]}>
-                    Previous
+                    {isLastStep ? 'Start Your Journey' : 'Continue →'}
                   </Text>
                 </TouchableOpacity>
-              </Animated.View>
+              </View>
+            </Animated.View>
 
-              {/* Divider */}
-              <View style={[
-                styles.navDivider, 
-                { backgroundColor: 'rgba(255, 255, 255, 0.3)' }
-              ]} />
-
-              {/* Next/Finish Button */}
-              <Animated.View style={{ transform: [{ scale: nextButtonScale }] }}>
-                {currentStep < tutorialSteps.length - 1 ? (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.nextButton]}
-                    onPress={() => handleButtonPress('next', nextStep)}
-                    disabled={isTransitioning}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[
-                      styles.navButtonText, 
-                      { color: '#ffffff' }
-                    ]}>
-                      Next
-                    </Text>
-                    <Feather 
-                      name="chevron-right" 
-                      size={20} 
-                      color="#ffffff" 
-                    />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.navButton, styles.nextButton]}
-                    onPress={() => handleButtonPress('next', handleFinishTutorial)}
-                    disabled={isTransitioning}
-                    activeOpacity={0.7}
-                  >
-                    <Feather 
-                      name="message-circle" 
-                      size={20} 
-                      color="#ffffff" 
-                    />
-                    <Text style={[
-                      styles.navButtonText, 
-                      { color: '#ffffff' }
-                    ]}>
-                      Start Chat
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </Animated.View>
-            </LinearGradient>
+            {/* Navigation Row */}
+            <View style={styles.navigationRow}>
+              {currentStep > 0 && (
+                <TouchableOpacity
+                  style={styles.navButton}
+                  onPress={handlePrev}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.navButtonText,
+                    { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }
+                  ]}>
+                    ← Back
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
+              <View style={styles.navSpacer} />
+              
+              <TouchableOpacity
+                style={styles.navButton}
+                onPress={() => {
+                  // Light haptic for starting chat
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onStartChat();
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.navButtonText,
+                  { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }
+                ]}>
+                  Skip
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Animated.View>
-      </ScrollView>
       </SafeAreaView>
     </PageBackground>
   );
@@ -1198,261 +1493,507 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backgroundEffects: {
-    ...StyleSheet.absoluteFillObject,
+  // Numina Neural Background Elements
+  neuralBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     zIndex: 0,
   },
-  // Neural Network Pulses
-  neuralPulse1: {
+  
+  // Synaptic Network
+  synapticNode: {
     position: 'absolute',
-    top: height * 0.15,
-    left: width * 0.1,
-    width: width * 0.6,
-    height: width * 0.6,
-    borderRadius: width * 0.3,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
   },
-  neuralPulse2: {
+  synapticNode1: {
+    top: '25%',
+    left: '12%',
+  },
+  synapticConnection: {
     position: 'absolute',
-    top: height * 0.4,
-    right: width * 0.05,
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
+    height: 1,
   },
-  neuralPulse3: {
+  connection1: {
+    top: '25%',
+    left: '12%',
+    width: 120,
+    transform: [{ rotate: '35deg' }],
+  },
+  
+  // Emotional Wavelengths
+  emotionalWave: {
     position: 'absolute',
-    bottom: height * 0.2,
-    left: width * 0.15,
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width * 0.25,
+    height: 2,
+    borderRadius: 1,
   },
-  // Consciousness Grid
-  consciousnessGrid: {
+  emotionalWave1: {
+    top: '60%',
+    right: '8%',
+    width: 80,
+    transform: [{ rotate: '-12deg' }],
+  },
+  emotionalWave2: {
+    top: '62%',
+    right: '10%',
+    width: 60,
+    transform: [{ rotate: '-12deg' }],
+  },
+  
+  // Memory Fragments
+  memoryFragment: {
     position: 'absolute',
-    top: height * 0.3,
-    left: width * 0.3,
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: width * 0.2,
+    top: '45%',
+    right: '25%',
+    width: 32,
+    height: 24,
+    borderRadius: 3,
+    borderWidth: 1,
+    transform: [{ rotate: '8deg' }],
   },
-  gridGradient: {
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  tutorialContainer: {
     width: '100%',
-    height: '100%',
-    borderRadius: width * 0.2,
+    maxWidth: 320,
+    alignItems: 'center',
   },
-  // Floating Thought Particles
-  thoughtParticle1: {
-    position: 'absolute',
-    left: width * 0.1,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  progressContainer: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  thoughtParticle2: {
-    position: 'absolute',
-    right: width * 0.15,
+  progressDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  thoughtParticle3: {
-    position: 'absolute',
-    left: width * 0.6,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  particleGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 32,
-    minHeight: height - 100,
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  tutorialCard: {
-    borderRadius: 24,
-    overflow: 'hidden',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    marginBottom: 20, 
-    borderWidth: 1,
-    height: 540, 
-    position: 'relative',
-  },
-  progressBarContainer: {
-    height: 4,
-    position: 'relative',
-  },
-  progressBar: {
-    height: 4,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  progressGradient: {
-    width: '100%',
-    height: '100%',
-  },
-
-  stepContent: {
-    padding: 24,
-    height: 516, 
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  characterContainer: {
-    marginBottom: 24,
-    position: 'relative',
-    width: 100,
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  characterImage: {
-    width: 100,
-    height: 100,
-    zIndex: 2,
-  },
-  characterGlow: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    zIndex: 1,
+    marginBottom: 20,
   },
   textContent: {
     width: '100%',
     alignItems: 'center',
-    flex: 1,
-    maxHeight: 380, 
+    marginBottom: 32,
   },
   stepTitle: {
-    fontSize: 26, 
-    fontWeight: 'bold',
-    marginBottom: 20, 
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 16,
     textAlign: 'center',
-    letterSpacing: -0.5,
-    fontFamily: 'CrimsonPro_700Bold',
+    letterSpacing: -1,
+    fontFamily: 'Nunito_700Bold',
   },
   stepDescription: {
-    fontSize: 16, 
-    lineHeight: 24, 
+    fontSize: 16,
+    lineHeight: 24,
     textAlign: 'center',
-    marginBottom: 24, 
-    maxWidth: width * 0.85,
+    marginBottom: 24,
     fontWeight: '400',
-    letterSpacing: -0.3,
-    fontFamily: 'CrimsonPro_400Regular',
-    maxHeight: 140, 
-    overflow: 'hidden', 
+    fontFamily: 'Nunito_400Regular',
   },
   featuresList: {
     width: '100%',
-    gap: 10,
-    maxHeight: 180, 
-    overflow: 'hidden', 
+    gap: 12,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8, 
-    paddingHorizontal: 10, 
-    borderRadius: 10, 
-    gap: 6, 
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    gap: 12,
   },
-  featureFeather: {
-    width: 18, 
-    height: 18, 
-    borderRadius: 5, 
-    justifyContent: 'center',
-    alignItems: 'center',
+  featureDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   featureText: {
-    fontSize: 13, 
+    fontSize: 14,
     fontWeight: '500',
     flex: 1,
-    letterSpacing: -0.2,
-    fontFamily: 'Inter_500Medium',
+    fontFamily: 'Nunito_500Medium',
   },
-  navigation: {
-    paddingTop: 12,
-    paddingBottom: 12,
-    alignItems: 'center',
-    width: '100%',
-  },
-  navigationContainer: {
+  buttonContainer: {
     flexDirection: 'row',
-    borderRadius: 6,
-    overflow: 'hidden',
+    width: '100%',
+    gap: 12,
+    alignItems: 'center',
+  },
+  primaryButtonContainer: {
+    width: '100%',
+    borderRadius: 12,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    minHeight: 44,
   },
-  navButton: {
-    flexDirection: 'row',
+  primaryButton: {
+    width: '100%',
+    paddingVertical: 9.2,
+    paddingHorizontal: 100.4,
+    borderRadius: 6,
     alignItems: 'center',
-    paddingVertical: 9.2, 
-    paddingHorizontal: 24,
-    gap: 8, 
-    flex: 1, 
-    justifyContent: 'center', 
   },
-  prevButton: {},
-  nextButton: {},
-  navDivider: {
-    width: 1,
-    height: '100%',
-  },
-  navButtonText: {
-    fontSize: 16, 
+  primaryButtonText: {
+    fontSize: 16,
     fontWeight: '500',
-    letterSpacing: -0.5, 
-    fontFamily: 'Nunito_500Medium', 
+    letterSpacing: -0.5,
+    fontFamily: 'Nunito_500Medium',
   },
-  // Interactive elements styles
-  discoveryCounter: {
+  secondaryButton: {
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    flex: 0.4,
+  },
+  secondaryButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  skipButton: {
+    marginTop: 24,
+    paddingVertical: 12,
+  },
+  skipText: {
+    fontSize: 14,
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: 'Nunito_400Regular',
+  },
+  
+  // Flexible Layout Styles
+  flexibleLayout: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 200,
+    paddingBottom: 32,
+    position: 'relative',
+    justifyContent: 'center', // Center vertically
+  },
+  contentArea: {
+    flex: 1,
+    paddingRight: 120,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    zIndex: 10,
+    maxWidth: '100%',
+  },
+  visualElement: {
+    position: 'absolute',
+    top: '50%',
+    right: 24,
+    transform: [{ translateY: -60 }],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullWidthButtonContainer: {
+    width: '100%',
+    gap: 16,
+    marginTop: 32,
+  },
+  
+  // Step Badge
+  stepBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    marginBottom: 16,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(173, 213, 250, 0.1)',
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+  },
+  stepDivider: {
+    width: 1,
+    height: 12,
+    marginHorizontal: 8,
+  },
+  stepTotal: {
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+  },
+  
+  // Creative Content
+  creativeTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    fontFamily: 'CrimsonPro_700Bold',
+    letterSpacing: -1.2,
+    marginBottom: 16,
+    textAlign: 'left',
+  },
+  creativeDescription: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    marginBottom: 24,
+    textAlign: 'left',
+  },
+  
+  // Neural Interface (2055 Future Design)
+  neuralInterface: {
     gap: 8,
-    borderWidth: 1,
-    marginTop: 8,
+    marginBottom: 32,
+    marginLeft: 4,
+    width: '100%', // Full width container
+    flex: 1, // Take available space
   },
-  discoveryText: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    fontFamily: 'Inter_600SemiBold',
+  neuralNode: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 28,
+    width: '100%', // Ensure full width
+    maxWidth: '100%', // Prevent overflow
   },
-  discoveryBadge: {
+  // Advanced Neural Connector System
+  neuralConnectorContainer: {
+    position: 'relative',
+    width: 8,
+    height: 16,
+    marginRight: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'visible',
+    zIndex: 1,
+    flexShrink: 0, // Don't shrink this container
+    flexGrow: 0, // Don't grow this container
+  },
+  baseConnector: {
+    position: 'absolute',
+    height: 16,
+    borderRadius: 1,
+  },
+  connectorGlow: {
+    position: 'absolute',
+    height: 14,
+    borderRadius: 3,
+    shadowColor: '#add5fa',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  connectorPulse: {
+    position: 'absolute',
+    width: 1,
+    height: 8,
+    borderRadius: 0.5,
+    top: 4,
+  },
+  connectorFlicker: {
+    position: 'absolute',
+    width: 0.5,
+    height: 12,
+    borderRadius: 0.25,
+    top: 2,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 1,
+    elevation: 2,
+  },
+  neuralSpark: {
+    position: 'absolute',
+    width: 1,
+    height: 2,
+    borderRadius: 0.5,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  connectorDataPoint: {
+    position: 'absolute',
+    width: 1.5,
+    height: 1.5,
+    borderRadius: 0.75,
+  },
+  dataPointTop: {
+    top: 1,
+    right: -1,
+  },
+  dataPointBottom: {
+    bottom: 1,
+    left: -1,
+  },
+  
+  // Flying and Movement Effects
+  particleTrail: {
+    position: 'absolute',
+    width: 0.5,
+    height: 8,
+    borderRadius: 0.25,
+    right: -2,
+    top: 4,
+    shadowColor: '#add5fa',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  neuralFlowStream: {
+    position: 'absolute',
+    width: 0.8,
+    height: 12,
+    borderRadius: 0.4,
+    left: -3,
+    top: 2,
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 1,
+    elevation: 4,
+  },
+  waveRipple: {
+    position: 'absolute',
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    justifyContent: 'center',
+    borderWidth: 1,
+    top: 0,
+    left: -4,
+  },
+  nodeContent: {
+    flex: 1,
+    zIndex: 5,
+    position: 'relative',
+    minWidth: 0, // Allow text to wrap
+    width: '100%', // Take remaining space
+  },
+  nodeLabel: {
+    fontSize: 15,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    letterSpacing: -0.2,
+    lineHeight: 20,
+    zIndex: 10,
+  },
+  
+  // Creative Buttons
+  creativeButtonContainer: {
+    width: '100%',
+    gap: 16,
+  },
+  navigationRow: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 16,
+  },
+  navButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  navButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  navSpacer: {
+    flex: 1,
+  },
+  
+  // Neural Processing Core (2055 Design)
+  neuralCore: {
+    width: 108,
+    height: 108,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 32,
+  },
+  scanningGrid: {
+    position: 'absolute',
+    width: 80,
+    height: 80,
+    borderWidth: 1,
+    borderRadius: 2,
+  },
+  gridLine: {
+    position: 'absolute',
+  },
+  gridHorizontal: {
+    width: '100%',
+    height: 1,
+    top: '50%',
+    left: 0,
+  },
+  gridVertical: {
+    width: 1,
+    height: '100%',
+    top: 0,
+    left: '50%',
+  },
+  processingCore: {
+    width: 56,
+    height: 56,
+    borderRadius: 4,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  
+  // Data Processing Points
+  dataPoint: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  dataPoint1: {
+    top: 16,
+    right: 18,
+  },
+  dataPoint2: {
+    bottom: 20,
+    left: 14,
+  },
+  
+  // Progress Visualization
+  progressVisualization: {
+    flexDirection: 'column',
+    gap: 8,
+    alignItems: 'center',
+  },
+  progressLine: {
+    width: 24,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  progressSegment: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 2,
   },
 });

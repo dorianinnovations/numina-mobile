@@ -1,0 +1,127 @@
+# Netlify configuration for Numina Web
+
+[build]
+  command = "npm run build:production"
+  publish = "dist"
+  
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "8"
+  EXPO_PUBLIC_ENV = "production"
+
+# Redirect all routes to index.html for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# API proxy for development
+[[redirects]]
+  from = "/api/*"
+  to = "https://server-a7od.onrender.com/:splat"
+  status = 200
+  force = true
+
+# WebSocket proxy  
+[[redirects]]
+  from = "/ws/*"
+  to = "wss://server-a7od.onrender.com/:splat"
+  status = 200
+  force = true
+
+# Security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://server-a7od.onrender.com wss://server-a7od.onrender.com"
+
+# Cache optimization
+[[headers]]
+  for = "/static/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/static/css/*"  
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/static/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+# Preload critical resources
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Link = "</static/css/main.css>; rel=preload; as=style, </static/js/main.js>; rel=preload; as=script"
+
+# Progressive Web App
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Content-Type = "application/manifest+json"
+
+# Environment-specific builds
+[context.production.environment]
+  EXPO_PUBLIC_API_URL = "https://server-a7od.onrender.com"
+  EXPO_PUBLIC_ENV = "production"
+
+[context.deploy-preview.environment]
+  EXPO_PUBLIC_API_URL = "https://server-a7od.onrender.com"
+  EXPO_PUBLIC_ENV = "staging"
+
+[context.branch-deploy.environment]
+  EXPO_PUBLIC_API_URL = "https://server-a7od.onrender.com"
+  EXPO_PUBLIC_ENV = "development"
+
+# Functions (if needed for API)
+[functions]
+  directory = "netlify/functions"
+
+# Edge functions for performance
+[[edge_functions]]
+  function = "geolocation"
+  path = "/api/location"
+
+# Build plugins
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+  
+  [plugins.inputs.audits]
+    performance = true
+    accessibility = true
+    best-practices = true
+    seo = true
+    pwa = true
+
+[[plugins]]
+  package = "netlify-plugin-submit-sitemap"
+  
+  [plugins.inputs]
+    baseUrl = "https://web.numina.ai"
+    sitemapPath = "/sitemap.xml"
+    providers = [
+      "google",
+      "bing"
+    ]

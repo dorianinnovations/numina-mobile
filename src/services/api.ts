@@ -1,5 +1,5 @@
 import NetInfo from '@react-native-community/netinfo';
-import SecureAuthManager from './secureAuthManager';
+import CloudAuth from './cloudAuth';
 import ToolExecutionService from './toolExecutionService';
 
 /**
@@ -10,17 +10,25 @@ import ToolExecutionService from './toolExecutionService';
 
 import ENV, { SECURITY_HEADERS, validateEnvironment } from '../config/environment';
 
-// Validate environment on import
-if (!validateEnvironment()) {
-  throw new Error('Invalid environment configuration');
-}
+// Lazy environment validation - only validate when API is first used
+let environmentValidated = false;
+
+const ensureEnvironmentValid = () => {
+  if (!environmentValidated) {
+    if (!validateEnvironment()) {
+      throw new Error('Invalid environment configuration');
+    }
+    environmentValidated = true;
+  }
+};
 
 // API Configuration
 export const API_BASE_URL = ENV.API_BASE_URL;
 
-// Chat API configuration
+// Chat API configuration - MIGRATED TO PREMIUM SPEED ENDPOINT
 export const CHAT_API_CONFIG = {
-  PRODUCTION_URL: `${ENV.API_BASE_URL}/completion`,
+  PRODUCTION_URL: `${ENV.API_BASE_URL}/ai/adaptive-chat`,
+  LEGACY_URL: `${ENV.API_BASE_URL}/completion`, // Fallback for emergency
   REQUEST_DEFAULTS: {
     stream: true,
     temperature: 0.8,
@@ -30,7 +38,7 @@ export const CHAT_API_CONFIG = {
 };
 
 // Request timeout configuration
-const REQUEST_TIMEOUT = 30000; // 30 seconds - increased for adaptive chat
+const REQUEST_TIMEOUT = 60000; // 60 seconds - increased for auth issues
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -246,7 +254,7 @@ class ApiService {
     
     console.error('❌ API Error:', errorInfo);
     
-    // In production, you might want to send this to a logging service
+    // In production, send to logging service
     if (__DEV__) {
       console.group('🔍 Detailed Error Info');
       console.log('Context:', context);
@@ -262,7 +270,14 @@ class ApiService {
     options: RequestInit = {},
     retryAttempts: number = 3
   ): Promise<ApiResponse<T>> {
+    // Lazy environment validation
+    ensureEnvironmentValid();
+    
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    
+    // Log the actual URL being called
+    console.log('🌐 API: Making request to:', `${this.baseURL}${endpoint}`);
+    console.log('🌐 API: Base URL is:', this.baseURL);
     
     // CRITICAL FIX: Validate network state before attempting request
     const isNetworkAvailable = await this.validateNetworkState();
@@ -278,12 +293,12 @@ class ApiService {
         // Get token from AuthManager (single source of truth) - handle circular dependency
         let token: string | null = null;
         try {
-          token = await SecureAuthManager.getInstance().getCurrentToken();
-        } catch (error) {
-          // Ignore errors during auth calls to prevent circular dependency issues
+          // Skip token retrieval for auth endpoints to prevent circular dependency
           if (!endpoint.includes('/login') && !endpoint.includes('/signup')) {
-            console.warn('Could not get token for API request:', endpoint);
+            token = CloudAuth.getInstance().getToken();
           }
+        } catch (error) {
+          console.warn('Could not get token for API request:', endpoint);
         }
         
         // Default headers with security headers
@@ -327,9 +342,13 @@ class ApiService {
               !endpoint.includes('/login') && 
               !endpoint.includes('/signup') &&
               !endpoint.includes('/sentiment-data') &&  // Don't logout on sentiment data errors
-              !endpoint.includes('/analytics/llm')) {    // Don't logout on LLM errors
+              !endpoint.includes('/analytics/llm') &&   // Don't logout on LLM errors
+              !endpoint.includes('/ai/personality-recommendations') && // Don't logout on personality errors
+              !endpoint.includes('/ai/emotional-state') &&    // Don't logout on emotional state errors
+              !endpoint.includes('/cloud/events') &&          // Don't logout on cloud events errors
+              !endpoint.includes('/numina-personality/start-rapid-updates')) { // Don't logout on personality updates errors
             // Use AuthManager for consistent auth clearing
-            await SecureAuthManager.getInstance().logout();
+            CloudAuth.getInstance().logout();
             throw new Error('Authentication expired');
           }
           
@@ -473,6 +492,14 @@ class ApiService {
     });
   }
 
+  // Account deletion endpoint
+  static async deleteAccount(userId?: string): Promise<ApiResponse<any>> {
+    const endpoint = userId ? `/user/delete/${userId}` : '/user/delete';
+    return this.apiRequest(endpoint, {
+      method: 'DELETE',
+    });
+  }
+
   // User profile endpoint
   static async getUserProfile(): Promise<ApiResponse<UserData>> {
     return this.apiRequest('/profile');
@@ -483,7 +510,7 @@ class ApiService {
     message: ChatMessage, 
     onChunk: (chunk: string) => void
   ): Promise<string> {
-    const token = await SecureAuthManager.getInstance().getCurrentToken();
+    const token = CloudAuth.getInstance().getToken();
     
     // Always use production URL
     const chatUrl = CHAT_API_CONFIG.PRODUCTION_URL;
@@ -674,7 +701,7 @@ class ApiService {
     timeframe: string = 'week',
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = await SecureAuthManager.getInstance().getCurrentToken();
+    const token = CloudAuth.getInstance().getToken();
     const url = `${this.baseURL}/personal-insights/growth-summary?timeframe=${timeframe}&stream=true`;
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -866,23 +893,30 @@ class ApiService {
     },
     onChunk: (chunk: string, context?: PersonalityContext) => void
   ): Promise<{ content: string; personalityContext: PersonalityContext }> {
-    const token = await SecureAuthManager.getInstance().getCurrentToken();
+    const token = CloudAuth.getInstance().getToken();
     const chatUrl = `${this.baseURL}/ai/adaptive-chat`;
 
-    // Validate message content - prevent empty messages
+    // Validate message content - allow image-only messages for GPT-4o vision
     const messageText = message.message || message.prompt || '';
-    if (!messageText.trim()) {
-      console.error('🔄 ADAPTIVE_CHAT: Empty message detected, rejecting request');
-      throw new Error('Cannot send empty message to adaptive chat');
+    const hasAttachments = message.attachments && message.attachments.length > 0;
+    
+    if (!messageText.trim() && !hasAttachments) {
+      console.error('🔄 ADAPTIVE_CHAT: Empty message detected with no attachments, rejecting request');
+      throw new Error('Cannot send empty message without attachments to adaptive chat');
+    }
+    
+    if (!messageText.trim() && hasAttachments) {
+      console.log('🖼️ ADAPTIVE_CHAT: Image-only message detected for GPT-4o vision');
     }
 
-    console.log('🔄 ADAPTIVE_CHAT: Starting request to:', chatUrl);
+    console.log('Chat Request Started');
     console.log('🔄 ADAPTIVE_CHAT: Message payload:', {
       message: messageText,
       hasEmotionalContext: !!message.emotionalContext,
       personalityStyle: message.personalityStyle,
       stream: message.stream,
-      messageLength: messageText.length
+      messageLength: messageText.length,
+      endpoint: chatUrl
     });
 
     return new Promise((resolve, reject) => {
@@ -898,33 +932,30 @@ class ApiService {
       
       xhr.onreadystatechange = () => {
         try {
-          console.log('🔄 ADAPTIVE_CHAT: ReadyState changed to:', xhr.readyState, 'Status:', xhr.status);
           
           if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
             const responseText = xhr.responseText || '';
             const currentLength = responseText.length;
             const newText = responseText.slice(lastProcessedIndex);
             
-            console.log('🔄 ADAPTIVE_CHAT: Response length:', currentLength, 'New text length:', newText.length);
             
             if (newText) {
-              console.log('🔄 ADAPTIVE_CHAT: New chunk received:', newText.length, 'chars');
               lastProcessedIndex = currentLength;
               const lines = newText.split('\n');
               
               for (const line of lines) {
                 if (line && line.trim() && line.startsWith('data: ')) {
                   const content = line.substring(6).trim();
-                  console.log('🔄 ADAPTIVE_CHAT: Processing SSE line:', content.substring(0, 100));
                   
                   if (content && content !== '[DONE]') {
                     try {
                       const parsed = JSON.parse(content);
-                      console.log('🔄 ADAPTIVE_CHAT: Parsed chunk:', { hasContent: !!parsed.content, type: typeof parsed });
                       
                       if (parsed && parsed.content) {
                         fullContent += parsed.content;
-                        console.log('🔄 ADAPTIVE_CHAT: Added content, total length:', fullContent.length);
+                        
+                        // Log content chunks to understand server response
+                        console.log('🔄 ADAPTIVE_CHAT: Server chunk:', parsed.content.substring(0, 100), '...');
                         
                         // Detect tool execution patterns from server response
                         this.detectAndTriggerToolExecution(parsed.content);
@@ -943,7 +974,6 @@ class ApiService {
                       // For non-JSON content (like plain text streaming), add directly
                       if (content && content.length > 0) {
                         fullContent += content;
-                        console.log('🔄 ADAPTIVE_CHAT: Added raw content, total length:', fullContent.length);
                         
                         // Detect tool execution patterns from server response
                         this.detectAndTriggerToolExecution(content);
@@ -952,7 +982,7 @@ class ApiService {
                       }
                     }
                   } else if (content === '[DONE]') {
-                    console.log('🔄 ADAPTIVE_CHAT: [DONE] received, but NOT closing connection - waiting for potential follow-up');
+                    console.log('Chat Stream Complete');
                     // DON'T close connection here - wait for onload to handle completion
                   }
                 }
@@ -980,9 +1010,9 @@ class ApiService {
           console.log('🔄 ADAPTIVE_CHAT: Response headers:', xhr.getAllResponseHeaders());
           
           if (xhr.status >= 200 && xhr.status < 300) {
-            // Check if we got streaming content first
+            // Check for streaming content first
             if (fullContent) {
-              console.log('🔄 ADAPTIVE_CHAT: Success with content length:', fullContent.length);
+              console.log('Chat Response Complete:', fullContent.length, 'chars');
               resolve({
                 content: fullContent,
                 personalityContext: personalityContext || {
@@ -1034,9 +1064,7 @@ class ApiService {
       xhr.timeout = 120000; // 2 minutes for tool execution + follow-up
       
       const requestPayload = {
-        ...CHAT_API_CONFIG.REQUEST_DEFAULTS,
         ...message,
-        adaptiveFeatures: true,
         stream: true
       };
       
@@ -1266,7 +1294,7 @@ class ApiService {
 
   // Validate token on app startup
   static async validateToken(): Promise<ApiResponse<UserData>> {
-    const token = await SecureAuthManager.getInstance().getCurrentToken();
+    const token = CloudAuth.getInstance().getToken();
     
     if (!token) {
       return {
@@ -1382,7 +1410,7 @@ class ApiService {
     } = {},
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = await SecureAuthManager.getInstance().getCurrentToken();
+    const token = CloudAuth.getInstance().getToken();
     const url = `${this.baseURL}/cascading-recommendations/generate`;
 
     return new Promise((resolve, reject) => {
@@ -1981,7 +2009,7 @@ class ApiService {
       if (pattern.regex.test(content)) {
         console.log(`🔧 API: Detected ${pattern.tool} execution from server response:`, content.substring(0, 100));
         
-        // Check if we already have an active execution for this tool
+        // Check for existing active execution for this tool
         const activeExecutions = toolExecutionService.getCurrentExecutions();
         const existingExecution = activeExecutions.find(exec => 
           exec.toolName === pattern.tool && exec.status !== 'completed' && exec.status !== 'error'
@@ -2032,7 +2060,7 @@ class ApiService {
   static async uploadFile(file: FormData): Promise<ApiResponse<{ url: string; extractedText?: string }>> {
     try {
       // Get token from AuthManager
-      const token = await SecureAuthManager.getInstance().getCurrentToken();
+      const token = CloudAuth.getInstance().getToken();
       
       if (!token) {
         return {
@@ -2081,7 +2109,7 @@ class ApiService {
     onChunk?: (chunk: string) => void
   ): Promise<void> {
     try {
-      const token = await SecureAuthManager.getInstance().getCurrentToken();
+      const token = CloudAuth.getInstance().getToken();
       
       if (!token) {
         throw new Error('Authentication required');

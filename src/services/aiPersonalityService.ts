@@ -1,7 +1,7 @@
 import ApiService from './api';
 import { emotionalAnalyticsAPI } from './emotionalAnalyticsAPI';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SecureStorageService from './secureStorage';
+import CloudAuth from './cloudAuth';
 
 interface UserEmotionalState {
   mood: string;
@@ -52,9 +52,15 @@ class AIPersonalityService {
 
   // Optimized emotional state analysis with better caching and debouncing
   async analyzeCurrentEmotionalState(): Promise<UserEmotionalState> {
+    // Check authentication before making API calls
+    if (!CloudAuth.getInstance().isAuthenticated()) {
+      console.log('⚡ Using fast local analysis based on 1 recent emotions');
+      return this.getDefaultEmotionalState();
+    }
+
     const now = Date.now();
     
-    // Check if we have a recent cached state (within 15 minutes)
+    // Check for recent cached state (within 15 minutes)
     const cached = await this.getCachedEmotionalState();
     if (cached && (now - this.lastAnalysisTime) < CACHE_DURATION) {
       console.log('🚀 Using cached emotional state (age:', Math.round((now - this.lastAnalysisTime) / 1000), 's)');
@@ -90,7 +96,7 @@ class AIPersonalityService {
       // Quick local analysis first for immediate response
       const localState = this.generateLocalEmotionalState(recentEmotions);
       
-      // If we have recent emotions, use local analysis immediately
+      // If recent emotions exist, use local analysis immediately
       if (recentEmotions.length > 0) {
         console.log('⚡ Using fast local analysis based on', recentEmotions.length, 'recent emotions');
         this.currentEmotionalState = localState;
@@ -102,7 +108,7 @@ class AIPersonalityService {
         return localState;
       }
 
-      // Only call AI if we have conversation history or no recent emotions
+      // Only call AI if conversation history exists or no recent emotions
       const conversationHistory = await this.getRecentConversations();
       
       if (conversationHistory.length > 0) {
@@ -170,6 +176,12 @@ class AIPersonalityService {
       return cached;
     }
     
+    // Check authentication before making API calls
+    if (!CloudAuth.getInstance().isAuthenticated()) {
+      console.log('🔄 Using local personality recommendations');
+      return this.getDefaultPersonality();
+    }
+    
     try {
       console.log('🧠 Fetching personality recommendations for mood:', state.mood);
       const response = await ApiService.getPersonalityRecommendations(state);
@@ -225,7 +237,7 @@ class AIPersonalityService {
           attachments: attachments, // Pass attachments to backend
         },
         (chunk, context) => {
-          // Use server context if provided, otherwise use our default
+          // Use server context if provided, otherwise use default
           onChunk(chunk, context || defaultPersonalityContext);
         }
       );
@@ -245,7 +257,10 @@ class AIPersonalityService {
       
       let fullContent = '';
       await ApiService.sendChatMessageStreaming(
-        { prompt: enhancedPrompt },
+        { 
+          prompt: enhancedPrompt,
+          attachments: attachments // Include attachments in fallback
+        },
         (chunk) => {
           fullContent = chunk;
           onChunk(chunk, defaultPersonalityContext);
@@ -435,6 +450,12 @@ class AIPersonalityService {
     return this.generateDefaultEmotionalState();
   }
 
+  // Public method for generating default personality
+  public getDefaultPersonality(): AIPersonality {
+    const defaultState = this.getDefaultEmotionalState();
+    return this.generateLocalPersonalityRecommendations(defaultState);
+  }
+
   private generateLocalPersonalityRecommendations(state: UserEmotionalState): AIPersonality {
     let communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
     
@@ -493,7 +514,7 @@ ${prompt}`;
 
   private async cacheEmotionalState(state: UserEmotionalState): Promise<void> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         console.warn('No user ID found, cannot cache emotional state');
         return;
@@ -511,7 +532,7 @@ ${prompt}`;
 
   private async cachePersonalityRecommendations(mood: string, personality: AIPersonality): Promise<void> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         console.warn('No user ID found, cannot cache personality recommendations');
         return;
@@ -530,7 +551,7 @@ ${prompt}`;
 
   private async getCachedPersonalityRecommendations(mood: string): Promise<AIPersonality | null> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         return null;
       }
@@ -553,7 +574,7 @@ ${prompt}`;
 
   private async getCachedEmotionalState(): Promise<UserEmotionalState | null> {
     try {
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
         return null;
       }
@@ -584,7 +605,7 @@ ${prompt}`;
         current[style].negative++;
       }
       
-      const userId = await SecureStorageService.getCurrentUserId();
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (userId) {
         const cacheKeys = getCacheKeys(userId);
         await AsyncStorage.setItem(cacheKeys.personalityPreferences, JSON.stringify(current));

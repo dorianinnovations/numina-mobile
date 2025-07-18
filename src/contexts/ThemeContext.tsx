@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Appearance } from 'react-native';
+import { Appearance, View, ActivityIndicator, StyleSheet } from 'react-native';
 import { ThemeContextType, Theme, ThemeMode } from '../types/theme';
 import { lightTheme, darkTheme } from '../utils/themes';
 
@@ -16,39 +16,62 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(lightTheme);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    loadTheme();
+    const initializeTheme = async () => {
+      try {
+        // Set initialized immediately with default theme
+        setIsInitialized(true);
+        // Then load saved theme in background
+        await loadTheme();
+      } catch (error) {
+        console.warn('Theme initialization failed:', error);
+        setIsInitialized(true);
+      }
+    };
+    
+    initializeTheme();
   }, []);
 
   useEffect(() => {
-    // Listen for system theme changes when in system mode
-    if (themeMode === 'system') {
-      const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-        updateThemeBasedOnMode(themeMode, colorScheme);
-      });
-      return () => subscription?.remove();
+    // Only setup appearance listener after initialization
+    if (isInitialized && themeMode === 'system') {
+      try {
+        const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+          updateThemeBasedOnMode(themeMode, colorScheme);
+        });
+        return () => subscription?.remove();
+      } catch (error) {
+        console.warn('Appearance listener setup failed:', error);
+      }
     }
-  }, [themeMode]);
+  }, [themeMode, isInitialized]);
 
   const updateThemeBasedOnMode = (mode: ThemeMode, systemScheme?: 'light' | 'dark' | null) => {
     let shouldUseDark = false;
     
-    switch (mode) {
-      case 'light':
-        shouldUseDark = false;
-        break;
-      case 'dark':
-        shouldUseDark = true;
-        break;
-      case 'system':
-        const currentScheme = systemScheme || Appearance.getColorScheme();
-        shouldUseDark = currentScheme === 'dark';
-        break;
+    try {
+      switch (mode) {
+        case 'light':
+          shouldUseDark = false;
+          break;
+        case 'dark':
+          shouldUseDark = true;
+          break;
+        case 'system':
+          const currentScheme = systemScheme || Appearance.getColorScheme();
+          shouldUseDark = currentScheme === 'dark';
+          break;
+      }
+      
+      setTheme(shouldUseDark ? darkTheme : lightTheme);
+      setIsDarkMode(shouldUseDark);
+    } catch (error) {
+      console.warn('Theme update failed, using light theme:', error);
+      setTheme(lightTheme);
+      setIsDarkMode(false);
     }
-    
-    setTheme(shouldUseDark ? darkTheme : lightTheme);
-    setIsDarkMode(shouldUseDark);
   };
 
   const loadTheme = async () => {
@@ -98,9 +121,43 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 };
 
 export const useTheme = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+  try {
+    const context = useContext(ThemeContext);
+    if (context === undefined) {
+      throw new Error('useTheme must be used within a ThemeProvider');
+    }
+    
+    // Defensive check to ensure theme properties exist
+    if (!context.theme || !context.theme.colors) {
+      console.warn('ThemeContext: Invalid theme object, falling back to defaults');
+      return {
+        theme: lightTheme,
+        isDarkMode: false,
+        themeMode: 'light',
+        setThemeMode: () => {},
+        toggleTheme: () => {},
+      };
+    }
+    
+    return context;
+  } catch (error) {
+    console.warn('ThemeContext: Accessing theme before provider ready, using defaults:', error.message);
+    // Return safe defaults to prevent app crash
+    return {
+      theme: lightTheme,
+      isDarkMode: false,
+      themeMode: 'light',
+      setThemeMode: () => {},
+      toggleTheme: () => {},
+    };
   }
-  return context;
 };
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+});

@@ -22,7 +22,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useAuth } from "../contexts/SimpleAuthContext";
-import WebSocketService from '../services/websocketService';
+import getWebSocketService from '../services/websocketService';
 
 const { width } = Dimensions.get('window');
 
@@ -162,11 +162,12 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     }, 300000); // Update every 5 minutes instead of 30 seconds
 
     // Set up WebSocket listeners for real-time features
-    WebSocketService.addEventListener('milestone_achieved', handleMilestoneAchieved);
-    WebSocketService.addEventListener('milestone_celebrated', handleMilestoneCelebrated);
-    WebSocketService.addEventListener('emotional_share_received', handleEmotionalShareReceived);
-    WebSocketService.addEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
-    WebSocketService.addEventListener('numina_senses_updated', handleNuminaSensesUpdated);
+    const websocketService = getWebSocketService();
+    websocketService.addEventListener('milestone_achieved', handleMilestoneAchieved);
+    websocketService.addEventListener('milestone_celebrated', handleMilestoneCelebrated);
+    websocketService.addEventListener('emotional_share_received', handleEmotionalShareReceived);
+    websocketService.addEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
+    websocketService.addEventListener('numina_senses_updated', handleNuminaSensesUpdated);
 
     // CRITICAL FIX: Store animation loop ref for proper cleanup
     animationLoopRef.current = Animated.loop(
@@ -214,11 +215,12 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       }
       
       // Remove WebSocket listeners
-      WebSocketService.removeEventListener('milestone_achieved', handleMilestoneAchieved);
-      WebSocketService.removeEventListener('milestone_celebrated', handleMilestoneCelebrated);
-      WebSocketService.removeEventListener('emotional_share_received', handleEmotionalShareReceived);
-      WebSocketService.removeEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
-      WebSocketService.removeEventListener('numina_senses_updated', handleNuminaSensesUpdated);
+      const websocketService = getWebSocketService();
+      websocketService.removeEventListener('milestone_achieved', handleMilestoneAchieved);
+      websocketService.removeEventListener('milestone_celebrated', handleMilestoneCelebrated);
+      websocketService.removeEventListener('emotional_share_received', handleEmotionalShareReceived);
+      websocketService.removeEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
+      websocketService.removeEventListener('numina_senses_updated', handleNuminaSensesUpdated);
     };
   }, []);
 
@@ -478,7 +480,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
 
   const celebrateMilestone = (milestone: any) => {
     console.log('🎉 Celebrating milestone:', milestone.title);
-    WebSocketService.celebrateMilestone(milestone.id, milestone.title, true);
+    getWebSocketService().celebrateMilestone(milestone.id, milestone.title, true);
     ApiService.celebrateMilestone(milestone.id);
   };
 
@@ -496,7 +498,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           text: 'Share', 
           onPress: () => {
             console.log('📤 Sharing emotion:', currentEmotion, 'intensity:', emotionIntensity);
-            WebSocketService.shareEmotionalState('community', currentEmotion, emotionIntensity);
+            getWebSocketService().shareEmotionalState('community', currentEmotion, emotionIntensity);
           }
         }
       ]
@@ -513,7 +515,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           text: 'Request Support', 
           onPress: () => {
             console.log('🆘 Requesting support');
-            WebSocketService.requestSupport(8, 'Need encouragement', true);
+            getWebSocketService().requestSupport(8, 'Need encouragement', true);
           }
         }
       ]

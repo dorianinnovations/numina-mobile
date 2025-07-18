@@ -301,6 +301,18 @@ class OfflineEmotionStorage {
     return insights;
   }
 
+  // Get all emotions for a user
+  static async getAllEmotions(userId?: string): Promise<EmotionLog[]> {
+    try {
+      const keys = this.getStorageKeys(userId);
+      const emotionsData = await AsyncStorage.getItem(keys.EMOTIONS);
+      return emotionsData ? JSON.parse(emotionsData) : [];
+    } catch (error) {
+      console.error('Get all emotions error:', error);
+      return [];
+    }
+  }
+
   // Clear user data on logout
   static async clearUserData(userId: string): Promise<void> {
     try {

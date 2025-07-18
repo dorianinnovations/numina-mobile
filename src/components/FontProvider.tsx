@@ -39,39 +39,8 @@ export const FontProvider: React.FC<FontProviderProps> = ({ children }) => {
     loadAppFonts();
   }, []);
 
-  // Show loading screen while fonts are loading
-  if (!fontsLoaded) {
-    return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: theme.colors.background,
-      }}>
-        <ActivityIndicator 
-          size="large" 
-          color={theme.colors.accent}
-          style={{ marginBottom: 16 }}
-        />
-        <Text style={{
-          ...TextStyles.body,
-          color: theme.colors.primary,
-          textAlign: 'center',
-        }}>
-          Loading Numina Fonts...
-        </Text>
-        <Text style={{
-          ...TextStyles.caption,
-          color: theme.colors.secondary,
-          textAlign: 'center',
-          marginTop: 8,
-        }}>
-          Nunito • Inter • Crimson Pro • Open Sans
-        </Text>
-      </View>
-    );
-  }
-
+  // Don't block the app - load fonts in background
+  // App will start with system fonts and switch to custom fonts once loaded
   return <>{children}</>;
 };
 

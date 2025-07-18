@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Navigation
 import { AppNavigator } from './navigation/AppNavigator';
@@ -12,7 +13,6 @@ import { AuthProvider, useAuth } from './contexts/SimpleAuthContext';
 import { FontProvider } from './components/FontProvider';
 
 // Services
-import AuthManager from './services/authManager';
 import { NuminaColors } from './utils/colors';
 
 /**
@@ -72,14 +72,16 @@ const AppContent: React.FC = () => {
 
 const SimpleApp: React.FC = () => {
   return (
-    <ThemeProvider>
-      <FontProvider>
-        <AuthProvider>
-          <AppContent />
-          <StatusBar style="auto" />
-        </AuthProvider>
-      </FontProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <FontProvider>
+          <AuthProvider>
+            <AppContent />
+            <StatusBar style="auto" />
+          </AuthProvider>
+        </FontProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 };
 

@@ -8,33 +8,40 @@ import { ThemeSelector } from './ThemeSelector';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-const getMenuActions = (isDarkMode: boolean) => [
-  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat' },
-  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment' },
-  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics' },
-  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud' },
-  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet' },
-  { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile' },
-  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings' },
-  { icon: <Feather name="info" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'About', key: 'about' },
-  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Sign Out', key: 'signout' },
+const getAllMenuActions = (isDarkMode: boolean) => [
+  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment', requiresAuth: true },
+  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
+  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
+  { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile', requiresAuth: true },
+  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings', requiresAuth: false },
+  { icon: <Feather name="info" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'About', key: 'about', requiresAuth: false },
+  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
 ];
+
+const getMenuActions = (isDarkMode: boolean, showAuthOptions: boolean = true) => {
+  const allActions = getAllMenuActions(isDarkMode);
+  return showAuthOptions ? allActions : allActions.filter(action => !action.requiresAuth);
+};
 
 interface HeaderMenuProps {
   visible: boolean;
   onClose: () => void;
   onAction: (key: string) => void;
   menuButtonPosition?: { x: number; y: number; width: number; height: number };
+  showAuthOptions?: boolean;
 }
 
 export const HeaderMenu: React.FC<HeaderMenuProps> = ({ 
   visible, 
   onClose, 
   onAction, 
-  menuButtonPosition 
+  menuButtonPosition,
+  showAuthOptions = true 
 }) => {
   const { isDarkMode } = useTheme();
-  const menuActions = getMenuActions(isDarkMode);
+  const menuActions = getMenuActions(isDarkMode, showAuthOptions);
   
   // State to prevent multiple rapid presses
   const [isAnimating, setIsAnimating] = useState(false);
@@ -287,10 +294,10 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
             backgroundColor: isDarkMode ? '#1a1a1a' : 'rgba(255, 255, 255, 0.98)',
             borderColor: isDarkMode ? '#333' : 'rgba(0, 0, 0, 0.1)',
             shadowColor: isDarkMode ? '#000' : '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: isDarkMode ? 0.4 : 0.15,
-            shadowRadius: 16,
-            elevation: 12,
+            shadowOffset: { width: 0, height: 3 },
+            shadowOpacity: isDarkMode ? 0.6 : 0.3,
+            shadowRadius: 6,
+            elevation: 8,
             opacity: opacityAnim,
             transform: [
               { scale: scaleAnim },
@@ -409,7 +416,7 @@ const styles = StyleSheet.create({
   menuButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 44,
+    height: 48,
     borderRadius: 12,
     marginHorizontal: 4,
     marginVertical: 2,

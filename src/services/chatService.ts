@@ -1,9 +1,12 @@
 import ApiService from './api';
+import { optimizedChatService } from './optimizedChatService';
 
 /**
  * Chat Service for React Native
  * Handles real-time chat with backend using streaming responses
  * Matches web app implementation exactly
+ * 
+ * PERFORMANCE MODE: Uses optimized service for better performance
  */
 
 export interface StreamingChatResponse {
@@ -14,33 +17,26 @@ export interface StreamingChatResponse {
 export class ChatService {
   /**
    * Send a chat message with optional streaming updates
+   * UNIFIED SYSTEM: Always uses optimized UBPM-aware endpoint
    */
   static async sendMessage(
     message: string,
-    onStreamingUpdate?: (partial: string) => void
+    onStreamingUpdate?: (partial: string) => void,
+    attachments?: any[]
   ): Promise<string> {
     try {
-      if (onStreamingUpdate) {
-        return await ApiService.sendChatMessageStreaming({
-          prompt: message.trim(),
-          stream: true,
-          temperature: 0.8,
-          n_predict: 1024,
-          stop: ['<|im_end|>', '\n<|im_start|>']
-        }, onStreamingUpdate);
-      } else {
-        const response = await ApiService.sendChatMessage({
-          prompt: message.trim(),
-          stream: false,
-          temperature: 0.8,
-          n_predict: 1024,
-          stop: ['<|im_end|>', '\n<|im_start|>']
-        });
-
-        const textData = await response.text();
-        return textData || 'No response received';
+      console.log('User Message:', message);
+      if (attachments && attachments.length > 0) {
+        console.log('Attachments:', attachments.length, 'files');
       }
+      
+      // Always use optimized service with UBPM detection
+      const result = await optimizedChatService.sendUBPMQuery(message, onStreamingUpdate, attachments);
+      console.log('Bot Message:', result);
+      return result;
+      
     } catch (error: any) {
+      console.error('❌ ChatService: Unified chat failed:', error);
       throw new Error(error.message || 'Failed to send message');
     }
   }
@@ -199,18 +195,39 @@ export class ChatService {
   }
 
   /**
+   * Send UBPM-specific queries with optimization
+   */
+  static async sendUBPMMessage(
+    message: string,
+    onStreamingUpdate?: (partial: string) => void
+  ): Promise<string> {
+    try {
+      return await optimizedChatService.sendUBPMQuery(message, onStreamingUpdate);
+    } catch (error: any) {
+      console.error('❌ ChatService: UBPM query failed, using regular message');
+      return await this.sendMessage(message, onStreamingUpdate);
+    }
+  }
+
+  /**
    * Check if chat service is available
    */
   static async checkChatAvailability(): Promise<boolean> {
     try {
-      const response = await ApiService.sendChatMessage({
-        prompt: 'ping',
-        stream: false,
-        n_predict: 1,
-      });
-      return response.ok;
+      // Use optimized service for health check
+      return await optimizedChatService.testConnection();
     } catch (error) {
-      return false;
+      // Fallback to original check
+      try {
+        const response = await ApiService.sendChatMessage({
+          prompt: 'ping',
+          stream: false,
+          n_predict: 1,
+        });
+        return response.ok;
+      } catch (fallbackError) {
+        return false;
+      }
     }
   }
 }

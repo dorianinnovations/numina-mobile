@@ -380,7 +380,7 @@ class ToolExecutionService extends SimpleEventEmitter {
 
     for (const pattern of toolPatterns) {
       if (pattern.regex.test(message)) {
-        // Check if we already have an active execution for this tool
+        // Check for existing active execution for this tool
         const existingExecution = this.findExecutionByTool(pattern.tool);
         if (!existingExecution) {
           this.startExecution(pattern.tool, { detectedFromMessage: true });

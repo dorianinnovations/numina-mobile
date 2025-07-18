@@ -20,6 +20,7 @@ interface ScreenWrapperProps {
   headerProps?: {
     isVisible?: boolean;
     isStreaming?: boolean;
+    onRestoreHeader?: () => void;
   };
 }
 
@@ -39,7 +40,16 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   headerProps,
 }) => {
   const navigation = useNavigation<ScreenWrapperNavigationProp>();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
+
+  const handleTitlePress = () => {
+    // Navigate to Chat if authenticated, Hero if not authenticated
+    if (isAuthenticated) {
+      navigation.navigate('Chat');
+    } else {
+      navigation.navigate('Hero');
+    }
+  };
 
   const handleMenuAction = (key: string) => {
     const currentRoute = navigation.getState()?.routes[navigation.getState().index]?.name;
@@ -136,9 +146,11 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           showConversationsButton={showConversationsButton}
           onBackPress={handleBackPress}
           onMenuPress={handleMenuAction}
+          onTitlePress={handleTitlePress}
           onConversationSelect={onConversationSelect}
           currentConversationId={currentConversationId}
           {...headerProps}
+          onRestoreHeader={headerProps?.onRestoreHeader}
         />
       )}
       {children}

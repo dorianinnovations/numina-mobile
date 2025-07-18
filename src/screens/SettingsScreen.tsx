@@ -12,6 +12,7 @@ import {
   AlertButton,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { PageBackground } from '../components/PageBackground';
 import { Header } from '../components/Header';
@@ -143,6 +144,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   };
 
   const showDataPrivacyOptions = () => {
+    // Light haptic for opening options
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
     const options: AlertButton[] = [
       { text: 'Private', onPress: () => handleDataPrivacyChange('private') },
       { text: 'Anonymous', onPress: () => handleDataPrivacyChange('anonymous') },

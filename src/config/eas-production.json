@@ -1,0 +1,48 @@
+{
+  "cli": {
+    "version": ">= 0.60.0"
+  },
+  "build": {
+    "production-direct": {
+      "extends": "production",
+      "distribution": "store",
+      "channel": "production-direct",
+      "autoIncrement": true,
+      "cache": {
+        "disabled": false
+      },
+      "env": {
+        "API_BASE_URL": "https://server-a7od.onrender.com/api",
+        "NODE_ENV": "production",
+        "USE_PRODUCTION_DIRECT": "true"
+      }
+    },
+    "preview-production": {
+      "extends": "preview",
+      "distribution": "internal",
+      "channel": "preview-production",
+      "env": {
+        "API_BASE_URL": "https://server-a7od.onrender.com/api",
+        "NODE_ENV": "production"
+      }
+    }
+  },
+  "submit": {
+    "production-direct": {
+      "ios": {
+        "appleId": "your-apple-id",
+        "ascAppId": "your-app-id",
+        "appleTeamId": "your-team-id"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./service-account.json",
+        "track": "production"
+      }
+    }
+  },
+  "updates": {
+    "production-direct": {
+      "channel": "production-direct"
+    }
+  }
+}

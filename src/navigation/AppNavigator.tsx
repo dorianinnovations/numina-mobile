@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
+import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
 import { StatusBar, View, Text, ActivityIndicator } from "react-native";
 
 // Screens
@@ -41,59 +41,58 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-// Custom slide transition configuration
-const slideTransition = {
+// Just use the fucking default iOS transition that actually works
+const workingTransition = {
+  ...TransitionPresets.SlideFromRightIOS,
   gestureEnabled: true,
-  gestureDirection: "horizontal" as const,
-  gestureResponseDistance: 25, // Lower value for quicker response
-  gestureVelocityImpact: 0.3, // Smooth velocity handling
-  transitionSpec: {
-    open: {
-      animation: 'spring' as const,
-      config: {
-        stiffness: 1000,
-        damping: 500,
-        mass: 3,
-        overshootClamping: true,
-        restDisplacementThreshold: 0.01,
-        restSpeedThreshold: 0.01,
-      },
-    },
-    close: {
-      animation: 'spring' as const,
-      config: {
-        stiffness: 1000,
-        damping: 500,
-        mass: 3,
-        overshootClamping: true,
-        restDisplacementThreshold: 0.01,
-        restSpeedThreshold: 0.01,
-      },
-    },
-  },
 };
 
 export const AppNavigator: React.FC = () => {
   const { isDarkMode } = useTheme();
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { isAuthenticated, isInitializing, logout } = useAuth();
   const navigationRef = useRef<any>(null);
   const routeNameRef = useRef<string>('');
 
-  // Handle authentication state changes
+  // Reusable menu handler with signout support
+  const createMenuHandler = (navigation: any) => (key: string) => {
+    switch (key) {
+      case 'chat': navigation.navigate('Chat'); break;
+      case 'analytics': navigation.navigate('Analytics'); break;
+      case 'sentiment': navigation.navigate('Sentiment'); break;
+      case 'cloud': navigation.navigate('Cloud'); break;
+      case 'wallet': navigation.navigate('Wallet'); break;
+      case 'profile': navigation.navigate('Profile'); break;
+      case 'settings': navigation.navigate('Settings'); break;
+      case 'about': navigation.navigate('About'); break;
+      case 'signout': {
+        console.log('🔓 MENU: User signed out - routing will handle navigation to Hero');
+        logout();
+        break;
+      }
+      default: break;
+    }
+  };
+
+  // Handle authentication state changes - MINIMAL resets to preserve navigation stack
   useEffect(() => {
     if (!isInitializing && navigationRef.current) {
+      const currentRoute = routeNameRef.current;
+      
       if (!isAuthenticated) {
-        // User signed out, navigate to Hero
-        navigationRef.current.reset({
-          index: 0,
-          routes: [{ name: 'Hero' }],
-        });
-      } else if (isAuthenticated && routeNameRef.current === 'Hero') {
-        // User signed in from Hero, navigate to Chat
-        navigationRef.current.reset({
-          index: 0,
-          routes: [{ name: 'Chat' }],
-        });
+        // User signed out - only reset if coming from authenticated screens
+        if (currentRoute === 'Chat' || currentRoute === 'Analytics' || currentRoute === 'Profile' || currentRoute === 'Wallet') {
+          console.log('🔄 AUTH ROUTING: User logged out, returning to Hero');
+          navigationRef.current.reset({
+            index: 0,
+            routes: [{ name: 'Hero' }],
+          });
+        }
+      } else if (isAuthenticated) {
+        // User signed in successfully - use navigate to preserve stack
+        if (currentRoute === 'SignIn' || currentRoute === 'SignUp') {
+          console.log('🔄 AUTH ROUTING: User authenticated, navigating to Chat');
+          navigationRef.current.navigate('Chat');
+        }
       }
     }
   }, [isAuthenticated, isInitializing]);
@@ -131,9 +130,17 @@ export const AppNavigator: React.FC = () => {
       ref={navigationRef}
       onReady={() => {
         routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name || '';
+        console.log('🚀 NAVIGATION READY:', routeNameRef.current);
       }}
-      onStateChange={() => {
+      onStateChange={(state) => {
+        const previousRoute = routeNameRef.current;
         routeNameRef.current = navigationRef.current?.getCurrentRoute()?.name || '';
+        console.log('🔄 NAVIGATION STATE CHANGE:', {
+          from: previousRoute,
+          to: routeNameRef.current,
+          stackLength: state?.routes?.length || 0,
+          routes: state?.routes?.map(r => r.name) || []
+        });
       }}
     >
       <StatusBar
@@ -145,19 +152,24 @@ export const AppNavigator: React.FC = () => {
         initialRouteName={isAuthenticated ? "Chat" : "Hero"}
         screenOptions={{
           headerShown: false,
-          ...slideTransition,
+          ...workingTransition,
         }}
       >
         <Stack.Screen
           name="Hero"
           options={{
-            ...slideTransition,
+            ...workingTransition,
+            gestureEnabled: false, // Disable back gesture on root screen
           }}
         >
           {({ navigation }) => (
             <HeroLandingScreen
               onNavigateToTutorial={() => navigation.navigate("Tutorial")}
-              onNavigateToLogin={() => navigation.navigate("Welcome")}
+              onNavigateToSignIn={() => {
+                console.log('➡️ NAVIGATING TO SIGNIN from Hero');
+                navigation.navigate("SignIn");
+              }}
+              onNavigateToSignUp={() => navigation.navigate("SignUp")}
             />
           )}
         </Stack.Screen>
@@ -165,12 +177,12 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Welcome"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
             <WelcomeScreen
-              onNavigateBack={() => navigation.navigate("Hero")}
+              onNavigateBack={() => navigation.goBack()}
               onNavigateToSignUp={() => navigation.navigate("SignUp")}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
             />
@@ -180,12 +192,15 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignIn"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
             <SignInScreen
-              onNavigateBack={() => navigation.navigate("Welcome")}
+              onNavigateBack={() => {
+                console.log('🔙 BACK BUTTON PRESSED - calling navigation.goBack()');
+                navigation.goBack();
+              }}
               onSignInSuccess={() => navigation.navigate("Chat")}
               onNavigateToSignUp={() => navigation.navigate("SignUp")}
               onNavigateToHero={() => navigation.navigate("Hero")}
@@ -196,12 +211,12 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignUp"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
             <SignUpScreen
-              onNavigateBack={() => navigation.navigate("Welcome")}
+              onNavigateBack={() => navigation.goBack()}
               onSignUpSuccess={() => navigation.navigate("Chat")}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
             />
@@ -211,13 +226,21 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Tutorial"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
             <TutorialScreen
               onNavigateHome={() => navigation.navigate("Hero")}
               onStartChat={() => navigation.navigate("SignUp")}
+              onTitlePress={() => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
             />
           )}
         </Stack.Screen>
@@ -225,7 +248,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Chat"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
@@ -236,77 +259,177 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Analytics"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <AnalyticsScreen onNavigateBack={() => navigation.goBack()} />
+            <AnalyticsScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="Cloud"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <CloudScreen onNavigateBack={() => navigation.goBack()} />
+            <CloudScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="Wallet"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <WalletScreen onNavigateBack={() => navigation.goBack()} />
+            <WalletScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="Sentiment"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <SentimentScreen onNavigateBack={() => navigation.goBack()} />
+            <SentimentScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="Profile"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <ProfileScreen onNavigateBack={() => navigation.goBack()} />
+            <ProfileScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={createMenuHandler(navigation)}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="Settings"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <SettingsScreen onNavigateBack={() => navigation.goBack()} />
+            <SettingsScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
 
         <Stack.Screen
           name="About"
           options={{
-            ...slideTransition,
+            ...workingTransition,
           }}
         >
           {({ navigation }) => (
-            <AboutScreen onNavigateBack={() => navigation.goBack()} />
+            <AboutScreen 
+              onNavigateBack={() => navigation.goBack()}
+              onTitlePress={isAuthenticated ? () => navigation.navigate("Chat") : () => navigation.navigate("Hero")}
+              onMenuPress={(key: string) => {
+                switch (key) {
+                  case 'chat': navigation.navigate('Chat'); break;
+                  case 'analytics': navigation.navigate('Analytics'); break;
+                  case 'sentiment': navigation.navigate('Sentiment'); break;
+                  case 'cloud': navigation.navigate('Cloud'); break;
+                  case 'wallet': navigation.navigate('Wallet'); break;
+                  case 'profile': navigation.navigate('Profile'); break;
+                  case 'settings': navigation.navigate('Settings'); break;
+                  case 'about': navigation.navigate('About'); break;
+                  default: break;
+                }
+              }}
+            />
           )}
         </Stack.Screen>
       </Stack.Navigator>

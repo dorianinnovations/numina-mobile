@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import SecureAuthManager from './secureAuthManager';
 
 /**
  * Secure storage service for React Native
@@ -22,40 +23,20 @@ class SecureStorageService {
     };
   }
 
-  // Token management
+  // Token management - SINGLE SOURCE OF TRUTH: Use SecureAuthManager
   static async setToken(token: string): Promise<void> {
-    try {
-      console.log('[SecureStorage] Storing token with key:', this.TOKEN_KEY);
-      await AsyncStorage.setItem(this.TOKEN_KEY, token);
-      console.log('[SecureStorage] Token stored successfully');
-      
-      // Verify token was stored
-      const verifyToken = await AsyncStorage.getItem(this.TOKEN_KEY);
-      console.log('[SecureStorage] Token verification:', verifyToken ? 'Success' : 'Failed');
-    } catch (error) {
-      console.error('Error storing token:', error);
-      throw new Error('Failed to store authentication token');
-    }
+    console.log('[SecureStorage] DEPRECATED: setToken - use SecureAuthManager instead');
+    // No-op: SecureAuthManager handles token storage now
   }
 
   static async getToken(): Promise<string | null> {
-    try {
-      console.log('[SecureStorage] Retrieving token with key:', this.TOKEN_KEY);
-      const token = await AsyncStorage.getItem(this.TOKEN_KEY);
-      console.log('[SecureStorage] Token retrieved:', token ? 'Token exists' : 'No token found');
-      return token;
-    } catch (error) {
-      console.error('Error retrieving token:', error);
-      return null;
-    }
+    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using SecureAuthManager.getCurrentToken()');
+    return SecureAuthManager.getInstance().getCurrentToken();
   }
 
   static async removeToken(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(this.TOKEN_KEY);
-    } catch (error) {
-      console.error('Error removing token:', error);
-    }
+    console.log('[SecureStorage] DEPRECATED: removeToken - use SecureAuthManager.logout() instead');
+    // No-op: SecureAuthManager handles token removal now
   }
 
   // User data management - User-specific storage
@@ -382,16 +363,8 @@ class SecureStorageService {
 
   // Check if user data exists (for session persistence)
   static async hasValidSession(): Promise<boolean> {
-    try {
-      const token = await this.getToken();
-      const userData = await this.getUserData();
-      const hasValid = !!(token && userData);
-      console.log('[SecureStorage] Session validation:', { hasToken: !!token, hasUserData: !!userData, isValid: hasValid });
-      return hasValid;
-    } catch (error) {
-      console.error('Error checking session validity:', error);
-      return false;
-    }
+    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using SecureAuthManager.isAuthenticated()');
+    return SecureAuthManager.getInstance().isAuthenticated();
   }
 }
 

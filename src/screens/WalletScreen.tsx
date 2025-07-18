@@ -15,6 +15,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { ShimmerText } from '../components/ShimmerText';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
@@ -753,7 +754,11 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
                     styles.primaryAction,
                     { backgroundColor: isDarkMode ? '#80acff' : '#80acff' }
                   ]}
-                  onPress={() => setShowAddFunds(true)}
+                  onPress={() => {
+                    // Heavy haptic for financial transaction
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                    setShowAddFunds(true);
+                  }}
                 >
                   <FontAwesome5 name="plus" size={16} color="#fff" />
                   <Text style={[styles.actionButtonText, { color: '#fff' }]}> 
@@ -767,7 +772,11 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
                       styles.actionButton,
                       { backgroundColor: isDarkMode ? '#e6e6e6' : '#ffffff' }
                     ]}
-                    onPress={handleVerifyAccount}
+                    onPress={() => {
+                      // Medium haptic for account verification
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      handleVerifyAccount();
+                    }}
                     disabled={loading}
                   >
                     <FontAwesome5 name="shield-alt" size={16} color="#414141" />

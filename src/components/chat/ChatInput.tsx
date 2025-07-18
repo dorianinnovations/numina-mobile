@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+// Desktop: No haptics needed for web
+import { keyboardShortcuts, isDesktop } from '../../utils/webOptimizations';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
@@ -88,6 +89,38 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   // Check if there are active tool executions
   const hasActiveTools = toolExecutions.some(exec => exec.status === 'executing');
   const toolCount = toolExecutions.length;
+
+  // Desktop keyboard shortcuts
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    // Ctrl+Enter to send message
+    keyboardShortcuts.addShortcut({
+      key: 'Enter',
+      modifiers: ['ctrl'],
+      action: () => {
+        if (value.trim() && !isLoading) {
+          handleSend();
+        }
+      },
+      description: 'Send message'
+    });
+
+    // Escape to clear input
+    keyboardShortcuts.addShortcut({
+      key: 'Escape',
+      modifiers: [],
+      action: () => {
+        onChangeText('');
+      },
+      description: 'Clear input'
+    });
+
+    return () => {
+      keyboardShortcuts.removeShortcut('Enter', ['ctrl']);
+      keyboardShortcuts.removeShortcut('Escape', []);
+    };
+  }, [value, isLoading]);
   
   // Animated values for smooth animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
@@ -221,14 +254,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       if (isExecuting) {
         return query ? `${emoji} ${action}: "${query}"` : `${emoji} ${action}...`;
       } else {
-        return query ? `${completedEmoji} Found results for "${query}"` : `${completedEmoji} Search complete`;
+        return query ? `${completedEmoji} ${action} complete` : `${completedEmoji} Search complete`;
       }
     };
     
     switch (toolName) {
       // Search Tools
       case 'web_search':
-        return getSearchText('Web search', '🔍', '✨');
+        return getSearchText('Web search', '🌐', '⚡');
       case 'news_search':
         return getSearchText('News search', '📡', '📺');
       case 'social_search':
@@ -423,12 +456,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     
     Animated.parallel([
       Animated.timing(emotionSlideAnim, {
-        toValue: -60, // Lowered by 13% from -100
+        toValue: -60, 
         duration: 200,
         useNativeDriver: true,
         easing: Easing.bezier(0.25, 0.46, 0.45, 0.94), 
       }),
-      // Fade in as it slides up
       Animated.timing(emotionOpacityAnim, {
         toValue: 1,
         duration: 600,
@@ -447,8 +479,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     // Slide down and out of view (back toward bottom of phone, +Y direction)
     Animated.parallel([
       Animated.timing(emotionSlideAnim, {
-        toValue: 120, // Slide down and out of view (+Y direction)
-        duration: 250,
+        toValue: 120, 
+        duration: 300,
         useNativeDriver: true,
         easing: Easing.in(Easing.cubic),
       }),
@@ -466,7 +498,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleNotificationPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Desktop: No haptics needed for web
     hideNotification();
   };
 
@@ -488,7 +520,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleVoicePress = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Desktop: No haptics needed for web
 
     if (isVoiceActive) {
       // Stop voice recording
@@ -518,7 +550,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleSendPress = async () => {
     if (!canSend) return;
 
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Desktop: No haptics needed for web
 
     Animated.spring(sendButtonScale, {
       toValue: 0.95,
@@ -534,35 +566,47 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       }).start();
     });
 
-    // Upload attachments if any are pending
+    // Process attachments if any are pending
     let finalAttachments = attachments;
     if (hasAttachments) {
       const pendingAttachments = attachments.filter(a => a.uploadStatus === 'pending');
       
       if (pendingAttachments.length > 0) {
         setIsUploading(true);
+        console.log('📤 Processing attachments for sending...');
+        
         try {
-          const uploadedAttachments = await fileUploadService.uploadFiles(
+          const processedAttachments = await fileUploadService.uploadFiles(
             pendingAttachments,
             (overall, individual) => {
               setUploadProgress(individual);
             }
           );
           
-          // Update attachments with uploaded versions
+          // Update attachments with processed versions
           finalAttachments = attachments.map(attachment => {
-            const uploaded = uploadedAttachments.find(u => u.id === attachment.id);
-            return uploaded || attachment;
+            const processed = processedAttachments.find(u => u.id === attachment.id);
+            return processed || attachment;
           });
           
           onAttachmentsChange?.(finalAttachments);
+          console.log('✅ All attachments processed successfully');
         } catch (error) {
-          console.error('Upload failed:', error);
-          // Continue with send even if upload fails
+          console.error('❌ Attachment processing failed:', error);
+          // Don't send message if attachments failed to process
+          setIsUploading(false);
+          return;
         } finally {
           setIsUploading(false);
         }
       }
+    }
+
+    // Final validation: ensure no pending uploads
+    const stillPending = finalAttachments.filter(a => a.uploadStatus === 'pending');
+    if (stillPending.length > 0) {
+      console.warn('🚫 Cannot send message with pending attachments:', stillPending);
+      return;
     }
 
     onSend(finalAttachments);
@@ -574,7 +618,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
   
   const handleZapPress = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Desktop: No haptics needed for web
     
     Animated.spring(zapIconScale, {
       toValue: 0.9,
@@ -594,20 +638,20 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleInputFocus = () => {
-    Animated.spring(inputFocusAnim, {
+    // Animation for focus (cannot use native driver due to borderWidth)
+    Animated.timing(inputFocusAnim, {
       toValue: 1,
-      useNativeDriver: false,
-      tension: 150,
-      friction: 10,
+      duration: 150,
+      useNativeDriver: false, // Required for borderWidth animation
     }).start();
   };
 
   const handleInputBlur = () => {
-    Animated.spring(inputFocusAnim, {
+    // Animation for blur (cannot use native driver due to borderWidth)
+    Animated.timing(inputFocusAnim, {
       toValue: 0,
-      useNativeDriver: false,
-      tension: 120,
-      friction: 12,
+      duration: 150,
+      useNativeDriver: false, // Required for borderWidth animation
     }).start();
   };
 
@@ -671,9 +715,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               ]}
               value={value}
               onChangeText={(text) => {
-                // Check if user pressed Enter (text ends with newline)
                 if (text.endsWith('\n')) {
-                  // Remove the newline and send the message
                   const messageText = text.slice(0, -1);
                   onChangeText(messageText);
                   handleSendPress();
@@ -810,7 +852,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </Animated.View>
       )}
 
-      {/* Tool Stream Notification - Priority over emotion */}
+      {/* Tool Stream Notification w/ Priority over emotion */}
       {showToolStream && currentToolText && (
         <TouchableOpacity
           onPress={hideToolNotification}
@@ -853,7 +895,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         </TouchableOpacity>
       )}
 
-      {/* Emotion Notification - Only show when no tools active */}
+      {/* Emotion Notification */}
       {!showToolStream && showEmotionNotification && currentEmotion && (
         <TouchableOpacity
           onPress={handleNotificationPress}
@@ -1075,7 +1117,7 @@ const styles = StyleSheet.create({
     bottom: 20, 
     left: 16,
     right: 16,
-    zIndex: 5, // Above message bubbles but below input field
+    zIndex: 5, 
   },
   emotionNotification: {
     flexDirection: 'row',

@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import SecureStorageService from './secureStorage';
+import CloudAuth from './cloudAuth';
+import ENV from '../config/environment';
 
 /**
  * WebSocket Service for Real-time Communication
@@ -78,8 +79,12 @@ class WebSocketService {
   private reconnectTimer: NodeJS.Timeout | null = null;
 
   constructor() {
+    // Use same server as API but with WebSocket protocol
+    const wsUrl = ENV.API_BASE_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+    console.log('🔌 WebSocket will connect to:', wsUrl);
+    
     this.config = {
-      serverUrl: 'wss://server-a7od.onrender.com',
+      serverUrl: wsUrl,
       reconnectionDelay: 10000,
       maxReconnectionAttempts: 3,
       timeout: 15000
@@ -104,7 +109,7 @@ class WebSocketService {
         this.disconnect();
       }
 
-      const token = await SecureStorageService.getToken();
+      const token = CloudAuth.getInstance().getToken();
       if (!token) {
         console.warn('No auth token found for WebSocket connection');
         return false;
@@ -147,10 +152,10 @@ class WebSocketService {
           clearTimeout(timeout);
           console.log('🔌 WebSocket connection failed - operating in offline mode');
           
-          // Handle specific "User not found" error
+          // Handle specific "User not found" error - but don't logout, just log it
           if (error.message?.includes('User not found')) {
-            console.warn('🔐 User not found on server, clearing auth token');
-            SecureStorageService.clearToken();
+            console.warn('🔐 User not found on WebSocket server, continuing without WebSocket');
+            // Don't logout - WebSocket issues shouldn't affect authentication
           }
           
           this.connectionStatus.isConnecting = false;
@@ -298,6 +303,17 @@ class WebSocketService {
     // Dynamic Numina Senses
     this.socket.on('numina_senses_updated', (data: any) => {
       this.emitToHandlers('numina_senses_updated', data);
+    });
+
+    // UBPM Events - User Behavior Profile Model insights
+    this.socket.on('ubpm_notification', (data: any) => {
+      this.debug('🧠 UBPM notification received:', data);
+      this.emitToHandlers('ubpm_notification', data);
+    });
+
+    this.socket.on('ubpm_insight', (data: any) => {
+      this.debug('🧠 UBPM insight received:', data);
+      this.emitToHandlers('ubpm_insight', data);
     });
   }
 
@@ -556,7 +572,17 @@ class WebSocketService {
 }
 
 // Export singleton instance
-export default new WebSocketService();
+// Lazy instantiation to improve app startup performance
+let instance: WebSocketService | null = null;
+
+export const getWebSocketService = (): WebSocketService => {
+  if (!instance) {
+    instance = new WebSocketService();
+  }
+  return instance;
+};
+
+export default getWebSocketService;
 export type { 
   WebSocketConfig, 
   ConnectionStatus, 

@@ -38,7 +38,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
     this.setState({ error, errorInfo });
     this.props.onError?.(error, errorInfo);
     
-    // In production, you might want to send this to a crash reporting service
+    // In production, send to crash reporting service
     if (!__DEV__) {
       // Example: Sentry.captureException(error, { extra: errorInfo });
     }
@@ -55,7 +55,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
   handleReportError = () => {
     if (this.state.error) {
       console.log('📧 ChatErrorBoundary: Reporting error to support');
-      // In a real app, you would send this to your support system
+      // Send to support system
       // Example: SupportService.reportError(this.state.error, this.state.errorInfo);
     }
   };

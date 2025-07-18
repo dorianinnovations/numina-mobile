@@ -1,6 +1,7 @@
 
 
-import ApiService from './api';
+import * as SecureStore from 'expo-secure-store';
+import ENV from '../config/environment';
 
 interface SecureAuthState {
   isAuthenticated: boolean;
@@ -41,6 +42,28 @@ class SecureAuthManager {
   private listeners: ((state: SecureAuthState) => void)[] = [];
   private sessionValidationTimer: NodeJS.Timeout | null = null;
 
+  // Direct API methods to avoid circular dependency
+  private async apiRequest(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const url = `${ENV.API_BASE_URL}${endpoint}`;
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(this.authState.sessionToken && { 'Authorization': `Bearer ${this.authState.sessionToken}` }),
+      ...options.headers
+    };
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      timeout: 60000
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   // Singleton pattern
   static getInstance(): SecureAuthManager {
     if (!SecureAuthManager.instance) {
@@ -75,7 +98,8 @@ class SecureAuthManager {
   // Get current session token (memory only)
   getCurrentToken(): string | null {
     if (this.isSessionExpired()) {
-      this.clearSession();
+      // Clear session without awaiting SecureStore to keep this sync
+      this.clearSessionSync();
       return null;
     }
     return this.authState.sessionToken;
@@ -95,26 +119,54 @@ class SecureAuthManager {
     return Date.now() > this.authState.sessionExpiry;
   }
 
-  // Initialize authentication - NO STORAGE CHECK, ALWAYS FRESH
+  // Initialize authentication - CHECK FOR EXISTING SESSION
   async initializeAuth(): Promise<AuthResult> {
-    console.log('🔐 SECURE AUTH: Starting fresh session (no local storage)');
-    console.log('🔐 SECURE AUTH: Previous session data completely cleared on app restart');
+    console.log('🔐 SECURE AUTH: Checking for existing session');
     
     this.authState.isInitializing = true;
     this.notifyListeners();
 
     try {
-      // Always start with clean state - no storage persistence
-      this.clearSession();
+      // Check for existing valid session first
+      const existingToken = await SecureStore.getItemAsync('numina_auth_token');
       
-      console.log('🔐 SECURE AUTH: Fresh session initialized, user must login');
+      if (existingToken) {
+        console.log('🔐 SECURE AUTH: Found existing token, validating...');
+        
+        try {
+          // Validate token with server
+          const validationResult = await this.validateExistingToken(existingToken);
+          
+          if (validationResult.success && validationResult.user) {
+            // Restore session in memory
+            await this.setMemorySession(existingToken, validationResult.user);
+            
+            console.log('🔐 SECURE AUTH: Session restored successfully for user:', validationResult.user.id);
+            this.authState.isInitializing = false;
+            this.notifyListeners();
+            
+            return { success: true, user: validationResult.user };
+          } else {
+            console.log('🔐 SECURE AUTH: Token validation failed, clearing session');
+            await this.clearSession();
+          }
+        } catch (error) {
+          console.error('🔐 SECURE AUTH: Token validation error:', error);
+          await this.clearSession();
+        }
+      } else {
+        console.log('🔐 SECURE AUTH: No existing token found');
+      }
+      
+      // No valid session found, user must login
+      console.log('🔐 SECURE AUTH: No valid session, user must login');
       this.authState.isInitializing = false;
       this.notifyListeners();
       
       return { success: false, error: 'User must login' };
     } catch (error) {
       console.error('🔐 SECURE AUTH: Initialization error:', error);
-      this.clearSession();
+      await this.clearSession();
       this.authState.isInitializing = false;
       this.notifyListeners();
       
@@ -128,25 +180,34 @@ class SecureAuthManager {
       console.log('🔐 SECURE AUTH: Attempting login for:', credentials.email);
       
       // Clear any existing session first
-      this.clearSession();
+      await this.clearSession();
 
-      const response = await ApiService.login({
-        email: credentials.email,
-        password: credentials.password
+      const response = await this.apiRequest('/login', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        })
       });
 
-      if (response.success && response.data?.token && response.data?.data?.user) {
+      console.log('🔐 SECURE AUTH: Login response:', response);
+
+      if (response.success && response.token && response.data?.user) {
         // Set session data in memory only
-        this.setMemorySession(response.data.token, response.data.data.user);
+        await this.setMemorySession(response.token, response.data.user);
         
         console.log('🔐 SECURE AUTH: Login successful, session created in memory');
-        return { success: true, user: response.data.data.user };
+        return { success: true, user: response.data.user };
       } else {
-        throw new Error('Invalid login response');
+        console.error('🔐 SECURE AUTH: Login failed - response format mismatch');
+        console.error('🔐 SECURE AUTH: Expected: response.token and response.data.user');
+        console.error('🔐 SECURE AUTH: Actual response:', JSON.stringify(response, null, 2));
+        const errorMsg = response.error || 'Invalid login response';
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('🔐 SECURE AUTH: Login failed:', error);
-      this.clearSession();
+      await this.clearSession();
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Login failed'
@@ -164,25 +225,28 @@ class SecureAuthManager {
       }
 
       // Clear any existing session first
-      this.clearSession();
+      await this.clearSession();
 
-      const response = await ApiService.signup({
-        email: credentials.email,
-        password: credentials.password
+      const response = await this.apiRequest('/signup', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: credentials.email,
+          password: credentials.password
+        })
       });
 
-      if (response.success && response.data?.token && response.data?.data?.user) {
+      if (response.success && response.token && response.data?.user) {
         // Set session data in memory only
-        this.setMemorySession(response.data.token, response.data.data.user);
+        await this.setMemorySession(response.token, response.data.user);
         
         console.log('🔐 SECURE AUTH: Signup successful, session created in memory');
-        return { success: true, user: response.data.data.user };
+        return { success: true, user: response.data.user };
       } else {
         throw new Error('Invalid signup response');
       }
     } catch (error) {
       console.error('🔐 SECURE AUTH: Signup failed:', error);
-      this.clearSession();
+      await this.clearSession();
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Signup failed'
@@ -201,7 +265,7 @@ class SecureAuthManager {
       // Notify server of logout if we have a valid session
       if (this.authState.sessionToken) {
         try {
-          await ApiService.logout();
+          await this.apiRequest('/logout', { method: 'POST' });
           console.log('🔐 SECURE AUTH: Server logout successful');
         } catch (error) {
           console.warn('🔐 SECURE AUTH: Server logout failed (continuing with local logout):', error);
@@ -209,19 +273,22 @@ class SecureAuthManager {
       }
 
       // Clear memory session completely
-      this.clearSession();
+      await this.clearSession();
+      
+      // Skip data manager cleanup to prevent loops
+      console.log('🔐 SECURE AUTH: Skipping data manager cleanup (prevents loops)');
       
       console.log('🔐 SECURE AUTH: Logout complete, all session data cleared');
       console.log('🔐 SECURE AUTH: User', currentUserId, 'session terminated - no data persists');
     } catch (error) {
       console.error('🔐 SECURE AUTH: Logout error:', error);
       // Force clear session even if server logout failed
-      this.clearSession();
+      await this.clearSession();
     }
   }
 
-  // Set authenticated session in memory only
-  private setMemorySession(token: string, user: any): void {
+  // Set authenticated session in memory and SecureStore
+  private async setMemorySession(token: string, user: any): Promise<void> {
     const sessionDuration = 24 * 60 * 60 * 1000; // 24 hours
     
     this.authState = {
@@ -233,6 +300,14 @@ class SecureAuthManager {
       lastValidation: Date.now()
     };
 
+    // Store token in SecureStore for other services
+    try {
+      await SecureStore.setItemAsync('numina_auth_token', token);
+      console.log('🔐 SECURE AUTH: Token stored in SecureStore for other services');
+    } catch (error) {
+      console.warn('🔐 SECURE AUTH: Failed to store token in SecureStore:', error);
+    }
+    
     // Set up auto-validation timer
     this.setupSessionValidation();
     
@@ -246,14 +321,51 @@ class SecureAuthManager {
     });
   }
 
-  // Clear all session data from memory
-  private clearSession(): void {
+  // Clear all session data from memory and SecureStore
+  private async clearSession(): Promise<void> {
     // Clear validation timer
     if (this.sessionValidationTimer) {
       clearInterval(this.sessionValidationTimer);
       this.sessionValidationTimer = null;
     }
 
+    // Clear token from SecureStore
+    try {
+      await SecureStore.deleteItemAsync('numina_auth_token');
+      console.log('🔐 SECURE AUTH: Token cleared from SecureStore');
+    } catch (error) {
+      console.warn('🔐 SECURE AUTH: Failed to clear token from SecureStore:', error);
+    }
+    
+    // Reset auth state
+    this.authState = {
+      isAuthenticated: false,
+      isInitializing: false,
+      user: null,
+      sessionToken: null,
+      sessionExpiry: null,
+      lastValidation: 0
+    };
+
+    // Notify listeners
+    this.notifyListeners();
+    
+    console.log('🔐 SECURE AUTH: Session cleared from memory');
+  }
+  
+  // Clear session synchronously (for getCurrentToken)
+  private clearSessionSync(): void {
+    // Clear validation timer
+    if (this.sessionValidationTimer) {
+      clearInterval(this.sessionValidationTimer);
+      this.sessionValidationTimer = null;
+    }
+
+    // Clear token from SecureStore asynchronously (don't await)
+    SecureStore.deleteItemAsync('numina_auth_token')
+      .then(() => console.log('🔐 SECURE AUTH: Token cleared from SecureStore'))
+      .catch(error => console.warn('🔐 SECURE AUTH: Failed to clear token from SecureStore:', error));
+    
     // Reset auth state
     this.authState = {
       isAuthenticated: false,
@@ -281,7 +393,7 @@ class SecureAuthManager {
     this.sessionValidationTimer = setInterval(async () => {
       if (this.isSessionExpired()) {
         console.log('🔐 SECURE AUTH: Session expired, clearing');
-        this.clearSession();
+        await this.clearSession();
       } else {
         // Validate with server occasionally
         const timeSinceValidation = Date.now() - this.authState.lastValidation;
@@ -297,20 +409,49 @@ class SecureAuthManager {
     try {
       if (!this.authState.sessionToken) return;
 
-      await ApiService.validateToken();
+      await this.apiRequest('/user/profile');
       this.authState.lastValidation = Date.now();
       
       console.log('🔐 SECURE AUTH: Session validated with server');
     } catch (error) {
       console.error('🔐 SECURE AUTH: Session validation failed, clearing session');
-      this.clearSession();
+      await this.clearSession();
+    }
+  }
+
+  // Validate token with server and return user data
+  private async validateExistingToken(token: string): Promise<{ success: boolean; user?: any }> {
+    // Store original token state before try block
+    const originalToken = this.authState.sessionToken;
+    
+    try {
+      console.log('🔐 SECURE AUTH: Validating token with server...');
+      
+      // Temporarily set token for validation
+      this.authState.sessionToken = token;
+      
+      const response = await this.apiRequest('/user/profile');
+      
+      if (response.success && response.data?.user) {
+        console.log('🔐 SECURE AUTH: Token validation successful');
+        return { success: true, user: response.data.user };
+      } else {
+        console.log('🔐 SECURE AUTH: Token validation failed - invalid response');
+        return { success: false };
+      }
+    } catch (error) {
+      console.error('🔐 SECURE AUTH: Token validation error:', error);
+      return { success: false };
+    } finally {
+      // Restore original token state
+      this.authState.sessionToken = originalToken;
     }
   }
 
   // Force session cleanup (called on app backgrounding/closing)
   forceCleanup(): void {
     console.log('🔐 SECURE AUTH: Force cleanup triggered');
-    this.clearSession();
+    this.clearSessionSync();
   }
 }
 

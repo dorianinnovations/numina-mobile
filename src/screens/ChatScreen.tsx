@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+// Desktop: No haptics needed for web
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
@@ -38,14 +39,11 @@ import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 
 // Enhanced services integration
-import batchApiService from '../services/batchApiService';
-import websocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
+import getBatchApiService from '../services/batchApiService';
+import getWebSocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
 import syncService from '../services/syncService';
 import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
-import { AIToolExecutionStream } from '../components/AIToolExecutionStream';
 import { ToolExecutionModal } from '../components/ToolExecutionModal';
-import { SearchThoughtIndicator } from '../components/SearchThoughtIndicator';
-import { useSearchIndicator } from '../hooks/useSearchIndicator';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -70,6 +68,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [headerVisible, setHeaderVisible] = useState(true);
   const [headerPermanentlyHidden, setHeaderPermanentlyHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [isTouchActive, setIsTouchActive] = useState(false);
+  const [scrollDebounceTimeout, setScrollDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Lazy-initialized services for better performance
+  const websocketService = useMemo(() => getWebSocketService(), []);
+  const batchApiService = useMemo(() => getBatchApiService(), []);
 
   // AI Personality Integration
   const {
@@ -93,14 +97,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const numinaPersonality = useNuminaPersonality(true); // true = active chat session
   
   // Search Thought Indicator Integration
-  const {
-    searchResults,
-    isSearching,
-    updateFromStreamingContent,
-    updateFromFinalResponse,
-    resetSearchState,
-    hasActiveSearches,
-  } = useSearchIndicator();
+  // Removed search indicator functionality
   
   // Get adaptive placeholder from AI Personality
   const getAdaptivePlaceholderText = useCallback(() => {
@@ -126,6 +123,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
   const [isToolModalVisible, setIsToolModalVisible] = useState(false);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
+  
+  // UBPM insights state
+  const [ubpmInsights, setUbpmInsights] = useState<any[]>([]);
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -136,15 +136,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const restoreHeader = async () => {
     try {
       console.log('🎯 Touch gesture triggered! Restoring header...');
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Clear any pending scroll debounce timeouts
+      if (scrollDebounceTimeout) {
+        clearTimeout(scrollDebounceTimeout);
+        setScrollDebounceTimeout(null);
+      }
+      
+      // Set touch active to prevent scroll interference
+      setIsTouchActive(true);
+      
+      // Desktop: No haptics needed for web
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
       console.log('✅ Header restored successfully');
+      
+      // Reset touch active state after animation completes
+      setTimeout(() => {
+        setIsTouchActive(false);
+      }, 500); // Match header animation duration
+      
     } catch (error) {
       console.log('⚠️ Haptics failed, restoring header without haptics');
       // Fallback if haptics fail
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
+      
+      // Reset touch active state after animation completes
+      setTimeout(() => {
+        setIsTouchActive(false);
+      },500);
     }
   };
 
@@ -177,6 +198,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       cleanup();
     };
   }, []);
+
+  // Cleanup scroll debounce timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollDebounceTimeout) {
+        clearTimeout(scrollDebounceTimeout);
+      }
+    };
+  }, [scrollDebounceTimeout]);
 
   // Initialize enhanced features
   const initializeEnhancedFeatures = async () => {
@@ -250,6 +280,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         return newSet;
       });
     });
+
+    // UBPM WebSocket listeners
+    websocketService.addEventListener('ubpm_notification', (data: any) => {
+      console.log('🧠 UBPM notification received:', data);
+      setUbpmInsights(prev => [data, ...prev]);
+      // Show the tool stream when UBPM insights arrive
+      setIsToolStreamVisible(true);
+    });
+
+    websocketService.addEventListener('ubpm_insight', (data: any) => {
+      console.log('🧠 UBPM insight received:', data);
+      setUbpmInsights(prev => [data, ...prev]);
+      // Show the tool stream when UBPM insights arrive
+      setIsToolStreamVisible(true);
+    });
+  };
+
+  // Handle UBPM insight acknowledgment
+  const handleAcknowledgeUBPM = (insightId: string) => {
+    setUbpmInsights(prev => 
+      prev.map(insight => 
+        insight.id === insightId 
+          ? { ...insight, status: 'acknowledged' }
+          : insight
+      )
+    );
   };
   
   // Load initial data with batch API
@@ -272,6 +328,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const cleanup = () => {
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
+    }
+    
+    if (scrollDebounceTimeout) {
+      clearTimeout(scrollDebounceTimeout);
     }
     
     if (isConnected) {
@@ -305,7 +365,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if ((!inputText.trim() && !messageAttachments?.length) || !conversation) return;
 
     // Reset search state for new message
-    resetSearchState();
+    // Search state removed
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -325,9 +385,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setConversation(updatedConversation);
     const messageText = inputText.trim();
     setInputText('');
-    setAttachments([]); // Clear attachments after sending
     setIsLoading(true);
     setCurrentAIMessage('');
+    
+    // Clear attachments after a delay to allow UI rendering
+    setTimeout(() => {
+      setAttachments([]);
+    }, 500); // Give UI time to render the message with attachments
     
     // Scroll to show the user's new message
     setTimeout(() => {
@@ -373,70 +437,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       let finalResponseText = '';
       let personalityContext = null;
       
-      if (sendAdaptiveChatMessage && emotionalState && aiPersonality) {
-        
-        const adaptiveResult = await sendAdaptiveChatMessage(
-          userMessage.text,
-          (partialResponse: string, context?: any) => {
-            // Validate partialResponse
-            const safePartialResponse = partialResponse || '';
-            
-            // Update search indicator with streaming content
-            updateFromStreamingContent(safePartialResponse);
-            
-            // Update current AI message for tool execution
-            setCurrentAIMessage(safePartialResponse);
-            
-            // Hide header during streaming and make it sticky
-            setHeaderVisible(false);
-            setHeaderPermanentlyHidden(true);
-            
-            // Process tool executions from streaming response
-            toolExecutionService.processStreamingToolResponse(safePartialResponse);
-            toolExecutionService.detectToolExecutionsInMessage(safePartialResponse);
-            
-            // Update the AI message with streaming content
-            const updatedAIMessage = {
-              ...aiMessage,
-              text: safePartialResponse,
-              isStreaming: true,
-              personalityContext: context,
-            };
-            
-            // Debug log personality context
-            if (context) {
-              console.log('🧠 CHAT: Streaming chunk with personality context:', context);
-            }
-            
-            // Update conversation with streaming response
-            const streamingConversation = { ...currentConversation };
-            if (streamingConversation.messages && streamingConversation.messages.length > 0) {
-              streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
-              streamingConversation.updatedAt = new Date().toISOString();
-              
-              setConversation(streamingConversation);
-              currentConversation = streamingConversation;
-            }
-          },
-          userMessage.attachments // Pass attachments for GPT-4o vision analysis
-        );
-        
-        // Handle the response properly - it's an object with content and personalityContext
-        if (adaptiveResult && typeof adaptiveResult === 'object') {
-          finalResponseText = adaptiveResult.content || '';
-          personalityContext = adaptiveResult.personalityContext || null;
-          console.log('🧠 CHAT: Adaptive result personality context:', personalityContext);
-        } else {
-          finalResponseText = String(adaptiveResult || '');
-        }
-        
-        // Update search indicator with final response to extract tool results
-        updateFromFinalResponse(finalResponseText);
-      } else {
-        // Fallback to traditional chat service
-        const chatResult = await ChatService.sendMessage(messageText, (partialResponse: string) => {
+      // Use adaptive chat for full features (personality, tools, UBPM)
+      const adaptiveResult = await sendAdaptiveChatMessage(
+        userMessage.text,
+        (partialResponse: string, context?: any) => {
           // Validate partialResponse
           const safePartialResponse = partialResponse || '';
+          
+          // Update search indicator with streaming content
+          // Search indicator removed
           
           // Update current AI message for tool execution
           setCurrentAIMessage(safePartialResponse);
@@ -454,21 +463,42 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             ...aiMessage,
             text: safePartialResponse,
             isStreaming: true,
+            personalityContext: context,
           };
+          
+          // Debug log personality context
+          if (context) {
+            console.log('🧠 CHAT: Received personality context:', context);
+          }
           
           // Update conversation with streaming response
           const streamingConversation = { ...currentConversation };
           if (streamingConversation.messages && streamingConversation.messages.length > 0) {
             streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
             streamingConversation.updatedAt = new Date().toISOString();
-          
+            
             setConversation(streamingConversation);
             currentConversation = streamingConversation;
+            // Scroll to show streaming content
+            setTimeout(() => {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }, 50);
           }
-        });
-        
-        finalResponseText = String(chatResult || '');
+        },
+        userMessage.attachments // Pass attachments for GPT-4o vision analysis
+      );
+      
+      // Handle the response properly - it's an object with content and personalityContext
+      if (adaptiveResult && typeof adaptiveResult === 'object') {
+        finalResponseText = adaptiveResult.content || '';
+        personalityContext = adaptiveResult.personalityContext || null;
+        console.log('🧠 CHAT: Adaptive result personality context:', personalityContext);
+      } else {
+        finalResponseText = String(adaptiveResult || '');
       }
+      
+      // Update search indicator with final response to extract tool results
+      // Search indicator removed
       
       // Validate final response
       if (!finalResponseText) {
@@ -694,8 +724,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
-    // Safety check for item
-    if (!item || !item.text) {
+    // Safety check for item - allow empty text for streaming messages
+    if (!item || (!item.text && !item.isStreaming)) {
       console.warn('Invalid message item:', item);
       return null;
     }
@@ -749,15 +779,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         currentConversationId={conversation?.id}
         title="Numina"
         subtitle={
-          hasActiveSearches || isSearching
-            ? `🔍 AI Thinking • ${searchResults.length} searches • Real-time insights`
-            : emotionalState 
+          emotionalState 
             ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
-            : "Live Search • Intelligent Tools • Deep Understanding"
+            : "Live Chat • Intelligent Tools • Deep Understanding"
         }
         headerProps={{
           isVisible: headerVisible,
           isStreaming: isStreaming,
+          onRestoreHeader: restoreHeader,
         }}
       >
         <PageBackground>
@@ -767,24 +796,28 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               backgroundColor="transparent"
               translucent={true}
             />
-            {/* Search Thought Indicator */}
-            {(hasActiveSearches || isSearching) && (
-              <View style={styles.searchIndicatorContainer}>
-                <SearchThoughtIndicator
-                  isSearching={isSearching}
-                  searchResults={searchResults}
-                  emotionalState={emotionalState}
-                />
-              </View>
-            )}
+            {/* Search Thought Indicator - Removed */}
             
             {/* Header Restore Touch Area - Invisible - Outside TouchableWithoutFeedback */}
             {headerPermanentlyHidden && (
               <TouchableOpacity 
                 style={styles.headerRestoreArea}
                 onPress={restoreHeader}
+                onPressIn={() => {
+                  console.log('🎯 Touch area pressed!');
+                  setIsTouchActive(true);
+                }}
+                onPressOut={() => {
+                  // Keep touch active for a bit longer to prevent scroll interference
+                  setTimeout(() => {
+                    if (!isTouchActive) {
+                      setIsTouchActive(false);
+                    }
+                  }, 200);
+                }}
                 activeOpacity={1}
-                onPressIn={() => console.log('🎯 Touch area pressed!')}
+                delayPressIn={0}
+                delayPressOut={0}
               />
             )}
             
@@ -803,38 +836,57 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     keyExtractor={item => item?.id || Math.random().toString()}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
-                      // Only scroll to end for user messages or initial conversation
-                      if (conversation?.messages && conversation.messages.length <= 2) {
-                        setTimeout(() => {
-                          flatListRef.current?.scrollToEnd({ animated: true });
-                        }, 100);
-                      }
+                      // Scroll to end for new messages and streaming content
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
                     }}
                     onScroll={(event) => {
                       const currentScrollY = event.nativeEvent.contentOffset.y;
                       const scrollDelta = currentScrollY - lastScrollY;
                       
-                      // Hide header immediately when scrolling down and make it sticky
-                      if (scrollDelta > 0) {
-                        setHeaderVisible(false);
-                        setHeaderPermanentlyHidden(true);
-                      }
-                      // Only show header when scrolling up IF not permanently hidden
-                      else if (scrollDelta < 0) {
-                        if (!headerPermanentlyHidden && !isStreaming) {
-                          setHeaderVisible(true);
-                        }
+                      // Always show header if near the top
+                      if (currentScrollY <= 30) {
+                        setHeaderVisible(true);
+                        setHeaderPermanentlyHidden(false);
+                        setLastScrollY(currentScrollY);
+                        return;
                       }
                       
+                      // Don't process scroll events if touch is active
+                      if (isTouchActive) {
+                        setLastScrollY(currentScrollY);
+                        return;
+                      }
+                      
+                      // Clear any existing debounce timeout
+                      if (scrollDebounceTimeout) {
+                        clearTimeout(scrollDebounceTimeout);
+                      }
+                      
+                      // Debounce scroll events to prevent rapid state changes
+                      const timeout = setTimeout(() => {
+                        // Hide header immediately when scrolling down and make it sticky
+                        if (scrollDelta > 0) {
+                          setHeaderVisible(false);
+                          setHeaderPermanentlyHidden(true);
+                        }
+                        // Only show header when scrolling up IF not permanently hidden
+                        else if (scrollDelta < 0) {
+                          if (!headerPermanentlyHidden && !isStreaming) {
+                            setHeaderVisible(true);
+                          }
+                        }
+                      }, 50); // 50ms debounce
+                      
+                      setScrollDebounceTimeout(timeout);
                       setLastScrollY(currentScrollY);
                     }}
                     onLayout={() => {
-                      // Only scroll to end for initial conversation setup
-                      if (conversation?.messages && conversation.messages.length <= 2) {
-                        setTimeout(() => {
-                          flatListRef.current?.scrollToEnd({ animated: true });
-                        }, 100);
-                      }
+                      // Scroll to end when layout changes (new messages added)
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
                     }}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.messagesContent}
@@ -851,6 +903,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onClose={() => setIsToolModalVisible(false)}
                     toolExecutions={toolExecutions}
                     currentMessage={currentAIMessage}
+                    ubpmInsights={ubpmInsights}
+                    onAcknowledgeUBPM={handleAcknowledgeUBPM}
                     onAttachmentSelected={(attachment) => {
                       const newAttachments = [...attachments, attachment];
                       setAttachments(newAttachments);
@@ -897,6 +951,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // Desktop: Center content with max-width
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 1200, // Desktop max-width
   },
   content: {
     flex: 1,
@@ -906,18 +964,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchIndicatorContainer: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    zIndex: 10,
-  },
   chatContainer: {
     flex: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 5, // Desktop: More padding
+    maxWidth: Platform.OS === 'web' ? 800 : '100%', // Desktop: Chat width limit
+    alignSelf: 'center', // Desktop: Center chat
   },
   messagesList: {
     flex: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: Platform.OS === 'web' ? 20 : 5, // Desktop: More padding
   },
   messagesContent: {
     paddingTop: 180,

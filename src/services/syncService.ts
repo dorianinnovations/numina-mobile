@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService, { SyncData } from './api';
 import offlineQueueService from './offlineQueue';
-import websocketService from './websocketService';
-import SecureStorageService from './secureStorage';
+import getWebSocketService from './websocketService';
+import CloudAuth from './cloudAuth';
 
 /**
  * Comprehensive Sync Service
@@ -77,6 +77,7 @@ class SyncService {
       this.startAutoSync();
       
       // Listen for WebSocket sync events
+      const websocketService = getWebSocketService();
       websocketService.addEventListener('sync_completed', (data) => {
         this.handleServerSyncCompleted(data);
       });
@@ -323,7 +324,7 @@ class SyncService {
    */
   private static async applyProfileChanges(profileData: any): Promise<void> {
     try {
-      const currentUserId = await SecureStorageService.getCurrentUserId();
+      const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {
         console.warn('No current user ID found, cannot apply profile changes');
         return;
@@ -342,7 +343,7 @@ class SyncService {
    */
   private static async applyEmotionsChanges(emotionsData: any[]): Promise<void> {
     try {
-      const currentUserId = await SecureStorageService.getCurrentUserId();
+      const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {
         console.warn('No current user ID found, cannot apply emotions changes');
         return;
@@ -367,7 +368,7 @@ class SyncService {
    */
   private static async applyConversationsChanges(conversationsData: any[]): Promise<void> {
     try {
-      const currentUserId = await SecureStorageService.getCurrentUserId();
+      const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {
         console.warn('No current user ID found, cannot apply conversations changes');
         return;
@@ -392,7 +393,7 @@ class SyncService {
    */
   private static async applyAnalyticsChanges(analyticsData: any): Promise<void> {
     try {
-      const currentUserId = await SecureStorageService.getCurrentUserId();
+      const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {
         console.warn('No current user ID found, cannot apply analytics changes');
         return;

@@ -340,7 +340,7 @@ class SettingsService {
   static async updateAnalyticsSharing(enabled: boolean): Promise<void> {
     try {
       await this.updateSetting('analyticsSharing', enabled);
-      // Here you would typically send this preference to your analytics service
+      // Send preference to analytics service
       console.log('Analytics sharing updated:', enabled);
     } catch (error) {
       console.error('Error updating analytics sharing:', error);
@@ -350,7 +350,7 @@ class SettingsService {
   static async updateDataPrivacy(privacy: 'private' | 'anonymous' | 'public'): Promise<void> {
     try {
       await this.updateSetting('dataPrivacy', privacy);
-      // Here you would typically update privacy settings on your backend
+      // Update privacy settings on backend
       console.log('Data privacy updated:', privacy);
     } catch (error) {
       console.error('Error updating data privacy:', error);

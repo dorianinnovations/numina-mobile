@@ -15,7 +15,9 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
+import { MessageAttachment } from '../../types/message';
 import StreamingMarkdown from '../StreamingMarkdown';
+import { PhotoPreview } from './PhotoPreview';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +28,7 @@ interface Message {
   timestamp: string;
   mood?: string;
   isStreaming?: boolean;
+  attachments?: MessageAttachment[];
   // AI Personality Features
   personalityContext?: {
     communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
@@ -67,97 +70,49 @@ const BotMessageContent: React.FC<{
   
   // Animated values for energy pulse effect
   const pulseAnimation = useRef(new Animated.Value(0)).current;
-  const glowIntensity = useRef(new Animated.Value(0)).current;
-  const gradientPosition = useRef(new Animated.Value(0)).current;
+  // NUKED: Removed complex glow and gradient animations
   
   // Start energy pulse animation when streaming
   useEffect(() => {
     if (isStreaming) {
       // Continuous energy pulse through text
-      const pulseLoop = Animated.loop(
+      // SAFE: Single simple pulse with native driver
+      const simplePulse = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnimation, {
             toValue: 1,
-            duration: 1500,
-            useNativeDriver: false,
+            duration: 2000,
+            useNativeDriver: true, // NATIVE PERFORMANCE
           }),
           Animated.timing(pulseAnimation, {
-            toValue: 0,
-            duration: 1500,
-            useNativeDriver: false,
-          }),
-        ])
-      );
-      
-      // Glow intensity pulse
-      const glowLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowIntensity, {
-            toValue: 1,
+            toValue: 0.7,
             duration: 2000,
-            useNativeDriver: false,
-          }),
-          Animated.timing(glowIntensity, {
-            toValue: 0.3,
-            duration: 2000,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }),
         ])
       );
       
-      // Text color wave animation
-      const colorWaveLoop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(gradientPosition, {
-            toValue: 1,
-            duration: 1800,
-            useNativeDriver: false,
-          }),
-          Animated.timing(gradientPosition, {
-            toValue: 0,
-            duration: 1800,
-            useNativeDriver: false,
-          }),
-        ])
-      );
-      
-      pulseLoop.start();
-      glowLoop.start();
-      colorWaveLoop.start();
+      simplePulse.start();
       
       return () => {
-        pulseLoop.stop();
-        glowLoop.stop();
-        colorWaveLoop.stop();
+        simplePulse.stop();
       };
     } else {
       pulseAnimation.setValue(0);
-      glowIntensity.setValue(0);
-      gradientPosition.setValue(0);
     }
   }, [isStreaming]);
   
-  // Create animated color for energy pulse and color wave
-  const animatedTextColor = Animated.add(pulseAnimation, gradientPosition).interpolate({
-    inputRange: [0, 0.3, 0.6, 1, 1.3, 1.6, 2],
-    outputRange: [
-      theme.isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(40, 40, 40, 0.95)',
-      theme.isDarkMode ? '#87CEEB' : '#4A90E2',
-      theme.isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
-      theme.isDarkMode ? '#98FB98' : '#32CD32',
-      theme.isDarkMode ? '#87CEEB' : '#4A90E2',
-      theme.isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(255, 255, 255, 0.95)',
-      theme.isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(40, 40, 40, 0.95)',
-    ],
-  });
-  
-  const animatedGlow = glowIntensity.interpolate({
+  // SAFE: Simple opacity pulse with native driver
+  const animatedOpacity = pulseAnimation.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 8],
+    outputRange: [0.8, 1],
   });
   
   return (
-    <View style={styles.botTextContainer}>
+    <Animated.View style={[
+      styles.botTextContainer,
+      isStreaming && { opacity: animatedOpacity }
+    ]}>
       {isStreaming ? (
         <StreamingMarkdown
           content={safeText}
@@ -171,7 +126,7 @@ const BotMessageContent: React.FC<{
           showCursor={false}
         />
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -270,19 +225,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           // Create an "awakening" sequence that feels like AI coming to life
           const createAliveStartHaptic = async () => {
             try {
-              // First gentle pulse: AI "waking up"
+              // First pulse: "waking up"
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               
-              // Brief pause for organic timing
+              // Brief pause for timing
               await new Promise(resolve => setTimeout(resolve, 60));
               
-              // Second slightly stronger pulse: AI "focusing"
+              // Second slightly stronger pulse
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               
               // Shorter pause for building energy
               await new Promise(resolve => setTimeout(resolve, 40));
               
-              // Final light pulse: AI "beginning to speak"
+              // Final pulse
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               
             } catch (error) {
@@ -292,7 +247,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             }
           };
           
-          // Execute the alive haptic sequence
+          // Execute haptic sequence
           createAliveStartHaptic();
           setHasStartedStreaming(true);
         }
@@ -428,10 +383,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         setTimeout(() => {
           Animated.timing(timestampOpacity, {
             toValue: 1,
-            duration: 500,
+            duration: 300,
             useNativeDriver: true,
           }).start();
-        }, 500); // Small delay after message completion
+        }, 300); // Small delay after message completion
       }
     } catch (error) {
       console.error('Error in MessageBubble text effect:', error);
@@ -543,40 +498,64 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         style={isUser ? styles.userMessageWrapper : styles.messageWrapper}
       >
         {isUser ? (
-          /* User Message Bubble with Neumorphic Gradient */
-          <LinearGradient
-            colors={isDarkMode 
-              ? ['#2d2d2d', '#262626', '#232323'] 
-              : [theme.colors.chat.userMessage.background, theme.colors.chat.userMessage.background]
-            }
-            style={[
-              styles.messageBubble,
-              styles.userBubble,
-              {
-                borderWidth: 1,
-                borderColor: isDarkMode ? '#404040' : 'rgba(0, 0, 0, 0.1)',
-                shadowColor: isDarkMode ? '#000000' : '#000000',
-                shadowOffset: { width: 2, height: 2 },
-                shadowOpacity: isDarkMode ? 0.3 : 0.1,
-                shadowRadius: 4,
-                elevation: 2,
-              }
-            ]}
-          >
-            <View style={styles.textContainer}>
-              <Text style={[
-                styles.messageText,
-                {
-                  color: isDarkMode ? '#f5f5f5' : theme.colors.chat.userMessage.text,
-                  letterSpacing: -0.3,
-                  lineHeight: 28,
-                  fontFamily: 'Nunito_400Regular',
+          /* User Message with Photos and Text */
+          <View style={styles.userMessageContainer}>
+            {/* Photo Attachments */}
+            {message.attachments && message.attachments.length > 0 && (
+              <View style={styles.photoAttachmentsContainer}>
+                {message.attachments
+                  .filter(attachment => attachment.type === 'image')
+                  .map((attachment) => (
+                    <PhotoPreview
+                      key={attachment.id}
+                      attachment={attachment}
+                      isUser={true}
+                      onPress={() => {
+                        // Future: Open full-screen photo viewer
+                        console.log('Photo pressed:', attachment.name);
+                      }}
+                    />
+                  ))}
+              </View>
+            )}
+            
+            {/* Text Message Bubble (only if there's text) */}
+            {displayedText.trim() && (
+              <LinearGradient
+                colors={isDarkMode 
+                  ? ['#2d2d2d', '#262626', '#232323'] 
+                  : [theme.colors.chat.userMessage.background, theme.colors.chat.userMessage.background]
                 }
-              ]}>
-                {displayedText}
-              </Text>
-            </View>
-          </LinearGradient>
+                style={[
+                  styles.messageBubble,
+                  styles.userBubble,
+                  {
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? '#404040' : 'rgba(0, 0, 0, 0.1)',
+                    shadowColor: isDarkMode ? '#000000' : '#000000',
+                    shadowOffset: { width: 2, height: 2 },
+                    shadowOpacity: isDarkMode ? 0.3 : 0.1,
+                    shadowRadius: 4,
+                    elevation: 2,
+                  }
+                ]}
+              >
+                <View style={styles.textContainer}>
+                  <Text style={[
+                    styles.messageText,
+                    {
+                      color: isDarkMode ? '#f5f5f5' : theme.colors.chat.userMessage.text,
+                      letterSpacing: -0.3,
+                      lineHeight: 30,
+                      fontFamily: 'Nunito_400Regular',
+                    }
+                  ]}>
+                    {displayedText}
+                  </Text>
+                </View>
+              </LinearGradient>
+            )}
+          </View>
         ) : (
           /* Bot Message with AI Personality Features - No Bubble */
           <View style={styles.botMessageContainer}>
@@ -629,6 +608,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
                   </View>
                 )}
               </Animated.View>
+            )}
+            
+            {/* Photo Attachments for AI Messages */}
+            {message.attachments && message.attachments.length > 0 && (
+              <View style={styles.aiPhotoAttachmentsContainer}>
+                {message.attachments
+                  .filter(attachment => attachment.type === 'image')
+                  .map((attachment) => (
+                    <PhotoPreview
+                      key={attachment.id}
+                      attachment={attachment}
+                      isUser={false}
+                      onPress={() => {
+                        // Future: Open full-screen photo viewer
+                        console.log('AI Photo pressed:', attachment.name);
+                      }}
+                    />
+                  ))}
+              </View>
             )}
             
             <BotMessageContent 
@@ -739,38 +737,38 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   h1Text: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: 34,
     marginBottom: 12,
     fontFamily: 'Nunito_700Bold',
   },
   h2Text: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '600',
-    lineHeight: 28,
+    lineHeight: 30,
     marginBottom: 10,
     marginTop: 8,
     fontFamily: 'Nunito_600SemiBold',
   },
   h3Text: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: 26,
     marginBottom: 8,
     marginTop: 6,
     fontFamily: 'Nunito_600SemiBold',
   },
   regularText: {
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 28,
     fontWeight: '400',
     marginBottom: 12,
     fontFamily: 'Nunito_400Regular',
   },
   boldText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 26,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
   },
@@ -781,16 +779,16 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
   },
   bulletPoint: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 26,
     fontWeight: '600',
     marginRight: 8,
     width: 20,
     fontFamily: 'Nunito_600SemiBold',
   },
   bulletText: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 18,
+    lineHeight: 26,
     fontWeight: '400',
     flex: 1,
     fontFamily: 'Nunito_400Regular',
@@ -807,7 +805,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     overflow: 'hidden',
     position: 'relative',
-    paddingHorizontal: 14,
+    paddingHorizontal: 8,
     paddingVertical: 2,
     elevation: 3,
     shadowColor: '#000',
@@ -849,8 +847,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 28,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
   },
@@ -990,5 +988,18 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginLeft: 2,
     opacity: 0.6,
+  },
+  userMessageContainer: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  photoAttachmentsContainer: {
+    gap: 6,
+    alignItems: 'flex-end',
+  },
+  aiPhotoAttachmentsContainer: {
+    gap: 6,
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
 });

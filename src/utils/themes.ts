@@ -73,7 +73,9 @@ export const darkTheme: Theme = {
   name: 'dark',
   colors: {
     background: '#000000',
+    backgroundGradient: ['#000000', '#111111', '#000000'],
     surface: '#111111',
+    surfaceGradient: ['#111111', '#1a1a1a', '#111111'],
     
     primary: '#ffffff',
     secondary: '#e5e7eb',

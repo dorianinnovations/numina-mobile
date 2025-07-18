@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import ApiService from '../services/api';
-import WebSocketService from '../services/websocketService';
+import getWebSocketService from '../services/websocketService';
 
 /**
  * Hook to manage Numina's personality updates for active chat sessions
@@ -74,7 +74,8 @@ export const useNuminaPersonality = (isActive: boolean = true) => {
       const response = await ApiService.get('/numina-personality/current-state');
       if (response.success && response.data) {
         // Manually trigger WebSocket event for immediate update
-        (WebSocketService as any).emit && (WebSocketService as any).emit('numina_senses_updated', response.data);
+        const websocketService = getWebSocketService();
+        (websocketService as any).emit && (websocketService as any).emit('numina_senses_updated', response.data);
       }
     } catch (error) {
       console.error('❌ Failed to trigger immediate update:', error);

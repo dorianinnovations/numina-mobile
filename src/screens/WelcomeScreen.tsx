@@ -15,7 +15,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
-import { NuminaAnimations, ScreenTransitions } from '../utils/animations';
+import { NuminaAnimations } from '../utils/animations';
 import { Styling } from '../utils/styling';
 import { TextStyles } from '../utils/fonts';
 import { Header } from '../components/Header';
@@ -88,9 +88,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         speed: 50,
         bounciness: 8,
       }).start(() => {
-        ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
-          onNavigateToSignUp();
-        });
+        onNavigateToSignUp();
       });
     });
   };
@@ -108,9 +106,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         speed: 50,
         bounciness: 8,
       }).start(() => {
-        ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
-          onNavigateToSignIn();
-        });
+        onNavigateToSignIn();
       });
     });
   };
@@ -145,10 +141,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           title="Numina"
           showBackButton={true}
           showMenuButton={true}
+          showAuthOptions={false}
           onBackPress={() => {
-            ScreenTransitions.slideOutRight(slideAnim, () => {
-              onNavigateBack();
-            });
+            onNavigateBack();
           }}
           onMenuPress={(key: string) => {}}
         />

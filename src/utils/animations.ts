@@ -424,111 +424,132 @@ export const NuminaEasing = {
   exit: Easing.in(Easing.quad),
 };
 
-// Screen transition animations
+// Fast, tech-focused screen transitions
 export const ScreenTransitions = {
-  // Slide in from right (forward navigation)
-  slideInRight: (value: Animated.Value, callback?: () => void) => {
-    value.setValue(100);
+  // Quick snap in from right - instant and responsive
+  snapInRight: (value: Animated.Value, callback?: () => void) => {
+    value.setValue(50);
     Animated.timing(value, {
       toValue: 0,
-      duration: 60,
+      duration: 180,
       useNativeDriver: true,
-      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+      easing: Easing.bezier(0.2, 0, 0, 1), // Sharp deceleration
     }).start(callback);
   },
 
-  // Slide in from left (back navigation)
-  slideInLeft: (value: Animated.Value, callback?: () => void) => {
-    value.setValue(-100);
+  // Quick snap in from left
+  snapInLeft: (value: Animated.Value, callback?: () => void) => {
+    value.setValue(-50);
     Animated.timing(value, {
       toValue: 0,
-      duration: 60,
+      duration: 180,
       useNativeDriver: true,
-      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+      easing: Easing.bezier(0.2, 0, 0, 1),
     }).start(callback);
   },
 
-  // Slide out to left (forward navigation)
-  slideOutLeft: (value: Animated.Value, callback?: () => void) => {
+  // Fast snap out left - for forward navigation
+  snapOutLeft: (value: Animated.Value, callback?: () => void) => {
     Animated.timing(value, {
-      toValue: -100,
-      duration: 60,
+      toValue: -50,
+      duration: 120,
       useNativeDriver: true,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      easing: Easing.bezier(0.4, 0, 1, 1), // Sharp acceleration
     }).start(callback);
   },
 
-  // Slide out to right (back navigation)
-  slideOutRight: (value: Animated.Value, callback?: () => void) => {
+  // Fast snap out right - for back navigation  
+  snapOutRight: (value: Animated.Value, callback?: () => void) => {
     Animated.timing(value, {
-      toValue: 100,
-      duration: 30,
+      toValue: 50,
+      duration: 120,
       useNativeDriver: true,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      easing: Easing.bezier(0.4, 0, 1, 1),
     }).start(callback);
   },
 
-  // Fade in with scale
-  fadeInScale: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
+  // Tech-style instant fade with minimal scale
+  instantFade: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
     value.setValue(0);
-    scaleValue.setValue(0.9);
+    scaleValue.setValue(0.98);
     Animated.parallel([
       Animated.timing(value, {
         toValue: 1,
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
-        easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+        easing: Easing.out(Easing.quad),
       }),
       Animated.timing(scaleValue, {
         toValue: 1,
-        duration: 200,
+        duration: 150,
         useNativeDriver: true,
-        easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
+        easing: Easing.out(Easing.quad),
       }),
     ]).start(callback);
   },
 
-  // Fade out with scale
-  fadeOutScale: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
+  // Quick tech-style fade out
+  instantFadeOut: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
     Animated.parallel([
       Animated.timing(value, {
         toValue: 0,
-        duration: 62,
+        duration: 100,
         useNativeDriver: true,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        easing: Easing.in(Easing.quad),
       }),
       Animated.timing(scaleValue, {
-        toValue: 0.9,
-        duration: 62,
+        toValue: 0.98,
+        duration: 100,
         useNativeDriver: true,
-        easing: (t: number) => 1 - Math.pow(1 - t, 3),
+        easing: Easing.in(Easing.quad),
       }),
     ]).start(callback);
   },
 
-  // Staggered entrance for multiple elements
-  staggeredEntrance: (elements: Array<{ value: Animated.Value; delay: number }>, staggerDelay: number = 60) => {
-    elements.forEach((element, index) => {
-      setTimeout(() => {
-        element.value.setValue(0);
-        Animated.timing(element.value, {
-          toValue: 1,
-          duration: 180,
-          useNativeDriver: true,
-          easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t,
-        }).start();
-      }, element.delay + (index * staggerDelay));
-    });
+  // Instant no-animation transition for navigation compatibility
+  immediate: (callback?: () => void) => {
+    if (callback) callback();
   },
 
-  // Exit animation with callback
-  exitWithCallback: (value: Animated.Value, callback: () => void) => {
+  // Tech-style matrix fade in
+  matrixFadeIn: (value: Animated.Value, callback?: () => void) => {
+    value.setValue(0);
+    Animated.timing(value, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Material Design curve
+    }).start(callback);
+  },
+
+  // Fast exit for navigation compatibility
+  quickExit: (value: Animated.Value, callback: () => void) => {
     Animated.timing(value, {
       toValue: 0,
-      duration: 120,
+      duration: 80,
       useNativeDriver: true,
-      easing: (t: number) => 1 - Math.pow(1 - t, 3),
+      easing: Easing.in(Easing.quad),
     }).start(callback);
+  },
+
+  // Legacy compatibility methods (keep for now, but simplified)
+  slideInRight: (value: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.snapInRight(value, callback);
+  },
+  slideInLeft: (value: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.snapInLeft(value, callback);
+  },
+  slideOutLeft: (value: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.snapOutLeft(value, callback);
+  },
+  slideOutRight: (value: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.snapOutRight(value, callback);
+  },
+  fadeInScale: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.instantFade(value, scaleValue, callback);
+  },
+  fadeOutScale: (value: Animated.Value, scaleValue: Animated.Value, callback?: () => void) => {
+    ScreenTransitions.instantFadeOut(value, scaleValue, callback);
   },
 };
 

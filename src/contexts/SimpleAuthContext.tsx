@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import SecureAuthManager, { SecureAuthState, AuthResult } from '../services/secureAuthManager';
+import CloudAuth, { AuthState, User } from '../services/cloudAuth';
 import ApiService from '../services/api';
 
 /**
  * Simplified Authentication Context
- * Uses AuthManager as single source of truth
- * Eliminates race conditions and token clearing issues
+ * Uses CloudAuth - simple, cloud-only authentication
+ * No local storage, no complexity, just clean auth
  */
 
 interface SubscriptionData {
@@ -24,9 +24,9 @@ interface AuthContextType {
   // Authentication state
   isAuthenticated: boolean;
   loading: boolean;
-  userData: any | null;
+  userData: User | null;
   isInitializing: boolean;
-  user: any | null;
+  user: User | null;
   authToken: string | null;
 
   // Subscription state
@@ -35,9 +35,9 @@ interface AuthContextType {
   hasActiveSubscription: boolean;
 
   // Authentication methods
-  login: (credentials: { email: string; password: string }) => Promise<AuthResult>;
-  signUp: (credentials: { email: string; password: string; confirmPassword: string }) => Promise<AuthResult>;
-  logout: () => Promise<void>;
+  login: (credentials: { email: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  signUp: (credentials: { email: string; password: string; confirmPassword: string }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
   
   // Utility methods
   getCurrentUserId: () => string | null;
@@ -62,30 +62,27 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [authState, setAuthState] = useState<SecureAuthState>({
+  const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
-    isInitializing: true,
     user: null,
-    sessionToken: null,
-    sessionExpiry: null,
-    lastValidation: 0
+    token: null
   });
   const [loading, setLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // Subscription state
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
   
-  const secureAuthManager = SecureAuthManager.getInstance();
+  const cloudAuth = CloudAuth.getInstance();
 
   // Subscribe to auth state changes
   useEffect(() => {
-    const unsubscribe = secureAuthManager.subscribe((newState) => {
-      console.log('🔐 AUTH CONTEXT: Secure auth state updated:', {
+    const unsubscribe = cloudAuth.subscribe((newState) => {
+      console.log('🔐 AUTH CONTEXT: Cloud auth state updated:', {
         isAuthenticated: newState.isAuthenticated,
         hasUser: !!newState.user,
-        hasSessionToken: !!newState.sessionToken,
-        isInitializing: newState.isInitializing
+        hasToken: !!newState.token
       });
       setAuthState(newState);
 
@@ -100,8 +97,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    // Initialize secure authentication on mount
-    initializeSecureAuth();
+    // Simple initialization - no complex session restoration
+    setIsInitializing(false);
+    console.log('🔐 AUTH CONTEXT: Cloud auth ready - no session restoration');
 
     return unsubscribe;
   }, []);
@@ -123,29 +121,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const initializeSecureAuth = async () => {
-    console.log('🔐 AUTH CONTEXT: Initializing secure authentication...');
-    
-    try {
-      const result = await secureAuthManager.initializeAuth();
-      
-      if (result.success) {
-        console.log('🔐 AUTH CONTEXT: Secure authentication initialized successfully');
-      } else {
-        console.log('🔐 AUTH CONTEXT: Fresh session - user must login');
-      }
-    } catch (error) {
-      console.error('🔐 AUTH CONTEXT: Secure authentication initialization failed:', error);
-    }
-  };
+  // No complex initialization needed for cloud auth
 
   // Login method
-  const login = async (credentials: { email: string; password: string }): Promise<AuthResult> => {
+  const login = async (credentials: { email: string; password: string }): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     console.log('[AuthContext] Login attempt for:', credentials.email);
     
     try {
-      const result = await secureAuthManager.login(credentials);
+      const result = await cloudAuth.login(credentials.email, credentials.password);
       
       if (result.success) {
         console.log('[AuthContext] Login successful');
@@ -163,12 +147,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Sign up method
-  const signUp = async (credentials: { email: string; password: string; confirmPassword: string }): Promise<AuthResult> => {
+  const signUp = async (credentials: { email: string; password: string; confirmPassword: string }): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
     console.log('[AuthContext] Sign up attempt for:', credentials.email);
     
+    // Validate passwords match
+    if (credentials.password !== credentials.confirmPassword) {
+      setLoading(false);
+      return { success: false, error: 'Passwords don\'t match! Please try again 🔐' };
+    }
+    
     try {
-      const result = await secureAuthManager.signUp(credentials);
+      const result = await cloudAuth.signup(credentials.email, credentials.password);
       
       if (result.success) {
         console.log('[AuthContext] Sign up successful');
@@ -186,28 +176,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Logout method
-  const logout = async (): Promise<void> => {
-    setLoading(true);
+  const logout = (): void => {
     console.log('[AuthContext] Logout initiated');
-    
-    try {
-      await secureAuthManager.logout();
-      console.log('🔐 AUTH CONTEXT: Secure logout completed');
-    } catch (error) {
-      console.error('🔐 AUTH CONTEXT: Secure logout error:', error);
-    } finally {
-      setLoading(false);
-    }
+    cloudAuth.logout();
+    console.log('🔐 AUTH CONTEXT: Cloud logout completed');
   };
 
-  // Get current user ID (secure)
+  // Get current user ID
   const getCurrentUserId = (): string | null => {
-    return secureAuthManager.getCurrentUserId();
+    return cloudAuth.getCurrentUserId();
   };
 
-  // Get current session token (secure)
+  // Get current token
   const getCurrentToken = (): string | null => {
-    return secureAuthManager.getCurrentToken();
+    return cloudAuth.getToken();
   };
 
   // Refresh subscription data
@@ -223,9 +205,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated: authState.isAuthenticated,
     loading,
     userData: authState.user,
-    isInitializing: authState.isInitializing,
+    isInitializing,
     user: authState.user,
-    authToken: authState.sessionToken,
+    authToken: authState.token,
     
     // Subscription state
     subscriptionData,

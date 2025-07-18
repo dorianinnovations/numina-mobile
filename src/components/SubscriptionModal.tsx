@@ -167,7 +167,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
       setSubscribing(true);
       
       // For now, use a test payment method ID
-      // In a real app, you would integrate with Stripe or another payment processor
+      // Integrate with Stripe or payment processor
       const testPaymentMethodId = 'pm_test_subscription';
       
       const response = await ApiService.subscribeToNuminaTrace(selectedPlan, testPaymentMethodId);

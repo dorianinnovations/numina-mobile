@@ -201,7 +201,39 @@ export class FileUploadService {
     }
   }
 
-  // Upload file to server
+  // Convert image to base64 data URL for GPT-4o vision
+  public async convertImageToBase64(attachment: MessageAttachment): Promise<MessageAttachment> {
+    try {
+      if (attachment.type !== 'image') {
+        throw new Error('Only image attachments can be converted to base64');
+      }
+
+      console.log('🖼️ Converting image to base64 for vision:', attachment.name);
+
+      // Read file as base64
+      const base64String = await FileSystem.readAsStringAsync(attachment.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Create data URL
+      const dataUrl = `data:${attachment.mimeType};base64,${base64String}`;
+
+      // Update attachment with base64 data
+      return {
+        ...attachment,
+        uri: dataUrl, // Replace local URI with data URL
+        url: dataUrl, // Server expects 'url' property for vision
+        uploadStatus: 'uploaded',
+        serverUrl: dataUrl, // For vision, the data URL IS the server URL
+      };
+
+    } catch (error) {
+      console.error('Base64 conversion failed:', error);
+      throw error;
+    }
+  }
+
+  // Upload file to server (original method for non-vision files)
   public async uploadFile(
     attachment: MessageAttachment,
     onProgress?: (progress: UploadProgress) => void
@@ -280,6 +312,24 @@ export class FileUploadService {
     }
   }
 
+  // Smart upload that chooses the right method for each file type
+  public async processAttachmentForSending(attachment: MessageAttachment): Promise<MessageAttachment> {
+    try {
+      if (attachment.type === 'image') {
+        // For images, convert to base64 for GPT-4o vision
+        console.log('📸 Processing image for GPT-4o vision:', attachment.name);
+        return await this.convertImageToBase64(attachment);
+      } else {
+        // For other files, use traditional server upload
+        console.log('📎 Uploading file to server:', attachment.name);
+        return await this.uploadFile(attachment);
+      }
+    } catch (error) {
+      console.error('Failed to process attachment:', error);
+      throw error;
+    }
+  }
+
   // Upload multiple files with progress tracking
   public async uploadFiles(
     attachments: MessageAttachment[],
@@ -298,17 +348,35 @@ export class FileUploadService {
     });
 
     try {
-      // Upload files sequentially to avoid overwhelming the server
+      // Process files sequentially to avoid overwhelming the server
       for (const attachment of attachments) {
-        const result = await this.uploadFile(attachment, (progress) => {
-          progressMap.set(attachment.id, progress);
-          
-          if (onProgress) {
-            const progressArray = Array.from(progressMap.values());
-            const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
-            onProgress(overallProgress, progressArray);
-          }
+        // Update progress to processing
+        progressMap.set(attachment.id, {
+          attachmentId: attachment.id,
+          progress: 50,
+          status: 'uploading',
         });
+        
+        if (onProgress) {
+          const progressArray = Array.from(progressMap.values());
+          const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+          onProgress(overallProgress, progressArray);
+        }
+
+        const result = await this.processAttachmentForSending(attachment);
+        
+        // Update progress to complete
+        progressMap.set(attachment.id, {
+          attachmentId: attachment.id,
+          progress: 100,
+          status: 'uploaded',
+        });
+        
+        if (onProgress) {
+          const progressArray = Array.from(progressMap.values());
+          const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+          onProgress(overallProgress, progressArray);
+        }
         
         results.push(result);
       }

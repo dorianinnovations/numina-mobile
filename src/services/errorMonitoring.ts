@@ -256,8 +256,8 @@ class ErrorMonitoringService {
    * Send error to monitoring service
    */
   private async sendToMonitoringService(errorReport: ErrorReport): Promise<void> {
-    // In a real app, you would send this to your monitoring service
-    // For now, we'll just log it
+    // Send to monitoring service
+    // Currently just logging
     console.log('📊 ErrorMonitoring: Sending error to monitoring service:', {
       id: errorReport.id,
       severity: errorReport.severity,

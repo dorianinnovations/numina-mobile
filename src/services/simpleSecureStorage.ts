@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import AuthManager from './authManager';
+import SecureAuthManager from './secureAuthManager';
 
 /**
  * Simplified Secure Storage Service
@@ -10,17 +10,17 @@ import AuthManager from './authManager';
 class SimpleSecureStorageService {
   // Get current user ID from AuthManager
   static getCurrentUserId(): string | null {
-    return AuthManager.getInstance().getCurrentUserId();
+    return SecureAuthManager.getInstance().getCurrentUserId();
   }
 
   // Get current token from AuthManager
   static getToken(): string | null {
-    return AuthManager.getInstance().getCurrentToken();
+    return SecureAuthManager.getInstance().getCurrentToken();
   }
 
   // Check if user is authenticated
   static isAuthenticated(): boolean {
-    return AuthManager.getInstance().isAuthenticated();
+    return SecureAuthManager.getInstance().isAuthenticated();
   }
 
   // Generate user-specific storage keys

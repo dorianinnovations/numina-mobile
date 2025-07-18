@@ -11,8 +11,8 @@ class SSLPinningService {
     'server-a7od.onrender.com': {
       hostname: 'server-a7od.onrender.com',
       publicKeyHashes: [
-        // Add your server's public key hashes here
-        // These would be generated from your server's SSL certificate
+        // Add server's public key hashes here
+        // Generated from server's SSL certificate
         'REPLACE_WITH_ACTUAL_HASH_1',
         'REPLACE_WITH_ACTUAL_HASH_2', // Backup hash
       ],
@@ -44,7 +44,7 @@ class SSLPinningService {
         return true; // Allow connection if no config found
       }
 
-      // In a production app, you would implement actual SSL pinning here
+      // In production, implement actual SSL pinning here
       // This would involve:
       // 1. Extracting the certificate from the connection
       // 2. Computing the public key hash

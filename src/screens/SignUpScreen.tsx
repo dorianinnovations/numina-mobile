@@ -14,14 +14,16 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Modal,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
-import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
+import { TermsOfService } from '../components/TermsOfService';
 
 const { width } = Dimensions.get('window');
 
@@ -47,6 +49,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [localLoading, setLocalLoading] = useState(false);
   const [isSignUpSuccess, setIsSignUpSuccess] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -66,10 +70,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Entry animation - slide in from left for back navigation
+    // Fast tech entry - no conflicting animations with navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
-    ScreenTransitions.slideInLeft(slideAnim);
+    slideAnim.setValue(0); // Start in final position for navigation compatibility
   }, []);
 
   const handleSubmit = async () => {
@@ -78,18 +82,28 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     
     if (!email.trim() || !password.trim() || !confirmPassword.trim()) {
       setError('Please fill in all fields');
+      // Error haptic for validation failure
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      // Error haptic for validation failure
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+      // Error haptic for validation failure
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
+
+    // Heavy haptic for account creation (important action)
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
 
     setError('');
     setSuccess(false);
@@ -130,16 +144,20 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       });
 
       if (result.success) {
+        // Success haptic for successful account creation
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
         setSuccess(true);
         setIsSignUpSuccess(true);
         setAuthStatus('success');
         
         setTimeout(() => {
-          ScreenTransitions.fadeOutScale(fadeAnim, scaleAnim, () => {
-            onSignUpSuccess();
-          });
+          onSignUpSuccess();
         }, 1500);
       } else {
+        // Error haptic for signup failure
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
         setError(result.error || 'An error occurred during sign up');
         setIsSignUpSuccess(false);
         setAuthStatus('error');
@@ -148,6 +166,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         }, 2000);
       }
     } catch (err: any) {
+      // Error haptic for unexpected errors
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      
       setError(err.message || 'An error occurred during sign up');
       setIsSignUpSuccess(false);
       setAuthStatus('error');
@@ -195,10 +216,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
           title="Numina"
           showBackButton={true}
           showMenuButton={true}
+          showAuthOptions={false}
           onBackPress={() => {
-            ScreenTransitions.slideOutRight(slideAnim, () => {
-              onNavigateBack();
-            });
+            onNavigateBack();
           }}
           onMenuPress={(key: string) => {}}
         />
@@ -394,6 +414,55 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         </Animated.View>
                       </View>
 
+                      {/* Terms of Service Checkbox (Optional) */}
+                      <View style={styles.termsContainer}>
+                        <TouchableOpacity
+                          style={styles.termsCheckboxContainer}
+                          onPress={() => {
+                            // Light haptic for checkbox toggle
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setTermsAccepted(!termsAccepted);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[
+                            styles.termsCheckbox,
+                            {
+                              backgroundColor: termsAccepted 
+                                ? (isDarkMode ? '#add5fa' : '#007AFF')
+                                : 'transparent',
+                              borderColor: termsAccepted 
+                                ? (isDarkMode ? '#add5fa' : '#007AFF')
+                                : (isDarkMode ? '#666666' : '#cccccc'),
+                            }
+                          ]}>
+                            {termsAccepted && (
+                              <FontAwesome5 
+                                name="check" 
+                                size={10} 
+                                color={isDarkMode ? '#000000' : '#ffffff'} 
+                              />
+                            )}
+                          </View>
+                          <Text style={[
+                            styles.termsCheckboxText,
+                            { color: isDarkMode ? '#ffffff' : '#000000' }
+                          ]}>
+                            I agree to the{' '}
+                            <Text 
+                              style={[
+                                styles.termsLinkText, 
+                                { color: isDarkMode ? '#add5fa' : '#007AFF' }
+                              ]}
+                              onPress={() => setShowTermsModal(true)}
+                            >
+                              Terms of Service
+                            </Text>
+                            {' '}(optional)
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
                       {/* Sign Up Button with Animation */}
                       <View style={styles.buttonContainer}>
                         <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
@@ -441,9 +510,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       <TouchableOpacity
                         style={styles.linkButton}
                         onPress={() => {
-                          ScreenTransitions.slideOutRight(slideAnim, () => {
-                            onNavigateToSignIn();
-                          });
+                          // Light haptic for navigation
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          onNavigateToSignIn();
                         }}
                         activeOpacity={0.7}
                       >
@@ -496,6 +565,48 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             </KeyboardAvoidingView>
           </View>
         </TouchableWithoutFeedback>
+        
+        {/* Terms of Service Modal */}
+        <Modal
+          visible={showTermsModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowTermsModal(false)}
+        >
+          <SafeAreaView style={[
+            styles.modalContainer,
+            { backgroundColor: isDarkMode ? '#000000' : '#ffffff' }
+          ]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  // Light haptic for modal close
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowTermsModal(false);
+                }}
+              >
+                <FontAwesome5 
+                  name="times" 
+                  size={20} 
+                  color={isDarkMode ? '#ffffff' : '#000000'} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Terms Component */}
+            <TermsOfService
+              onAccept={(accepted) => {
+                setTermsAccepted(accepted);
+                if (accepted) {
+                  setTimeout(() => setShowTermsModal(false), 500);
+                }
+              }}
+              accepted={termsAccepted}
+            />
+          </SafeAreaView>
+        </Modal>
       </SafeAreaView>
     </PageBackground>
   );
@@ -660,5 +771,52 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
+  },
+  termsContainer: {
+    marginVertical: 8,
+  },
+  termsCheckboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  termsCheckbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  termsCheckboxText: {
+    fontSize: 14,
+    fontWeight: '400',
+    flex: 1,
+    lineHeight: 20,
+    fontFamily: 'Nunito_400Regular',
+  },
+  termsLinkText: {
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    fontFamily: 'Nunito_600SemiBold',
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

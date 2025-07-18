@@ -390,6 +390,15 @@ class BatchApiService {
   }
 }
 
-// Export singleton instance
-export default new BatchApiService();
+// Lazy instantiation for better app startup performance
+let instance: BatchApiService | null = null;
+
+export const getBatchApiService = (): BatchApiService => {
+  if (!instance) {
+    instance = new BatchApiService();
+  }
+  return instance;
+};
+
+export default getBatchApiService;
 export type { BatchStats };
