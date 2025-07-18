@@ -707,60 +707,88 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               }),
             }
           ]}>
-            <TextInput
-              style={[
-                styles.textInput,
-                {
+{Platform.OS === 'web' ? (
+              // Native HTML input for web - bypasses React Native Web issues
+              <input
+                type="text"
+                style={{
                   height: 44,
                   minHeight: 44,
                   maxHeight: 44,
+                  width: '100%',
+                  border: 'none',
+                  outline: 'none',
+                  background: 'transparent',
                   color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
-                  // Web fix: Ensure proper text input behavior
-                  ...(Platform.OS === 'web' && {
-                    outlineStyle: 'none',
-                    userSelect: 'text',
-                    cursor: 'text',
-                    WebkitUserSelect: 'text',
-                    WebkitTapHighlightColor: 'transparent',
-                    pointerEvents: 'auto',
-                  }),
-                }
-              ]}
-              value={value}
-              onChangeText={(text) => {
-                if (text.endsWith('\n')) {
-                  const messageText = text.slice(0, -1);
-                  onChangeText(messageText);
-                  handleSendPress();
-                } else {
-                  onChangeText(text);
-                }
-              }}
-              placeholder={placeholder}
-              placeholderTextColor={isDarkMode ? '#6b7280' : '#9ca3af'}
-              keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-              multiline={false}
-              numberOfLines={1}
-              maxLength={maxLength}
-              onSubmitEditing={handleSendPress}
-              returnKeyType="send"
-              blurOnSubmit={false}
-              scrollEnabled={true}
-              onFocus={handleInputFocus}
-              onBlur={handleInputBlur}
-              editable={!isLoading}
-              textAlignVertical="center"
-              // Web fix: Improve text input accessibility
-              {...(Platform.OS === 'web' && {
-                autoComplete: 'off',
-                autoCorrect: 'off',
-                spellCheck: false,
-                accessibilityRole: 'textbox',
-                'data-focusable': 'true',
-                'data-testid': 'chat-input',
-                tabIndex: 0,
-              })}
-            />
+                  fontSize: 18,
+                  letterSpacing: -0.2,
+                  fontFamily: 'Inter_400Regular, sans-serif',
+                  paddingVertical: 1,
+                  userSelect: 'text',
+                  cursor: 'text',
+                  pointerEvents: 'auto',
+                }}
+                value={value}
+                onChange={(e) => {
+                  const text = e.target.value;
+                  if (text.length <= maxLength) {
+                    onChangeText(text);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendPress();
+                  }
+                }}
+                placeholder={placeholder}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                disabled={isLoading}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                data-testid="chat-input"
+                tabIndex={0}
+              />
+            ) : (
+              // React Native TextInput for mobile
+              <TextInput
+                style={[
+                  styles.textInput,
+                  {
+                    height: 44,
+                    minHeight: 44,
+                    maxHeight: 44,
+                    color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
+                  }
+                ]}
+                value={value}
+                onChangeText={(text) => {
+                  if (text.endsWith('\n')) {
+                    const messageText = text.slice(0, -1);
+                    onChangeText(messageText);
+                    handleSendPress();
+                  } else {
+                    onChangeText(text);
+                  }
+                }}
+                placeholder={placeholder}
+                placeholderTextColor={isDarkMode ? '#6b7280' : '#9ca3af'}
+                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+                multiline={false}
+                numberOfLines={1}
+                maxLength={maxLength}
+                onSubmitEditing={handleSendPress}
+                returnKeyType="send"
+                blurOnSubmit={false}
+                scrollEnabled={true}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
+                editable={!isLoading}
+                textAlignVertical="center"
+              />
+            )}
           </Animated.View>
 
 
