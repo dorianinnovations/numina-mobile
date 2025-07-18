@@ -10,7 +10,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import * as Haptics from 'expo-haptics';
+// Desktop: No haptics needed for web
 import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleBackArrowPress = () => {
     // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Desktop: No haptics needed for web
     
     // Trigger press animation
     setBackArrowPressed(true);
@@ -116,7 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleMenuButtonPress = (event: any) => {
     // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Desktop: No haptics needed for web
     
     // Elegant press animation with better timing and easing
     Animated.sequence([
@@ -144,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleConversationsButtonPress = () => {
     // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Desktop: No haptics needed for web
     
     // Elegant press animation with better timing and easing
     Animated.sequence([
@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
           <TouchableOpacity 
             style={styles.logoContainer}
             onPress={onTitlePress}
-            activeOpacity={onTitlePress ? 0.7 : 1}
+            activeOpacity={Platform.OS === 'web' ? 1 : (onTitlePress ? 0.7 : 1)}
             disabled={!onTitlePress}
           >
             <OptimizedImage 
@@ -244,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({
                       }
                     ]}
                     onPress={handleBackArrowPress}
-                    activeOpacity={0.7}
+                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <AnimatedBackArrow
                       color={isDarkMode ? '#6ec5ff' : '#ffffff'}
@@ -276,7 +276,7 @@ export const Header: React.FC<HeaderProps> = ({
                       }
                     ]}
                     onPress={handleConversationsButtonPress}
-                    activeOpacity={0.7}
+                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <MaterialCommunityIcons
                       name="forum-outline"
@@ -309,7 +309,7 @@ export const Header: React.FC<HeaderProps> = ({
                       }
                     ]}
                     onPress={handleMenuButtonPress}
-                    activeOpacity={0.7}
+                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
                   >
                     <AnimatedHamburger
                       isOpen={menuVisible}
@@ -337,7 +337,7 @@ export const Header: React.FC<HeaderProps> = ({
         {!isVisible && onRestoreHeader ? (
           <TouchableOpacity
             style={{ flex: 1 }}
-            activeOpacity={0.8}
+            activeOpacity={Platform.OS === 'web' ? 1 : 0.8}
             onPress={onRestoreHeader}
           >
             {headerContent}

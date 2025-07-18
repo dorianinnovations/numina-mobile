@@ -711,6 +711,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   minHeight: 44,
                   maxHeight: 44,
                   color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
+                  // Web fix: Ensure proper text input behavior
+                  ...(Platform.OS === 'web' && {
+                    outlineStyle: 'none',
+                    userSelect: 'text',
+                    cursor: 'text',
+                  }),
                 }
               ]}
               value={value}
@@ -737,6 +743,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
               onBlur={handleInputBlur}
               editable={!isLoading}
               textAlignVertical="center"
+              // Web fix: Improve text input accessibility
+              {...(Platform.OS === 'web' && {
+                autoComplete: 'off',
+                autoCorrect: 'off',
+                spellCheck: false,
+                accessibilityRole: 'textbox',
+              })}
             />
           </Animated.View>
 

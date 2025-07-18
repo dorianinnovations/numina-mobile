@@ -1,0 +1,108 @@
+/* Numina Web - React Native Web Fixes */
+
+/* Fix text input focus issues */
+input, textarea {
+  outline: none !important;
+  user-select: text !important;
+  cursor: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+/* Remove unwanted button overlays */
+button {
+  -webkit-tap-highlight-color: transparent !important;
+  user-select: none !important;
+  outline: none !important;
+}
+
+/* Fix TouchableOpacity web behavior */
+div[role="button"] {
+  -webkit-tap-highlight-color: transparent !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  outline: none !important;
+}
+
+/* Remove focus rings on clickable elements */
+*:focus {
+  outline: none !important;
+}
+
+/* Better text selection */
+div[data-focusable="true"] input,
+div[data-focusable="true"] textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure proper cursor for text inputs */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+textarea {
+  cursor: text !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+/* Remove default React Native Web styles that interfere */
+div[dir="auto"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Fix for web text input in React Native */
+.react-native-web-text-input {
+  outline: none !important;
+  border: none !important;
+  user-select: text !important;
+  cursor: text !important;
+}
+
+/* Remove button hover overlays */
+div[role="button"]:hover {
+  background-color: transparent !important;
+}
+
+/* Ensure clickable elements work properly */
+div[role="button"],
+button,
+a {
+  cursor: pointer !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Mobile-style overlays disabled on web */
+@media (pointer: fine) {
+  div[role="button"]:active {
+    opacity: 1 !important;
+    background-color: transparent !important;
+  }
+}
+
+/* Smooth transitions for better UX */
+div[role="button"] {
+  transition: transform 0.1s ease, opacity 0.1s ease !important;
+}
+
+div[role="button"]:hover {
+  transform: scale(1.02) !important;
+}
+
+div[role="button"]:active {
+  transform: scale(0.98) !important;
+}
+
+/* Fix text rendering */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure proper scrolling */
+html, body {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
