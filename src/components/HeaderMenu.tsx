@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions, Easing } from 'react-native';
-// Desktop: No haptics needed for web
+import * as Haptics from 'expo-haptics';
 import { Feather, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import { NuminaColors } from '../utils/colors';
 import { useTheme } from '../contexts/ThemeContext';
@@ -9,15 +9,15 @@ import { ThemeSelector } from './ThemeSelector';
 const { width: screenWidth } = Dimensions.get('window');
 
 const getAllMenuActions = (isDarkMode: boolean) => [
-  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Chat', key: 'chat', requiresAuth: true },
-  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Insights', key: 'sentiment', requiresAuth: true },
-  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
-  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Discover', key: 'cloud', requiresAuth: true },
-  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
-  { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Profile', key: 'profile', requiresAuth: true },
-  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Settings', key: 'settings', requiresAuth: false },
-  { icon: <Feather name="info" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'About', key: 'about', requiresAuth: false },
-  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[700]} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment', requiresAuth: true },
+  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
+  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
+  { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile', requiresAuth: true },
+  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings', requiresAuth: false },
+  { icon: <Feather name="info" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'About', key: 'about', requiresAuth: false },
+  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
 ];
 
 const getMenuActions = (isDarkMode: boolean, showAuthOptions: boolean = true) => {
@@ -208,7 +208,8 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     
     setPressedIndex(index);
     
-    // Desktop: No haptics needed for web
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
     const scaleAnim = buttonAnims[index].scale;
     const opacityAnim = buttonAnims[index].opacity;
@@ -348,7 +349,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
                 <Text style={[
                   styles.menuButtonText,
                   { 
-                    color: isDarkMode ? '#fff' : NuminaColors.darkMode[700],
+                    color: isDarkMode ? '#fff' : NuminaColors.darkMode[600],
                   }
                 ]}>{action.label}</Text>
               </TouchableOpacity>

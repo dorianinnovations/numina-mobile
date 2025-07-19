@@ -1,17 +1,20 @@
 {
-  "name": "numina-web",
+  "name": "numina-mobile",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start --web",
-    "dev": "expo start --web",
-    "build": "expo export --platform web",
-    "build:production": "expo export --platform web",
-    "serve": "npx serve dist",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "build:android": "eas build --platform android",
+    "build:ios": "eas build --platform ios", 
+    "build:preview": "eas build --platform all --profile preview",
+    "submit:android": "eas submit --platform android",
+    "submit:ios": "eas submit --platform ios",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:e2e": "jest tests/e2e/",
-    "deploy": "npm run build:production && npm run serve"
+    "test:e2e": "jest tests/e2e/"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.846.0",

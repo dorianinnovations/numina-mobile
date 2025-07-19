@@ -10,7 +10,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-// Desktop: No haptics needed for web
+import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -102,7 +102,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleBackArrowPress = () => {
     // Haptic feedback for premium feel
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     // Trigger press animation
     setBackArrowPressed(true);
@@ -116,7 +116,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleMenuButtonPress = (event: any) => {
     // Haptic feedback for premium feel
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     // Elegant press animation with better timing and easing
     Animated.sequence([
@@ -144,7 +144,7 @@ export const Header: React.FC<HeaderProps> = ({
 
   const handleConversationsButtonPress = () => {
     // Haptic feedback for premium feel
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     // Elegant press animation with better timing and easing
     Animated.sequence([
@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
           <TouchableOpacity 
             style={styles.logoContainer}
             onPress={onTitlePress}
-            activeOpacity={Platform.OS === 'web' ? 1 : (onTitlePress ? 0.7 : 1)}
+            activeOpacity={onTitlePress ? 0.7 : 1}
             disabled={!onTitlePress}
           >
             <OptimizedImage 
@@ -231,31 +231,20 @@ export const Header: React.FC<HeaderProps> = ({
         <View style={styles.rightSection}>
 
               {showBackButton && (
-                                  <TouchableOpacity
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 8,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      backgroundColor: isDarkMode 
-                        ? 'rgba(173, 216, 230, 0.3)' 
-                        : 'rgba(173, 216, 230, 0.8)',
-                      borderColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.2)' 
-                        : 'rgba(255, 255, 255, 0.4)',
-                      ...(Platform.OS === 'web' && {
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                        // Firefox-specific fixes
-                        MozBackgroundClip: 'padding-box',
-                        backgroundClip: 'padding-box',
-                      }),
-                    }}
+                <TouchableOpacity
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? '#1a1a1a' 
+                          : '#add5fa',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(255, 255, 255, 0.3)',
+                      }
+                    ]}
                     onPress={handleBackArrowPress}
-                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
+                    activeOpacity={0.7}
                   >
                     <AnimatedBackArrow
                       color={isDarkMode ? '#6ec5ff' : '#4a5568'}
@@ -268,31 +257,20 @@ export const Header: React.FC<HeaderProps> = ({
               {showConversationsButton && (
                 <Animated.View style={{ transform: [{ scale: conversationsButtonScale }] }}>
                   <TouchableOpacity
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 8,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      backgroundColor: isDarkMode 
-                        ? 'rgba(173, 216, 230, 0.3)' 
-                        : 'rgba(173, 216, 230, 0.8)',
-                      borderColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.2)' 
-                        : 'rgba(255, 255, 255, 0.4)',
-                      marginLeft: showBackButton ? 12 : 0,
-                      ...(Platform.OS === 'web' && {
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                        // Firefox-specific fixes
-                        MozBackgroundClip: 'padding-box',
-                        backgroundClip: 'padding-box',
-                      }),
-                    }}
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? '#1a1a1a' 
+                          : '#add5fa',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(255, 255, 255, 0.3)',
+                        marginLeft: showBackButton ? 12 : 0,
+                      }
+                    ]}
                     onPress={handleConversationsButtonPress}
-                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
+                    activeOpacity={0.7}
                   >
                     <MaterialCommunityIcons
                       name="forum-outline"
@@ -306,31 +284,20 @@ export const Header: React.FC<HeaderProps> = ({
               {showMenuButton && (
                 <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
                   <TouchableOpacity
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 8,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      borderWidth: 1,
-                      backgroundColor: isDarkMode 
-                        ? 'rgba(173, 216, 230, 0.3)' 
-                        : 'rgba(173, 216, 230, 0.8)',
-                      borderColor: isDarkMode 
-                        ? 'rgba(255, 255, 255, 0.2)' 
-                        : 'rgba(255, 255, 255, 0.4)',
-                      marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
-                      ...(Platform.OS === 'web' && {
-                        backdropFilter: 'blur(10px)',
-                        WebkitBackdropFilter: 'blur(10px)',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-                        // Firefox-specific fixes
-                        MozBackgroundClip: 'padding-box',
-                        backgroundClip: 'padding-box',
-                      }),
-                    }}
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? '#1a1a1a' 
+                          : '#add5fa',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.1)' 
+                          : 'rgba(255, 255, 255, 0.3)',
+                        marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                      }
+                    ]}
                     onPress={handleMenuButtonPress}
-                    activeOpacity={Platform.OS === 'web' ? 1 : 0.7}
+                    activeOpacity={0.7}
                   >
                     <AnimatedHamburger
                       isOpen={menuVisible}
@@ -358,7 +325,7 @@ export const Header: React.FC<HeaderProps> = ({
         {!isVisible && onRestoreHeader ? (
           <TouchableOpacity
             style={{ flex: 1 }}
-            activeOpacity={Platform.OS === 'web' ? 1 : 0.8}
+            activeOpacity={0.8}
             onPress={onRestoreHeader}
           >
             {headerContent}
@@ -450,15 +417,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     backgroundColor: 'transparent', // Default transparent background
-    // Web-compatible shadows (no white box glitch)
-    ...(Platform.OS === 'web' ? {
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.2)',
-    } : {
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.25,
-      shadowRadius: 2,
-      elevation: 3,
-    }),
+    // Enhanced mobile shadows for better depth
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
   },
 });

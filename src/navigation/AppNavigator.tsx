@@ -9,6 +9,14 @@ import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { SignInScreen } from "../screens/SignInScreen";
 import { SignUpScreen } from "../screens/SignUpScreen";
 import { AboutScreen } from "../screens/AboutScreen";
+import { ChatScreen } from "../screens/ChatScreen";
+import { AnalyticsScreen } from "../screens/AnalyticsScreen";
+import { ProfileScreen } from "../screens/ProfileScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
+import { WalletScreen } from "../screens/WalletScreen";
+import { CloudScreen } from "../screens/CloudScreen";
+import { SentimentScreen } from "../screens/SentimentScreen";
+import { TutorialScreen } from "../screens/TutorialScreen";
 
 // Contexts
 import { useTheme } from "../contexts/ThemeContext";
@@ -20,47 +28,36 @@ export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
   About: undefined;
+  Chat: undefined;
+  Analytics: undefined;
+  Profile: undefined;
+  Settings: undefined;
+  Wallet: undefined;
+  Cloud: undefined;
+  Sentiment: undefined;
+  Tutorial: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-// Desktop-optimized transitions: instant/fade for web, iOS slide for mobile
-const desktopTransition = {
-  cardStyleInterpolator: ({ current, layouts }: any) => {
-    return {
-      cardStyle: {
-        opacity: current.progress,
-        transform: [],
-      },
-    };
-  },
-  transitionSpec: {
-    open: {
-      animation: "timing",
-      config: {
-        duration: 200,
-      },
-    },
-    close: {
-      animation: "timing",
-      config: {
-        duration: 200,
-      },
-    },
-  },
-};
-
-// Use desktop transition for web, iOS slide for mobile
-const platformTransition = Platform.OS === 'web' ? desktopTransition : TransitionPresets.SlideFromRightIOS;
+// Native mobile transitions only
+const mobileTransition = TransitionPresets.SlideFromRightIOS;
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDarkMode } = useTheme();
   const { isAuthenticated, loading } = useAuth();
   const navigationRef = useRef<any>(null);
 
-  // Simple menu handler
+  // Complete menu handler with all navigation options
   const createMenuHandler = (navigation: any) => (key: string) => {
     switch (key) {
+      case 'chat': navigation.navigate('Chat'); break;
+      case 'analytics': navigation.navigate('Analytics'); break;
+      case 'sentiment': navigation.navigate('Sentiment'); break;
+      case 'cloud': navigation.navigate('Cloud'); break;
+      case 'wallet': navigation.navigate('Wallet'); break;
+      case 'profile': navigation.navigate('Profile'); break;
+      case 'settings': navigation.navigate('Settings'); break;
       case 'about': navigation.navigate('About'); break;
       case 'signout': {
         console.log('🔓 MENU: User signed out - routing will handle navigation to Hero');
@@ -76,7 +73,14 @@ export const AppNavigator: React.FC = () => {
       const currentRoute = navigationRef.current.getCurrentRoute()?.name;
       console.log('🔄 AUTH ROUTING: Current route:', currentRoute, 'isAuthenticated:', isAuthenticated);
       
-      if (!isAuthenticated) {
+      if (isAuthenticated) {
+        // User is authenticated - go to main app (Chat screen)
+        console.log('🔄 AUTH ROUTING: User authenticated, navigating to Chat');
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Chat' }],
+        });
+      } else {
         // User signed out - reset to Hero
         console.log('🔄 AUTH ROUTING: User logged out, returning to Hero');
         navigationRef.current.reset({
@@ -89,9 +93,31 @@ export const AppNavigator: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: isDarkMode ? '#000000' : '#ffffff' }}>
-        <ActivityIndicator size="large" color={isDarkMode ? '#ffffff' : '#000000'} />
-        <Text style={{ color: isDarkMode ? '#ffffff' : '#000000', marginTop: 10 }}>Loading...</Text>
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: isDarkMode ? '#1a1a1a' : '#f8fafc',
+        paddingHorizontal: 20,
+      }}>
+        <ActivityIndicator size="large" color={isDarkMode ? '#6ec5ff' : '#add5fa'} />
+        <Text style={{ 
+          color: isDarkMode ? '#ffffff' : '#1a202c', 
+          marginTop: 16,
+          fontSize: 16,
+          fontWeight: '500',
+          textAlign: 'center',
+        }}>
+          Connecting...
+        </Text>
+        <Text style={{ 
+          color: isDarkMode ? '#a0aec0' : '#718096', 
+          marginTop: 8,
+          fontSize: 14,
+          textAlign: 'center',
+        }}>
+          Setting up your secure session
+        </Text>
       </View>
     );
   }
@@ -107,13 +133,13 @@ export const AppNavigator: React.FC = () => {
         initialRouteName="Hero"
         screenOptions={{
           headerShown: false,
-          ...platformTransition,
+          ...mobileTransition,
         }}
       >
         <Stack.Screen
           name="Hero"
           options={{
-            ...platformTransition,
+            ...mobileTransition,
           }}
         >
           {({ navigation }) => (
@@ -131,7 +157,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="Welcome"
           options={{
-            ...platformTransition,
+            ...mobileTransition,
           }}
         >
           {({ navigation }) => (
@@ -146,7 +172,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignIn"
           options={{
-            ...platformTransition,
+            ...mobileTransition,
           }}
         >
           {({ navigation }) => (
@@ -165,7 +191,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="SignUp"
           options={{
-            ...platformTransition,
+            ...mobileTransition,
           }}
         >
           {({ navigation }) => (
@@ -180,7 +206,7 @@ export const AppNavigator: React.FC = () => {
         <Stack.Screen
           name="About"
           options={{
-            ...platformTransition,
+            ...mobileTransition,
           }}
         >
           {({ navigation }) => (
@@ -188,6 +214,110 @@ export const AppNavigator: React.FC = () => {
               onNavigateBack={() => navigation.goBack()}
               onTitlePress={() => navigation.navigate("Hero")}
               onMenuPress={createMenuHandler(navigation)}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Chat"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <ChatScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Analytics"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <AnalyticsScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Profile"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <ProfileScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Settings"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <SettingsScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Wallet"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <WalletScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Cloud"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <CloudScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Sentiment"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <SentimentScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Tutorial"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <TutorialScreen 
+              onNavigateBack={() => navigation.goBack()}
             />
           )}
         </Stack.Screen>

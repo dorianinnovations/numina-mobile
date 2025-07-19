@@ -17,8 +17,8 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useNavigation } from '@react-navigation/native';
-// Desktop: No haptics needed for web
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
@@ -37,7 +37,6 @@ import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
-import { useKeyboardNavigation } from '../hooks/useKeyboardNavigation';
 
 // Enhanced services integration
 import getBatchApiService from '../services/batchApiService';
@@ -128,13 +127,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // UBPM insights state
   const [ubpmInsights, setUbpmInsights] = useState<any[]>([]);
 
-  // Desktop keyboard navigation
-  useKeyboardNavigation({
-    onBack: () => navigation.goBack(),
-    onHome: () => navigation.navigate('Hero'),
-    onSettings: () => navigation.navigate('Settings'),
-    onAnalytics: () => navigation.navigate('Analytics'),
-  });
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
@@ -155,7 +147,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       // Set touch active to prevent scroll interference
       setIsTouchActive(true);
       
-      // Desktop: No haptics needed for web
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
       console.log('✅ Header restored successfully');
@@ -960,10 +952,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Desktop: Center content with max-width
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 1200, // Desktop max-width
   },
   content: {
     flex: 1,
@@ -975,13 +963,11 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 5, // Desktop: More padding
-    maxWidth: Platform.OS === 'web' ? 800 : '100%', // Desktop: Chat width limit
-    alignSelf: 'center', // Desktop: Center chat
+    paddingHorizontal: 5,
   },
   messagesList: {
     flex: 1,
-    paddingHorizontal: Platform.OS === 'web' ? 20 : 5, // Desktop: More padding
+    paddingHorizontal: 5,
   },
   messagesContent: {
     paddingTop: 180,

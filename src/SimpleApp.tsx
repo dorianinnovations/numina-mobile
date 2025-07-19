@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Navigation
 import { AppNavigator } from './navigation/AppNavigator';
@@ -72,16 +73,18 @@ const AppContent: React.FC = () => {
 
 const SimpleApp: React.FC = () => {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <FontProvider>
-          <AuthProvider>
-            <AppContent />
-            <StatusBar style="auto" />
-          </AuthProvider>
-        </FontProvider>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
+          <FontProvider>
+            <AuthProvider>
+              <AppContent />
+              <StatusBar style="auto" />
+            </AuthProvider>
+          </FontProvider>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 };
 

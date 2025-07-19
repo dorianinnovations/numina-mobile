@@ -208,18 +208,11 @@ export const AnimatedBackArrow: React.FC<AnimatedBackArrowProps> = ({
             size={size} 
             color={color}
             style={{
-              // Web-compatible glow effect (no white boxes)
-              ...(Platform.OS === 'web' ? {
-                filter: color === '#6ec5ff' 
-                  ? 'drop-shadow(0 0 8px rgba(110, 197, 255, 0.8))' 
-                  : `drop-shadow(0 0 4px ${color}40)`,
-              } : {
-                shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: color === '#6ec5ff' ? 0.8 : 0.3,
-                shadowRadius: color === '#6ec5ff' ? 8 : 4,
-                elevation: color === '#6ec5ff' ? 8 : 4,
-              }),
+              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: color === '#6ec5ff' ? 0.8 : 0.3,
+              shadowRadius: color === '#6ec5ff' ? 8 : 4,
+              elevation: color === '#6ec5ff' ? 8 : 4,
             }}
           />
         </Animated.View>
@@ -244,15 +237,10 @@ const styles = StyleSheet.create({
   glow: {
     position: 'absolute',
     backgroundColor: 'transparent',
-    // Web-compatible glow (no white boxes)
-    ...(Platform.OS === 'web' ? {
-      background: 'radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%)',
-    } : {
-      shadowColor: '#ffffff',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 8,
-      elevation: 6,
-    }),
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 6,
   },
 }); 

@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-// Desktop: No haptics needed for web
-import { keyboardShortcuts, isDesktop } from '../../utils/webOptimizations';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
@@ -90,37 +89,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const hasActiveTools = toolExecutions.some(exec => exec.status === 'executing');
   const toolCount = toolExecutions.length;
 
-  // Desktop keyboard shortcuts
-  useEffect(() => {
-    if (!isDesktop) return;
-
-    // Ctrl+Enter to send message
-    keyboardShortcuts.addShortcut({
-      key: 'Enter',
-      modifiers: ['ctrl'],
-      action: () => {
-        if (value.trim() && !isLoading) {
-          handleSend();
-        }
-      },
-      description: 'Send message'
-    });
-
-    // Escape to clear input
-    keyboardShortcuts.addShortcut({
-      key: 'Escape',
-      modifiers: [],
-      action: () => {
-        onChangeText('');
-      },
-      description: 'Clear input'
-    });
-
-    return () => {
-      keyboardShortcuts.removeShortcut('Enter', ['ctrl']);
-      keyboardShortcuts.removeShortcut('Escape', []);
-    };
-  }, [value, isLoading]);
   
   // Animated values for smooth animations
   const voiceAnimScale = useRef(new Animated.Value(1)).current;
@@ -498,7 +466,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleNotificationPress = () => {
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     hideNotification();
   };
 
@@ -520,7 +488,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleVoicePress = async () => {
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     if (isVoiceActive) {
       // Stop voice recording
@@ -550,7 +518,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleSendPress = async () => {
     if (!canSend) return;
 
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     Animated.spring(sendButtonScale, {
       toValue: 0.95,
@@ -618,7 +586,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
   
   const handleZapPress = async () => {
-    // Desktop: No haptics needed for web
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     
     Animated.spring(zapIconScale, {
       toValue: 0.9,
@@ -701,94 +669,43 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                 inputRange: [0, 1],
                 outputRange: [0, 1],
               }),
-              // Web fix: Ensure container doesn't block text input
-              ...(Platform.OS === 'web' && {
-                pointerEvents: 'auto',
-              }),
             }
           ]}>
-{Platform.OS === 'web' ? (
-              // Native HTML input for web - bypasses React Native Web issues
-              <input
-                type="text"
-                style={{
+<TextInput
+              style={[
+                styles.textInput,
+                {
                   height: 44,
                   minHeight: 44,
                   maxHeight: 44,
-                  width: '100%',
-                  border: 'none',
-                  outline: 'none',
-                  background: 'transparent',
                   color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
-                  fontSize: 18,
-                  letterSpacing: -0.2,
-                  fontFamily: 'Inter_400Regular, sans-serif',
-                  paddingVertical: 1,
-                  userSelect: 'text',
-                  cursor: 'text',
-                  pointerEvents: 'auto',
-                }}
-                value={value}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  if (text.length <= maxLength) {
-                    onChangeText(text);
-                  }
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendPress();
-                  }
-                }}
-                placeholder={placeholder}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-                disabled={isLoading}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck={false}
-                data-testid="chat-input"
-                tabIndex={0}
-              />
-            ) : (
-              // React Native TextInput for mobile
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    height: 44,
-                    minHeight: 44,
-                    maxHeight: 44,
-                    color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[500],
-                  }
-                ]}
-                value={value}
-                onChangeText={(text) => {
-                  if (text.endsWith('\n')) {
-                    const messageText = text.slice(0, -1);
-                    onChangeText(messageText);
-                    handleSendPress();
-                  } else {
-                    onChangeText(text);
-                  }
-                }}
-                placeholder={placeholder}
-                placeholderTextColor={isDarkMode ? '#6b7280' : '#9ca3af'}
-                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                multiline={false}
-                numberOfLines={1}
-                maxLength={maxLength}
-                onSubmitEditing={handleSendPress}
-                returnKeyType="send"
-                blurOnSubmit={false}
-                scrollEnabled={true}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-                editable={!isLoading}
-                textAlignVertical="center"
-              />
-            )}
+                }
+              ]}
+              value={value}
+              onChangeText={(text) => {
+                if (text.endsWith('\n')) {
+                  const messageText = text.slice(0, -1);
+                  onChangeText(messageText);
+                  handleSendPress();
+                } else {
+                  onChangeText(text);
+                }
+              }}
+              placeholder={placeholder}
+              placeholderTextColor={isDarkMode ? '#6b7280' : '#9ca3af'}
+              keyboardAppearance={isDarkMode ? 'dark' : 'light'}
+              multiline={false}
+              numberOfLines={1}
+              maxLength={maxLength}
+              onSubmitEditing={handleSendPress}
+              returnKeyType="send"
+              blurOnSubmit={false}
+              scrollEnabled={true}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
+              editable={!isLoading}
+              textAlignVertical="center"
+            />
           </Animated.View>
 
 

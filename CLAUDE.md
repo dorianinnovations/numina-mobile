@@ -2,39 +2,67 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## ⚠️ CRITICAL PROJECT STATUS ⚠️
+
+**This repository is undergoing CATASTROPHIC GIT GLITCH RECOVERY**
+
+### The Git Glitch Incident
+- **Initial State**: 11,000+ lines of pure React Native mobile improvements ready to commit
+- **The Glitch**: Git catastrophically malfunctioned during "Initial commit" (4cb9578)
+- **Result**: Instead of ADDING improvements, git DELETED 11 entire screens and core functionality
+- **Current Status**: Manually rebuilding all 11k lines from deletion diffs
+
+### Recovery Mission Status
+- **Deleted Screens Being Rebuilt**: ChatScreen, AnalyticsScreen, CloudScreen, DataCleanupScreen, NuminaSensesV2, ProfileScreen, SentimentScreen, SettingsScreen, TutorialScreen, WalletScreen, and more
+- **Primary Challenge**: Web contamination keeps leaking into pure mobile code during reconstruction
+- **Target**: Pure React Native mobile app (NOT React Native Web)
+
+### Web Contamination Must Be Purged
+❌ **Remove ALL traces of:**
+- `Platform.OS === 'web'` checks
+- `boxShadow`, `backdropFilter`, `WebkitBackdropFilter` properties
+- Web-specific event handlers (`document`, `keydown`, `HTMLElement`)
+- Desktop-specific styling and layouts
+- Web browser imports (`expo-web-browser`, etc.)
+- Any `isDesktop`, `keyboardShortcuts`, or web optimization references
+
+✅ **Keep ONLY:**
+- Pure React Native components and APIs
+- Mobile-specific styling (`shadowColor`, `elevation`)
+- React Native Platform checks for `ios` vs `android` only
+- Mobile-optimized layouts and interactions
+
 ## Project Overview
 
-**Numina Web** is a desktop-optimized web application built from the React Native codebase using React Native Web. This is the desktop/web version of the Numina AI-powered personal growth and emotional wellness platform. The app features adaptive AI personality, real-time emotional analytics, cloud-based social matching, and streaming chat functionality with 25+ AI tools - all optimized for desktop/web experiences.
+**Numina Mobile** is a pure React Native mobile application for AI-powered personal growth and emotional wellness. Features adaptive AI personality, real-time emotional analytics, cloud-based social matching, and streaming chat functionality with 25+ AI tools - all optimized specifically for mobile experiences.
 
 ## Development Commands
 
 ### Core Development
 ```bash
-# Development server
-npm start                         # Start web development server
-npm run dev                       # Alternative development command
+# Mobile Development
+npm start                         # Start Expo development server
+npx expo start                    # Direct Expo start
+npx expo start --tunnel           # Tunnel for device testing
+
+# Platform-specific
+npm run android                   # Android development
+npm run ios                       # iOS development
 
 # Testing
 npm test                          # Run Jest tests
-npm run test:watch                # Run tests in watch mode  
-npm run test:e2e                  # Run end-to-end tests
+npm run test:watch                # Run tests in watch mode
 
 # Building
-npm run build                     # Build for web production
-npm run build:production          # Optimized production build
-npm run serve                     # Serve built files locally
-npm run deploy                    # Build and serve in one command
-
-# Web-specific
-npx expo start --web              # Direct Expo web start
-expo export --platform web        # Export web build
+npx expo build:android            # Android build
+npx expo build:ios                # iOS build
 ```
 
 ### Environment Configuration
 - **Production Server**: `https://server-a7od.onrender.com`
 - **WebSocket**: `wss://server-a7od.onrender.com`
 - **API Routes**: No `/api` prefix required
-- **Auto-deploy**: Render handles production deployment
+- **Platform**: React Native mobile only (iOS/Android)
 
 ## Architecture Overview
 
@@ -102,6 +130,30 @@ Content-Type: application/json
 
 ## Key Development Patterns
 
+### Mobile-Only Styling
+```typescript
+// ✅ CORRECT: Pure React Native
+const styles = StyleSheet.create({
+  container: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3, // Android shadow
+  }
+});
+
+// ❌ WRONG: Web contamination
+const styles = StyleSheet.create({
+  container: {
+    ...(Platform.OS === 'web' && {
+      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+      backdropFilter: 'blur(10px)',
+    })
+  }
+});
+```
+
 ### Chat Message Flow
 1. User enters message in ChatInput
 2. Message sent through chatService with streaming
@@ -109,13 +161,6 @@ Content-Type: application/json
 4. Tool execution with progress indicators
 5. Message stored locally and synced to server
 6. UI updates with markdown rendering and animations
-
-### File Upload Flow
-1. User selects file via AttachmentPicker
-2. File preview shown with AttachmentPreview
-3. Upload through fileUploadService with progress tracking
-4. Server processing (compression, text extraction)
-5. Integration into chat context
 
 ### Navigation Pattern
 ```typescript
@@ -152,112 +197,45 @@ const createMenuHandler = (navigation: any) => (key: string) => {
 - React Navigation: ^7.x
 - Socket.io Client: ^4.8.1
 
-## Configuration Files
+## Recovery Workflow
 
-### Critical Configuration
-- **app.json**: Expo app configuration with bundle identifiers
-- **eas.json**: EAS Build profiles (development, preview, production)
-- **tsconfig.json**: TypeScript with strict mode enabled
-- **babel.config.js**: Babel with Reanimated plugin (must be last)
+### When Adding/Fixing Screens
+1. **Read the deletion diff** from Initial commit (4cb9578) to understand original intent
+2. **Implement pure mobile-only** functionality
+3. **Remove ANY web contamination** that may have leaked in
+4. **Test on mobile devices** only (iOS/Android)
+5. **Use mobile-optimized patterns** (TouchableOpacity, Haptics, etc.)
 
-### Environment Variables
-- `EXPO_PUBLIC_API_KEY`: API authentication key
-- `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`: Stripe payment key
+### Decontamination Checklist
+- [ ] No `Platform.OS === 'web'` checks
+- [ ] No `boxShadow`, `backdropFilter`, `WebkitBackdropFilter`
+- [ ] No `document`, `window`, `HTMLElement` references
+- [ ] No web-specific imports (`expo-web-browser`, etc.)
+- [ ] Only React Native styling (`shadowColor`, `elevation`)
+- [ ] Only mobile interactions (TouchableOpacity, not onClick)
 
-## Common Development Tasks
+## Current Recovery Status
 
-### Adding New Screen
-1. Create screen component in `src/screens/`
-2. Add to navigation stack in `AppNavigator.tsx`
-3. Use `createMenuHandler(navigation)` for consistent menu behavior
-4. Follow existing screen patterns (Header, PageBackground, etc.)
+### Screens Status
+- ✅ **WelcomeScreen**: Fully restored and functional
+- ✅ **HeroLandingScreen**: Fully restored and functional
+- ✅ **SignInScreen**: Fully restored and functional
+- ✅ **SignUpScreen**: Fully restored and functional
+- ✅ **ChatScreen**: Fully restored and functional
+- ❌ **AnalyticsScreen**: Needs rebuilding
+- ❌ **CloudScreen**: Needs rebuilding
+- ❌ **SentimentScreen**: Needs rebuilding
+- ❌ **WalletScreen**: Needs rebuilding
+- ❌ **SettingsScreen**: Needs rebuilding
+- ❌ **ProfileScreen**: Needs rebuilding
+- ❌ **TutorialScreen**: Needs rebuilding
 
-### Adding New API Service
-1. Add methods to `src/services/api.ts`
-2. Handle authentication with `cloudAuth.getAuthHeaders()`
-3. Implement error handling and retry logic
-4. Add TypeScript interfaces for request/response
-
-### Adding New Chat Feature
-1. Extend Message interface in `src/types/message.ts`
-2. Update MessageBubble component for display
-3. Modify ChatInput for user input
-4. Update conversationStorage for persistence
-
-## Debugging Common Issues
-
-### Authentication Issues
-- Use `CloudAuth.getInstance().getToken()` for tokens
-- Use `CloudAuth.getInstance().isAuthenticated()` for auth status
-- Verify API_BASE_URL points to `https://server-a7od.onrender.com`
-- CloudAuth works immediately, no initialization needed
-
-### Chat Streaming Issues
-- Verify WebSocket connection status
-- Check adaptive chat endpoint (`/ai/adaptive-chat`) is responding
-- Monitor tool execution patterns in server response chunks
-- Verify `toolExecutionService.processStreamingToolResponse()` calls
-
-### Tool Execution Issues
-- Check server logs for "25 tools loaded"
-- Monitor `AIToolExecutionStream` component for tool updates
-- Verify tool execution detection in streaming responses
-
-## Performance Considerations
-
-### Memory Management
-- Use `React.memo` for expensive components
-- Implement proper cleanup in useEffect hooks
-- Use FlatList for large lists with proper keyExtractor
-
-### Network Optimization
-- Use WebSocket for real-time features
-- Compress images before upload
-- Handle network failures gracefully
-
-### Animation Performance
-- Use react-native-reanimated for 60fps animations
-- Avoid animating layout properties
-- Use native driver when possible
-
-## Security Considerations
-
-### Authentication Security
-- Pure cloud-only JWT tokens - no local storage
-- Stateless authentication - tokens exist only in memory
-- User-friendly error handling with input validation
-- SSL pinning enabled for production builds
-
-### Data Protection
-- No sensitive data stored locally
-- No hardcoded secrets in source code
-- Input validation and sanitization
-
-## Build and Deployment
-
-### Development Builds
-```bash
-eas build --profile development    # Development build
-eas build --profile preview        # Preview build for testing
-```
-
-### Production Builds
-```bash
-eas build --profile production     # Production build for stores
-eas submit -p ios                  # Submit to App Store
-eas submit -p android              # Submit to Google Play
-```
-
-## Testing
-
-```bash
-npm test                           # Run all tests
-npm test -- ChatScreen.test.tsx   # Run specific test
-npm test -- --coverage            # Run with coverage
-npm run test:e2e                   # Run E2E tests
-```
-
-## Current System Status
+### Decontamination Complete
+- **Web References**: All Platform.OS === 'web' checks removed
+- **Header Buttons**: Restored original mobile colors (#1a1a1a, #add5fa)
+- **Loading States**: Fixed black screen with branded loading experience
+- **Navigation**: SafeAreaProvider properly configured
+- **App Startup**: All critical errors resolved
 
 ### Authentication System
 - **CloudAuth**: Production-ready cloud-only authentication
@@ -265,14 +243,18 @@ npm run test:e2e                   # Run E2E tests
 - **Consistent Logout**: All screens route back to Hero via menu
 - **Error Handling**: User-friendly messages with emojis
 
-### Chat System
-- **Adaptive Chat**: Uses `/ai/adaptive-chat` endpoint
-- **Tool System**: 25+ tools with streaming execution
-- **Real-time Features**: WebSocket connections for live updates
-- **Personality Context**: AI adaptation based on user behavior
+## Emergency Procedures
 
-### Production Readiness
-- **API Integration**: All endpoints working correctly
-- **State Management**: Clean authentication state handling
-- **Error Boundaries**: Comprehensive error handling
-- **Performance**: Optimized for mobile with proper caching
+### If You Encounter Web Contamination
+1. **STOP immediately** - do not proceed with web-specific code
+2. **Remove ALL web references** from the file
+3. **Replace with pure React Native equivalents**
+4. **Test on mobile device** to verify functionality
+5. **Document the decontamination** in commit message
+
+### Git Glitch Recovery Rules
+1. **Never assume** web support is intentional
+2. **Always prioritize** mobile-first implementation
+3. **Remove rather than adapt** any web-specific code
+4. **Reference the deletion diff** to understand original mobile intent
+5. **Maintain the pure React Native vision** throughout recovery
