@@ -130,7 +130,7 @@ const BotMessageContent: React.FC<{
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = ({
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   message,
   index,
   onLongPress,
@@ -148,7 +148,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-80)).current;
+  const slideAnim = useRef(new Animated.Value(80)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
   const newContentOpacity = useRef(new Animated.Value(1)).current;
@@ -159,7 +159,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const isUser = message?.sender === 'user';
   const isAI = message?.sender === 'numina';
 
-  // Entry animation with stagger - fall from top effect
+  // Entry animation with stagger - rise from bottom effect (near send button)
   useEffect(() => {
     const delay = index * 80;
     
@@ -173,12 +173,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         toValue: 1,
         duration: 400,
         delay,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.spring(slideAnim, {
         toValue: 0,
         delay,
-        useNativeDriver: false,
+        useNativeDriver: true,
         tension: 80,
         friction: 8,
       }),
@@ -186,7 +186,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         toValue: 1,
         duration: 300,
         delay,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start();
     if (isUser) {
@@ -262,17 +262,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             useNativeDriver: true,
           }).start();
           
-          // Add subtle alive haptic feedback during streaming for AI messages
+          // Simplified haptic feedback during streaming for better performance
           if (isAI && hasStartedStreaming) {
-            // Create subtle "breathing" haptic every few characters
             const textAdded = safeText.length - previousLength;
-            const shouldPulse = textAdded >= 5 && (safeText.length % 15 === 0); // Every ~15 characters
+            const shouldPulse = textAdded >= 20 && (safeText.length % 50 === 0); // Reduced frequency
             
             if (shouldPulse) {
-              // Very light pulse to simulate AI "thinking" and "breathing"
-              setTimeout(() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              }, 50); // Slight delay to feel more organic
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
             }
           }
           
@@ -401,7 +397,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     Animated.timing(pressAnim, {
       toValue: 0.98,
       duration: 50,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   };
 
@@ -410,7 +406,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     Animated.timing(pressAnim, {
       toValue: 1,
       duration: 50,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   };
 
@@ -706,7 +702,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
     </Animated.View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

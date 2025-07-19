@@ -258,17 +258,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
 
 
-      {/* Header */}
-      <Header 
-        title="Numina"
-        showMenuButton={true}
-        showAuthOptions={false}
-        onMenuPress={(key: string) => handleToggleDarkMode()}
-        onTitlePress={() => {
-          // Already on Hero screen - could scroll to top or refresh animations
-          console.log('Numina title pressed on Hero screen');
-        }}
-      />
+
 
       {/* Main Content */}
       <Animated.View

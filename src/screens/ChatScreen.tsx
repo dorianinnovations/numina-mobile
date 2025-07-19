@@ -724,7 +724,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     onConversationUpdate?.(selectedConversation);
   };
 
-  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     // Safety check for item - allow empty text for streaming messages
     if (!item || (!item.text && !item.isStreaming)) {
       console.warn('Invalid message item:', item);
@@ -749,7 +749,40 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         />
       </ChatErrorBoundary>
     );
-  };
+  }, [handleMessageLongPress, handleSpeakMessage]);
+
+  const handleScroll = useCallback((event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    
+    // Only process significant scroll changes
+    if (Math.abs(currentScrollY - lastScrollY) < 5) return;
+    
+    const scrollDelta = currentScrollY - lastScrollY;
+    
+    // Always show header if near the top
+    if (currentScrollY <= 30) {
+      setHeaderVisible(true);
+      setHeaderPermanentlyHidden(false);
+      setLastScrollY(currentScrollY);
+      return;
+    }
+    
+    // Don't process scroll events if touch is active
+    if (isTouchActive) {
+      setLastScrollY(currentScrollY);
+      return;
+    }
+    
+    // Simple state update without debouncing for better performance
+    if (scrollDelta > 10) {
+      setHeaderVisible(false);
+      setHeaderPermanentlyHidden(true);
+    } else if (scrollDelta < -10 && !headerPermanentlyHidden && !isStreaming) {
+      setHeaderVisible(true);
+    }
+    
+    setLastScrollY(currentScrollY);
+  }, [lastScrollY, isTouchActive, headerPermanentlyHidden, isStreaming]);
 
   if (!conversation) {
     return (
@@ -834,64 +867,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     ref={flatListRef}
                     data={conversation?.messages || []}
                     renderItem={renderMessage}
-                    keyExtractor={item => item?.id || Math.random().toString()}
+                    keyExtractor={(item, index) => item?.id || `msg-${index}`}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
                       // Scroll to end for new messages and streaming content
-                      setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
+                      flatListRef.current?.scrollToEnd({ animated: true });
                     }}
-                    onScroll={(event) => {
-                      const currentScrollY = event.nativeEvent.contentOffset.y;
-                      const scrollDelta = currentScrollY - lastScrollY;
-                      
-                      // Always show header if near the top
-                      if (currentScrollY <= 30) {
-                        setHeaderVisible(true);
-                        setHeaderPermanentlyHidden(false);
-                        setLastScrollY(currentScrollY);
-                        return;
-                      }
-                      
-                      // Don't process scroll events if touch is active
-                      if (isTouchActive) {
-                        setLastScrollY(currentScrollY);
-                        return;
-                      }
-                      
-                      // Clear any existing debounce timeout
-                      if (scrollDebounceTimeout) {
-                        clearTimeout(scrollDebounceTimeout);
-                      }
-                      
-                      // Debounce scroll events to prevent rapid state changes
-                      const timeout = setTimeout(() => {
-                        // Hide header immediately when scrolling down and make it sticky
-                        if (scrollDelta > 0) {
-                          setHeaderVisible(false);
-                          setHeaderPermanentlyHidden(true);
-                        }
-                        // Only show header when scrolling up IF not permanently hidden
-                        else if (scrollDelta < 0) {
-                          if (!headerPermanentlyHidden && !isStreaming) {
-                            setHeaderVisible(true);
-                          }
-                        }
-                      }, 50); // 50ms debounce
-                      
-                      setScrollDebounceTimeout(timeout);
-                      setLastScrollY(currentScrollY);
-                    }}
-                    onLayout={() => {
-                      // Scroll to end when layout changes (new messages added)
-                      setTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
-                    }}
+                    scrollEventThrottle={16}
+                    onScroll={handleScroll}
+                    removeClippedSubviews={true}
+                    windowSize={10}
+                    initialNumToRender={20}
+                    maxToRenderPerBatch={10}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.messagesContent}
-                    extraData={conversation?.messages?.length || 0} // Force re-render on new messages
+                    extraData={conversation?.messages} // Force re-render on new messages
                     maintainVisibleContentPosition={{
                       minIndexForVisible: 0,
                       autoscrollToTopThreshold: 10,
