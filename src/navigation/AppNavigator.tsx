@@ -144,7 +144,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <HeroLandingScreen
-              onNavigateToTutorial={() => navigation.navigate("Welcome")}
+              onNavigateToTutorial={() => navigation.navigate("Tutorial")}
               onNavigateToSignIn={() => {
                 console.log('➡️ NAVIGATING TO SIGNIN from Hero');
                 navigation.navigate("SignIn");
@@ -317,7 +317,8 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <TutorialScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateHome={() => navigation.navigate("Hero")}
+              onStartChat={() => navigation.navigate("SignUp")}
             />
           )}
         </Stack.Screen>

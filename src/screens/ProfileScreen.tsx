@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   },
   headerButtonContainer: {
     position: 'absolute',
-    top: 60,
+    top: 100,
     right: 20,
     zIndex: 100,
   },
@@ -300,7 +300,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingTop: 120,
+    paddingBottom: 40,
   },
   profileHeader: {
     padding: 20,
@@ -332,7 +333,8 @@ const styles = StyleSheet.create({
   },
   fieldContainer: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 24,
+    paddingHorizontal: 4,
   },
   fieldLabel: {
     fontSize: 14,
@@ -349,9 +351,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
     fontFamily: 'Nunito_400Regular',
+    minHeight: 50,
   },
   textArea: {
     height: 100,

@@ -2,39 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## ⚠️ CRITICAL PROJECT STATUS ⚠️
-
-**This repository is undergoing CATASTROPHIC GIT GLITCH RECOVERY**
-
-### The Git Glitch Incident
-- **Initial State**: 11,000+ lines of pure React Native mobile improvements ready to commit
-- **The Glitch**: Git catastrophically malfunctioned during "Initial commit" (4cb9578)
-- **Result**: Instead of ADDING improvements, git DELETED 11 entire screens and core functionality
-- **Current Status**: Manually rebuilding all 11k lines from deletion diffs
-
-### Recovery Mission Status
-- **Deleted Screens Being Rebuilt**: ChatScreen, AnalyticsScreen, CloudScreen, DataCleanupScreen, NuminaSensesV2, ProfileScreen, SentimentScreen, SettingsScreen, TutorialScreen, WalletScreen, and more
-- **Primary Challenge**: Web contamination keeps leaking into pure mobile code during reconstruction
-- **Target**: Pure React Native mobile app (NOT React Native Web)
-
-### Web Contamination Must Be Purged
-❌ **Remove ALL traces of:**
-- `Platform.OS === 'web'` checks
-- `boxShadow`, `backdropFilter`, `WebkitBackdropFilter` properties
-- Web-specific event handlers (`document`, `keydown`, `HTMLElement`)
-- Desktop-specific styling and layouts
-- Web browser imports (`expo-web-browser`, etc.)
-- Any `isDesktop`, `keyboardShortcuts`, or web optimization references
-
-✅ **Keep ONLY:**
-- Pure React Native components and APIs
-- Mobile-specific styling (`shadowColor`, `elevation`)
-- React Native Platform checks for `ios` vs `android` only
-- Mobile-optimized layouts and interactions
-
 ## Project Overview
 
-**Numina Mobile** is a pure React Native mobile application for AI-powered personal growth and emotional wellness. Features adaptive AI personality, real-time emotional analytics, cloud-based social matching, and streaming chat functionality with 25+ AI tools - all optimized specifically for mobile experiences.
+**Numina Mobile** is a React Native mobile application for AI-powered personal growth and emotional wellness. The app features adaptive AI personality, real-time emotional analytics, cloud-based social matching, and streaming chat functionality with 25+ AI tools - all optimized for mobile experiences.
 
 ## Development Commands
 
@@ -54,104 +24,95 @@ npm test                          # Run Jest tests
 npm run test:watch                # Run tests in watch mode
 
 # Building
-npx expo build:android            # Android build
-npx expo build:ios                # iOS build
+npm run build                     # Build for production
+eas build --profile development   # Development build
+eas build --profile production    # Production build
 ```
-
-### Environment Configuration
-- **Production Server**: `https://server-a7od.onrender.com`
-- **WebSocket**: `wss://server-a7od.onrender.com`
-- **API Routes**: No `/api` prefix required
-- **Platform**: React Native mobile only (iOS/Android)
 
 ## Architecture Overview
 
-### Cloud-First Authentication System
-The app uses a simplified cloud-first authentication architecture:
+### Technology Stack
+- **React Native** with **Expo SDK 53**
+- **TypeScript** with strict typing enabled
+- **React Navigation v7** for navigation
+- **Context API** for state management
+- **Socket.io** for real-time features
+- **Expo SecureStore** for secure token storage
 
-#### CloudAuth Service (`src/services/cloudAuth.ts`)
-- **Pure Cloud-Only**: No local storage, stateless authentication
-- **Simple API**: `login(email, password)`, `logout()`, `isAuthenticated()`
-- **User-Friendly Errors**: Emojis and clear messaging
-- **Instant Initialization**: No complex session restoration
-
-```typescript
-// Simple CloudAuth usage
-const cloudAuth = CloudAuth.getInstance();
-const isAuthenticated = cloudAuth.isAuthenticated();
-const token = cloudAuth.getToken();
-const userId = cloudAuth.getCurrentUserId();
-```
-
-#### Authentication Flow
-```
-Hero → SignIn/SignUp → (Success) → Chat
-Any Screen → Menu → Sign Out → Hero
-```
-
-### Key Services Layer
-- **cloudAuth.ts**: Cloud-only authentication service
-- **api.ts**: Main API service with authentication and network handling
-- **chatService.ts**: Chat functionality with streaming support
-- **websocketService.ts**: Real-time WebSocket communication
-- **conversationStorage.ts**: Local chat history persistence
-- **toolExecutionService.ts**: AI tool execution with progress tracking
+### Key Services
+- **CloudAuth** (`src/services/cloudAuth.ts`): Cloud-only authentication service
+- **API Service** (`src/services/api.ts`): Main API communication with authentication
+- **Chat Service** (`src/services/chatService.ts`): Chat functionality with streaming
+- **WebSocket Service** (`src/services/websocketService.ts`): Real-time communication
+- **File Upload Service** (`src/services/fileUploadService.ts`): File handling and upload
 
 ### Component Architecture
-- **screens/**: Navigation endpoints (ChatScreen, AnalyticsScreen, etc.)
-- **components/**: Reusable UI components with chat/ subdirectory
-- **contexts/**: React Context providers for state management
-- **hooks/**: Custom React hooks for business logic
-- **services/**: API and business logic services
-- **utils/**: Utility functions and styling helpers
+```
+src/
+├── screens/               # Navigation endpoints
+│   ├── HeroLandingScreen.tsx     # App entry point
+│   ├── SignInScreen.tsx          # Authentication
+│   ├── SignUpScreen.tsx          # User registration
+│   ├── ChatScreen.tsx            # Main chat interface
+│   ├── TutorialScreen.tsx        # Feature tutorial
+│   ├── AnalyticsScreen.tsx       # Emotional analytics
+│   ├── CloudScreen.tsx           # Social features
+│   ├── WalletScreen.tsx          # Credits/subscription
+│   └── SettingsScreen.tsx        # App settings
+├── components/           # Reusable UI components
+│   ├── chat/             # Chat-specific components
+│   ├── Header.tsx        # Navigation header
+│   ├── PageBackground.tsx # Background component
+│   └── ScreenWrapper.tsx # Screen layout wrapper
+├── contexts/             # React Context providers
+│   ├── SimpleAuthContext.tsx     # Authentication state
+│   └── ThemeContext.tsx          # Theme management
+├── hooks/                # Custom React hooks
+├── services/             # API and business logic
+├── utils/                # Utility functions
+└── navigation/           # Navigation configuration
+    └── AppNavigator.tsx  # Main navigation stack
+```
 
 ## API Integration
 
-### Server Routes
-- **Health**: `GET /health`
-- **Authentication**: 
-  - `POST /signup` - Create user account
-  - `POST /login` - User login
-- **Chat**: `POST /ai/adaptive-chat` - Main chat endpoint with tool execution
-- **Tools**: `GET /tools/available` - Get available AI tools
-- **User**: `GET /user/profile` - User profile data
+### Server Configuration
+- **Production API**: `https://server-a7od.onrender.com`
+- **Development API**: `http://localhost:5001`
+- **WebSocket**: Real-time features via Socket.io
 
-### Authentication Headers
-```bash
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
+### Authentication Flow
+```
+Hero Landing → Tutorial (optional) → SignUp/SignIn → Chat
 ```
 
-### Response Format
-```javascript
-// SUCCESS: {"status": "success", "token": "...", "data": {"user": {...}}}
-// ERROR: {"status": "error", "message": "Incorrect email or password."}
-```
+### Key API Endpoints
+- **Authentication**: `POST /login`, `POST /signup`
+- **Chat**: `POST /ai/adaptive-chat` - Main chat with tool execution
+- **User Profile**: `GET /user/profile`
+- **File Upload**: `POST /mobile/upload`
+- **Health Check**: `GET /health`
 
-## Key Development Patterns
+## Development Patterns
 
-### Mobile-Only Styling
+### Navigation Pattern
 ```typescript
-// ✅ CORRECT: Pure React Native
-const styles = StyleSheet.create({
-  container: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3, // Android shadow
+// AppNavigator uses createMenuHandler for consistent navigation
+const createMenuHandler = (navigation: any) => (key: string) => {
+  switch (key) {
+    case 'chat': navigation.navigate('Chat'); break;
+    case 'analytics': navigation.navigate('Analytics'); break;
+    case 'signout': /* CloudAuth handles logout */; break;
   }
-});
+};
+```
 
-// ❌ WRONG: Web contamination
-const styles = StyleSheet.create({
-  container: {
-    ...(Platform.OS === 'web' && {
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      backdropFilter: 'blur(10px)',
-    })
-  }
-});
+### Authentication Pattern
+```typescript
+// CloudAuth service usage
+const cloudAuth = CloudAuth.getInstance();
+const isAuthenticated = cloudAuth.isAuthenticated();
+const token = cloudAuth.getToken();
 ```
 
 ### Chat Message Flow
@@ -160,101 +121,145 @@ const styles = StyleSheet.create({
 3. AI response streamed back with real-time updates
 4. Tool execution with progress indicators
 5. Message stored locally and synced to server
-6. UI updates with markdown rendering and animations
 
-### Navigation Pattern
-```typescript
-// AppNavigator uses createMenuHandler for consistent signout
-const createMenuHandler = (navigation: any) => (key: string) => {
-  switch (key) {
-    case 'signout': logout(); break; // Returns to Hero automatically
-    case 'chat': navigation.navigate('Chat'); break;
-    // ... other cases
-  }
-};
+### File Upload Flow
+1. User selects file via AttachmentPicker
+2. File preview with AttachmentPreview
+3. Upload through fileUploadService with progress
+4. Server processing and integration into chat
+
+## Key Features
+
+### AI Chat System
+- **Adaptive Chat**: Uses `/ai/adaptive-chat` endpoint for intelligent responses
+- **Tool Integration**: 25+ AI tools (web search, weather, calculator, etc.)
+- **Streaming Responses**: Real-time AI response streaming
+- **File Support**: Image, text, and PDF file uploads
+
+### Emotional Analytics
+- **Real-time Tracking**: Emotion detection and analysis
+- **Historical Data**: Emotion trends and insights
+- **Mood Patterns**: Behavioral pattern recognition
+
+### Social Features
+- **Cloud Matching**: AI-powered social connections
+- **Event Discovery**: Local events based on interests
+- **Community Features**: Social interaction capabilities
+
+### Subscription System
+- **Credit System**: Usage-based credit management
+- **Stripe Integration**: Payment processing
+- **Wallet Features**: Credit purchase and tracking
+
+## Configuration Files
+
+### Critical Configuration
+- **app.json**: Expo app configuration
+- **eas.json**: EAS Build profiles
+- **tsconfig.json**: TypeScript configuration
+- **babel.config.js**: Babel configuration with Reanimated plugin
+
+### Environment Variables
+```bash
+EXPO_PUBLIC_API_KEY=          # API authentication key
+EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=  # Stripe payment key
 ```
 
-## Technology Stack
+## Common Development Tasks
 
-### Core Framework
-- **React Native** with **Expo SDK 53**
-- **TypeScript** with strict typing enabled
-- **React Navigation v7** for navigation
-- **Context API** for state management
+### Adding New Screen
+1. Create screen component in `src/screens/`
+2. Add to RootStackParamList type in AppNavigator
+3. Add Stack.Screen in AppNavigator with proper navigation props
+4. Use ScreenWrapper for consistent layout
 
-### Key Dependencies
-- **@react-navigation/native** + **@react-navigation/stack**: Navigation
-- **@react-native-async-storage/async-storage**: Local storage
-- **socket.io-client**: WebSocket communication
-- **react-native-reanimated**: High-performance animations
-- **expo-image-picker**: File and image selection
-- **react-native-markdown-display**: Markdown rendering
+### Adding New API Endpoint
+1. Add method to `src/services/api.ts`
+2. Handle authentication with `cloudAuth.getAuthHeaders()`
+3. Implement error handling and retry logic
+4. Add TypeScript interfaces for requests/responses
 
-### Package Versions
-- React Native: 0.79.5
-- Expo: ~53.0.17
-- TypeScript: ~5.8.3
-- React Navigation: ^7.x
-- Socket.io Client: ^4.8.1
+### Updating Chat Features
+1. Extend Message interface in types
+2. Update MessageBubble component for display
+3. Modify ChatInput for user input handling
+4. Update conversationStorage for persistence
 
-## Recovery Workflow
+## Testing
 
-### When Adding/Fixing Screens
-1. **Read the deletion diff** from Initial commit (4cb9578) to understand original intent
-2. **Implement pure mobile-only** functionality
-3. **Remove ANY web contamination** that may have leaked in
-4. **Test on mobile devices** only (iOS/Android)
-5. **Use mobile-optimized patterns** (TouchableOpacity, Haptics, etc.)
+### Running Tests
+```bash
+npm test                          # Run all tests
+npm test -- --watch               # Watch mode
+npm test -- ChatScreen.test.tsx   # Specific test file
+```
 
-### Decontamination Checklist
-- [ ] No `Platform.OS === 'web'` checks
-- [ ] No `boxShadow`, `backdropFilter`, `WebkitBackdropFilter`
-- [ ] No `document`, `window`, `HTMLElement` references
-- [ ] No web-specific imports (`expo-web-browser`, etc.)
-- [ ] Only React Native styling (`shadowColor`, `elevation`)
-- [ ] Only mobile interactions (TouchableOpacity, not onClick)
+### Testing on Devices
+```bash
+npx expo start --tunnel           # Best for device testing
+eas build --profile development   # Development builds
+```
 
-## Current Recovery Status
+## Build and Deployment
 
-### Screens Status
-- ✅ **WelcomeScreen**: Fully restored and functional
-- ✅ **HeroLandingScreen**: Fully restored and functional
-- ✅ **SignInScreen**: Fully restored and functional
-- ✅ **SignUpScreen**: Fully restored and functional
-- ✅ **ChatScreen**: Fully restored and functional
-- ❌ **AnalyticsScreen**: Needs rebuilding
-- ❌ **CloudScreen**: Needs rebuilding
-- ❌ **SentimentScreen**: Needs rebuilding
-- ❌ **WalletScreen**: Needs rebuilding
-- ❌ **SettingsScreen**: Needs rebuilding
-- ❌ **ProfileScreen**: Needs rebuilding
-- ❌ **TutorialScreen**: Needs rebuilding
+### Development Builds
+```bash
+eas build --profile development    # Development build
+eas build --profile preview        # Preview build for testing
+```
 
-### Decontamination Complete
-- **Web References**: All Platform.OS === 'web' checks removed
-- **Header Buttons**: Restored original mobile colors (#1a1a1a, #add5fa)
-- **Loading States**: Fixed black screen with branded loading experience
-- **Navigation**: SafeAreaProvider properly configured
-- **App Startup**: All critical errors resolved
+### Production Deployment
+```bash
+eas build --profile production     # Production build
+eas submit -p ios                  # Submit to App Store
+eas submit -p android              # Submit to Google Play
+```
 
-### Authentication System
-- **CloudAuth**: Production-ready cloud-only authentication
-- **Hero Landing**: Direct routing to SignIn/SignUp screens
-- **Consistent Logout**: All screens route back to Hero via menu
-- **Error Handling**: User-friendly messages with emojis
+## Security Considerations
 
-## Emergency Procedures
+### Authentication Security
+- JWT tokens stored in Expo SecureStore
+- Cloud-only authentication - no local storage of credentials
+- Proper authentication flow enforcement
+- SSL pinning for production builds
 
-### If You Encounter Web Contamination
-1. **STOP immediately** - do not proceed with web-specific code
-2. **Remove ALL web references** from the file
-3. **Replace with pure React Native equivalents**
-4. **Test on mobile device** to verify functionality
-5. **Document the decontamination** in commit message
+### Data Protection
+- Input validation and sanitization
+- Secure file upload handling
+- No hardcoded secrets in source code
+- Proper error handling without data exposure
 
-### Git Glitch Recovery Rules
-1. **Never assume** web support is intentional
-2. **Always prioritize** mobile-first implementation
-3. **Remove rather than adapt** any web-specific code
-4. **Reference the deletion diff** to understand original mobile intent
-5. **Maintain the pure React Native vision** throughout recovery
+## Performance Optimization
+
+### Animation Performance
+- React Native Reanimated for 60fps animations
+- Native driver usage where possible
+- Proper animation cleanup in useEffect
+
+### Memory Management
+- React.memo for expensive components
+- Proper cleanup in useEffect hooks
+- FlatList for large data sets
+
+### Network Optimization
+- WebSocket for real-time features
+- Image compression before upload
+- Request caching and retry logic
+- Graceful network failure handling
+
+## Current Status
+
+### Core Functionality
+- ✅ Authentication system fully functional
+- ✅ Chat system with streaming and tool execution
+- ✅ Navigation and routing properly configured
+- ✅ File upload and processing working
+- ✅ Real-time features via WebSocket
+
+### In Development
+- 🔄 Advanced analytics features
+- 🔄 Enhanced social matching algorithms
+- 🔄 Subscription system improvements
+- 🔄 Performance optimizations
+
+This mobile app serves as the primary user interface for the Numina AI platform, providing a seamless and intuitive experience for personal growth and AI-powered assistance.
