@@ -8,7 +8,7 @@ import ApiService from './api';
 import getWebSocketService from './websocketService';
 import syncService from './syncService';
 import appConfigService from './appConfigService';
-import batchApiService from './batchApiService';
+import { getBatchApiService } from './batchApiService';
 import offlineQueueService from './offlineQueue';
 import SecureStorageService from './secureStorage';
 
@@ -285,7 +285,7 @@ class AppInitializer {
    * Setup app state monitoring
    */
   private static setupAppStateMonitoring(): void {
-    // This would integrate with AppState from react-native
+    // Would integrate with AppState from react-native
     // For now, we'll set up periodic sync
     setInterval(async () => {
       if (await syncService.isSyncNeeded()) {
@@ -327,6 +327,7 @@ class AppInitializer {
       console.log('🔄 Performing initial data sync...');
       
       // Get initial data using batch API
+      const batchApiService = getBatchApiService();
       const initialData = await batchApiService.getInitialData();
       console.log('Initial data loaded:', initialData);
       
@@ -380,6 +381,7 @@ class AppInitializer {
     try {
       getWebSocketService().disconnect();
       syncService.cleanup();
+      const batchApiService = getBatchApiService();
       batchApiService.clearBatch();
       
       console.log('✅ App services cleaned up');
@@ -400,6 +402,7 @@ class AppInitializer {
     try {
       const netInfo = await NetInfo.fetch();
       const syncStatus = await syncService.getSyncStatus();
+      const batchApiService = getBatchApiService();
       const batchStats = batchApiService.getStats();
       
       return {

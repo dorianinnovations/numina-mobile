@@ -30,6 +30,7 @@ interface ToolExecutionModalProps {
   onAttachmentSelected?: (attachment: MessageAttachment) => void;
   ubpmInsights?: any[];
   onAcknowledgeUBPM?: (insightId: string) => void;
+  onSendQuickQuery?: (query: string) => void;
 }
 
 export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
@@ -40,10 +41,53 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   onAttachmentSelected,
   ubpmInsights = [],
   onAcknowledgeUBPM,
+  onSendQuickQuery,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isClosing, setIsClosing] = useState(false);
+  const [showQuickQueries, setShowQuickQueries] = useState(false);
+  const [showQuickQueryModal, setShowQuickQueryModal] = useState(false);
   const fileUploadService = FileUploadService.getInstance();
+
+  // Quick query options - expanded for scrollable modal
+  const quickQueries = [
+    // Instant Metrics
+    { category: 'Instant Metrics', queries: [
+      "show my behavioral data",
+      "what are my intelligence metrics?", 
+      "behavioral data - show my complexity progression",
+      "display my current emotional baseline",
+      "what patterns do you see in my interactions?",
+      "show my communication style analysis"
+    ]},
+    // Taxonomies  
+    { category: 'Taxonomies', queries: [
+      "What emotional states can you identify in me?",
+      "What is your complete topic classification system?",
+      "What engagement levels do you track?",
+      "How do you categorize my behavioral patterns?",
+      "What personality traits have you identified?",
+      "Show me your complete analytical framework"
+    ]},
+    // Predictions
+    { category: 'Predictions', queries: [
+      "Based on my behavioral patterns, predict my evolution",
+      "What changes do you anticipate in my behavior?",
+      "Analyze my learning trajectory",
+      "Predict my next developmental phase",
+      "What challenges might I face in my growth?",
+      "How will my communication style evolve?"
+    ]},
+    // Deep Analysis
+    { category: 'Deep Analysis', queries: [
+      "Perform a complete psychological assessment",
+      "Analyze my decision-making patterns",
+      "What motivates me at a core level?",
+      "Map my emotional triggers and responses",
+      "How do I handle stress and challenges?",
+      "What are my fundamental values and beliefs?"
+    ]}
+  ];
   
   // Animation refs for upload buttons
   const cameraButtonScale = useRef(new Animated.Value(1)).current;
@@ -54,6 +98,11 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Quick query modal animation refs
+  const quickModalOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const quickModalScale = useRef(new Animated.Value(0.9)).current;
+  const quickModalOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible && !isClosing) {
@@ -248,6 +297,78 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
     });
   };
 
+  const handleQuickQueryPress = (query: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (onSendQuickQuery) {
+      onSendQuickQuery(query);
+      handleClose();
+    }
+  };
+
+  const toggleQuickQueries = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('🧠 Opening quick query modal');
+    setShowQuickQueryModal(true);
+  };
+
+  const closeQuickQueryModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('🧠 Closing quick query modal');
+    
+    // Animate out
+    Animated.parallel([
+      Animated.timing(quickModalOverlayOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(quickModalScale, {
+        toValue: 0.9,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(quickModalOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowQuickQueryModal(false);
+      // Reset animation values
+      quickModalOverlayOpacity.setValue(0);
+      quickModalScale.setValue(0.9);
+      quickModalOpacity.setValue(0);
+    });
+  };
+
+  // Animate quick query modal in when it becomes visible
+  useEffect(() => {
+    if (showQuickQueryModal) {
+      console.log('🧠 Animating quick query modal in');
+      Animated.parallel([
+        Animated.timing(quickModalOverlayOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(quickModalScale, {
+          toValue: 1,
+          tension: 100,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(quickModalOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        console.log('🧠 Quick query modal animation complete');
+      });
+    }
+  }, [showQuickQueryModal]);
+
   const activeExecutions = toolExecutions.filter(exec => exec.status === 'executing');
   const completedExecutions = toolExecutions.filter(exec => exec.status === 'completed');
   const failedExecutions = toolExecutions.filter(exec => exec.status === 'error');
@@ -439,6 +560,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                 )}
               </View>
 
+
               {/* Tool Execution Stream */}
               <ScrollView 
                 style={styles.scrollContainer}
@@ -457,6 +579,137 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
           </LinearGradient>
         </Animated.View>
       </View>
+
+      {/* Quick Query Modal - Appears above Spawner */}
+      {showQuickQueryModal && (
+        <Modal
+          visible={showQuickQueryModal}
+          transparent={true}
+          animationType="none"
+          onRequestClose={closeQuickQueryModal}
+        >
+          <View style={styles.quickModalOverlay}>
+            {/* Background */}
+            <Animated.View
+              style={[
+                styles.quickModalBackground,
+                {
+                  opacity: quickModalOverlayOpacity,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.backgroundTouchable}
+                onPress={closeQuickQueryModal}
+                activeOpacity={1}
+              />
+            </Animated.View>
+
+            {/* Modal Content */}
+            <Animated.View
+              style={[
+                styles.quickModalContainer,
+                {
+                  backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                  borderColor: isDarkMode
+                    ? 'rgba(255, 255, 255, 0.15)'
+                    : 'rgba(0, 0, 0, 0.15)',
+                  transform: [{ scale: quickModalScale }],
+                  opacity: quickModalOpacity,
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  isDarkMode
+                    ? ['#1a1a1a', '#151515']
+                    : ['#ffffff', '#fafbfc']
+                }
+                style={styles.quickModalContent}
+              >
+                {/* Header */}
+                <View style={styles.quickModalHeader}>
+                  <View style={styles.headerLeft}>
+                    <FontAwesome5
+                      name="brain"
+                      size={22}
+                      color={isDarkMode ? '#71c9fc' : '#4a90e2'}
+                    />
+                    <Text style={[
+                      styles.quickModalTitle,
+                      { color: isDarkMode ? '#f9fafb' : '#1f2937' }
+                    ]}>
+                      Quick Analytics
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity
+                    onPress={closeQuickQueryModal}
+                    style={[styles.closeButton, { 
+                      backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)' 
+                    }]}
+                  >
+                    <FontAwesome5
+                      name="times"
+                      size={16}
+                      color={isDarkMode ? '#ef4444' : '#dc2626'}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Scrollable Content */}
+                <ScrollView 
+                  style={styles.quickModalScrollView}
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={styles.quickModalScrollContent}
+                  bounces={true}
+                >
+                  {quickQueries.map((category, categoryIndex) => (
+                    <View key={categoryIndex} style={styles.quickQueryCategory}>
+                      <Text style={[
+                        styles.quickCategoryTitle,
+                        { color: isDarkMode ? '#71c9fc' : '#4a90e2' }
+                      ]}>
+                        {category.category}
+                      </Text>
+                      {category.queries.map((query, queryIndex) => (
+                        <TouchableOpacity
+                          key={queryIndex}
+                          style={[
+                            styles.quickQueryButton,
+                            {
+                              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
+                              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+                            }
+                          ]}
+                          onPress={() => {
+                            handleQuickQueryPress(query);
+                            closeQuickQueryModal();
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[
+                            styles.quickQueryText,
+                            { color: isDarkMode ? '#e5e7eb' : '#374151' }
+                          ]} numberOfLines={3}>
+                            {query}
+                          </Text>
+                          <FontAwesome5
+                            name="arrow-right"
+                            size={14}
+                            color={isDarkMode ? '#71c9fc' : '#4a90e2'}
+                            style={{ marginLeft: 8 }}
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  ))}
+                </ScrollView>
+              </LinearGradient>
+            </Animated.View>
+          </View>
+        </Modal>
+      )}
     </Modal>
   );
 };
@@ -583,5 +836,93 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Quick Query Modal Styles
+  quickModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  quickModalBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  quickModalContainer: {
+    width: screenWidth * 0.9,
+    height: screenHeight * 0.7,
+    maxHeight: screenHeight * 0.8,
+    minHeight: 400,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
+  quickModalContent: {
+    height: '100%',
+    borderRadius: 20,
+  },
+  quickModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  quickModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  quickModalScrollView: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  quickModalScrollContent: {
+    paddingVertical: 20,
+    paddingBottom: 30,
+  },
+  quickQueryCategory: {
+    marginBottom: 24,
+  },
+  quickCategoryTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    opacity: 0.9,
+  },
+  quickQueryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    minHeight: 64,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  quickQueryText: {
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+    lineHeight: 20,
+    letterSpacing: -0.2,
   },
 });

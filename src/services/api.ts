@@ -2,15 +2,9 @@ import NetInfo from '@react-native-community/netinfo';
 import CloudAuth from './cloudAuth';
 import ToolExecutionService from './toolExecutionService';
 
-/**
- * API Service for React Native
- * Matches web app API implementation exactly
- * Handles authentication, token management, chat completion, and data sync
- */
 
 import ENV, { SECURITY_HEADERS, validateEnvironment } from '../config/environment';
 
-// Lazy environment validation - only validate when API is first used
 let environmentValidated = false;
 
 const ensureEnvironmentValid = () => {
@@ -22,13 +16,11 @@ const ensureEnvironmentValid = () => {
   }
 };
 
-// API Configuration
 export const API_BASE_URL = ENV.API_BASE_URL;
 
-// Chat API configuration - MIGRATED TO PREMIUM SPEED ENDPOINT
 export const CHAT_API_CONFIG = {
   PRODUCTION_URL: `${ENV.API_BASE_URL}/ai/adaptive-chat`,
-  LEGACY_URL: `${ENV.API_BASE_URL}/completion`, // Fallback for emergency
+  LEGACY_URL: `${ENV.API_BASE_URL}/completion`,
   REQUEST_DEFAULTS: {
     stream: true,
     temperature: 0.8,
@@ -37,8 +29,7 @@ export const CHAT_API_CONFIG = {
   }
 };
 
-// Request timeout configuration
-const REQUEST_TIMEOUT = 60000; // 60 seconds - increased for auth issues
+const REQUEST_TIMEOUT = 60000;
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -93,7 +84,6 @@ interface EmotionData {
   userId: string;
 }
 
-// AI Personality and Cloud Matching Interfaces
 interface PersonalityContext {
   communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
   emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
@@ -138,7 +128,6 @@ interface CompatibilityAnalysis {
   potentialChallenges: string[];
 }
 
-// NEW: Mobile-optimized interfaces
 interface BatchRequest {
   endpoint: string;
   method: 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -227,7 +216,6 @@ interface AppConfig {
 class ApiService {
   private static baseURL = API_BASE_URL;
 
-  // CRITICAL FIX: Add network state validation
   private static async validateNetworkState(): Promise<boolean> {
     try {
       const netInfo = await NetInfo.fetch();
@@ -242,7 +230,6 @@ class ApiService {
     }
   }
 
-  // CRITICAL FIX: Enhanced error logging
   private static logError(context: string, error: any, endpoint?: string): void {
     const errorInfo = {
       context,
@@ -254,7 +241,6 @@ class ApiService {
     
     console.error('❌ API Error:', errorInfo);
     
-    // In production, send to logging service
     if (__DEV__) {
       console.group('🔍 Detailed Error Info');
       console.log('Context:', context);
@@ -264,22 +250,18 @@ class ApiService {
     }
   }
 
-  // Generic API request method with retry logic and exponential backoff
   static async apiRequest<T = any>(
     endpoint: string, 
     options: RequestInit = {},
     retryAttempts: number = 3
   ): Promise<ApiResponse<T>> {
-    // Lazy environment validation
     ensureEnvironmentValid();
     
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
-    // Log the actual URL being called
     console.log('🌐 API: Making request to:', `${this.baseURL}${endpoint}`);
     console.log('🌐 API: Base URL is:', this.baseURL);
     
-    // CRITICAL FIX: Validate network state before attempting request
     const isNetworkAvailable = await this.validateNetworkState();
     if (!isNetworkAvailable) {
       return {
@@ -290,10 +272,8 @@ class ApiService {
     
     for (let attempt = 1; attempt <= retryAttempts; attempt++) {
       try {
-        // Get token from AuthManager (single source of truth) - handle circular dependency
         let token: string | null = null;
         try {
-          // Skip token retrieval for auth endpoints to prevent circular dependency
           if (!endpoint.includes('/login') && !endpoint.includes('/signup')) {
             token = CloudAuth.getInstance().getToken();
           }
@@ -301,24 +281,20 @@ class ApiService {
           console.warn('Could not get token for API request:', endpoint);
         }
         
-        // Default headers with security headers
         const defaultHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
           ...SECURITY_HEADERS,
         };
 
-        // Add authorization header if token exists
         if (token) {
           defaultHeaders.Authorization = `Bearer ${token}`;
         }
 
-        // Merge headers
         const headers = {
           ...defaultHeaders,
           ...(options.headers as Record<string, string>),
         };
 
-        // Create request configuration with timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
@@ -329,25 +305,21 @@ class ApiService {
         };
 
         const url = `${this.baseURL}${endpoint}`;
-        // API request to server
         const response = await fetch(url, config);
         clearTimeout(timeoutId);
-        // API response received
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({ message: 'Network error' }));
           
-          // Handle authentication errors - but don't clear auth on these endpoints
           if (response.status === 401 && 
               !endpoint.includes('/login') && 
               !endpoint.includes('/signup') &&
-              !endpoint.includes('/sentiment-data') &&  // Don't logout on sentiment data errors
-              !endpoint.includes('/analytics/llm') &&   // Don't logout on LLM errors
-              !endpoint.includes('/ai/personality-recommendations') && // Don't logout on personality errors
-              !endpoint.includes('/ai/emotional-state') &&    // Don't logout on emotional state errors
-              !endpoint.includes('/cloud/events') &&          // Don't logout on cloud events errors
-              !endpoint.includes('/numina-personality/start-rapid-updates')) { // Don't logout on personality updates errors
-            // Use AuthManager for consistent auth clearing
+              !endpoint.includes('/sentiment-data') &&
+              !endpoint.includes('/analytics/llm') &&
+              !endpoint.includes('/ai/personality-recommendations') &&
+              !endpoint.includes('/ai/emotional-state') &&
+              !endpoint.includes('/cloud/events') &&
+              !endpoint.includes('/numina-personality/start-rapid-updates')) {
             CloudAuth.getInstance().logout();
             throw new Error('Authentication expired');
           }
@@ -372,7 +344,6 @@ class ApiService {
           data,
         };
       } catch (error: any) {
-        // CRITICAL FIX: Enhanced error logging
         this.logError('API Request', error, endpoint);
         
         const isNetworkError = error.name === 'TypeError' || 
@@ -401,7 +372,6 @@ class ApiService {
                 const { default: OfflineQueueService } = await import('./offlineQueue');
                 await OfflineQueueService.enqueueRequest(endpoint, options, priority);
               } catch (queueError) {
-                // CRITICAL FIX: Proper error handling instead of silent failure
                 this.logError('Offline Queue Enqueue', queueError, endpoint);
                 console.error('Failed to enqueue request for offline processing:', {
                   endpoint,
@@ -430,7 +400,6 @@ class ApiService {
               const { default: OfflineQueueService } = await import('./offlineQueue');
               await OfflineQueueService.enqueueRequest(endpoint, options, priority);
             } catch (queueError) {
-              // CRITICAL FIX: Proper error handling instead of silent failure
               this.logError('Offline Queue Enqueue', queueError, endpoint);
               console.error('Failed to enqueue request for offline processing:', {
                 endpoint,
@@ -458,14 +427,12 @@ class ApiService {
       }
     }
 
-    // This should never be reached, but TypeScript requires it
     return {
       success: false,
       error: 'Max retry attempts exceeded',
     };
   }
 
-  // Authentication endpoints - exactly matching web app
   static async login(credentials: LoginCredentials): Promise<ApiResponse<{
     token: string;
     data: { user: UserData };
@@ -492,7 +459,6 @@ class ApiService {
     });
   }
 
-  // Account deletion endpoint
   static async deleteAccount(userId?: string): Promise<ApiResponse<any>> {
     const endpoint = userId ? `/user/delete/${userId}` : '/user/delete';
     return this.apiRequest(endpoint, {
@@ -500,19 +466,16 @@ class ApiService {
     });
   }
 
-  // User profile endpoint
   static async getUserProfile(): Promise<ApiResponse<UserData>> {
     return this.apiRequest('/profile');
   }
 
-  // Chat completion endpoint - with proper XMLHttpRequest streaming
   static async sendChatMessageStreaming(
     message: ChatMessage, 
     onChunk: (chunk: string) => void
   ): Promise<string> {
     const token = CloudAuth.getInstance().getToken();
     
-    // Always use production URL
     const chatUrl = CHAT_API_CONFIG.PRODUCTION_URL;
 
 
@@ -527,7 +490,6 @@ class ApiService {
       xhr.setRequestHeader('Accept', 'text/event-stream');
       xhr.setRequestHeader('Cache-Control', 'no-cache');
       
-      // Real-time streaming using onreadystatechange
       xhr.onreadystatechange = () => {
         if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
           const currentLength = xhr.responseText.length;
@@ -537,7 +499,6 @@ class ApiService {
           if (newText) {
             lastProcessedIndex = currentLength;
             
-            // Process new chunks in real-time
             const lines = newText.split('\n');
             
             for (const line of lines) {
@@ -551,7 +512,6 @@ class ApiService {
                       onChunk(fullContent);
                     }
                   } catch {
-                    // Handle non-JSON content
                     if (content) {
                       fullContent += content;
                       onChunk(fullContent);
@@ -583,9 +543,7 @@ class ApiService {
     });
   }
 
-  // Fallback for compatibility - redirects to streaming method
   static async sendChatMessage(message: ChatMessage): Promise<Response> {
-    // This method is kept for compatibility but won't be used for streaming
     const result = await this.sendChatMessageStreaming(message, () => {});
     return new Response(result, {
       status: 200,
@@ -593,9 +551,7 @@ class ApiService {
     });
   }
 
-  // Emotion data endpoints - backend only has POST /emotions for submitting
   static async getEmotions(): Promise<ApiResponse<any[]>> {
-    // Backend doesn't have GET /emotions endpoint, return empty array
     return {
       success: true,
       data: []
@@ -610,14 +566,12 @@ class ApiService {
   }
 
   static async getEmotionHistory(timeRange?: string): Promise<ApiResponse<any[]>> {
-    // Backend likely doesn't have emotion history endpoint, return empty array
     return {
       success: true,
       data: []
     };
   }
 
-  // Analytics LLM service - matching web app backend proxy
   static async callAnalyticsLLM(prompt: string): Promise<ApiResponse<{ content: string }>> {
     return this.apiRequest('/analytics/llm', {
       method: 'POST',
@@ -1140,17 +1094,25 @@ class ApiService {
       if (options.filter) params.append('filter', options.filter);
       if (options.includeMatching) params.append('includeMatching', 'true');
       
-      const response = await this.apiRequest(`/cloud/events?${params.toString()}`, {
-        method: options.userEmotionalState ? 'POST' : 'GET',
-        ...(options.userEmotionalState && {
-          body: JSON.stringify({
-            emotionalState: options.userEmotionalState,
-            model: 'openai/gpt-4o-mini',
-            maxTokens: 2000,
-            temperature: 0.6
+      // Use different endpoints based on whether AI matching is requested
+      const endpoint = options.userEmotionalState ? '/cloud/events/match' : '/cloud/events';
+      const method = options.userEmotionalState ? 'POST' : 'GET';
+      
+      const response = await this.apiRequest(
+        options.userEmotionalState ? endpoint : `${endpoint}?${params.toString()}`,
+        {
+          method,
+          ...(options.userEmotionalState && {
+            body: JSON.stringify({
+              emotionalState: options.userEmotionalState,
+              filters: { filter: options.filter },
+              model: 'openai/gpt-4o-mini',
+              maxTokens: 2000,
+              temperature: 0.6
+            })
           })
-        })
-      });
+        }
+      );
       
       // If endpoint doesn't exist or returns empty data, return empty array instead of error
       if (!response.success && response.error?.includes('404')) {
@@ -1854,7 +1816,7 @@ class ApiService {
   private static detectAndTriggerToolExecution(content: string): void {
     if (!content) return;
 
-    // Debug log (remove in production)
+    // Debug log
     if (content.includes('🔍') || content.includes('🎵') || content.includes('📰')) {
       console.log('🔧 API: Checking content for tool patterns:', content.substring(0, 200));
     }
@@ -2056,7 +2018,133 @@ class ApiService {
     }
   }
 
-  // File Upload API
+  // Secure Cloud Upload API (NEW - uses server-side AWS proxy)
+  static async uploadSecureImage(
+    file: FormData, 
+    imageType: 'profile' | 'banner' | 'general' = 'general'
+  ): Promise<ApiResponse<{ url: string; key: string; size: number; originalSize: number }>> {
+    try {
+      // Add image type to form data
+      file.append('imageType', imageType);
+      
+      const response = await this.apiRequest('/api/cloud/upload-image', {
+        method: 'POST',
+        body: file,
+        // Don't set Content-Type for FormData - let the browser handle it
+      });
+
+      if (response.success && response.data) {
+        console.log('✅ Secure image upload successful:', response.data);
+        return response;
+      } else {
+        console.error('❌ Secure image upload failed:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Secure image upload failed'
+        };
+      }
+    } catch (error) {
+      this.logError('uploadSecureImage', error, '/api/cloud/upload-image');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Secure image upload failed'
+      };
+    }
+  }
+
+  // Secure Profile Image Upload (with multiple sizes)
+  static async uploadProfileImage(file: FormData): Promise<ApiResponse<{ 
+    images: Array<{ size: string; url: string; key: string }>; 
+    userId: string; 
+  }>> {
+    try {
+      const response = await this.apiRequest('/api/cloud/upload-profile-image', {
+        method: 'POST',
+        body: file,
+      });
+
+      if (response.success && response.data) {
+        console.log('✅ Secure profile image upload successful:', response.data);
+        return response;
+      } else {
+        console.error('❌ Secure profile image upload failed:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Profile image upload failed'
+        };
+      }
+    } catch (error) {
+      this.logError('uploadProfileImage', error, '/api/cloud/upload-profile-image');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Profile image upload failed'
+      };
+    }
+  }
+
+  // Delete Secure Image
+  static async deleteSecureImage(key: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      const response = await this.apiRequest('/api/cloud/delete-image', {
+        method: 'DELETE',
+        body: JSON.stringify({ key }),
+      });
+
+      if (response.success) {
+        console.log('✅ Secure image deletion successful');
+        return response;
+      } else {
+        console.error('❌ Secure image deletion failed:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Image deletion failed'
+        };
+      }
+    } catch (error) {
+      this.logError('deleteSecureImage', error, '/api/cloud/delete-image');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Image deletion failed'
+      };
+    }
+  }
+
+  // Get Secure Image URL (with optional optimization params)
+  static async getSecureImageUrl(
+    key: string, 
+    options?: { width?: number; height?: number; quality?: number; format?: string }
+  ): Promise<ApiResponse<{ url: string; expiresAt: string }>> {
+    try {
+      const params = new URLSearchParams({ key });
+      if (options?.width) params.append('width', options.width.toString());
+      if (options?.height) params.append('height', options.height.toString());
+      if (options?.quality) params.append('quality', options.quality.toString());
+      if (options?.format) params.append('format', options.format);
+
+      const response = await this.apiRequest(`/api/cloud/signed-url?${params.toString()}`, {
+        method: 'GET',
+      });
+
+      if (response.success && response.data) {
+        console.log('✅ Secure image URL generated');
+        return response;
+      } else {
+        console.error('❌ Secure image URL generation failed:', response.error);
+        return {
+          success: false,
+          error: response.error || 'Failed to generate image URL'
+        };
+      }
+    } catch (error) {
+      this.logError('getSecureImageUrl', error, '/api/cloud/signed-url');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to generate image URL'
+      };
+    }
+  }
+
+  // Legacy File Upload API (for backward compatibility)
   static async uploadFile(file: FormData): Promise<ApiResponse<{ url: string; extractedText?: string }>> {
     try {
       // Get token from AuthManager
@@ -2103,7 +2191,7 @@ class ApiService {
     }
   }
 
-  // Enhanced chat message with file support
+      // Chat message with file support
   static async sendChatMessageWithFiles(
     message: ChatMessage & { files?: FileAttachment[] },
     onChunk?: (chunk: string) => void

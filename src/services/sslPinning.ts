@@ -45,7 +45,7 @@ class SSLPinningService {
       }
 
       // In production, implement actual SSL pinning here
-      // This would involve:
+      // Would involve:
       // 1. Extracting the certificate from the connection
       // 2. Computing the public key hash
       // 3. Comparing against known good hashes

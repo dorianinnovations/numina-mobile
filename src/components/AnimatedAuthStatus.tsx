@@ -113,7 +113,7 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
             easing: Easing.out(Easing.cubic),
             useNativeDriver: true,
           }),
-          // Enhanced scale animation
+          // Scale animation
           Animated.sequence([
             Animated.timing(pulseScale, {
               toValue: 1.15,
@@ -128,7 +128,7 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
               useNativeDriver: true,
             }),
           ]),
-          // Enhanced checkmark entrance
+          // Checkmark entrance
           Animated.sequence([
             // Start small and grow
             Animated.timing(checkmarkScale, {

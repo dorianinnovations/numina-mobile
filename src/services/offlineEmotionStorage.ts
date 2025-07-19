@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SimpleSecureStorageService from './simpleSecureStorage';
+import CloudAuth from './cloudAuth';
 
 interface EmotionLog {
   mood: string;
@@ -37,7 +37,7 @@ class OfflineEmotionStorage {
 
   static async storeEmotion(emotionData: any, userId?: string): Promise<EmotionLog> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const emotionLog: EmotionLog = {
@@ -78,7 +78,7 @@ class OfflineEmotionStorage {
 
   static async markAsSynced(emotionId: string, userId?: string): Promise<void> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       // Update in main storage
@@ -101,7 +101,7 @@ class OfflineEmotionStorage {
 
   static async getUnsyncedEmotions(userId?: string): Promise<EmotionLog[]> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const queue = await AsyncStorage.getItem(keys.SYNC_QUEUE);
@@ -114,7 +114,7 @@ class OfflineEmotionStorage {
 
   static async getCurrentSession(userId?: string): Promise<any> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const emotions = await AsyncStorage.getItem(keys.EMOTIONS);
@@ -130,7 +130,7 @@ class OfflineEmotionStorage {
 
   static async generateDayInsights(day: string, userId?: string): Promise<any> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const emotions = await AsyncStorage.getItem(keys.EMOTIONS);
@@ -154,7 +154,7 @@ class OfflineEmotionStorage {
 
   static async generateWeeklyReport(userId?: string): Promise<any> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const emotions = await AsyncStorage.getItem(keys.EMOTIONS);
@@ -212,7 +212,7 @@ class OfflineEmotionStorage {
 
   static async getSessionHistory(limit: number, offset: number, userId?: string): Promise<any> {
     try {
-      const currentUserId = userId || await SimpleSecureStorageService.getCurrentUserId() || 'guest';
+      const currentUserId = userId || CloudAuth.getInstance().getCurrentUserId() || 'guest';
       const keys = this.getStorageKeys(currentUserId);
 
       const emotions = await AsyncStorage.getItem(keys.EMOTIONS);

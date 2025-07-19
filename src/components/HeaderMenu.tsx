@@ -202,7 +202,7 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
     };
   }, [resetAnimations]);
 
-  // Enhanced button press handler
+      // Button press handler
   const handleMenuButtonPress = useCallback((actionKey: string, index: number) => {
     if (isAnimating || pressedIndex !== null) return;
     
@@ -293,11 +293,6 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
             width: menuWidth,
             backgroundColor: isDarkMode ? '#1a1a1a' : 'rgba(255, 255, 255, 0.98)',
             borderColor: isDarkMode ? '#333' : 'rgba(0, 0, 0, 0.1)',
-            shadowColor: isDarkMode ? '#000' : '#000',
-            shadowOffset: { width: 0, height: 3 },
-            shadowOpacity: isDarkMode ? 0.6 : 0.3,
-            shadowRadius: 6,
-            elevation: 8,
             opacity: opacityAnim,
             transform: [
               { scale: scaleAnim },

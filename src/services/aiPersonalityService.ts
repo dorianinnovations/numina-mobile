@@ -25,16 +25,14 @@ interface PersonalityContext {
   responsePersonalization?: string;
 }
 
-// Generate user-specific cache keys
 const getCacheKeys = (userId: string) => ({
   emotionalState: `@ai_emotional_state_${userId}`,
   personalityPreferences: `@ai_personality_preferences_${userId}`,
   adaptationHistory: `@ai_adaptation_history_${userId}`,
 });
 
-// Performance optimization: Cache duration reduced for faster updates
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes instead of 1 hour
-const DEBOUNCE_DELAY = 2000; // 2 seconds debounce for API calls
+const CACHE_DURATION = 15 * 60 * 1000;
+const DEBOUNCE_DELAY = 2000;
 
 class AIPersonalityService {
   private static instance: AIPersonalityService;
@@ -50,9 +48,7 @@ class AIPersonalityService {
     return this.instance;
   }
 
-  // Optimized emotional state analysis with better caching and debouncing
   async analyzeCurrentEmotionalState(): Promise<UserEmotionalState> {
-    // Check authentication before making API calls
     if (!CloudAuth.getInstance().isAuthenticated()) {
       console.log('⚡ Using fast local analysis based on 1 recent emotions');
       return this.getDefaultEmotionalState();
@@ -60,20 +56,17 @@ class AIPersonalityService {
 
     const now = Date.now();
     
-    // Check for recent cached state (within 15 minutes)
     const cached = await this.getCachedEmotionalState();
     if (cached && (now - this.lastAnalysisTime) < CACHE_DURATION) {
       console.log('🚀 Using cached emotional state (age:', Math.round((now - this.lastAnalysisTime) / 1000), 's)');
       return cached;
     }
 
-    // Debounce rapid requests
     if (this.pendingAnalysis && (now - this.lastAnalysisTime) < DEBOUNCE_DELAY) {
       console.log('⏳ Returning pending analysis to avoid duplicate requests');
       return this.pendingAnalysis;
     }
 
-    // Start new analysis
     this.pendingAnalysis = this.performEmotionalAnalysis();
     this.lastAnalysisTime = now;
     
@@ -89,32 +82,26 @@ class AIPersonalityService {
 
   private async performEmotionalAnalysis(): Promise<UserEmotionalState> {
     try {
-      // Get recent emotions from local storage (fast)
       const recentSession = await emotionalAnalyticsAPI.getCurrentSession();
       const recentEmotions = recentSession.recentEmotions || [];
       
-      // Quick local analysis first for immediate response
       const localState = this.generateLocalEmotionalState(recentEmotions);
       
-      // If recent emotions exist, use local analysis immediately
       if (recentEmotions.length > 0) {
         console.log('⚡ Using fast local analysis based on', recentEmotions.length, 'recent emotions');
         this.currentEmotionalState = localState;
         await this.cacheEmotionalState(localState);
         
-        // Start background AI analysis for better accuracy
         this.performBackgroundAIAnalysis(recentEmotions);
         
         return localState;
       }
 
-      // Only call AI if conversation history exists or no recent emotions
       const conversationHistory = await this.getRecentConversations();
       
       if (conversationHistory.length > 0) {
         console.log('🧠 Performing AI analysis with', conversationHistory.length, 'conversations');
         
-        // Call AI analysis endpoint with timeout
         const response = await Promise.race([
           ApiService.analyzeUserEmotionalState({
             recentEmotions,
@@ -133,18 +120,15 @@ class AIPersonalityService {
         }
       }
       
-      // Fallback to local analysis
       console.log('🔄 Falling back to local analysis');
       return localState;
     } catch (error) {
       console.error('Error analyzing emotional state:', error);
-      // Return cached state or generate basic state
       const cached = await this.getCachedEmotionalState();
       return cached || this.generateDefaultEmotionalState();
     }
   }
 
-  // Background AI analysis that doesn't block the UI
   private async performBackgroundAIAnalysis(recentEmotions: any[]): Promise<void> {
     try {
       const conversationHistory = await this.getRecentConversations();
@@ -165,18 +149,15 @@ class AIPersonalityService {
     }
   }
 
-  // Generate personality recommendations based on emotional state
   async getPersonalityRecommendations(emotionalState?: UserEmotionalState): Promise<AIPersonality> {
     const state = emotionalState || this.currentEmotionalState || await this.analyzeCurrentEmotionalState();
     
-    // Check for cached personality recommendations
     const cached = await this.getCachedPersonalityRecommendations(state.mood);
     if (cached) {
       console.log('🚀 Using cached personality recommendations for mood:', state.mood);
       return cached;
     }
     
-    // Check authentication before making API calls
     if (!CloudAuth.getInstance().isAuthenticated()) {
       console.log('🔄 Using local personality recommendations');
       return this.getDefaultPersonality();
@@ -193,7 +174,6 @@ class AIPersonalityService {
           contextualHints: response.data.contextualHints || [],
         };
         
-        // Cache the personality recommendations
         await this.cachePersonalityRecommendations(state.mood, personality);
         return personality;
       }
@@ -201,12 +181,10 @@ class AIPersonalityService {
       console.error('Error getting personality recommendations:', error);
     }
     
-    // Fallback to local personality analysis
     console.log('🔄 Using local personality recommendations');
     return this.generateLocalPersonalityRecommendations(state);
   }
 
-  // Send adaptive chat message with personality context and optional attachments
   async sendAdaptiveChatMessage(
     prompt: string,
     onChunk: (chunk: string, context?: PersonalityContext) => void,
@@ -215,7 +193,6 @@ class AIPersonalityService {
     const emotionalState = await this.analyzeCurrentEmotionalState();
     const personality = await this.getPersonalityRecommendations(emotionalState);
     
-    // Always create personality context based on current state
     const defaultPersonalityContext: PersonalityContext = {
       communicationStyle: personality.communicationStyle,
       emotionalTone: this.getEmotionalTone(emotionalState),
@@ -225,7 +202,6 @@ class AIPersonalityService {
     };
     
     try {
-      // Try adaptive chat endpoint first with attachments support
       const result = await ApiService.sendAdaptiveChatMessage(
         {
           prompt: prompt,
@@ -237,12 +213,10 @@ class AIPersonalityService {
           attachments: attachments, // Pass attachments to backend
         },
         (chunk, context) => {
-          // Use server context if provided, otherwise use default
           onChunk(chunk, context || defaultPersonalityContext);
         }
       );
       
-      // Ensure result has personality context
       if (!result.personalityContext) {
         console.log('🧠 No personality context from server, using default:', defaultPersonalityContext);
         result.personalityContext = defaultPersonalityContext;
@@ -252,14 +226,13 @@ class AIPersonalityService {
     } catch (error) {
       console.error('Adaptive chat failed, falling back to standard:', error);
       
-      // Enhanced prompt with personality context
       const enhancedPrompt = this.enhancePromptWithPersonality(prompt, emotionalState, personality);
       
       let fullContent = '';
       await ApiService.sendChatMessageStreaming(
         { 
           prompt: enhancedPrompt,
-          attachments: attachments // Include attachments in fallback
+          attachments: attachments
         },
         (chunk) => {
           fullContent = chunk;
@@ -271,7 +244,6 @@ class AIPersonalityService {
     }
   }
 
-  // Submit feedback on AI personality adaptation
   async submitPersonalityFeedback(
     messageId: string,
     feedbackType: 'helpful' | 'not_helpful' | 'love_it',
@@ -287,16 +259,13 @@ class AIPersonalityService {
         userEmotionalState: emotionalState,
       });
       
-      // Update local preferences
       await this.updatePersonalityPreferences(personalityStyle, feedbackType);
     } catch (error) {
       console.error('Error submitting personality feedback:', error);
-      // Store feedback locally for later sync
       await this.storeFeedbackLocally(messageId, feedbackType, personalityStyle);
     }
   }
 
-  // Generate contextual suggestions based on emotional state
   getContextualSuggestions(emotionalState: UserEmotionalState): string[] {
     const { mood, intensity, timeOfDay } = emotionalState;
     
@@ -353,7 +322,6 @@ class AIPersonalityService {
     ];
   }
 
-  // Get adaptive placeholder text
   getAdaptivePlaceholder(emotionalState: UserEmotionalState, personality: AIPersonality): string {
     const { mood, intensity, timeOfDay } = emotionalState;
     const { communicationStyle } = personality;
@@ -390,9 +358,7 @@ class AIPersonalityService {
     }
   }
 
-  // Private helper methods
   private async getRecentConversations(): Promise<any[]> {
-    // This would get recent chat history - simplified for now
     try {
       const stored = await AsyncStorage.getItem('@recent_conversations');
       return stored ? JSON.parse(stored) : [];
@@ -445,12 +411,10 @@ class AIPersonalityService {
     };
   }
 
-  // Public method for generating default emotional state
   public getDefaultEmotionalState(): UserEmotionalState {
     return this.generateDefaultEmotionalState();
   }
 
-  // Public method for generating default personality
   public getDefaultPersonality(): AIPersonality {
     const defaultState = this.getDefaultEmotionalState();
     return this.generateLocalPersonalityRecommendations(defaultState);
@@ -497,7 +461,6 @@ ${prompt}`;
   }
 
   private extractPatterns(emotions: any[]): string[] {
-    // Simple pattern extraction - could be enhanced with ML
     const moodCounts: { [key: string]: number } = {};
     emotions.forEach(emotion => {
       const mood = emotion.emotion || emotion.mood;
@@ -561,7 +524,6 @@ ${prompt}`;
       const cached = await AsyncStorage.getItem(key);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        // Use cached data if less than 30 minutes old
         if (Date.now() - timestamp < 30 * 60 * 1000) {
           return data;
         }
@@ -583,7 +545,6 @@ ${prompt}`;
       const cached = await AsyncStorage.getItem(cacheKeys.emotionalState);
       if (cached) {
         const { data, timestamp } = JSON.parse(cached);
-        // Use cached data if less than 15 minutes old (reduced from 1 hour)
         if (Date.now() - timestamp < CACHE_DURATION) {
           return data;
         }

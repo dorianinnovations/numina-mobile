@@ -5,7 +5,7 @@ import { imagePreloader } from './imagePreloader';
  * Preloads critical images that are used across the app
  */
 
-// Critical app images that should be preloaded immediately
+// App images for immediate preloading
 const numinaLogo = require('../assets/images/chromelogo.png');
 const happyNuminaImage = require('../assets/images/happynumina.png');
 const numinaContentImage = require('../assets/images/numinacontent.png');

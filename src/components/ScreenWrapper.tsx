@@ -12,7 +12,10 @@ interface ScreenWrapperProps {
   showBackButton?: boolean;
   showMenuButton?: boolean;
   showConversationsButton?: boolean;
+  showQuickAnalyticsButton?: boolean;
   onConversationSelect?: (conversation: any) => void;
+  onStartNewChat?: () => void;
+  onQuickAnalyticsPress?: () => void;
   currentConversationId?: string;
   title?: string;
   subtitle?: string;
@@ -32,7 +35,10 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   showBackButton = false,
   showMenuButton = false,
   showConversationsButton = false,
+  showQuickAnalyticsButton = false,
   onConversationSelect,
+  onStartNewChat,
+  onQuickAnalyticsPress,
   currentConversationId,
   title,
   subtitle,
@@ -144,10 +150,13 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           showBackButton={showBackButton}
           showMenuButton={showMenuButton}
           showConversationsButton={showConversationsButton}
+          showQuickAnalyticsButton={showQuickAnalyticsButton}
           onBackPress={handleBackPress}
           onMenuPress={handleMenuAction}
           onTitlePress={handleTitlePress}
           onConversationSelect={onConversationSelect}
+          onStartNewChat={onStartNewChat}
+          onQuickAnalyticsPress={onQuickAnalyticsPress}
           currentConversationId={currentConversationId}
           {...headerProps}
           onRestoreHeader={headerProps?.onRestoreHeader}

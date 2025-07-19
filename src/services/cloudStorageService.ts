@@ -1,3 +1,7 @@
+// ⚠️ DEPRECATED: This service is deprecated and uses client-side AWS credentials
+// Use SecureCloudStorageService instead for secure server-side uploads
+// @deprecated Use getSecureCloudStorageService() from './secureCloudStorageService'
+
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import * as FileSystem from 'expo-file-system';
@@ -15,12 +19,17 @@ interface UploadProgress {
   percentage: number;
 }
 
+/**
+ * @deprecated This class is deprecated and exposes AWS credentials on the client
+ * Use SecureCloudStorageService instead for secure server-side uploads
+ */
 class CloudStorageService {
   private s3Client: S3Client;
   private bucketName: string;
   private region: string;
 
   constructor() {
+    console.warn('⚠️ DEPRECATED: CloudStorageService is deprecated. Use SecureCloudStorageService instead.');
     // These would be set via environment variables
     this.region = process.env.EXPO_PUBLIC_AWS_REGION || 'us-east-1';
     this.bucketName = process.env.EXPO_PUBLIC_S3_BUCKET_NAME || 'numina-user-content';
@@ -28,8 +37,8 @@ class CloudStorageService {
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: process.env.EXPO_PUBLIC_AWS_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.EXPO_PUBLIC_AWS_SECRET_ACCESS_KEY || '',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
       },
     });
   }

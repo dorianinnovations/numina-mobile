@@ -80,6 +80,9 @@ class CloudAuth {
         console.log('🔐 CLOUD AUTH: Login successful for user:', data.data.user.id);
         return { success: true };
       } else {
+        // IMPORTANT: Do NOT update auth state on login failure
+        console.log('🔐 CLOUD AUTH: Login failed, auth state remains unchanged');
+        
         let error = data.error || data.message || 'Login failed';
         
         // User-friendly error messages

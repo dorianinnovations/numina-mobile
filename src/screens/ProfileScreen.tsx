@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   Alert,
   TextInput,
   Image,
+  Animated,
+  Easing,
+  RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from '@expo/vector-icons';
@@ -18,12 +21,12 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { PageBackground } from '../components/PageBackground';
-import { Header } from '../components/Header';
+import { ScreenWrapper } from '../components/ScreenWrapper';
+import { useNavigation } from '@react-navigation/native';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
-  onTitlePress?: () => void;
-  onMenuPress?: (key: string) => void;
 }
 
 interface UserProfile {
@@ -36,16 +39,36 @@ interface UserProfile {
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   onNavigateBack,
-  onTitlePress,
-  onMenuPress,
 }) => {
   const { isDarkMode } = useTheme();
   const { userData } = useAuth();
+  const navigation = useNavigation();
+  
+  // Pull-to-refresh functionality
+  const { refreshControl } = usePullToRefresh(async () => {
+    // Refresh profile data
+    console.log('Refreshing profile...');
+  });
   
   const [editMode, setEditMode] = useState(false);
+  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
+  
+  // Animation values
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const containerScale = useRef(new Animated.Value(0.3)).current;
+  const containerOpacity = useRef(new Animated.Value(0)).current;
+  const iconScale = useRef(new Animated.Value(0)).current;
+  const iconRotation = useRef(new Animated.Value(0)).current;
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const titleTranslateY = useRef(new Animated.Value(30)).current;
+  const messageOpacity = useRef(new Animated.Value(0)).current;
+  const messageTranslateY = useRef(new Animated.Value(20)).current;
+  const pulseScale = useRef(new Animated.Value(1)).current;
+  const closeButtonOpacity = useRef(new Animated.Value(0)).current;
+  const closeButtonTranslateY = useRef(new Animated.Value(30)).current;
   const [profile, setProfile] = useState<UserProfile>({
     profileImage: undefined,
-    displayName: userData?.displayName || userData?.email?.split('@')[0] || 'User',
+    displayName: userData?.email?.split('@')[0] || 'User',
     bio: '',
     location: '',
     email: userData?.email || '',
@@ -74,11 +97,167 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       
       await AsyncStorage.setItem('userProfile', JSON.stringify(profile));
       setEditMode(false);
-      Alert.alert('Success', 'Profile updated successfully!');
+      setShowSuccessScreen(true);
+      
+      // Start the amazing animation sequence
+      startSuccessAnimation();
+      
+      // Auto-hide success screen after 2 seconds (quick animation)
+      setTimeout(() => {
+        hideSuccessScreen();
+      }, 2000);
     } catch (error) {
       console.error('Error saving profile:', error);
       Alert.alert('Error', 'Failed to save profile. Please try again.');
     }
+  };
+
+  const startSuccessAnimation = () => {
+    // Reset all animation values
+    overlayOpacity.setValue(0);
+    containerScale.setValue(0.3);
+    containerOpacity.setValue(0);
+    iconScale.setValue(0);
+    iconRotation.setValue(0);
+    titleOpacity.setValue(0);
+    titleTranslateY.setValue(30);
+    messageOpacity.setValue(0);
+    messageTranslateY.setValue(20);
+    pulseScale.setValue(1);
+    closeButtonOpacity.setValue(0);
+    closeButtonTranslateY.setValue(30);
+
+    // Everything happens in parallel within 200ms
+    Animated.parallel([
+      // Overlay fade in
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: 150,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Container appears with quick bounce
+      Animated.timing(containerOpacity, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerScale, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.out(Easing.back(1.2)),
+        useNativeDriver: true,
+      }),
+      // Icon quick scale and rotation
+      Animated.timing(iconScale, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(iconRotation, {
+        toValue: 1,
+        duration: 200,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Title appears quickly
+      Animated.timing(titleOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 50,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(titleTranslateY, {
+        toValue: 0,
+        duration: 200,
+        delay: 50,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Message appears quickly
+      Animated.timing(messageOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 100,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(messageTranslateY, {
+        toValue: 0,
+        duration: 200,
+        delay: 100,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      // Close button appears quickly
+      Animated.timing(closeButtonOpacity, {
+        toValue: 1,
+        duration: 200,
+        delay: 150,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(closeButtonTranslateY, {
+        toValue: 0,
+        duration: 200,
+        delay: 150,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      // Start gentle pulse after everything is visible
+      startPulseAnimation();
+    });
+  };
+
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseScale, {
+          toValue: 1.1,
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseScale, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const hideSuccessScreen = () => {
+    // Elegant exit animation
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerScale, {
+        toValue: 0.8,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowSuccessScreen(false);
+      // Stop pulse animation
+      pulseScale.stopAnimation();
+    });
   };
 
   const pickImage = async () => {
@@ -119,48 +298,66 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   };
 
   return (
-    <PageBackground>
-      <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-          backgroundColor="transparent"
-          translucent={true}
-        />
-        
-        <Header 
-          title={editMode ? 'Edit Profile' : 'Profile'}
-          showBackButton={true}
-          showMenuButton={true}
-          onBackPress={onNavigateBack}
-          onTitlePress={onTitlePress}
-          onMenuPress={onMenuPress}
-        />
-        
-        {/* Edit Button */}
-        <View style={styles.headerButtonContainer}>
-          <TouchableOpacity
-            style={[styles.headerButton, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}
-            onPress={editMode ? saveProfile : () => {
-              // Light haptic for entering edit mode
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setEditMode(true);
-            }}
-          >
-            <FontAwesome5 
-              name={editMode ? 'check' : 'edit'} 
-              size={18} 
-              color={isDarkMode ? '#86efac' : '#10b981'} 
-            />
-          </TouchableOpacity>
-        </View>
+    <ScreenWrapper
+      showHeader={true}
+      showBackButton={true}
+      showMenuButton={true}
+      title={editMode ? 'Edit Profile' : 'Profile'}
+      onBackPress={onNavigateBack}
+    >
+      <PageBackground>
+        <SafeAreaView style={styles.container}>
+          <StatusBar 
+            barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+            backgroundColor="transparent"
+            translucent={true}
+          />
+          
+          {/* Edit Button */}
+          <View style={styles.headerButtonContainer}>
+            <TouchableOpacity
+              style={[
+                styles.headerButton,
+                {
+                  backgroundColor: isDarkMode 
+                    ? '#1a1a1a' 
+                    : '#add5fa',
+                  borderColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.1)' 
+                    : 'rgba(255, 255, 255, 0.3)',
+                }
+              ]}
+              onPress={editMode ? saveProfile : () => {
+                // Light haptic for entering edit mode
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setEditMode(true);
+              }}
+            >
+              <FontAwesome5 
+                name={editMode ? 'check' : 'edit'} 
+                size={18} 
+                color={isDarkMode ? '#99CCFF' : '#3e98ff'} 
+              />
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Profile Header */}
-          <View style={styles.profileHeader}>
+        <View style={styles.contentContainer}>
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshControl.refreshing}
+                onRefresh={refreshControl.onRefresh}
+                tintColor="transparent"
+                colors={['transparent']}
+                progressBackgroundColor="transparent"
+              />
+            }
+          >
+            {/* Profile Header */}
+            <View style={styles.profileHeader}>
             <TouchableOpacity 
               style={styles.profileImageContainer}
               onPress={editMode ? pickImage : undefined}
@@ -268,9 +465,112 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </View>
           </View>
-        </ScrollView>
-      </SafeAreaView>
-    </PageBackground>
+          </ScrollView>
+        </View>
+        </SafeAreaView>
+        
+        {/* Success Screen Overlay */}
+        {showSuccessScreen && (
+          <Animated.View style={[
+            styles.successOverlay,
+            {
+              opacity: overlayOpacity,
+            }
+          ]}>
+            <Animated.View style={[
+              styles.successContainer,
+              {
+                backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+                borderColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.1)' 
+                  : 'rgba(255, 255, 255, 0.3)',
+                opacity: containerOpacity,
+                transform: [{ scale: containerScale }],
+              }
+            ]}>
+              <Animated.View
+                style={{
+                  transform: [
+                    { scale: Animated.multiply(iconScale, pulseScale) },
+                    { 
+                      rotate: iconRotation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }) 
+                    }
+                  ]
+                }}
+              >
+                <FontAwesome5 
+                  name="check-circle" 
+                  size={48} 
+                  color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
+                />
+              </Animated.View>
+              
+              <Animated.View
+                style={{
+                  opacity: titleOpacity,
+                  transform: [{ translateY: titleTranslateY }],
+                }}
+              >
+                <Text style={[
+                  styles.successTitle,
+                  { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                ]}>
+                  Profile Updated!
+                </Text>
+              </Animated.View>
+              
+              <Animated.View
+                style={{
+                  opacity: messageOpacity,
+                  transform: [{ translateY: messageTranslateY }],
+                }}
+              >
+                <Text style={[
+                  styles.successMessage,
+                  { color: isDarkMode ? '#a0aec0' : '#718096' }
+                ]}>
+                  Your changes have been saved successfully
+                </Text>
+              </Animated.View>
+              
+              {/* Close Button */}
+              <Animated.View
+                style={{
+                  opacity: closeButtonOpacity,
+                  transform: [{ translateY: closeButtonTranslateY }],
+                  marginTop: 24,
+                  width: '100%',
+                }}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.closeButton,
+                    {
+                      backgroundColor: isDarkMode ? '#6ec5ff' : '#4a5568',
+                    }
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    hideSuccessScreen();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.closeButtonText,
+                    { color: isDarkMode ? '#1a1a1a' : '#ffffff' }
+                  ]}>
+                    Continue
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
+          </Animated.View>
+        )}
+      </PageBackground>
+    </ScreenWrapper>
   );
 };
 
@@ -278,43 +578,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  contentContainer: {
+    flex: 1,
+    paddingTop: 80,
+  },
   headerButtonContainer: {
     position: 'absolute',
-    top: 100,
-    right: 20,
-    zIndex: 100,
+    top: 140,
+    right: 35,
+    zIndex: 1000,
   },
   headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+    borderWidth: 1,
+    backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.12,
     shadowRadius: 4,
+    elevation: 4,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 120,
+    paddingTop: 20,
     paddingBottom: 40,
   },
   profileHeader: {
     padding: 20,
     alignItems: 'center',
+    
   },
   profileImageContainer: {
     marginBottom: 20,
     position: 'relative',
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 150,
+    height: 150,
+    borderRadius: 150,
   },
   placeholderImage: {
     justifyContent: 'center',
@@ -324,7 +631,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#10b981',
+    backgroundColor: '#3e98ff',
     borderRadius: 16,
     width: 32,
     height: 32,
@@ -359,5 +666,60 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: 'top',
+  },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2000,
+  },
+  successContainer: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    fontFamily: 'Nunito_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  closeButton: {
+    width: '100%',
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
   },
 });

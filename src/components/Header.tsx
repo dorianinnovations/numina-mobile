@@ -15,11 +15,13 @@ import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { useRefresh } from '../contexts/RefreshContext';
 import { HeaderMenu } from './HeaderMenu';
-import { OptimizedImage } from './OptimizedImage';
 import { AnimatedHamburger } from './AnimatedHamburger';
 import { AnimatedBackArrow } from './AnimatedBackArrow';
+import { AnimatedConversationsIcon } from './AnimatedConversationsIcon';
 import { ConversationHistory } from './ConversationHistory';
+import { AnimatedGradientBorder } from './AnimatedGradientBorder';
 
 const numinaLogo = require('../assets/images/happynumina.png');
 
@@ -27,10 +29,13 @@ interface HeaderProps {
   showBackButton?: boolean;
   showMenuButton?: boolean;
   showConversationsButton?: boolean;
+  showQuickAnalyticsButton?: boolean;
   onBackPress?: () => void;
   onMenuPress?: (key: string) => void;
   onTitlePress?: () => void;
   onConversationSelect?: (conversation: any) => void;
+  onStartNewChat?: () => void;
+  onQuickAnalyticsPress?: () => void;
   currentConversationId?: string;
   title?: string;
   subtitle?: string;
@@ -38,16 +43,21 @@ interface HeaderProps {
   isStreaming?: boolean;
   onRestoreHeader?: () => void;
   showAuthOptions?: boolean;
+  isRefreshing?: boolean;
+  refreshAnimationSpeed?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   showBackButton = false,
   showMenuButton = false,
   showConversationsButton = false,
+  showQuickAnalyticsButton = false,
   onBackPress,
   onMenuPress,
   onTitlePress,
   onConversationSelect,
+  onStartNewChat,
+  onQuickAnalyticsPress,
   currentConversationId,
   title,
   subtitle,
@@ -55,16 +65,24 @@ export const Header: React.FC<HeaderProps> = ({
   isStreaming = false,
   onRestoreHeader,
   showAuthOptions = true,
+  isRefreshing = false,
+  refreshAnimationSpeed = 2000,
 }) => {
   const { isDarkMode } = useTheme();
+  const { isRefreshing: globalRefreshing } = useRefresh();
   const [menuVisible, setMenuVisible] = useState(false);
   const [conversationsVisible, setConversationsVisible] = useState(false);
   const [menuButtonPosition, setMenuButtonPosition] = useState({ x: 0, y: 0, width: 34, height: 34 });
   const [backArrowPressed, setBackArrowPressed] = useState(false);
+  const [conversationsPressed, setConversationsPressed] = useState(false);
+  const [menuPressed, setMenuPressed] = useState(false);
+  const [brainPressed, setBrainPressed] = useState(false);
   
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const backButtonScale = useRef(new Animated.Value(1)).current;
   const menuButtonScale = useRef(new Animated.Value(1)).current;
   const conversationsButtonScale = useRef(new Animated.Value(1)).current;
+  const brainButtonScale = useRef(new Animated.Value(1)).current;
   const visibilityAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -80,12 +98,12 @@ export const Header: React.FC<HeaderProps> = ({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+
+  }, [showQuickAnalyticsButton]);
   
   useEffect(() => {
-    const targetOpacity = isVisible ? 1 : 0.05;
+    const targetOpacity = isVisible ? 1 : 0.3;
     
-    // Stop any ongoing animation to prevent conflicts
     visibilityAnim.stopAnimation();
     
     Animated.timing(visibilityAnim, {
@@ -101,13 +119,25 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleBackArrowPress = () => {
-    // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Trigger press animation
+    Animated.sequence([
+      Animated.timing(backButtonScale, {
+        toValue: 0.97,
+        duration: 80,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(backButtonScale, {
+        toValue: 1,
+        duration: 120,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+    
     setBackArrowPressed(true);
     
-    // Call the original onBackPress after a short delay
     setTimeout(() => {
       setBackArrowPressed(false);
       if (onBackPress) onBackPress();
@@ -115,23 +145,19 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleMenuButtonPress = (event: any) => {
-    // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Elegant press animation with better timing and easing
     Animated.sequence([
-      // Press down with smooth easing
       Animated.timing(menuButtonScale, {
-        toValue: 0.92,
-        duration: 120,
-        easing: Easing.out(Easing.cubic),
+        toValue: 0.97,
+        duration: 80,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-      // Spring back with satisfying bounce
       Animated.timing(menuButtonScale, {
         toValue: 1,
-        duration: 200,
-        easing: Easing.out(Easing.back(1.4)),
+        duration: 120,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]).start();
@@ -143,28 +169,40 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const handleConversationsButtonPress = () => {
-    // Haptic feedback for premium feel
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    // Elegant press animation with better timing and easing
+    setConversationsPressed(true);
+    
+    setTimeout(() => {
+      setConversationsPressed(false);
+      setConversationsVisible(true);
+    }, 150);
+  };
+
+  const handleBrainButtonPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
     Animated.sequence([
-      // Press down with smooth easing
-      Animated.timing(conversationsButtonScale, {
-        toValue: 0.92,
-        duration: 120,
-        easing: Easing.out(Easing.cubic),
+      Animated.timing(brainButtonScale, {
+        toValue: 0.97,
+        duration: 80,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-      // Spring back with satisfying bounce
-      Animated.timing(conversationsButtonScale, {
+      Animated.timing(brainButtonScale, {
         toValue: 1,
-        duration: 200,
-        easing: Easing.out(Easing.back(1.4)),
+        duration: 120,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
     ]).start();
-
-    setConversationsVisible(true);
+    
+    setBrainPressed(true);
+    
+    setTimeout(() => {
+      setBrainPressed(false);
+      if (onQuickAnalyticsPress) onQuickAnalyticsPress();
+    }, 150);
   };
 
   const handleConversationSelect = (conversation: any) => {
@@ -175,18 +213,23 @@ export const Header: React.FC<HeaderProps> = ({
   };
 
   const headerContent = (
-    <BlurView
-      intensity={isDarkMode ? 40 : 60}
-      tint={isDarkMode ? 'dark' : 'default'}
-      style={[
-        styles.blurContainer,
-        {
-          borderColor: isDarkMode 
-            ? 'rgba(255, 255, 255, 0.1)' 
-            : 'rgba(0, 0, 0, 0.1)',
-        },
-      ]}
+    <AnimatedGradientBorder
+      isActive={isRefreshing || globalRefreshing}
+      borderRadius={12}
+      borderWidth={1}
+      animationSpeed={refreshAnimationSpeed}
+      style={{ flex: 1 }}
     >
+      <BlurView
+        intensity={isDarkMode ? 40 : 60}
+        tint={isDarkMode ? 'dark' : 'default'}
+        style={[
+          styles.blurContainer,
+          {
+            borderWidth: 0,
+          },
+        ]}
+      >
       <View style={styles.headerContent}>
         <View style={styles.leftSection}>
           <TouchableOpacity 
@@ -195,7 +238,7 @@ export const Header: React.FC<HeaderProps> = ({
             activeOpacity={onTitlePress ? 0.7 : 1}
             disabled={!onTitlePress}
           >
-            <OptimizedImage 
+            <Image 
               source={numinaLogo} 
               style={[
                 styles.logo,
@@ -204,8 +247,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }
               ]}
               resizeMode="contain"
-              showLoader={false}
-              preload={false}
+              fadeDuration={0}
             />
             <Text style={[
               styles.numinaText,
@@ -231,27 +273,34 @@ export const Header: React.FC<HeaderProps> = ({
         <View style={styles.rightSection}>
 
               {showBackButton && (
-                <TouchableOpacity
-                    style={[
-                      styles.iconButton,
-                      {
-                        backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
-                      }
-                    ]}
-                    onPress={handleBackArrowPress}
-                    activeOpacity={0.7}
-                  >
-                    <AnimatedBackArrow
-                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
-                      size={16}
-                      isPressed={backArrowPressed}
-                    />
-                  </TouchableOpacity>
+                <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+                  <TouchableOpacity
+                      style={[
+                        styles.iconButton,
+                        {
+                          backgroundColor: isDarkMode 
+                            ? 'rgba(255, 255, 255, 0.05)' 
+                            : 'rgba(255, 255, 255, 1)',
+                          borderColor: isDarkMode 
+                            ? 'rgba(255, 255, 255, 0.08)' 
+                            : 'rgba(255, 255, 255, 0.6)',
+                          shadowColor: '#000000',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                          shadowRadius: 1.5,
+                          elevation: 1,
+                        }
+                      ]}
+                      onPress={handleBackArrowPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedBackArrow
+                        color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                        size={16}
+                        isPressed={backArrowPressed}
+                      />
+                    </TouchableOpacity>
+                </Animated.View>
               )}
 
               {showConversationsButton && (
@@ -261,21 +310,61 @@ export const Header: React.FC<HeaderProps> = ({
                       styles.iconButton,
                       {
                         backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(255, 255, 255, 1)',
                         borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
+                          ? 'rgba(255, 255, 255, 0.08)' 
+                          : 'rgba(255, 255, 255, 0.6)',
+                        shadowColor: '#000000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                        shadowRadius: 1.5,
+                        elevation: 1,
                         marginLeft: showBackButton ? 12 : 0,
                       }
                     ]}
                     onPress={handleConversationsButtonPress}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons
-                      name="forum-outline"
+                    <AnimatedConversationsIcon
+                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                      size={16}
+                      isPressed={conversationsPressed}
+                    />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+
+              {showQuickAnalyticsButton && (
+                <Animated.View style={{ transform: [{ scale: brainButtonScale }] }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(255, 255, 255, 1)',
+                        borderColor: isDarkMode 
+                          ? 'rgba(255, 255, 255, 0.08)' 
+                          : 'rgba(255, 255, 255, 0.6)',
+                        shadowColor: '#000000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                        shadowRadius: 1.5,
+                        elevation: 1,
+                        marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                      }
+                    ]}
+                    onPress={handleBrainButtonPress}
+                    activeOpacity={0.8}
+                  >
+                    <FontAwesome5
+                      name="chart-line"
                       size={16}
                       color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                      style={{
+                        opacity: brainPressed ? 0.7 : 1,
+                      }}
                     />
                   </TouchableOpacity>
                 </Animated.View>
@@ -288,16 +377,21 @@ export const Header: React.FC<HeaderProps> = ({
                       styles.iconButton,
                       {
                         backgroundColor: isDarkMode 
-                          ? '#1a1a1a' 
-                          : '#add5fa',
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(255, 255, 255, 1)',
                         borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.1)' 
-                          : 'rgba(255, 255, 255, 0.3)',
-                        marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                          ? 'rgba(255, 255, 255, 0.08)' 
+                          : 'rgba(255, 255, 255, 0.6)',
+                        shadowColor: '#000000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                        shadowRadius: 1.5,
+                        elevation: 1,
+                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 12 : 0,
                       }
                     ]}
                     onPress={handleMenuButtonPress}
-                    activeOpacity={0.7}
+                    activeOpacity={0.8}
                   >
                     <AnimatedHamburger
                       isOpen={menuVisible}
@@ -310,7 +404,8 @@ export const Header: React.FC<HeaderProps> = ({
             </View>
         </View>
       </BlurView>
-    );
+    </AnimatedGradientBorder>
+  );
 
   return (
     <>
@@ -347,6 +442,7 @@ export const Header: React.FC<HeaderProps> = ({
         visible={conversationsVisible}
         onClose={() => setConversationsVisible(false)}
         onSelectConversation={handleConversationSelect}
+        onStartNewChat={onStartNewChat}
         currentConversationId={currentConversationId}
       />
     </>
@@ -410,18 +506,14 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 44,  // Larger touch target
+    height: 44,
+    borderRadius: 12,  // More rounded for modern look
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    backgroundColor: 'transparent', // Default transparent background
-    // Enhanced mobile shadows for better depth
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: 'transparent',
+    // Better interaction feedback
+    overflow: 'hidden',
   },
 });

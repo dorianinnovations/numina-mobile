@@ -15,7 +15,7 @@ interface State {
   errorInfo: any;
 }
 
-// CRITICAL FIX: Enhanced error boundary with better error handling
+// Enhanced error boundary with better error handling
 export class ChatErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
@@ -27,7 +27,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    // CRITICAL FIX: Enhanced error logging
+    // Enhanced error logging
     console.error('🚨 ChatErrorBoundary caught an error:', {
       error: error.message,
       stack: error.stack,
@@ -74,7 +74,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
             Something went wrong with the chat. This might be due to a temporary issue.
           </Text>
           
-          {/* CRITICAL FIX: Enhanced error details for debugging */}
+          {/* Enhanced error details for debugging */}
           {__DEV__ && this.state.error && (
             <View style={styles.debugContainer}>
               <Text style={styles.debugTitle}>Debug Information:</Text>

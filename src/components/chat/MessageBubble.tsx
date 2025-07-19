@@ -17,6 +17,8 @@ import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
 import { MessageAttachment } from '../../types/message';
 import StreamingMarkdown from '../StreamingMarkdown';
+import { WordByWordStreaming } from '../WordByWordStreaming';
+import FadeInDown from '../FadeInDown';
 import { PhotoPreview } from './PhotoPreview';
 
 const { width } = Dimensions.get('window');
@@ -113,19 +115,14 @@ const BotMessageContent: React.FC<{
       styles.botTextContainer,
       isStreaming && { opacity: animatedOpacity }
     ]}>
-      {isStreaming ? (
-        <StreamingMarkdown
-          content={safeText}
-          isComplete={false}
-          showCursor={true}
-        />
-      ) : (
-        <StreamingMarkdown
-          content={safeText}
-          isComplete={true}
-          showCursor={false}
-        />
-      )}
+      <WordByWordStreaming
+        content={safeText}
+        isStreaming={isStreaming || false}
+        isComplete={!isStreaming}
+        style={styles.streamingContainer}
+        textStyle={styles.streamingText}
+        showCursor={true}
+      />
     </Animated.View>
   );
 };
@@ -163,7 +160,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   useEffect(() => {
     const delay = index * 80;
     
-    // Debug log
+    // Log
     if (isAI) {
       console.log(`🧠 BUBBLE: Message ${message.id} personality context:`, message.personalityContext);
     }
@@ -473,19 +470,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   };
 
   return (
-    <Animated.View
-      style={[
-        styles.container,
-        {
-          opacity: fadeAnim,
-          transform: [
-            { translateY: slideAnim },
-            { scale: scaleAnim },
-          ],
-        },
-        isUser ? styles.userContainer : styles.aiContainer,
-      ]}
-    >
+    <FadeInDown delay={index * 100} duration={400} distance={-30}>
+      <Animated.View
+        style={[
+          styles.container,
+          {
+            opacity: fadeAnim,
+            transform: [
+              { translateY: slideAnim },
+              { scale: scaleAnim },
+            ],
+          },
+          isUser ? styles.userContainer : styles.aiContainer,
+        ]}
+      >
       <TouchableOpacity
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -697,10 +695,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
           </Text>
         )}
       </TouchableOpacity>
-
-
-
-    </Animated.View>
+      </Animated.View>
+    </FadeInDown>
   );
 });
 
@@ -997,5 +993,15 @@ const styles = StyleSheet.create({
     gap: 6,
     alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  streamingContainer: {
+    width: '100%',
+    flex: 1,
+  },
+  streamingText: {
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
   },
 });

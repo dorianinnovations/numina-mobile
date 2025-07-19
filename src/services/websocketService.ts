@@ -2,10 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import CloudAuth from './cloudAuth';
 import ENV from '../config/environment';
 
-/**
- * WebSocket Service for Real-time Communication
- * Handles Socket.IO connections, room management, and real-time events
- */
+
 
 interface WebSocketConfig {
   serverUrl: string;
@@ -79,15 +76,21 @@ class WebSocketService {
   private reconnectTimer: NodeJS.Timeout | null = null;
 
   constructor() {
-    // Use same server as API but with WebSocket protocol
-    const wsUrl = ENV.API_BASE_URL.replace('https://', 'wss://').replace('http://', 'ws://');
+    let wsUrl = ENV.API_BASE_URL;
+    
+    if (wsUrl.endsWith('/api')) {
+      wsUrl = wsUrl.slice(0, -4);
+    }
+    
+    wsUrl = wsUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    
     console.log('🔌 WebSocket will connect to:', wsUrl);
     
     this.config = {
       serverUrl: wsUrl,
-      reconnectionDelay: 10000,
-      maxReconnectionAttempts: 3,
-      timeout: 15000
+      reconnectionDelay: 5000,
+      maxReconnectionAttempts: 5,
+      timeout: 30000
     };
 
     this.connectionStatus = {
@@ -100,9 +103,6 @@ class WebSocketService {
     this.currentRooms = new Set();
   }
 
-  /**
-   * Initialize WebSocket connection
-   */
   async initialize(): Promise<boolean> {
     try {
       if (this.socket) {
@@ -124,13 +124,14 @@ class WebSocketService {
         auth: {
           token: token
         },
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         timeout: this.config.timeout,
-        reconnection: false, // Disable auto-reconnection to control it manually
-        forceNew: true
+        reconnection: false,
+        forceNew: true,
+        upgrade: true,
+        rememberUpgrade: false
       });
 
-      // Set up event handlers immediately
       this.setupEventHandlers();
 
       return new Promise((resolve) => {
@@ -140,7 +141,6 @@ class WebSocketService {
           resolve(false);
         }, this.config.timeout);
 
-        // Use a one-time listener for initialization
         this.socket?.once('connect', () => {
           clearTimeout(timeout);
           this.connectionStatus.lastConnected = new Date();
@@ -152,10 +152,16 @@ class WebSocketService {
           clearTimeout(timeout);
           console.log('🔌 WebSocket connection failed - operating in offline mode');
           
-          // Handle specific "User not found" error - but don't logout, just log it
           if (error.message?.includes('User not found')) {
             console.warn('🔐 User not found on WebSocket server, continuing without WebSocket');
-            // Don't logout - WebSocket issues shouldn't affect authentication
+          } else if (error.message?.includes('timeout')) {
+            console.warn('🔌 WebSocket connection timeout - server may be slow');
+          } else if (error.message?.includes('502')) {
+            console.warn('🔌 WebSocket server unavailable (502) - app will work without real-time features');
+          } else if (error.message?.includes('bad response code')) {
+            console.warn('🔌 WebSocket server configuration issue - continuing without WebSocket');
+          } else {
+            console.warn('🔌 WebSocket error:', error.message);
           }
           
           this.connectionStatus.isConnecting = false;
@@ -170,9 +176,6 @@ class WebSocketService {
     }
   }
 
-  /**
-   * Setup event handlers for WebSocket events
-   */
   private setupEventHandlers(): void {
     if (!this.socket) return;
 
@@ -313,7 +316,18 @@ class WebSocketService {
 
     this.socket.on('ubpm_insight', (data: any) => {
       this.debug('🧠 UBPM insight received:', data);
-      this.emitToHandlers('ubpm_insight', data);
+      this.emitToHandlers('ubmp_insight', data);
+    });
+
+    // Tool execution events for beautiful status indicators
+    this.socket.on('tool_execution_start', (data: any) => {
+      this.debug('🔧 Tool execution started:', data);
+      this.emitToHandlers('tool_execution_start', data);
+    });
+
+    this.socket.on('tool_execution_complete', (data: any) => {
+      this.debug('✅ Tool execution completed:', data);
+      this.emitToHandlers('tool_execution_complete', data);
     });
   }
 
@@ -564,10 +578,39 @@ class WebSocketService {
   }
 
   /**
+   * Debug logging helper
+   */
+  private debug(message: string, data?: any): void {
+    if (__DEV__) {
+      console.log(message, data || '');
+    }
+  }
+
+  /**
    * Update configuration
    */
   updateConfig(config: Partial<WebSocketConfig>): void {
     this.config = { ...this.config, ...config };
+  }
+
+  /**
+   * Test WebSocket connection - for debugging
+   */
+  testConnection(): void {
+    console.log('🧪 WebSocket Connection Test:');
+    console.log('🔌 Server URL:', this.config.serverUrl);
+    console.log('🔗 Is Connected:', this.connectionStatus.isConnected);
+    console.log('🔄 Is Connecting:', this.connectionStatus.isConnecting);
+    console.log('🕐 Last Connected:', this.connectionStatus.lastConnected);
+    console.log('🔁 Reconnect Attempts:', this.connectionStatus.reconnectAttempts);
+    console.log('👥 Current Rooms:', Array.from(this.currentRooms));
+    
+    if (this.socket) {
+      console.log('⚡ Socket Status:', this.socket.connected ? 'CONNECTED' : 'DISCONNECTED');
+      console.log('🆔 Socket ID:', this.socket.id || 'No ID');
+    } else {
+      console.log('❌ No Socket Instance');
+    }
   }
 }
 

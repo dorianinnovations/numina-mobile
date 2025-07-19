@@ -38,6 +38,10 @@
         "projectId": "720f015c-2618-4658-a225-f3690b9825d4"
       }
     },
-    "owner": "numina-ai"
+    "owner": "numina-ai",
+    "plugins": [
+      "expo-secure-store",
+      "expo-font"
+    ]
   }
 }

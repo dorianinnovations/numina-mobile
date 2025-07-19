@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
@@ -22,6 +23,61 @@ import { MessageAttachment, UploadProgress } from '../../types/message';
 import { AttachmentPreview } from './AttachmentPreview';
 
 const { width } = Dimensions.get('window');
+
+// Fast Ring Loader Component for Send Button
+const FastRingLoader: React.FC<{ size?: number; color?: string; strokeWidth?: number }> = ({ 
+  size = 18, 
+  color = '#ffffff', 
+  strokeWidth = 2 
+}) => {
+  const rotationValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const startRotation = () => {
+      Animated.loop(
+        Animated.timing(rotationValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+    
+    startRotation();
+  }, [rotationValue]);
+
+  const rotation = rotationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDasharray = circumference * 0.8; // 80% of circle
+  const strokeDashoffset = circumference * 0.2; // Smaller gap for rounder look
+
+  return (
+    <Animated.View style={{ 
+      transform: [{ rotate: rotation }],
+      width: size,
+      height: size,
+    }}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          fill="transparent"
+        />
+      </Svg>
+    </Animated.View>
+  );
+};
 
 interface ChatInputProps {
   value: string;
@@ -781,12 +837,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
                   transform: [{ scale: sendButtonScale }],
                 }
               ]}>
-                <FontAwesome5
-                  name={isLoading || isUploading ? "circle-notch" : "arrow-up"}
-                  size={18}
-                  color={isDarkMode ? '#ffffff' : '#616161'}
-                  style={isLoading || isUploading ? { transform: [{ rotate: '45deg' }] } : {}}
-                />
+                {isLoading || isUploading ? (
+                  <FastRingLoader 
+                    size={18} 
+                    color={isDarkMode ? '#ffffff' : '#616161'} 
+                    strokeWidth={2}
+                  />
+                ) : (
+                  <FontAwesome5
+                    name="arrow-up"
+                    size={18}
+                    color={isDarkMode ? '#ffffff' : '#616161'}
+                  />
+                )}
               </Animated.View>
             </TouchableOpacity>
           </View>

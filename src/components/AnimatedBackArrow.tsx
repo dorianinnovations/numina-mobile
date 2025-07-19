@@ -17,205 +17,70 @@ export const AnimatedBackArrow: React.FC<AnimatedBackArrowProps> = ({
 }) => {
   // Core animations
   const arrowScale = useRef(new Animated.Value(1)).current;
+  const arrowOpacity = useRef(new Animated.Value(1)).current;
+  const slideX = useRef(new Animated.Value(0)).current;
   const arrowRotation = useRef(new Animated.Value(0)).current;
-  const glowOpacity = useRef(new Animated.Value(0)).current;
-  const containerScale = useRef(new Animated.Value(1)).current;
-  const wobbleAnim = useRef(new Animated.Value(0)).current;
-  const bounceAnim = useRef(new Animated.Value(0)).current;
+  const trailOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isPressed) {
-      // Press animation sequence
+      // Quick and direct slide left + fade out
       Animated.parallel([
-        // Scale down on press
-        Animated.timing(arrowScale, {
-          toValue: 0.85,
-          duration: 100,
-          easing: Easing.out(Easing.cubic),
+        // Slide left fast
+        Animated.timing(slideX, {
+          toValue: -size * 2.5,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         
-        // Slight rotation for dynamic feel
-        Animated.timing(arrowRotation, {
-          toValue: 1,
+        // Fade out quickly
+        Animated.timing(arrowOpacity, {
+          toValue: 0,
           duration: 150,
-          easing: Easing.bezier(0.68, -0.6, 0.32, 1.6),
+          easing: Easing.in(Easing.quad),
           useNativeDriver: true,
         }),
-        
-        // Container scale for depth
-        Animated.timing(containerScale, {
-          toValue: 0.95,
-          duration: 100,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        
-        // Glow effect
-        Animated.sequence([
-          Animated.timing(glowOpacity, {
-            toValue: 1,
-            duration: 150,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: false,
-          }),
-          Animated.timing(glowOpacity, {
-            toValue: 0.3,
-            duration: 200,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: false,
-          }),
-        ]),
-        
-        // Wobble effect
-        Animated.spring(wobbleAnim, {
-          toValue: 1,
-          friction: 3,
-          tension: 150,
-          useNativeDriver: true,
-        }),
-        
-        // Bounce effect
-        Animated.sequence([
-          Animated.timing(bounceAnim, {
-            toValue: 1,
-            duration: 100,
-            easing: Easing.out(Easing.cubic),
-            useNativeDriver: true,
-          }),
-          Animated.timing(bounceAnim, {
-            toValue: 0,
-            duration: 150,
-            easing: Easing.in(Easing.cubic),
-            useNativeDriver: true,
-          }),
-        ]),
       ]).start();
     } else {
-      // Release animation sequence
+      // Reset instantly
       Animated.parallel([
-        // Scale back to normal
-        Animated.spring(arrowScale, {
-          toValue: 1,
-          friction: 4,
-          tension: 100,
-          useNativeDriver: true,
-        }),
-        
-        // Reset rotation
-        Animated.timing(arrowRotation, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        
-        // Container scale back
-        Animated.spring(containerScale, {
-          toValue: 1,
-          friction: 4,
-          tension: 100,
-          useNativeDriver: true,
-        }),
-        
-        // Fade glow
-        Animated.timing(glowOpacity, {
-          toValue: 0,
-          duration: 200,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: false,
-        }),
-        
-        // Reset wobble
-        Animated.spring(wobbleAnim, {
-          toValue: 0,
-          friction: 3,
-          tension: 100,
-          useNativeDriver: true,
-        }),
+        Animated.timing(slideX, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(arrowOpacity, { toValue: 1, duration: 0, useNativeDriver: true }),
+        Animated.timing(arrowScale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        Animated.timing(arrowRotation, { toValue: 0, duration: 0, useNativeDriver: true }),
+        Animated.timing(trailOpacity, { toValue: 0, duration: 0, useNativeDriver: true }),
       ]).start();
     }
   }, [isPressed]);
 
   // Interpolations
-  const arrowRotationDeg = arrowRotation.interpolate({
+  const rotationDeg = arrowRotation.interpolate({
     inputRange: [0, 1],
-    outputRange: ['0deg', '-15deg'],
-    extrapolate: 'clamp',
-  });
-
-  const wobbleRotation = wobbleAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: ['0deg', '-8deg', '0deg'],
-    extrapolate: 'clamp',
-  });
-
-  const bounceScale = bounceAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.1],
-    extrapolate: 'clamp',
-  });
-
-  const glowIntensity = glowOpacity.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.8],
-    extrapolate: 'clamp',
+    outputRange: ['0deg', '-8deg'],
   });
 
   return (
     <View style={styles.wrapper}>
-      {/* Glow effect */}
-      <Animated.View
-        style={[
-          styles.glow,
-          {
-            opacity: glowIntensity,
-            width: size * 2,
-            height: size * 2,
-            borderRadius: size,
-          }
-        ]}
-      />
-      
-      {/* Main arrow container */}
+      {/* Main arrow - simple and direct */}
       <Animated.View 
         style={[
           styles.container, 
           { 
             width: size, 
             height: size,
+            opacity: arrowOpacity,
             transform: [
-              { scale: containerScale },
-              { rotate: wobbleRotation },
+              { translateX: slideX },
             ]
           }
         ]}
       >
-        <Animated.View
-          style={[
-            styles.arrowContainer,
-            {
-              transform: [
-                { scale: arrowScale },
-                { rotate: arrowRotationDeg },
-                { scale: bounceScale },
-              ]
-            }
-          ]}
-        >
-          <FontAwesome5 
-            name="arrow-left" 
-            size={size} 
-            color={color}
-            style={{
-              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: color === '#6ec5ff' ? 0.8 : 0.3,
-              shadowRadius: color === '#6ec5ff' ? 8 : 4,
-              elevation: color === '#6ec5ff' ? 8 : 4,
-            }}
-          />
-        </Animated.View>
+        <FontAwesome5 
+          name="arrow-left" 
+          size={size} 
+          color={color}
+        />
       </Animated.View>
     </View>
   );
@@ -230,17 +95,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  arrowContainer: {
+  trail: {
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  glow: {
-    position: 'absolute',
-    backgroundColor: 'transparent',
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-    elevation: 6,
   },
 }); 

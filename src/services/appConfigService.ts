@@ -1,10 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService, { AppConfig } from './api';
 
-/**
- * App Configuration Service
- * Manages dynamic app configuration from server
- */
 
 interface CachedConfig {
   config: AppConfig;
@@ -39,15 +35,11 @@ class AppConfigService {
 
   private static listeners: Array<(config: AppConfig) => void> = [];
 
-  /**
-   * Initialize app configuration
-   */
   static async initialize(): Promise<AppConfig> {
     try {
       this.configState.isLoading = true;
       this.configState.error = null;
 
-      // Try to load from cache first
       const cachedConfig = await this.getCachedConfig();
       
       if (cachedConfig && this.isCacheValid(cachedConfig)) {
@@ -60,13 +52,11 @@ class AppConfigService {
         console.log('App config loaded from cache');
         this.notifyListeners(cachedConfig.config);
         
-        // Fetch updated config in background
         this.fetchConfigInBackground();
         
         return cachedConfig.config;
       }
 
-      // No valid cache, fetch from server
       const config = await this.fetchConfigFromServer();
       
       if (config) {
@@ -82,7 +72,6 @@ class AppConfigService {
         return config;
       }
 
-      // Fallback to default config
       const defaultConfig = this.getDefaultConfig();
       this.configState.config = defaultConfig;
       this.configState.isLoaded = true;
@@ -99,7 +88,6 @@ class AppConfigService {
       this.configState.isLoading = false;
       this.configState.error = error instanceof Error ? error.message : 'Config initialization failed';
       
-      // Return default config on error
       const defaultConfig = this.getDefaultConfig();
       this.configState.config = defaultConfig;
       this.configState.isLoaded = true;
@@ -110,63 +98,39 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Get current configuration
-   */
   static getConfig(): AppConfig | null {
     return this.configState.config;
   }
 
-  /**
-   * Get configuration state
-   */
   static getConfigState(): ConfigState {
     return { ...this.configState };
   }
 
-  /**
-   * Check if feature is enabled
-   */
   static isFeatureEnabled(feature: keyof AppConfig['features']): boolean {
     const config = this.getConfig();
     return config?.features[feature] || false;
   }
 
-  /**
-   * Get API limits
-   */
   static getApiLimits(): AppConfig['limits'] {
     const config = this.getConfig();
     return config?.limits || this.getDefaultConfig().limits;
   }
 
-  /**
-   * Get endpoints configuration
-   */
   static getEndpoints(): AppConfig['endpoints'] {
     const config = this.getConfig();
     return config?.endpoints || this.getDefaultConfig().endpoints;
   }
 
-  /**
-   * Get user preferences
-   */
   static getUserPreferences(): any {
     const config = this.getConfig();
     return config?.user?.preferences || {};
   }
 
-  /**
-   * Get user settings
-   */
   static getUserSettings(): any {
     const config = this.getConfig();
     return config?.user?.settings || {};
   }
 
-  /**
-   * Refresh configuration from server
-   */
   static async refreshConfig(): Promise<AppConfig> {
     try {
       this.configState.isLoading = true;
@@ -182,7 +146,6 @@ class AppConfigService {
         this.configState.lastUpdated = Date.now();
         this.configState.version = config.version;
         
-        // Check if config changed
         if (oldConfig && JSON.stringify(oldConfig) !== JSON.stringify(config)) {
           console.log('App config updated');
           this.notifyListeners(config);
@@ -197,16 +160,12 @@ class AppConfigService {
       console.error('Failed to refresh config:', error);
       this.configState.error = error instanceof Error ? error.message : 'Config refresh failed';
       
-      // Return current config if refresh fails
       return this.configState.config || this.getDefaultConfig();
     } finally {
       this.configState.isLoading = false;
     }
   }
 
-  /**
-   * Fetch configuration from server
-   */
   private static async fetchConfigFromServer(): Promise<AppConfig | null> {
     let retryCount = 0;
     let lastError: string | null = null;
@@ -239,9 +198,6 @@ class AppConfigService {
     return null;
   }
 
-  /**
-   * Fetch config in background
-   */
   private static async fetchConfigInBackground(): Promise<void> {
     try {
       const config = await this.fetchConfigFromServer();
@@ -249,7 +205,6 @@ class AppConfigService {
       if (config) {
         await this.cacheConfig(config);
         
-        // Only update if config changed
         if (JSON.stringify(this.configState.config) !== JSON.stringify(config)) {
           this.configState.config = config;
           this.configState.lastUpdated = Date.now();
@@ -264,9 +219,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Cache configuration
-   */
   private static async cacheConfig(config: AppConfig): Promise<void> {
     try {
       const cachedConfig: CachedConfig = {
@@ -281,9 +233,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Get cached configuration
-   */
   private static async getCachedConfig(): Promise<CachedConfig | null> {
     try {
       const cachedJson = await AsyncStorage.getItem(this.CONFIG_KEY);
@@ -299,9 +248,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Check if cache is valid
-   */
   private static isCacheValid(cachedConfig: CachedConfig): boolean {
     const now = Date.now();
     const age = now - cachedConfig.timestamp;
@@ -309,9 +255,6 @@ class AppConfigService {
     return age < this.CACHE_DURATION;
   }
 
-  /**
-   * Get default configuration
-   */
   private static getDefaultConfig(): AppConfig {
     return {
       features: {
@@ -343,16 +286,10 @@ class AppConfigService {
     };
   }
 
-  /**
-   * Add configuration change listener
-   */
   static addListener(listener: (config: AppConfig) => void): void {
     this.listeners.push(listener);
   }
 
-  /**
-   * Remove configuration change listener
-   */
   static removeListener(listener: (config: AppConfig) => void): void {
     const index = this.listeners.indexOf(listener);
     if (index > -1) {
@@ -360,9 +297,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Notify listeners of configuration changes
-   */
   private static notifyListeners(config: AppConfig): void {
     this.listeners.forEach(listener => {
       try {
@@ -373,9 +307,6 @@ class AppConfigService {
     });
   }
 
-  /**
-   * Update local user preferences
-   */
   static async updateUserPreferences(preferences: any): Promise<void> {
     try {
       const currentConfig = this.getConfig();
@@ -394,9 +325,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Update local user settings
-   */
   static async updateUserSettings(settings: any): Promise<void> {
     try {
       const currentConfig = this.getConfig();
@@ -415,9 +343,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Clear cached configuration
-   */
   static async clearCache(): Promise<void> {
     try {
       await AsyncStorage.removeItem(this.CONFIG_KEY);
@@ -438,9 +363,6 @@ class AppConfigService {
     }
   }
 
-  /**
-   * Get configuration info
-   */
   static getConfigInfo(): {
     version: string;
     lastUpdated: number;
@@ -457,9 +379,6 @@ class AppConfigService {
     };
   }
 
-  /**
-   * Check if config needs refresh
-   */
   static needsRefresh(): boolean {
     const now = Date.now();
     const age = now - this.configState.lastUpdated;
@@ -467,9 +386,6 @@ class AppConfigService {
     return age > this.CACHE_DURATION;
   }
 
-  /**
-   * Enable/disable feature locally
-   */
   static setFeatureEnabled(feature: keyof AppConfig['features'], enabled: boolean): void {
     const config = this.getConfig();
     

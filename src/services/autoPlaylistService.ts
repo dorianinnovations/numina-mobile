@@ -191,7 +191,7 @@ class AutoPlaylistService {
       if (!spotifyPlaylistId) {
         // Create new Spotify playlist
         try {
-          // TODO: Implement createSpotifyPlaylist in ApiService
+          // Implement createSpotifyPlaylist in ApiService
           // Temporarily disabled to fix circular dependency
           console.log('🚧 Spotify playlist creation temporarily disabled');
           
@@ -214,8 +214,8 @@ class AutoPlaylistService {
       } else {
         // Update existing Spotify playlist
         try {
-          // TODO: Implement updateSpotifyPlaylist in ApiService
-          // Note: PUT method not available in ApiService yet
+              // Implement updateSpotifyPlaylist in ApiService
+    // PUT method not available in ApiService yet
           console.log('🔄 Would update Spotify playlist:', playlist.name, 'with', tracksForSpotify.length, 'tracks');
         } catch (error) {
           console.error('Error updating Spotify playlist:', error);

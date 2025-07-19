@@ -253,7 +253,9 @@ class SyncService {
           const syncData = syncResponse.data;
           
           // Check if we have valid sync data structure
-          if (!syncData || !syncData.data) {
+          // Handle both old (data) and new (changes) format
+          const dataToProcess = syncData.changes || syncData.data;
+          if (!syncData || !dataToProcess) {
             console.warn('Invalid sync data structure received:', syncData);
             return {
               success: true,
@@ -267,28 +269,35 @@ class SyncService {
           const syncedData: any = {};
           const conflicts: any[] = [];
           
+          // Handle both old and new sync data formats
+          const syncChanges = syncData.changes || syncData.data;
+          
           // Safely process profile data
-          if (syncData?.data?.profile?.updated) {
-            syncedData.profile = syncData.data.profile.data;
-            await this.applyProfileChanges(syncData.data.profile.data);
+          if (syncChanges?.profile?.data || syncChanges?.profile?.updated) {
+            const profileData = syncChanges.profile.data || syncChanges.profile;
+            syncedData.profile = profileData;
+            await this.applyProfileChanges(profileData);
           }
           
           // Safely process emotions data
-          if (syncData?.data?.emotions?.updated) {
-            syncedData.emotions = syncData.data.emotions.data;
-            await this.applyEmotionsChanges(syncData.data.emotions.data);
+          if (syncChanges?.emotions?.data || syncChanges?.emotions?.updated) {
+            const emotionsData = syncChanges.emotions.data || syncChanges.emotions;
+            syncedData.emotions = emotionsData;
+            await this.applyEmotionsChanges(emotionsData);
           }
           
           // Safely process conversations data
-          if (syncData?.data?.conversations?.updated) {
-            syncedData.conversations = syncData.data.conversations.data;
-            await this.applyConversationsChanges(syncData.data.conversations.data);
+          if (syncChanges?.conversations?.data || syncChanges?.conversations?.updated) {
+            const conversationsData = syncChanges.conversations.data || syncChanges.conversations;
+            syncedData.conversations = conversationsData;
+            await this.applyConversationsChanges(conversationsData);
           }
           
           // Safely process analytics data
-          if (syncData?.data?.analytics?.updated) {
-            syncedData.analytics = syncData.data.analytics.data;
-            await this.applyAnalyticsChanges(syncData.data.analytics.data);
+          if (syncChanges?.analytics?.data || syncChanges?.analytics?.updated) {
+            const analyticsData = syncChanges.analytics.data || syncChanges.analytics;
+            syncedData.analytics = analyticsData;
+            await this.applyAnalyticsChanges(analyticsData);
           }
           
           return {

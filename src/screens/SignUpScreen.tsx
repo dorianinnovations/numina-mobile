@@ -24,6 +24,7 @@ import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
 import { TermsOfService } from '../components/TermsOfService';
+import AppInitializer from '../services/appInitializer';
 
 const { width } = Dimensions.get('window');
 
@@ -150,6 +151,29 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         setSuccess(true);
         setIsSignUpSuccess(true);
         setAuthStatus('success');
+        
+        // TERMS ACCEPTANCE TRIGGER - Three-Tier System Activation
+        if (termsAccepted) {
+          console.log('🎯 Terms accepted on signup - triggering enhanced initialization...');
+          
+          // Small delay to let auth state settle, then trigger three-tier system
+          setTimeout(async () => {
+            try {
+              console.log('🚀 Post-signup three-tier initialization starting...');
+              
+              // Force re-initialization with enhanced features for terms-accepting users
+              await AppInitializer.performInitialDataSync();
+              
+              // Additional features for users who accept terms
+              const healthStatus = await AppInitializer.getHealthStatus();
+              console.log('📊 Enhanced features activated:', healthStatus);
+              
+              console.log('✅ Terms acceptance three-tier system complete!');
+            } catch (error) {
+              console.error('❌ Terms acceptance enhanced initialization failed:', error);
+            }
+          }, 2000);
+        }
         
         setTimeout(() => {
           onSignUpSuccess();

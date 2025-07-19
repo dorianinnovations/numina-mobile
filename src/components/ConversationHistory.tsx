@@ -9,12 +9,16 @@ import {
   Dimensions,
   Easing,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
+import { useRefresh } from '../contexts/RefreshContext';
 import { NuminaColors } from '../utils/colors';
 import ConversationStorageService, { Conversation } from '../services/conversationStorage';
+import { AnimatedGradientBorder } from './AnimatedGradientBorder';
 
 const { width } = Dimensions.get('window');
 
@@ -23,6 +27,7 @@ interface ConversationHistoryProps {
   currentConversationId?: string;
   visible: boolean;
   onClose: () => void;
+  onStartNewChat?: () => void;
 }
 
 export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
@@ -30,16 +35,28 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   currentConversationId,
   visible,
   onClose,
+  onStartNewChat,
 }) => {
   const { isDarkMode } = useTheme();
+  const { isRefreshing: globalRefreshing, setIsRefreshing } = useRefresh();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [allowInteraction, setAllowInteraction] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Animation values for clear modal
+  const clearOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const clearContainerScale = useRef(new Animated.Value(0.3)).current;
+  const clearContainerOpacity = useRef(new Animated.Value(0)).current;
+  const trashScale = useRef(new Animated.Value(1)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -97,43 +114,122 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 
   const loadConversations = async () => {
     try {
-      setLoading(true);
       const loadedConversations = await ConversationStorageService.loadConversations();
-      setConversations(loadedConversations);
+      setConversations(loadedConversations || []);
     } catch (error) {
-      console.error('Failed to load conversations:', error);
+      setConversations([]);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    // DON'T trigger global refresh - only local conversation refresh
+    try {
+      await loadConversations();
+      // Keep animation visible for minimum time
+      await new Promise(resolve => setTimeout(resolve, 1500));
     } finally {
-      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const showClearAllModal = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowClearModal(true);
+    Animated.parallel([
+      Animated.timing(clearOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(clearContainerScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(clearContainerOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideClearModal = () => {
+    Animated.parallel([
+      Animated.timing(clearOverlayOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(clearContainerScale, {
+        toValue: 0.3,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(clearContainerOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowClearModal(false);
+      setIsClearing(false);
+      // Reset animation values
+      trashScale.setValue(1);
+      checkOpacity.setValue(0);
+    });
+  };
+
+  const confirmClearAll = async () => {
+    setIsClearing(true);
+    
+    try {
+      // Animate trash can
+      Animated.sequence([
+        Animated.timing(trashScale, {
+          toValue: 1.2,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(trashScale, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Clear conversations
+      await ConversationStorageService.clearAllConversations();
+      setConversations([]);
+      
+      // Show success animation
+      setTimeout(() => {
+        Animated.timing(checkOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }, 400);
+
+      // Wait a moment then close modal and conversation panel
+      setTimeout(() => {
+        if (currentConversationId) {
+          onClose();
+        }
+        hideClearModal();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Failed to clear conversations:', error);
+      Alert.alert('Error', 'Failed to clear conversations. Please try again.');
+      setIsClearing(false);
     }
   };
 
   const handleClearAll = () => {
-    Alert.alert(
-      'Clear All Conversations',
-      'Are you sure you want to delete all conversations? This action cannot be undone.',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ConversationStorageService.clearAllConversations();
-              setConversations([]);
-              if (currentConversationId) {
-                onClose();
-              }
-            } catch (error) {
-              console.error('Failed to clear conversations:', error);
-              Alert.alert('Error', 'Failed to clear conversations');
-            }
-          },
-        },
-      ],
-    );
+    showClearAllModal();
   };
 
   const handleDeleteConversation = (conversationId: string) => {
@@ -156,7 +252,6 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 onClose();
               }
             } catch (error) {
-              console.error('Failed to delete conversation:', error);
               Alert.alert('Error', 'Failed to delete conversation');
             }
           },
@@ -190,36 +285,48 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     return text.length > 60 ? text.substring(0, 60) + '...' : text;
   };
 
-  const renderConversation = ({ item }: { item: Conversation }) => {
+  const renderConversation = ({ item, index }: { item: Conversation, index: number }) => {
     const isActive = item.id === currentConversationId;
+    const isFirstItem = index === 0;
+    const shouldAnimate = refreshing && isFirstItem;
+    
     
     return (
-      <TouchableOpacity
-        style={[
-          styles.conversationItem,
-          {
-            backgroundColor: isActive
-              ? isDarkMode 
-                ? 'rgba(110, 197, 255, 0.13)'
-                : 'rgba(110, 197, 255, 0.18)'
-              : isDarkMode 
-                ? 'rgba(255,255,255,0.03)' 
-                : 'rgba(0, 0, 0, 0.02)',
-            borderColor: isActive
-              ? isDarkMode 
-                ? 'rgba(110, 197, 255, 0.38)'
-                : 'rgba(110, 197, 255, 0.45)'
-              : isDarkMode 
-                ? '#23272b' 
-                : 'rgba(0, 0, 0, 0.05)',
-          }
+      <AnimatedGradientBorder
+        isActive={shouldAnimate}
+        borderRadius={12}
+        borderWidth={2}
+        animationSpeed={2000}
+        gradientColors={[
+          'rgba(173, 216, 255, 0.3)',  // Super light blue - transparent
+          'rgba(173, 216, 255, 0.6)',  // Light blue - building
+          'rgba(173, 216, 255, 0.9)',  // Light blue - stronger
+          'rgba(186, 164, 255, 0.9)',  // Light purple - peak
+          'rgba(186, 164, 255, 0.6)',  // Light purple - fading
+          'rgba(173, 216, 255, 0.3)',  // Back to light blue
         ]}
-        onPress={() => {
-          onSelectConversation(item);
-          onClose();
-        }}
-        activeOpacity={0.7}
+        style={{ marginBottom: 8 }}
       >
+        <TouchableOpacity
+          style={[
+            styles.conversationItem,
+            {
+              backgroundColor: isActive
+                ? isDarkMode 
+                  ? 'rgba(110, 197, 255, 0.13)'
+                  : 'rgba(110, 197, 255, 0.18)'
+                : isDarkMode 
+                  ? 'rgba(255,255,255,0.03)' 
+                  : 'rgba(0, 0, 0, 0.02)',
+              borderWidth: 0,
+            }
+          ]}
+          onPress={() => {
+            onSelectConversation(item);
+            onClose();
+          }}
+          activeOpacity={0.7}
+        >
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
             <Text style={[
@@ -272,7 +379,8 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             </View>
           </View>
         </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </AnimatedGradientBorder>
     );
   };
 
@@ -323,6 +431,28 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             Conversation History
           </Text>
           <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={[
+                styles.newChatButton,
+                {
+                  backgroundColor: isDarkMode ? 'rgba(110, 197, 255, 0.1)' : 'rgba(110, 197, 255, 0.15)',
+                  borderColor: isDarkMode ? 'rgba(110, 197, 255, 0.3)' : 'rgba(110, 197, 255, 0.4)',
+                }
+              ]}
+              onPress={() => {
+                if (onStartNewChat) {
+                  onStartNewChat();
+                }
+                onClose();
+              }}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 
+                name="plus" 
+                size={16} 
+                color={isDarkMode ? '#6ec5ff' : '#4a90e2'} 
+              />
+            </TouchableOpacity>
             {conversations.length > 0 && (
               <TouchableOpacity
                 style={[
@@ -336,7 +466,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               >
                 <MaterialCommunityIcons 
                   name="trash-can-outline" 
-                  size={20} 
+                  size={18} 
                   color={isDarkMode ? '#ff6b6b' : '#dc3545'} 
                 />
               </TouchableOpacity>
@@ -354,7 +484,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             >
               <FontAwesome5 
                 name="times" 
-                size={22} 
+                size={18} 
                 color={isDarkMode ? '#ffffff' : '#666666'} 
               />
             </TouchableOpacity>
@@ -364,11 +494,20 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         {/* Conversation list */}
         <FlatList
           data={conversations}
-          renderItem={renderConversation}
+          renderItem={({ item, index }) => renderConversation({ item, index })}
           keyExtractor={item => item.id}
           style={styles.conversationList}
           contentContainerStyle={styles.conversationListContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['transparent']}
+              tintColor="transparent"
+              progressBackgroundColor="transparent"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <FontAwesome5 
@@ -381,12 +520,142 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 styles.emptyText,
                 { color: isDarkMode ? '#666666' : '#999999' }
               ]}>
-                {loading ? 'Loading conversations...' : 'No conversations yet'}
+                No conversations yet
               </Text>
             </View>
           }
         />
       </Animated.View>
+
+      {/* Clear All Confirmation Modal */}
+      {showClearModal && (
+        <Animated.View style={[
+          styles.modalOverlay,
+          {
+            opacity: clearOverlayOpacity,
+          }
+        ]}>
+          <Animated.View style={[
+            styles.modalContainer,
+            {
+              backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+              borderColor: isDarkMode 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(255, 255, 255, 0.3)',
+              opacity: clearContainerOpacity,
+              transform: [{ scale: clearContainerScale }],
+            }
+          ]}>
+            {!isClearing ? (
+              <>
+                <FontAwesome5 
+                  name="exclamation-triangle" 
+                  size={48} 
+                  color={isDarkMode ? '#ff6b6b' : '#e53e3e'} 
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                ]}>
+                  Clear All Conversations?
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: isDarkMode ? '#a0aec0' : '#718096' }
+                ]}>
+                  This action cannot be undone. All conversation history will be permanently deleted.
+                </Text>
+                
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      {
+                        backgroundColor: isDarkMode ? '#374151' : '#e2e8f0',
+                        flex: 1,
+                      }
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      hideClearModal();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.modalButtonText,
+                      { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                    ]}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      {
+                        backgroundColor: isDarkMode ? '#dc2626' : '#e53e3e',
+                        flex: 1,
+                      }
+                    ]}
+                    onPress={confirmClearAll}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.modalButtonText,
+                      { color: '#ffffff' }
+                    ]}>
+                      Clear All
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: trashScale }]
+                  }}
+                >
+                  <FontAwesome5 
+                    name="trash-alt" 
+                    size={48} 
+                    color={isDarkMode ? '#dc2626' : '#e53e3e'} 
+                  />
+                </Animated.View>
+                
+                <Animated.View
+                  style={{
+                    opacity: checkOpacity,
+                    position: 'absolute',
+                  }}
+                >
+                  <FontAwesome5 
+                    name="check-circle" 
+                    size={48} 
+                    color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
+                  />
+                </Animated.View>
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                ]}>
+                  Conversations Cleared
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { color: isDarkMode ? '#a0aec0' : '#718096' }
+                ]}>
+                  All conversation history has been permanently deleted
+                </Text>
+              </>
+            )}
+          </Animated.View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -408,8 +677,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     bottom: 0,
-    width: width * 0.85,
+    width: width * 0.80,
     borderRightWidth: 1,
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
@@ -420,27 +691,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60, // Account for status bar
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingTop: 100, 
     borderBottomWidth: 1,
+    overflow: 'hidden',
   },
   headerTitle: {
-    fontSize: 22,
-      fontWeight: '700',
-      fontFamily: 'CrimsonPro_700Bold',
-    letterSpacing: 0.2,
+    fontSize: 20,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    letterSpacing: -0.2,
     lineHeight: 28,
-    marginLeft: 2,
+    marginLeft: 0,
     marginBottom: 0,
+    flex: 1,
+    flexShrink: 1,
   },
   closeButton: {
-    width: 40,
-    height: 30,
-    borderRadius:8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: 0,
   },
   conversationList: {
     flex: 1,
@@ -450,22 +724,24 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   conversationItem: {
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 70, // Minimum height for readability
+    borderRadius: 10,
+    borderWidth: 0,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minHeight: 50, // Slimmer height
+    overflow: 'hidden',
   },
   conversationContent: {
     flex: 1,
     justifyContent: 'space-between',
+    overflow: 'hidden',
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 4,
+    overflow: 'hidden',
   },
   conversationTitle: {
     fontSize: 14,
@@ -473,11 +749,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_600SemiBold',
     flex: 1,
     marginRight: 8,
+    flexShrink: 1,
   },
   conversationTime: {
     fontSize: 10,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
+    flexShrink: 0,
   },
   conversationPreview: {
     fontSize: 10,
@@ -490,6 +768,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'nowrap',
   },
   messageCount: {
     fontSize: 8,
@@ -505,11 +784,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
+  },
+  newChatButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
   },
   clearAllButton: {
-    width: 40,
-    height: 30,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -517,10 +805,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexShrink: 0,
   },
   deleteButton: {
-    padding: 4,
-    marginRight: -4,
+    padding: 8,
+    marginRight: -8,
+    borderRadius: 8,
+    alignSelf: 'flex-end',
   },
   emptyState: {
     flex: 1,
@@ -536,5 +827,59 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3000,
+  },
+  modalContainer: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  modalButton: {
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

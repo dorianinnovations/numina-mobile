@@ -21,16 +21,14 @@ import { NuminaColors } from '../utils/colors';
 
 const { width } = Dimensions.get('window');
 
-// Ultra-fast animation timings for pleasure responses
 const PLEASURE_TIMINGS = {
-  INSTANT: 50,      // Instant response
-  SNAP: 80,         // Quick snap
-  SMOOTH: 120,      // Buttery smooth
-  ELEGANT: 180,     // Elegant transition
-  BREATHE: 300,     // Natural breathing
+  INSTANT: 50,
+  SNAP: 80,
+  SMOOTH: 120,
+  ELEGANT: 180,
+  BREATHE: 300,
 };
 
-// Pleasure easing curves - using only guaranteed basic easing functions
 const PLEASURE_EASING = {
   snap: Easing.out(Easing.quad),
   bounce: Easing.out(Easing.back(1.7)),
@@ -38,11 +36,8 @@ const PLEASURE_EASING = {
   smooth: Easing.out(Easing.quad),
   breathe: Easing.inOut(Easing.quad),
 };
-
-// Helper function for feature descriptions
 const getFeatureDescription = (feature: string, stepId: number): string => {
   const descriptions: { [key: string]: string } = {
-    // UBPM Intelligence
     "Real-time behavioral analysis": "AI learns your communication style, decision patterns, and preferences as you interact",
     "Adaptive AI personality": "Your assistant's tone and approach evolves to match your personality and mood",
     "Pattern recognition engine": "Identifies recurring themes in your conversations and behavioral tendencies",
@@ -319,7 +314,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     }
   }, [currentStep]);
   
-  // Advanced neural feature animation with connector effects
+      // Neural feature animation with connector effects
   const animateFeatures = () => {
     featureAnims.forEach((anim, index) => {
       // Reset all animations
@@ -1772,7 +1767,7 @@ const styles = StyleSheet.create({
     width: '100%', // Ensure full width
     maxWidth: '100%', // Prevent overflow
   },
-  // Advanced Neural Connector System
+  // Neural Connector System
   neuralConnectorContainer: {
     position: 'relative',
     width: 8,

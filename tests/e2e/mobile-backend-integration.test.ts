@@ -4,7 +4,7 @@
  */
 
 import ApiService from '../../src/services/api';
-import AuthManager from '../../src/services/authManager';
+import CloudAuth from '../../src/services/cloudAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Test metrics tracking
@@ -114,7 +114,7 @@ describe('Mobile-Backend Integration Tests', () => {
     if (authToken) {
       try {
         console.log('🧹 Cleaning up test data...');
-        // Note: In a real scenario, you might want to delete the test user
+        // In a real scenario, you might want to delete the test user
       } catch (error) {
         console.log('⚠️ Cleanup error (non-critical):', error.message);
       }
@@ -176,11 +176,11 @@ describe('Mobile-Backend Integration Tests', () => {
       let error = null;
 
       try {
-        const authManager = AuthManager.getInstance();
-        expect(authManager).toBeDefined();
+        const cloudAuth = CloudAuth.getInstance();
+        expect(cloudAuth).toBeDefined();
 
         // Test signup method exists and handles calls
-        expect(typeof authManager.signUp).toBe('function');
+        expect(typeof cloudAuth.signup).toBe('function');
         
         const credentials = {
           email: testUserEmail,
@@ -188,14 +188,14 @@ describe('Mobile-Backend Integration Tests', () => {
           confirmPassword: 'TestPassword123!'
         };
 
-        // This will likely fail due to network/server issues in test environment
+        // Will likely fail due to network/server issues in test environment
         // But we're testing the integration exists
         try {
-          const result = await authManager.signUp(credentials);
+          const result = await cloudAuth.signup(credentials.email, credentials.password);
           
           if (result && result.success) {
-            authToken = authManager.getCurrentToken();
-            userId = authManager.getCurrentUserId();
+            authToken = cloudAuth.getToken();
+            userId = cloudAuth.getCurrentUserId();
             console.log('✅ Real signup successful!');
           }
         } catch (signupError) {
@@ -218,13 +218,13 @@ describe('Mobile-Backend Integration Tests', () => {
       let error = null;
 
       try {
-        const authManager = AuthManager.getInstance();
+        const cloudAuth = CloudAuth.getInstance();
         
         // Test login method exists
-        expect(typeof authManager.login).toBe('function');
-        expect(typeof authManager.logout).toBe('function');
-        expect(typeof authManager.getCurrentToken).toBe('function');
-        expect(typeof authManager.getCurrentUserId).toBe('function');
+        expect(typeof cloudAuth.login).toBe('function');
+        expect(typeof cloudAuth.logout).toBe('function');
+        expect(typeof cloudAuth.getToken).toBe('function');
+        expect(typeof cloudAuth.getCurrentUserId).toBe('function');
         
         const credentials = {
           email: testUserEmail,
@@ -232,11 +232,11 @@ describe('Mobile-Backend Integration Tests', () => {
         };
 
         try {
-          const result = await authManager.login(credentials);
+          const result = await cloudAuth.login(credentials.email, credentials.password);
           
           if (result && result.success) {
-            authToken = authManager.getCurrentToken();
-            userId = authManager.getCurrentUserId();
+            authToken = cloudAuth.getToken();
+            userId = cloudAuth.getCurrentUserId();
             console.log('✅ Real login successful!');
           }
         } catch (loginError) {

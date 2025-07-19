@@ -167,7 +167,7 @@ export const Typography = {
   },
 };
 
-// Enhanced border radius system
+    // Border radius system
 export const BorderRadius = {
   none: 0,
   sm: responsiveScale(4),
@@ -186,7 +186,7 @@ export const BorderRadius = {
   avatar: responsiveScale(24),
 };
 
-// Advanced shadow system for depth
+    // Shadow system for depth
 export const Shadows = {
   // iOS-style shadows
   ios: {

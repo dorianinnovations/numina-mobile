@@ -26,6 +26,7 @@ import { PageBackground } from '../components/PageBackground';
 import { SubscriptionModal } from '../components/SubscriptionModal';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ApiService from '../services/api';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 interface WalletScreenProps {
   onNavigateBack: () => void;
@@ -78,6 +79,11 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
   const { theme, isDarkMode } = useTheme();
   const { logout } = useAuth();
   const navigation = useNavigation<WalletScreenNavigationProp>();
+  
+  // Pull-to-refresh functionality
+  const { refreshControl } = usePullToRefresh(async () => {
+    await loadWalletData();
+  });
   
   // Wallet State
   const [walletData, setWalletData] = useState<WalletData | null>(null);
@@ -729,11 +735,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           <ScrollView
             style={styles.scrollView}
             refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                tintColor={isDarkMode ? '#fff' : '#000'}
-              />
+              <RefreshControl {...refreshControl} />
             }
           >
             <Animated.View style={[

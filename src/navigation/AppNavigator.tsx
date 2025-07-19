@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
-import { StatusBar, View, Text, ActivityIndicator, Platform } from "react-native";
+import { StatusBar, View, Text, ActivityIndicator, Platform, Animated } from "react-native";
+import Svg, { Circle } from 'react-native-svg';
 
-// Screens
 import { HeroLandingScreen } from "../screens/HeroLandingScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
 import { SignInScreen } from "../screens/SignInScreen";
@@ -17,8 +17,7 @@ import { WalletScreen } from "../screens/WalletScreen";
 import { CloudScreen } from "../screens/CloudScreen";
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { TutorialScreen } from "../screens/TutorialScreen";
-
-// Contexts
+import { AnimatedLightBeamExample } from "../components/AnimatedLightBeamExample";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
 
@@ -36,45 +35,116 @@ export type RootStackParamList = {
   Cloud: undefined;
   Sentiment: undefined;
   Tutorial: undefined;
+  LightBeamExample: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
-// Native mobile transitions only
 const mobileTransition = TransitionPresets.SlideFromRightIOS;
+const FastRingLoader: React.FC<{ size?: number; color?: string; strokeWidth?: number }> = ({ 
+  size = 18, 
+  color = '#6ec5ff', 
+  strokeWidth = 2 
+}) => {
+  const rotationValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const startRotation = () => {
+      Animated.loop(
+        Animated.timing(rotationValue, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        })
+      ).start();
+    };
+    
+    startRotation();
+  }, [rotationValue]);
+
+  const rotation = rotationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDasharray = circumference * 0.8;
+  const strokeDashoffset = circumference * 0.2;
+
+  return (
+    <Animated.View style={{ 
+      transform: [{ rotate: rotation }],
+      width: size,
+      height: size,
+    }}>
+      <Svg width={size} height={size}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeDasharray={strokeDasharray}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          fill="transparent"
+        />
+      </Svg>
+    </Animated.View>
+  );
+};
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDarkMode } = useTheme();
-  const { isAuthenticated, loading, isInitializing } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const navigationRef = useRef<any>(null);
   
-  // Loading phrases state - must be at top level
-  const [currentPhraseIndex, setCurrentPhraseIndex] = React.useState(0);
+  console.log('🏗️ APPNAVIGATOR: Component rendering - isAuthenticated:', isAuthenticated, 'loading:', loading);
   
-  const loadingPhrases = [
-    "Brewing your digital coffee...",
-    "Warming up the neural networks...", 
-    "Thinking about thinking...",
-    "Analyzing the quantum flux...",
-    "Creating your secure space...",
-    "Building connections...",
-    "Initializing AI consciousness...",
-    "Preparing thoughtful responses...",
-    "Loading personality algorithms...",
-    "Connecting to the wisdom cloud..."
+  const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
+  const flipAnimation = useRef(new Animated.Value(0)).current;
+  const loadingMessages = [
+    "Initializing neural network topology",
+    "Compiling human consciousness drivers",
+    "Calibrating dopamine receptors", 
+    "Bootstrapping empathy algorithms",
+    "Optimizing cognitive load balancers",
+    "Syncing with the collective unconscious",
+    "Deploying wisdom microservices",
+    "Training existential crisis handlers",
+    "Refactoring your inner monologue",
+    "Scaling emotional intelligence clusters",
+    "Debugging recursive thought loops",
+    "Migrating memories to the cloud",
+    "Implementing psychological design patterns",
+    "Hot-reloading personality modules",
+    "Orchestrating behavioral containers",
+    "Patching reality perception bugs"
   ];
 
-  // Phrase rotation effect
-  React.useEffect(() => {
-    if (loading || isInitializing) {
+  useEffect(() => {
+    if (loading) {
       const interval = setInterval(() => {
-        setCurrentPhraseIndex((prev) => (prev + 1) % loadingPhrases.length);
-      }, 2000);
+        Animated.timing(flipAnimation, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }).start(() => {
+          setLoadingMessageIndex(prev => (prev + 1) % loadingMessages.length);
+          
+          flipAnimation.setValue(-1);
+          Animated.timing(flipAnimation, {
+            toValue: 0,
+            duration: 150,
+            useNativeDriver: true,
+          }).start();
+        });
+      }, 3000);
       return () => clearInterval(interval);
     }
-  }, [loading, isInitializing, loadingPhrases.length]);
+  }, [loading, loadingMessages.length]);
 
-  // Complete menu handler with all navigation options
   const createMenuHandler = (navigation: any) => (key: string) => {
     switch (key) {
       case 'chat': navigation.navigate('Chat'); break;
@@ -87,92 +157,126 @@ export const AppNavigator: React.FC = () => {
       case 'about': navigation.navigate('About'); break;
       case 'signout': {
         console.log('🔓 MENU: User signed out - routing will handle navigation to Hero');
-        // CloudAuth handles logout and isAuthenticated state change
         break;
       }
       default: break;
     }
   };
 
-  const prevAuthState = useRef<boolean | null>(null); // Start as null to detect first real change
-  const hasInitialized = useRef(false);
+  const prevAuthState = useRef(isAuthenticated);
+  const hasNavigated = useRef(false);
   
   useEffect(() => {
-    if (navigationRef.current && !loading && !isInitializing) {
+    // Only run when navigationRef is ready and not during initial load
+    if (navigationRef.current && !loading) {
       const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-      const isFirstRun = prevAuthState.current === null;
       const authStateChanged = prevAuthState.current !== isAuthenticated;
       
-      console.log('🔄 AUTH ROUTING: Current route:', currentRoute, 'isAuthenticated:', isAuthenticated, 'authStateChanged:', authStateChanged, 'isFirstRun:', isFirstRun);
+      console.log('🔄 AUTH ROUTING USEEFFECT: Current route:', currentRoute, 'isAuthenticated:', isAuthenticated, 'loading:', loading, 'authStateChanged:', authStateChanged, 'hasNavigated:', hasNavigated.current);
       
-      if (isFirstRun) {
-        // First run - just initialize, don't navigate
-        prevAuthState.current = isAuthenticated;
-        hasInitialized.current = true;
-        console.log('🔄 AUTH ROUTING: Initialized, no navigation on first run');
-      } else if (authStateChanged && hasInitialized.current) {
-        // Real auth state change after initialization
+      // Only perform navigation on actual auth state changes and not during initial load
+      if (authStateChanged && hasNavigated.current) {
+        console.log('🔄 AUTH ROUTING: Auth state changed from', prevAuthState.current, 'to', isAuthenticated);
         prevAuthState.current = isAuthenticated;
         
         if (isAuthenticated) {
-          // User successfully authenticated - go to main app (Chat screen)
           console.log('🔄 AUTH ROUTING: User authenticated, navigating to Chat');
           navigationRef.current.reset({
             index: 0,
             routes: [{ name: 'Chat' }],
           });
         } else {
-          // User logged out (real logout, not failed login) - reset to Hero
-          // BUT only if we're not already on auth screens
-          if (currentRoute !== 'SignIn' && currentRoute !== 'SignUp' && currentRoute !== 'Hero') {
-            console.log('🔄 AUTH ROUTING: User logged out from authenticated screen, returning to Hero');
+          // CRITICAL: Only navigate away if user was previously authenticated (real logout)
+          // Never navigate away from auth screens during failed login attempts
+          if (prevAuthState.current === true) {
+            console.log('🔄 AUTH ROUTING: User logged out (was authenticated), returning to Hero');
             navigationRef.current.reset({
               index: 0,
               routes: [{ name: 'Hero' }],
             });
           } else {
-            console.log('🔄 AUTH ROUTING: User logged out but already on auth screen, staying put');
+            console.log('🔄 AUTH ROUTING: User was never authenticated, no navigation needed');
           }
         }
+      } else if (authStateChanged) {
+        // First auth state change - just update the ref, don't navigate
+        console.log('🔄 AUTH ROUTING: First auth state change, updating ref only');
+        prevAuthState.current = isAuthenticated;
+        hasNavigated.current = true;
       } else {
-        console.log('🔄 AUTH ROUTING: No auth state change or not initialized, staying on current route');
+        console.log('🔄 AUTH ROUTING: Auth state unchanged, no navigation needed');
       }
+    } else {
+      console.log('🔄 AUTH ROUTING SKIPPED: navigationRef not ready or still loading');
     }
-  }, [isAuthenticated, loading, isInitializing]);
+  }, [isAuthenticated, loading]);
 
-  if (loading || isInitializing) {
+  const rotateX = flipAnimation.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-90deg', '0deg', '90deg'],
+  });
+
+  const opacity = flipAnimation.interpolate({
+    inputRange: [-1, -0.5, 0, 0.5, 1],
+    outputRange: [0, 1, 1, 1, 0],
+  });
+
+  if (loading) {
     return (
       <View style={{ 
         flex: 1, 
         justifyContent: 'center', 
         alignItems: 'center', 
-        backgroundColor: isDarkMode ? '#1a1a1a' : '#f8fafc',
-        paddingHorizontal: 20,
+        backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff',
       }}>
-        <ActivityIndicator size="large" color={isDarkMode ? '#6ec5ff' : '#add5fa'} />
-        <Text style={{ 
-          color: isDarkMode ? '#ffffff' : '#1a202c', 
+        <FastRingLoader 
+          size={18} 
+          color={isDarkMode ? '#6ec5ff' : '#add5fa'} 
+          strokeWidth={2}
+        />
+        <Animated.Text style={{
           marginTop: 16,
-          fontSize: 16,
-          fontWeight: '500',
+          fontSize: 11,
+          color: isDarkMode ? '#888888' : '#666666',
+          fontWeight: '400',
           textAlign: 'center',
+          paddingHorizontal: 40,
+          transform: [{ rotateX }],
+          opacity,
         }}>
-          {loadingPhrases[currentPhraseIndex]}
-        </Text>
-        <Text style={{ 
-          color: isDarkMode ? '#a0aec0' : '#718096', 
-          marginTop: 8,
-          fontSize: 14,
-          textAlign: 'center',
-        }}>
-          Just a moment while we prepare your experience
-        </Text>
+          {loadingMessages[loadingMessageIndex]}
+        </Animated.Text>
       </View>
     );
   }
 
+  console.log('🏗️ APPNAVIGATOR: About to render NavigationContainer');
+  
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer 
+      ref={(ref) => {
+        navigationRef.current = ref;
+        console.log('🏗️ NAVIGATION CONTAINER: Ref set, ready:', !!ref);
+        if (ref) {
+          const currentRoute = ref.getCurrentRoute()?.name;
+          console.log('🏗️ NAVIGATION CONTAINER: Initial route after ref set:', currentRoute);
+        }
+      }}
+      onReady={() => {
+        console.log('🏗️ NAVIGATION CONTAINER: onReady called');
+        if (navigationRef.current) {
+          const currentRoute = navigationRef.current.getCurrentRoute()?.name;
+          console.log('🏗️ NAVIGATION CONTAINER: Current route on ready:', currentRoute);
+        }
+      }}
+      onStateChange={(state) => {
+        if (navigationRef.current) {
+          const currentRoute = navigationRef.current.getCurrentRoute()?.name;
+          console.log('🏗️ NAVIGATION CONTAINER: State changed, current route:', currentRoute);
+        }
+      }}
+
+    >
       <StatusBar 
         barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
         backgroundColor="transparent"
@@ -183,24 +287,31 @@ export const AppNavigator: React.FC = () => {
         screenOptions={{
           headerShown: false,
           ...mobileTransition,
+          cardStyle: { 
+            backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff' 
+          },
         }}
       >
+        {(() => { console.log('🏗️ STACK NAVIGATOR: Rendering with initialRouteName: Hero'); return null; })()}
         <Stack.Screen
           name="Hero"
           options={{
             ...mobileTransition,
           }}
         >
-          {({ navigation }) => (
-            <HeroLandingScreen
-              onNavigateToTutorial={() => navigation.navigate("Tutorial")}
-              onNavigateToSignIn={() => {
-                console.log('➡️ NAVIGATING TO SIGNIN from Hero');
-                navigation.navigate("SignIn");
-              }}
-              onNavigateToSignUp={() => navigation.navigate("SignUp")}
-            />
-          )}
+          {({ navigation }) => {
+            console.log('🏠 HERO STACK SCREEN: Rendering HeroLandingScreen');
+            return (
+              <HeroLandingScreen
+                onNavigateToTutorial={() => navigation.navigate("Tutorial")}
+                onNavigateToSignIn={() => {
+                  console.log('➡️ NAVIGATING TO SIGNIN from Hero');
+                  navigation.navigate("SignIn");
+                }}
+                onNavigateToSignUp={() => navigation.navigate("SignUp")}
+              />
+            );
+          }}
         </Stack.Screen>
 
         <Stack.Screen
@@ -227,15 +338,20 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <SignInScreen
               onNavigateBack={() => {
-                console.log('🔙 BACK BUTTON PRESSED - calling navigation.goBack()');
+                console.log('🔙 SIGNIN: Back button pressed - calling navigation.goBack()');
                 navigation.goBack();
               }}
               onSignInSuccess={() => {
-                console.log('✅ SIGNIN SUCCESS - auth routing will handle navigation to Chat');
-                // Let auth routing handle navigation - no manual navigation needed
+                console.log('✅ SIGNIN: Login success callback - letting auth state handle navigation');
               }}
-              onNavigateToSignUp={() => navigation.navigate("SignUp")}
-              onNavigateToHero={() => navigation.navigate("Hero")}
+              onNavigateToSignUp={() => {
+                console.log('📝 SIGNIN: Navigate to SignUp');
+                navigation.navigate("SignUp");
+              }}
+              onNavigateToHero={() => {
+                console.log('🏠 SIGNIN: Navigate to Hero');
+                navigation.navigate("Hero");
+              }}
             />
           )}
         </Stack.Screen>
@@ -250,8 +366,7 @@ export const AppNavigator: React.FC = () => {
             <SignUpScreen
               onNavigateBack={() => navigation.goBack()}
               onSignUpSuccess={() => {
-                console.log('✅ SIGNUP SUCCESS - auth routing will handle navigation to Chat');
-                // Let auth routing handle navigation - no manual navigation needed
+                console.log('✅ SIGNUP SUCCESS - letting auth state handle navigation');
               }}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
             />
@@ -267,8 +382,6 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <AboutScreen 
               onNavigateBack={() => navigation.goBack()}
-              onTitlePress={() => navigation.navigate("Hero")}
-              onMenuPress={createMenuHandler(navigation)}
             />
           )}
         </Stack.Screen>
@@ -375,6 +488,17 @@ export const AppNavigator: React.FC = () => {
               onNavigateHome={() => navigation.navigate("Hero")}
               onStartChat={() => navigation.navigate("SignUp")}
             />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="LightBeamExample"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <AnimatedLightBeamExample />
           )}
         </Stack.Screen>
       </Stack.Navigator>

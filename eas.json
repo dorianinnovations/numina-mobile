@@ -1,13 +1,19 @@
 {
   "cli": {
-    "version": ">= 5.9.1"
+    "version": ">= 5.9.1",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "withoutCredentials": true
+      },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "simulator": true
       }
     },
     "preview": {
@@ -17,6 +23,10 @@
       }
     },
     "production": {
+      "env": {
+        "AWS_ACCESS_KEY_ID": "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY": "AWS_SECRET_ACCESS_KEY"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }

@@ -98,7 +98,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
   const socialCardFadeAnim = useRef(new Animated.Value(0)).current;
   const privacyCardFadeAnim = useRef(new Animated.Value(0)).current;
 
-  // CRITICAL FIX: Proper cleanup function
+      // Proper cleanup function
   const cleanupResources = useCallback(() => {
     // Clear animation loop
     if (animationLoopRef.current) {
@@ -152,7 +152,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     loadGrowthData();
     loadMilestones();
     
-    // CRITICAL FIX: Store interval ref for proper cleanup
+    // Store interval ref for proper cleanup
     refreshIntervalRef.current = setInterval(() => {
       console.log('🔄 SentimentScreen: Periodic refresh (5 min interval)...');
       if (canRefresh()) {
@@ -169,7 +169,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
     websocketService.addEventListener('growth_insights_updated', handleGrowthInsightsUpdated);
     websocketService.addEventListener('numina_senses_updated', handleNuminaSensesUpdated);
 
-    // CRITICAL FIX: Store animation loop ref for proper cleanup
+    // Store animation loop ref for proper cleanup
     animationLoopRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
@@ -192,7 +192,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
       useNativeDriver: true,
     }).start();
 
-    // CRITICAL FIX: Comprehensive cleanup
+    // Comprehensive cleanup
     return () => {
       console.log('🎭 SentimentScreen: Component unmounting, cleaning up...');
       
@@ -269,7 +269,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({ onNavigateBack
           
           setGrowthData(validateGrowthData(chunk.data));
           
-          // CRITICAL FIX: Store timeout ref for proper cleanup
+          // Store timeout ref for proper cleanup
           streamingTimeoutRef.current = setTimeout(() => {
             setIsStreamingGrowthData(false);
             setLoading(false);

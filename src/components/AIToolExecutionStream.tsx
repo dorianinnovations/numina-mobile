@@ -29,6 +29,7 @@ interface ToolExecution {
     parameters?: any;
     results?: any;
     error?: string;
+    message?: string;
   };
   progress?: number; // 0-100
 }
@@ -90,12 +91,32 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
 
   const getToolIcon = (toolName: string) => {
     switch (toolName) {
-      case 'web_search': return '⚡';
+      case 'web_search': return '🌐';
+      case 'news_search': return '📰';
+      case 'weather_check': return '🌤️';
+      case 'social_search': return '📱';
+      case 'academic_search': return '📚';
+      case 'image_search': return '🖼️';
       case 'music_recommendations': return '🎵';
       case 'spotify_playlist': return '🎧';
       case 'reservation_booking': return '🍽️';
       case 'itinerary_generator': return '✈️';
       case 'credit_management': return '💳';
+      case 'ubmp_analysis': return '🧠';
+      case 'calculator': return '🔢';
+      case 'translation': return '🌍';
+      case 'stock_lookup': return '📈';
+      case 'crypto_lookup': return '₿';
+      case 'currency_converter': return '💱';
+      case 'timezone_converter': return '🕐';
+      case 'code_generator': return '💻';
+      case 'text_generator': return '📝';
+      case 'email_assistant': return '📧';
+      case 'linkedin_helper': return '💼';
+      case 'fitness_tracker': return '💪';
+      case 'nutrition_lookup': return '🥗';
+      case 'qr_generator': return '📱';
+      case 'password_generator': return '🔐';
       default: return '🔧';
     }
   };
@@ -134,7 +155,17 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
     const { details } = execution;
     switch (execution.toolName) {
       case 'web_search':
-        return `Searching: "${details.query}" (${details.searchType || 'general'})`;
+        return `Searching: "${details.query || details.parameters?.query || 'web'}"`;
+      case 'news_search':
+        return `Searching news: "${details.query || details.parameters?.query || 'latest news'}"`;
+      case 'weather_check':
+        return `Checking weather: ${details.location || details.parameters?.location || 'current location'}`;
+      case 'social_search':
+        return `Searching social: "${details.query || details.parameters?.query || 'social media'}"`;
+      case 'academic_search':
+        return `Academic search: "${details.query || details.parameters?.query || 'research'}"`;
+      case 'ubpm_analysis':
+        return `Analyzing behavioral patterns...`;
       case 'music_recommendations':
         return `Finding ${details.parameters?.mood || 'music'} recommendations`;
       case 'spotify_playlist':
@@ -143,8 +174,16 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
         return `Booking: ${details.parameters?.restaurantName || 'restaurant'}`;
       case 'itinerary_generator':
         return `Planning: ${details.parameters?.destination || 'trip'}`;
+      case 'calculator':
+        return `Calculating: ${details.query || details.parameters?.expression || 'calculation'}`;
+      case 'translation':
+        return `Translating: "${details.query || details.parameters?.text || 'text'}"`;
+      case 'stock_lookup':
+        return `Stock data: ${details.parameters?.symbol || 'market'}`;
+      case 'crypto_lookup':
+        return `Crypto prices: ${details.parameters?.symbol || 'cryptocurrency'}`;
       default:
-        return details.action || 'Processing...';
+        return details.action || details.query || details.message || 'Processing...';
     }
   };
 

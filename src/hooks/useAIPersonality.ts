@@ -47,13 +47,13 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
   const lastAnalysisRef = useRef<number>(0);
   const analysisDebounceRef = useRef<NodeJS.Timeout | null>(null);
   
-  // CRITICAL FIX: Add cleanup refs to prevent memory leaks
+  // Add cleanup refs to prevent memory leaks
   const isMountedRef = useRef<boolean>(true);
   const pendingAnalysisRef = useRef<Promise<UserEmotionalState> | null>(null);
 
   const aiPersonalityService = AIPersonalityService.getInstance();
 
-  // CRITICAL FIX: Proper cleanup function
+  // Proper cleanup function
   const cleanupResources = useCallback(() => {
     if (analysisDebounceRef.current) {
       clearTimeout(analysisDebounceRef.current);
@@ -70,13 +70,13 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
       return emotionalState || aiPersonalityService.getDefaultEmotionalState();
     }
     
-    // CRITICAL FIX: Clear any pending debounce
+    // Clear any pending debounce
     if (analysisDebounceRef.current) {
       clearTimeout(analysisDebounceRef.current);
       analysisDebounceRef.current = null;
     }
     
-    // CRITICAL FIX: Check if component is still mounted
+    // Check if component is still mounted
     if (!isMountedRef.current) {
       console.log('⏳ Component unmounted, skipping analysis');
       return emotionalState || aiPersonalityService.getDefaultEmotionalState();
@@ -89,20 +89,20 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       const state = await aiPersonalityService.analyzeCurrentEmotionalState();
       
-      // CRITICAL FIX: Check if component is still mounted before updating state
+      // Check if component is still mounted before updating state
       if (isMountedRef.current) {
         setEmotionalState(state);
       }
       
       return state;
     } catch (err: any) {
-      // CRITICAL FIX: Only update error state if component is still mounted
+      // Only update error state if component is still mounted
       if (isMountedRef.current) {
         setError(err.message || 'Failed to analyze emotional state');
       }
       throw err;
     } finally {
-      // CRITICAL FIX: Only update loading state if component is still mounted
+      // Only update loading state if component is still mounted
       if (isMountedRef.current) {
         setIsAnalyzing(false);
       }
@@ -113,14 +113,14 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       const personality = await aiPersonalityService.getPersonalityRecommendations(emotionalState || undefined);
       
-      // CRITICAL FIX: Check if component is still mounted before updating state
+      // Check if component is still mounted before updating state
       if (isMountedRef.current) {
         setAiPersonality(personality);
       }
       
       return personality;
     } catch (err: any) {
-      // CRITICAL FIX: Only update error state if component is still mounted
+      // Only update error state if component is still mounted
       if (isMountedRef.current) {
         setError(err.message || 'Failed to get personality recommendations');
       }
@@ -136,7 +136,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       return await aiPersonalityService.sendAdaptiveChatMessage(prompt, onChunk, attachments);
     } catch (err: any) {
-      // CRITICAL FIX: Only update error state if component is still mounted
+      // Only update error state if component is still mounted
       if (isMountedRef.current) {
         setError(err.message || 'Failed to send adaptive chat message');
       }
@@ -152,7 +152,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     try {
       await aiPersonalityService.submitPersonalityFeedback(messageId, feedback, style);
     } catch (err: any) {
-      // CRITICAL FIX: Only update error state if component is still mounted
+      // Only update error state if component is still mounted
       if (isMountedRef.current) {
         setError(err.message || 'Failed to submit feedback');
       }
@@ -177,15 +177,15 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     await getPersonalityRecommendations();
   }, [analyzeEmotionalState, getPersonalityRecommendations]);
 
-  // CRITICAL FIX: Initialize on mount with proper cleanup
+  // Initialize on mount with proper cleanup
   useEffect(() => {
     isMountedRef.current = true;
     
     const initialize = async () => {
       try {
-        // CRITICAL FIX: Debounce the initial analysis to avoid blocking the UI
+        // Debounce the initial analysis to avoid blocking the UI
         analysisDebounceRef.current = setTimeout(async () => {
-          // CRITICAL FIX: Check if component is still mounted before proceeding
+          // Check if component is still mounted before proceeding
           if (!isMountedRef.current) {
             console.log('⏳ Component unmounted during initialization, skipping');
             return;
@@ -207,7 +207,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
 
     initialize();
     
-    // CRITICAL FIX: Comprehensive cleanup on unmount
+    // Comprehensive cleanup on unmount
     return () => {
       console.log('🧹 useAIPersonality: Cleaning up resources');
       isMountedRef.current = false;

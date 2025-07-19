@@ -6,10 +6,10 @@ import { offlineEmotionStorage } from './offlineEmotionStorage';
 import ApiService from './api';
 
 /**
- * Data Audit Service - Comprehensive Data Management & Privacy
+ * Data Audit Service - Data Management & Privacy
  * 
- * CRITICAL: This service handles data privacy, cleanup, and verification
- * Used for testing, debugging, and ensuring GDPR compliance
+ * Handles data privacy, cleanup, and verification
+ * For testing, debugging, and GDPR compliance
  */
 export class DataAuditService {
   private static instance: DataAuditService;
@@ -22,8 +22,8 @@ export class DataAuditService {
   }
 
   /**
-   * NUCLEAR DATA WIPE - Remove ALL app data
-   * Use for testing and emergency cleanup
+   * Nuclear data wipe - Remove all app data
+   * For testing and emergency cleanup
    */
   async performNuclearDataWipe(): Promise<{
     success: boolean;
@@ -36,7 +36,6 @@ export class DataAuditService {
     const errors: string[] = [];
 
     try {
-      // 1. Clear ALL AsyncStorage
       try {
         const allKeys = await AsyncStorage.getAllKeys();
         console.log(`☢️ Found ${allKeys.length} AsyncStorage keys:`, allKeys);
@@ -49,7 +48,6 @@ export class DataAuditService {
         errors.push(`AsyncStorage: ${error}`);
       }
 
-      // 2. Clear ALL SecureStore
       try {
         const commonSecureKeys = [
           'authToken', 'userProfile', 'userSettings', 'biometricKey',
@@ -58,7 +56,6 @@ export class DataAuditService {
           'encryption_key', 'oauth_tokens', 'user_credentials', 'app_state'
         ];
 
-        // Also try with user ID suffixes (if we can find any)
         const possibleUserIds = await this.extractUserIdsFromStorage();
         const allSecureKeys = [
           ...commonSecureKeys,
@@ -73,7 +70,6 @@ export class DataAuditService {
             await SecureStore.deleteItemAsync(key);
             secureItemsCleared++;
           } catch {
-            // Key might not exist, ignore
           }
         }
 
@@ -84,7 +80,6 @@ export class DataAuditService {
         errors.push(`SecureStore: ${error}`);
       }
 
-      // 3. Clear specific service data
       try {
         await dataManager.performCompleteLogout();
         clearedItems.push('DataManager: Complete logout');
@@ -109,9 +104,6 @@ export class DataAuditService {
     }
   }
 
-  /**
-   * COMPREHENSIVE DATA AUDIT - Show all stored data
-   */
   async performDataAudit(): Promise<{
     asyncStorage: { key: string; preview: string }[];
     secureStore: string[];
@@ -124,7 +116,6 @@ export class DataAuditService {
     console.log('🔍 DATA AUDIT: Starting comprehensive audit...');
 
     try {
-      // 1. Audit AsyncStorage
       const allKeys = await AsyncStorage.getAllKeys();
       const asyncStorage = await Promise.all(
         allKeys.map(async (key) => {
@@ -140,10 +131,8 @@ export class DataAuditService {
         })
       );
 
-      // 2. Extract user IDs from data
       const userIds = await this.extractUserIdsFromStorage();
 
-      // 3. Audit conversations
       let conversations: any[] = [];
       try {
         conversations = await conversationStorage.getAllConversations();
@@ -151,7 +140,6 @@ export class DataAuditService {
         console.error('Error reading conversations:', error);
       }
 
-      // 4. Audit emotions
       let emotions: any[] = [];
       try {
         emotions = await offlineEmotionStorage.getAllEmotions();
@@ -159,10 +147,8 @@ export class DataAuditService {
         console.error('Error reading emotions:', error);
       }
 
-      // 5. Estimate SecureStore usage
       const secureStore = await this.auditSecureStore(userIds);
 
-      // 6. Calculate total items and size
       const totalItems = asyncStorage.length + secureStore.length + conversations.length + emotions.length;
       const estimatedSize = this.calculateEstimatedSize(asyncStorage, conversations, emotions);
 
@@ -191,9 +177,6 @@ export class DataAuditService {
     }
   }
 
-  /**
-   * ACCOUNT DELETION - Remove all data for specific user
-   */
   async deleteUserAccount(userId: string): Promise<{
     success: boolean;
     serverDeletion: boolean;
@@ -207,7 +190,6 @@ export class DataAuditService {
     let localDeletion = false;
 
     try {
-      // 1. Delete from server
       try {
         await ApiService.deleteAccount(userId);
         serverDeletion = true;
@@ -217,11 +199,9 @@ export class DataAuditService {
         console.error('❌ Server account deletion failed:', error);
       }
 
-      // 2. Delete local data
       try {
         await dataManager.performCompleteLogout(userId);
         
-        // Additional cleanup for this specific user
         await this.deleteSpecificUserData(userId);
         
         localDeletion = true;
@@ -315,9 +295,6 @@ export class DataAuditService {
     }
   }
 
-  /**
-   * PRIVACY COMPLIANCE CHECK - Ensure GDPR compliance
-   */
   async checkPrivacyCompliance(): Promise<{
     compliant: boolean;
     issues: string[];
@@ -331,7 +308,6 @@ export class DataAuditService {
     try {
       const audit = await this.performDataAudit();
 
-      // Check for excessive data retention
       if (audit.conversations.length > 1000) {
         issues.push(`Excessive conversation retention: ${audit.conversations.length} items`);
         recommendations.push('Implement conversation cleanup policy');
@@ -342,7 +318,6 @@ export class DataAuditService {
         recommendations.push('Implement emotion cleanup policy');
       }
 
-      // Check for orphaned data
       const orphanedData = audit.asyncStorage.filter(item => 
         !audit.userIds.some(userId => item.key.includes(userId))
       );
@@ -352,7 +327,6 @@ export class DataAuditService {
         recommendations.push('Clean up orphaned data');
       }
 
-      // Check for multiple user accounts
       if (audit.userIds.length > 3) {
         issues.push(`Multiple user accounts: ${audit.userIds.length} users`);
         recommendations.push('Implement proper account switching');
@@ -377,15 +351,13 @@ export class DataAuditService {
     }
   }
 
-  // Helper methods
   private async extractUserIdsFromStorage(): Promise<string[]> {
     try {
       const allKeys = await AsyncStorage.getAllKeys();
       const userIds = new Set<string>();
 
       for (const key of allKeys) {
-        // Extract user IDs from keys like "emotions_userId", "conversations_userId", etc.
-        const match = key.match(/_([a-f0-9]{24})$/); // MongoDB ObjectId pattern
+        const match = key.match(/_([a-f0-9]{24})$/);
         if (match) {
           userIds.add(match[1]);
         }
@@ -405,24 +377,20 @@ export class DataAuditService {
 
     const existingKeys: string[] = [];
 
-    // Check common keys
     for (const key of commonKeys) {
       try {
         const value = await SecureStore.getItemAsync(key);
         if (value) existingKeys.push(key);
-      } catch {
-        // Key doesn't exist
+              } catch {
+        }
       }
-    }
 
-    // Check user-specific keys
-    for (const userId of userIds) {
+      for (const userId of userIds) {
       for (const key of commonKeys) {
         try {
           const value = await SecureStore.getItemAsync(`${key}_${userId}`);
           if (value) existingKeys.push(`${key}_${userId}`);
         } catch {
-          // Key doesn't exist
         }
       }
     }
@@ -437,17 +405,14 @@ export class DataAuditService {
   ): string {
     let totalBytes = 0;
 
-    // Estimate AsyncStorage size
     asyncStorage.forEach(item => {
       totalBytes += item.key.length + item.preview.length;
     });
 
-    // Estimate conversations size
     conversations.forEach(conv => {
       totalBytes += JSON.stringify(conv).length;
     });
 
-    // Estimate emotions size
     emotions.forEach(emotion => {
       totalBytes += JSON.stringify(emotion).length;
     });
@@ -458,7 +423,6 @@ export class DataAuditService {
   }
 
   private async deleteSpecificUserData(userId: string): Promise<void> {
-    // Delete user-specific AsyncStorage items
     const allKeys = await AsyncStorage.getAllKeys();
     const userKeys = allKeys.filter(key => key.includes(userId));
     
@@ -466,7 +430,6 @@ export class DataAuditService {
       await AsyncStorage.multiRemove(userKeys);
     }
 
-    // Delete user-specific SecureStore items
     const commonKeys = [
       'authToken', 'userProfile', 'userSettings', 'biometricKey',
       'encryptionKey', 'sessionData', 'spotify_tokens'

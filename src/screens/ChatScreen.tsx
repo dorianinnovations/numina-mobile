@@ -38,12 +38,12 @@ import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 
-// Enhanced services integration
 import getBatchApiService from '../services/batchApiService';
 import getWebSocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
 import syncService from '../services/syncService';
 import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
 import { ToolExecutionModal } from '../components/ToolExecutionModal';
+import { QuickAnalyticsModal } from '../components/QuickAnalyticsModal';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -71,11 +71,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isTouchActive, setIsTouchActive] = useState(false);
   const [scrollDebounceTimeout, setScrollDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Lazy-initialized services for better performance
   const websocketService = useMemo(() => getWebSocketService(), []);
   const batchApiService = useMemo(() => getBatchApiService(), []);
 
-  // AI Personality Integration
   const {
     emotionalState,
     aiPersonality,
@@ -86,20 +84,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     error: aiError,
   } = useAIPersonality();
 
-
-  // Cloud Matching Integration  
   const {
     getPersonalizedRecommendations,
     error: cloudError,
   } = useCloudMatching();
 
-  // Numina Personality Integration - This starts the frequent updates!
-  const numinaPersonality = useNuminaPersonality(true); // true = active chat session
-  
-  // Search Thought Indicator Integration
-  // Removed search indicator functionality
-  
-  // Get adaptive placeholder from AI Personality
+  const numinaPersonality = useNuminaPersonality(true);
   const getAdaptivePlaceholderText = useCallback(() => {
     if (emotionalState && aiPersonality) {
       return getAdaptivePlaceholder();
@@ -112,7 +102,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef<FlatList>(null);
   
-  // Enhanced features state
   const [isConnected, setIsConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<UserPresence[]>([]);
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
@@ -123,28 +112,31 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
   const [isToolModalVisible, setIsToolModalVisible] = useState(false);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
-  
-  // UBPM insights state
+  const [showQuickAnalyticsModal, setShowQuickAnalyticsModal] = useState(false);
   const [ubpmInsights, setUbpmInsights] = useState<any[]>([]);
 
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
-  // File attachment state
+  const animationTimeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set());
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  const createManagedTimeout = useCallback((callback: () => void, delay: number) => {
+    const timeoutId = setTimeout(() => {
+      animationTimeoutRefs.current.delete(timeoutId);
+      callback();
+    }, delay);
+    animationTimeoutRefs.current.add(timeoutId);
+    return timeoutId;
+  }, []);
   
-  // Function to manually restore header with haptic feedback
   const restoreHeader = async () => {
     try {
       console.log('🎯 Touch gesture triggered! Restoring header...');
       
-      // Clear any pending scroll debounce timeouts
       if (scrollDebounceTimeout) {
         clearTimeout(scrollDebounceTimeout);
         setScrollDebounceTimeout(null);
       }
       
-      // Set touch active to prevent scroll interference
       setIsTouchActive(true);
       
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -152,27 +144,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setHeaderPermanentlyHidden(false);
       console.log('✅ Header restored successfully');
       
-      // Reset touch active state after animation completes
-      setTimeout(() => {
+      createManagedTimeout(() => {
         setIsTouchActive(false);
-      }, 500); // Match header animation duration
+      }, 500);
       
     } catch (error) {
       console.log('⚠️ Haptics failed, restoring header without haptics');
-      // Fallback if haptics fail
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
       
-      // Reset touch active state after animation completes
-      setTimeout(() => {
+      createManagedTimeout(() => {
         setIsTouchActive(false);
-      },500);
+      }, 500);
     }
   };
 
-  // Initialize conversation and enhanced features
   useEffect(() => {
-    if (!conversation) {
+    if (!conversation || !conversation.messages || conversation.messages.length === 0) {
       const welcomeMessage: Message = {
         id: '1',
         text: "Welcome to Numina! I'm here to help you explore, discover, and connect. What would you like to explore today?",
@@ -188,6 +176,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     // Initialize enhanced features
     initializeEnhancedFeatures();
     setupToolExecutionListeners();
+    setupWebSocketListeners();
 
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -198,7 +187,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     return () => {
       cleanup();
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   // Cleanup scroll debounce timeout on unmount
   useEffect(() => {
@@ -212,13 +201,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   // Initialize enhanced features
   const initializeEnhancedFeatures = async () => {
     try {
+      // Clean up any existing listeners first
+      cleanup();
+      
       // Initialize WebSocket connection with better error handling
       const connected = await websocketService.initialize();
       setIsConnected(connected);
       
       if (connected) {
         websocketService.joinRoom(roomId, 'general');
-        setupWebSocketListeners();
         await loadInitialDataBatch();
       } else {
         console.log('🔄 WebSocket connection failed, continuing without real-time features');
@@ -296,6 +287,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       // Show the tool stream when UBPM insights arrive
       setIsToolStreamVisible(true);
     });
+
+    // Tool execution WebSocket listeners - trigger beautiful status indicators
+    websocketService.addEventListener('tool_execution_start', (data: any) => {
+      console.log('🔧 WebSocket: Tool execution started:', data);
+      // Start tool execution in the service to trigger beautiful modal
+      const executionId = toolExecutionService.startExecution(data.toolName, { 
+        fromWebSocket: true,
+        progress: data.progress,
+        message: data.message 
+      });
+      setIsToolStreamVisible(true);
+    });
+
+    websocketService.addEventListener('tool_execution_complete', (data: any) => {
+      console.log('✅ WebSocket: Tool execution completed:', data);
+      // Find the execution and mark it complete
+      const activeExecutions = toolExecutionService.getActiveExecutions();
+      const execution = activeExecutions.find(exec => exec.toolName === data.toolName);
+      if (execution) {
+        if (data.success) {
+          toolExecutionService.completeExecution(execution.id, data);
+        } else {
+          toolExecutionService.failExecution(execution.id, data.message || 'Tool execution failed');
+        }
+      }
+    });
   };
 
   // Handle UBPM insight acknowledgment
@@ -307,6 +324,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           : insight
       )
     );
+  };
+
+  const handleQuickAnalyticsQuery = (query: string) => {
+    console.log('🧠 Quick analytics query:', query);
+    setInputText(query);
+    setTimeout(() => {
+      sendMessage();
+    }, 100);
   };
   
   // Load initial data with batch API
@@ -327,19 +352,46 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   // Cleanup function
   const cleanup = () => {
+    // Clear typing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
     }
     
+    // Clear scroll debounce timeout
     if (scrollDebounceTimeout) {
       clearTimeout(scrollDebounceTimeout);
+      setScrollDebounceTimeout(null);
     }
     
+    // Clear all managed animation timeouts
+    animationTimeoutRefs.current.forEach(timeoutId => {
+      clearTimeout(timeoutId);
+    });
+    animationTimeoutRefs.current.clear();
+    
+    // WebSocket cleanup
     if (isConnected) {
       websocketService.stopTyping(roomId);
       websocketService.leaveRoom(roomId);
     }
     
+    // Clean up WebSocket listeners to prevent duplicates
+    websocketService.removeEventListener('connection_status');
+    websocketService.removeEventListener('user_joined');
+    websocketService.removeEventListener('user_left');
+    websocketService.removeEventListener('user_typing');
+    websocketService.removeEventListener('user_stopped_typing');
+    websocketService.removeEventListener('ubpm_notification');
+    websocketService.removeEventListener('ubpm_insight');
+    websocketService.removeEventListener('tool_execution_start');
+    websocketService.removeEventListener('tool_execution_complete');
+    websocketService.removeEventListener('tool_execution_progress');
+    
+    // Clean up tool execution listeners
+    toolExecutionService.removeAllListeners();
+    
+    // Sync service cleanup
     syncService.cleanup();
   };
 
@@ -390,7 +442,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setCurrentAIMessage('');
     
     // Clear attachments after a delay to allow UI rendering
-    setTimeout(() => {
+    createManagedTimeout(() => {
       setAttachments([]);
     }, 500); // Give UI time to render the message with attachments
     
@@ -467,7 +519,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             personalityContext: context,
           };
           
-          // Debug log personality context
+          // Log personality context
           if (context) {
             console.log('🧠 CHAT: Received personality context:', context);
           }
@@ -681,12 +733,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleVoiceStart = () => {
     setIsVoiceActive(true);
-    // TODO: Implement actual voice recognition
+    // Voice recognition implementation needed
   };
 
   const handleVoiceEnd = () => {
     setIsVoiceActive(false);
-    // TODO: Process voice input
+    // Process voice input
   };
 
   const handleMessageLongPress = (message: Message) => {
@@ -702,7 +754,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const handleCopyMessage = (message: Message) => {
-    // TODO: Implement clipboard functionality
+    // Clipboard functionality needed
   };
 
   const handleShareMessage = async (message: Message) => {
@@ -716,7 +768,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const handleSpeakMessage = (text: string) => {
-    // TODO: Implement text-to-speech
+    // Text-to-speech implementation needed
   };
 
   const handleSelectConversation = (selectedConversation: Conversation) => {
@@ -724,7 +776,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     onConversationUpdate?.(selectedConversation);
   };
 
-  const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
+  const handleStartNewChat = () => {
+    // Save current conversation if it exists and has messages (non-blocking)
+    if (conversation && conversation.messages.length > 0) {
+      saveConversation(conversation).catch(console.error);
+    }
+    
+    // Immediately clear everything - no waiting, no intermediate states
+    setConversation(null);
+    setInputText('');
+    
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     // Safety check for item - allow empty text for streaming messages
     if (!item || (!item.text && !item.isStreaming)) {
       console.warn('Invalid message item:', item);
@@ -749,53 +815,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         />
       </ChatErrorBoundary>
     );
-  }, [handleMessageLongPress, handleSpeakMessage]);
+  };
 
-  const handleScroll = useCallback((event) => {
-    const currentScrollY = event.nativeEvent.contentOffset.y;
-    
-    // Only process significant scroll changes
-    if (Math.abs(currentScrollY - lastScrollY) < 5) return;
-    
-    const scrollDelta = currentScrollY - lastScrollY;
-    
-    // Always show header if near the top
-    if (currentScrollY <= 30) {
-      setHeaderVisible(true);
-      setHeaderPermanentlyHidden(false);
-      setLastScrollY(currentScrollY);
-      return;
-    }
-    
-    // Don't process scroll events if touch is active
-    if (isTouchActive) {
-      setLastScrollY(currentScrollY);
-      return;
-    }
-    
-    // Simple state update without debouncing for better performance
-    if (scrollDelta > 10) {
-      setHeaderVisible(false);
-      setHeaderPermanentlyHidden(true);
-    } else if (scrollDelta < -10 && !headerPermanentlyHidden && !isStreaming) {
-      setHeaderVisible(true);
-    }
-    
-    setLastScrollY(currentScrollY);
-  }, [lastScrollY, isTouchActive, headerPermanentlyHidden, isStreaming]);
-
+  // Industry standard: Auto-create conversation on first message
+  // No special "no conversation" state needed
   if (!conversation) {
-    return (
-      <PageBackground>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingScreen}>
-            <Text style={[styles.loadingText, { color: theme.colors.primary }]}>
-              Loading conversation...
-            </Text>
-          </View>
-        </SafeAreaView>
-      </PageBackground>
-    );
+    // Create a new empty conversation immediately
+    const newConversation: Conversation = {
+      id: `conv_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      title: 'New Chat',
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setConversation(newConversation);
+    // Return null briefly while state updates
+    return null;
   }
 
   return (
@@ -809,7 +844,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         showBackButton={false}
         showMenuButton={true}
         showConversationsButton={true}
+        showQuickAnalyticsButton={true}
         onConversationSelect={handleSelectConversation}
+        onStartNewChat={handleStartNewChat}
+        onQuickAnalyticsPress={() => setShowQuickAnalyticsModal(true)}
         currentConversationId={conversation?.id}
         title="Numina"
         subtitle={
@@ -867,21 +905,68 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     ref={flatListRef}
                     data={conversation?.messages || []}
                     renderItem={renderMessage}
-                    keyExtractor={(item, index) => item?.id || `msg-${index}`}
+                    keyExtractor={item => item?.id || Math.random().toString()}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
                       // Scroll to end for new messages and streaming content
-                      flatListRef.current?.scrollToEnd({ animated: true });
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
                     }}
-                    scrollEventThrottle={16}
-                    onScroll={handleScroll}
-                    removeClippedSubviews={true}
-                    windowSize={10}
-                    initialNumToRender={20}
-                    maxToRenderPerBatch={10}
+                    onScroll={(event) => {
+                      const currentScrollY = event.nativeEvent.contentOffset.y;
+                      const scrollDelta = currentScrollY - lastScrollY;
+                      
+                      // Always show header if near the top
+                      if (currentScrollY <= 30) {
+                        setHeaderVisible(true);
+                        setHeaderPermanentlyHidden(false);
+                        setLastScrollY(currentScrollY);
+                        return;
+                      }
+                      
+                      // Don't process scroll events if touch is active
+                      if (isTouchActive) {
+                        setLastScrollY(currentScrollY);
+                        return;
+                      }
+                      
+                      // Clear any existing debounce timeout
+                      if (scrollDebounceTimeout) {
+                        clearTimeout(scrollDebounceTimeout);
+                      }
+                      
+                      // Debounce scroll events to prevent rapid state changes
+                      const timeout = setTimeout(() => {
+                        // Hide header immediately when scrolling down and make it sticky
+                        if (scrollDelta > 0) {
+                          setHeaderVisible(false);
+                          setHeaderPermanentlyHidden(true);
+                        }
+                        // Only show header when scrolling up IF not permanently hidden
+                        else if (scrollDelta < 0) {
+                          if (!headerPermanentlyHidden && !isStreaming) {
+                            setHeaderVisible(true);
+                          }
+                        }
+                      }, 50); // 50ms debounce
+                      
+                      setScrollDebounceTimeout(timeout);
+                      setLastScrollY(currentScrollY);
+                    }}
+                    onLayout={() => {
+                      // Scroll to end when layout changes (new messages added)
+                      setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                      }, 100);
+                    }}
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={styles.messagesContent}
-                    extraData={conversation?.messages} // Force re-render on new messages
+                    contentContainerStyle={[
+                      styles.messagesContent,
+                      // Top-down message flow
+                      { justifyContent: 'flex-start' }
+                    ]}
+                    extraData={conversation?.messages?.length || 0} // Force re-render on new messages
                     maintainVisibleContentPosition={{
                       minIndexForVisible: 0,
                       autoscrollToTopThreshold: 10,
@@ -899,6 +984,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onAttachmentSelected={(attachment) => {
                       const newAttachments = [...attachments, attachment];
                       setAttachments(newAttachments);
+                    }}
+                    onSendQuickQuery={(query) => {
+                      setInputText(query);
+                      setTimeout(() => {
+                        sendMessage();
+                      }, 100);
                     }}
                   />
                   
@@ -932,6 +1023,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onSelectConversation={handleSelectConversation}
               currentConversationId={conversation?.id}
             />
+
+            {/* Quick Analytics Modal */}
+            <QuickAnalyticsModal
+              visible={showQuickAnalyticsModal}
+              onClose={() => setShowQuickAnalyticsModal(false)}
+              onSendQuery={handleQuickAnalyticsQuery}
+            />
           </SafeAreaView>
         </PageBackground>
       </ScreenWrapper>
@@ -963,6 +1061,7 @@ const styles = StyleSheet.create({
     paddingTop: 180,
     paddingBottom: 120,
     flexGrow: 1,
+    justifyContent: 'flex-start',
   },
   loadingText: {
     fontSize: 16,

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import SecureAuthManager from './secureAuthManager';
+import CloudAuth from './cloudAuth';
 import { offlineEmotionStorage } from './offlineEmotionStorage';
 import conversationStorage from './conversationStorage';
 import { appConfigService } from './appConfigService';
@@ -8,7 +8,7 @@ import { offlineQueue } from './offlineQueue';
 import { userDataSync } from './userDataSync';
 import SpotifyService from './spotifyService';
 import AutoPlaylistService from './autoPlaylistService';
-import { simpleSecureStorage } from './simpleSecureStorage';
+// simpleSecureStorage removed - using CloudAuth directly
 
 /**
  * Centralized Data Manager
@@ -51,8 +51,8 @@ export class DataManager {
    */
   private async getCurrentUserId(): Promise<string | null> {
     try {
-      const authManager = SecureAuthManager.getInstance();
-      const user = await authManager.getCurrentUser();
+      const cloudAuth = CloudAuth.getInstance();
+      const user = cloudAuth.getCurrentUser();
       return user?.id || null;
     } catch {
       return null;
@@ -172,7 +172,7 @@ export class DataManager {
       // Skip maintenance for now - services may not be ready
       console.log('✅ DataManager: Skipping maintenance (services may not be ready)');
       
-      // TODO: Add maintenance back when services are properly initialized
+      // Add maintenance back when services are properly initialized
       // await conversationStorage.cleanupOldConversations(100);
       // await offlineEmotionStorage.cleanupOldEmotions(thirtyDaysAgo);
       

@@ -1,16 +1,13 @@
 export interface ThemeColors {
-  // Background colors
   background: string;
   backgroundGradient?: string[];
   surface: string;
   surfaceGradient?: string[];
   
-  // Text colors
   primary: string;
   secondary: string;
   tertiary?: string;
   
-  // Interactive elements
   accent: string;
   button: {
     primary: {
@@ -27,7 +24,6 @@ export interface ThemeColors {
     };
   };
   
-  // Form elements
   input: {
     background: string;
     border?: string;
@@ -36,12 +32,10 @@ export interface ThemeColors {
     shadow?: string;
   };
   
-  // Status colors
   success: string;
   error: string;
   warning: string;
   
-  // Chat specific
   chat: {
     userMessage: {
       background: string;
@@ -56,7 +50,6 @@ export interface ThemeColors {
     timestamp: string;
   };
   
-  // Navigation
   navigation: {
     background: string;
     text: string;
@@ -64,7 +57,6 @@ export interface ThemeColors {
     shadow?: string;
   };
   
-  // Neumorphic shadow system
   neumorphic?: {
     baseShadow: string;
     insetShadow: string;

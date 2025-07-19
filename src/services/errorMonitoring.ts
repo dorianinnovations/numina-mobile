@@ -189,7 +189,7 @@ class ErrorMonitoringService {
    * Retry operation if possible
    */
   private async retryOperation(errorReport: ErrorReport): Promise<void> {
-    // This would be implemented based on the specific error context
+    // Would be implemented based on the specific error context
     console.log('🔄 ErrorMonitoring: Retrying operation...');
     
     // Example: If it's an API call, retry it

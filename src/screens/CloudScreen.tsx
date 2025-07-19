@@ -12,6 +12,7 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -22,6 +23,7 @@ import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useRealTimeEvents } from '../hooks/useRealTimeEvents';
 import { RealTimeEvent } from '../services/realTimeSync';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 const { width } = Dimensions.get('window');
 
@@ -74,6 +76,13 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     isLoading: eventsLoading, 
     error: eventsError 
   } = useRealTimeEvents();
+  
+  // Pull-to-refresh functionality
+  const { refreshControl } = usePullToRefresh(async () => {
+    // Refresh events data
+    console.log('Refreshing events...');
+  });
+  
   const [activeFilter, setActiveFilter] = useState('ai-matched');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -564,18 +573,8 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
               { opacity: fadeAnim }
             ]}
           >
-            {(loading || eventsLoading) ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={NuminaColors.purple} />
-                <Text style={[
-                  styles.loadingText,
-                  { color: isDarkMode ? '#888' : '#666' }
-                ]}>
-                  Finding perfect events for you...
-                </Text>
-              </View>
-            ) : (
-              <FlatList
+            {/* Removed spinner - border animation shows loading state */}
+            <FlatList
                 data={filteredEvents}
                 renderItem={renderEventCard}
                 keyExtractor={item => item.id}
@@ -585,6 +584,9 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                   { paddingBottom: showFilters ? 140 : 100 }
                 ]}
                 ListEmptyComponent={renderEmptyState}
+                refreshControl={
+                  <RefreshControl {...refreshControl} />
+                }
                 onScroll={() => {
                   if (showFilters) {
                     setShowFilters(false);
@@ -596,7 +598,6 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
                   }
                 }}
               />
-            )}
           </Animated.View>
           
           {/* Floating POST Button */}
@@ -610,7 +611,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
             ]}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              // TODO: Navigate to create event screen
+              // Navigate to create event screen
               console.log('Create new event');
             }}
           >

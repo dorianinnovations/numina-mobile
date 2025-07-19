@@ -37,6 +37,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onNavigateToSignUp,
   onNavigateToHero,
 }) => {
+  console.log('🔑 SIGNIN SCREEN: Component mounting/rendering');
+  
   const { theme, isDarkMode } = useTheme();
   const { login, loading: authLoading } = useAuth();
   
@@ -65,10 +67,15 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
+    console.log('🔑 SIGNIN SCREEN: useEffect mount called');
     // Fast tech entry - no conflicting animations with navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
     slideAnim.setValue(0); // Start in final position for navigation compatibility
+    
+    return () => {
+      console.log('🔑 SIGNIN SCREEN: Component unmounting!');
+    };
   }, []);
 
   // Cleanup timeout on unmount
@@ -80,16 +87,27 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
     };
   }, [timeoutId]);
 
+  const clearErrorOnChange = () => {
+    if (error) {
+      setError('');
+      setAuthStatus('idle');
+    }
+  };
+
   const handleSubmit = async () => {
+    console.log('🔑 SIGNIN SCREEN: handleSubmit called - starting login attempt');
+    
     // Dismiss keyboard when form is submitted
     Keyboard.dismiss();
     
     if (!email.trim() || !password.trim()) {
+      console.log('🔑 SIGNIN SCREEN: Validation failed - empty fields');
       setError('Please fill in all fields');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
+    console.log('🔑 SIGNIN SCREEN: Validation passed, proceeding with login for:', email.trim());
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     setError('');
@@ -137,36 +155,54 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         password: password.trim(),
       });
 
-      if (result.success) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        setIsSignInSuccess(true);
-        setAuthStatus('success');
-        
-        setTimeout(() => {
-          // Fast success navigation - let navigation handle transition
+      console.log('🔑 SIGNIN SCREEN: Login result:', result);
+      console.log('🔑 SIGNIN SCREEN: result.success type:', typeof result.success, 'value:', result.success);
+
+      try {
+        if (result && result.success === true) {
+          console.log('✅ SIGNIN SCREEN: Login successful, calling onSignInSuccess');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          
+          setIsSignInSuccess(true);
+          setAuthStatus('success');
+          
+          // Call success callback immediately - auth routing will handle navigation
           onSignInSuccess();
-        }, 800);
-      } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        
-        setError(result.error || 'Invalid email or password');
-        setIsSignInSuccess(false);
+        } else {
+          console.log('❌ SIGNIN SCREEN: Login failed, staying on signin screen');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          
+          // Set user-friendly error message
+          const errorMessage = result?.error || 'Invalid email or password. Please try again! 🔑';
+          setError(errorMessage);
+          setIsSignInSuccess(false);
+          setAuthStatus('error');
+          
+          // Clear error status after showing it
+          setTimeout(() => {
+            setAuthStatus('idle');
+          }, 3000); // Extended to 3 seconds for better visibility
+        }
+      } catch (authError) {
+        console.error('🔑 SIGNIN SCREEN: Error in auth result processing:', authError);
+        setError('Authentication error occurred');
         setAuthStatus('error');
-        setTimeout(() => {
-          setAuthStatus('idle');
-        }, 2000);
       }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
-      setError(err.message || 'An unexpected error occurred during sign-in.');
+      // Set graceful error message for unexpected errors
+      const errorMessage = err.message || 'Connection issue! Check your internet and try again 🌐';
+      setError(errorMessage);
       setIsSignInSuccess(false);
       setAuthStatus('error');
+      
+      // Clear error status after showing it
       setTimeout(() => {
         setAuthStatus('idle');
-      }, 2000);
+      }, 3000); // Extended to 3 seconds for better visibility
     } finally {
+      console.log('🔑 SIGNIN SCREEN: Login attempt complete, cleaning up state');
       setLocalLoading(false);
       setShowSlowServerMessage(false);
       
@@ -273,7 +309,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           placeholder="Email"
                           placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
                           value={email}
-                          onChangeText={setEmail}
+                          onChangeText={(text) => {
+                            setEmail(text);
+                            clearErrorOnChange();
+                          }}
                           autoCapitalize="none"
                           keyboardType="email-address"
                           keyboardAppearance={isDarkMode ? 'dark' : 'light'} // iOS only
@@ -312,7 +351,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           placeholder="Password"
                           placeholderTextColor={isDarkMode ? '#666666' : '#999999'}
                           value={password}
-                          onChangeText={setPassword}
+                          onChangeText={(text) => {
+                            setPassword(text);
+                            clearErrorOnChange();
+                          }}
                           secureTextEntry
                           keyboardAppearance={isDarkMode ? 'dark' : 'light'} // iOS only
                           returnKeyType="done"

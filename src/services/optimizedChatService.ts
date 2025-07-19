@@ -34,7 +34,6 @@ export class OptimizedChatService {
     const { temperature = 0.8, n_predict = 1024, skipValidation = false } = options || {};
     
     try {
-      // Skip network validation for speed if requested
       if (!skipValidation) {
         const token = CloudAuth.getInstance().getToken();
         if (!token) {
@@ -50,7 +49,6 @@ export class OptimizedChatService {
     } catch (error: any) {
       console.error('💫 PREMIUM SPEED: Primary endpoint failed, attempting fallback...', error);
       
-      // FALLBACK: Try legacy endpoint if primary fails
       try {
         return await this.legacyFallback(message, onStreamingUpdate, { temperature, n_predict }, attachments);
       } catch (fallbackError: any) {
@@ -60,9 +58,6 @@ export class OptimizedChatService {
     }
   }
 
-  /**
-   * FALLBACK: Legacy endpoint support for emergency cases
-   */
   private async legacyFallback(
     message: string,
     onStreamingUpdate?: (partial: string) => void,
@@ -100,9 +95,6 @@ export class OptimizedChatService {
     return content;
   }
 
-  /**
-   * DIRECT API REQUEST - Minimal overhead
-   */
   private async directRequest(
     message: string,
     options: { temperature: number; n_predict: number },
@@ -117,8 +109,8 @@ export class OptimizedChatService {
         'Authorization': `Bearer ${token}`,
       },
       body: JSON.stringify({
-        message: message.trim(), // Updated to use 'message' parameter for /ai/adaptive-chat
-        prompt: message.trim(),   // Keep 'prompt' for backwards compatibility
+        message: message.trim(),
+        prompt: message.trim(),
         stream: false,
         temperature: options.temperature,
         n_predict: options.n_predict,
@@ -133,20 +125,15 @@ export class OptimizedChatService {
 
     const data = await response.json();
     
-    // Handle new /ai/adaptive-chat response format
     const content = data.success && data.data 
       ? data.data.response 
       : data.content || data.message || 'No response received';
     
-    // Detect and trigger tool execution from server response
     this.detectAndTriggerToolExecution(content);
     
     return content;
   }
 
-  /**
-   * OPTIMIZED STREAMING - Reduced parsing overhead
-   */
   private async streamingRequest(
     message: string,
     onUpdate: (partial: string) => void,
@@ -175,20 +162,17 @@ export class OptimizedChatService {
           
           if (chunk) {
             this.processStreamChunk(chunk, (content) => {
-              // ANTI-DUPLICATION: Track initial vs follow-up response
               if (content.includes('🔧 **') && !hasReceivedToolResult) {
                 hasReceivedToolResult = true;
                 initialResponseLength = fullContent.length;
                 console.log('🔧 Tool result detected, tracking for deduplication');
               }
               
-              // PERFORMANCE: Throttle updates to prevent mobile lag
               const shouldUpdate = this.shouldUpdateUI(content, fullContent.length);
               
               if (shouldUpdate) {
                 fullContent += content;
                 
-                // Detect and trigger tool execution from server response
                 this.detectAndTriggerToolExecution(content);
                 
                 onUpdate(fullContent); // Pass accumulated content to UI
@@ -210,15 +194,14 @@ export class OptimizedChatService {
       xhr.ontimeout = () => reject(new Error('Request timeout'));
       
       const payload: any = {
-        message: message.trim(), // Updated to use 'message' parameter for /ai/adaptive-chat
-        prompt: message.trim(),   // Keep 'prompt' for backwards compatibility
+        message: message.trim(),
+        prompt: message.trim(),
         stream: true,
         temperature: options.temperature,
         n_predict: options.n_predict,
         stop: CHAT_API_CONFIG.REQUEST_DEFAULTS.stop
       };
       
-      // Add attachments if provided
       if (attachments && attachments.length > 0) {
         payload.attachments = attachments;
       }
@@ -227,30 +210,20 @@ export class OptimizedChatService {
     });
   }
 
-  /**
-   * PERFORMANCE: Throttle UI updates to prevent mobile lag
-   */
   private shouldUpdateUI(newContent: string, currentLength: number): boolean {
-    // Always update for short content
     if (currentLength < 100) return true;
     
-    // Throttle frequent updates for long content
     if (currentLength > 1000 && newContent.length < 10) {
-      return Math.random() < 0.3; // Only update 30% of micro-chunks
+      return Math.random() < 0.3;
     }
     
-    // Always update for significant content chunks
     if (newContent.length > 20 || newContent.includes('\n')) return true;
     
-    // Always update for tool execution markers
     if (newContent.includes('🔧') || newContent.includes('**')) return true;
     
     return true; // Default to updating
   }
 
-  /**
-   * OPTIMIZED CHUNK PROCESSING - Minimal parsing with deduplication
-   */
   private processStreamChunk(
     chunk: string,
     onContentReceived: (content: string) => void
@@ -265,21 +238,18 @@ export class OptimizedChatService {
           return;
         }
         
-        // OPTIMIZATION: Skip keep-alive pings to reduce processing
         if (data.includes('keepAlive')) {
           continue;
         }
         
         try {
           const parsed = JSON.parse(data);
-          // Handle new /ai/adaptive-chat streaming format
           if (parsed.content) {
             onContentReceived(parsed.content);
           } else if (parsed.data && parsed.data.response) {
             onContentReceived(parsed.data.response);
           }
         } catch {
-          // Handle non-JSON content
           if (data && data !== '[DONE]' && !data.includes('keepAlive')) {
             onContentReceived(data);
           }
@@ -324,9 +294,6 @@ export class OptimizedChatService {
     return await this.sendOptimizedMessage(query, onStreamingUpdate, undefined, attachments);
   }
 
-  /**
-   * HEALTH CHECK - Test API connectivity
-   */
   async testConnection(): Promise<boolean> {
     try {
       const response = await this.sendOptimizedMessage('ping', undefined, {
@@ -342,22 +309,16 @@ export class OptimizedChatService {
     }
   }
 
-  /**
-   * TOOL EXECUTION DETECTION - Detect tool execution patterns from server responses
-   */
   private detectAndTriggerToolExecution(content: string): void {
     if (!content) return;
     
-    // Debug log (remove in production)
     if (content.includes('🔍') || content.includes('🎵') || content.includes('📰')) {
       console.log('🔧 OptimizedChat: Checking content for tool patterns:', content.substring(0, 200));
     }
     
     const toolExecutionService = ToolExecutionService.getInstance();
     
-    // Tool execution patterns from server responses - VERY SPECIFIC to avoid false positives
     const toolPatterns = [
-      // Search Variants - Match server's exact output patterns
       { 
         regex: /🔍\s*(Searching the web for:|Searching web for:|Web search for:)/i, 
         tool: 'web_search', 
@@ -384,7 +345,6 @@ export class OptimizedChatService {
         action: 'Searching for images' 
       },
       
-      // Music & Entertainment - Match server's exact patterns
       { 
         regex: /🎵\s*(Finding music recommendations|Getting music recommendations)/i, 
         tool: 'music_recommendations', 
@@ -396,7 +356,6 @@ export class OptimizedChatService {
         action: 'Creating Spotify playlist' 
       },
       
-      // Quick Utilities - Match exact server patterns
       { 
         regex: /🌤️\s*(Checking weather for:|Getting weather for:)/i, 
         tool: 'weather_check', 
@@ -418,7 +377,6 @@ export class OptimizedChatService {
         action: 'Translating text' 
       },
       
-      // Financial Tools - Match exact server patterns  
       { 
         regex: /📈\s*(Getting [A-Z]+ stock data|Stock lookup for:)/i, 
         tool: 'stock_lookup', 
@@ -435,7 +393,6 @@ export class OptimizedChatService {
         action: 'Converting currency' 
       },
       
-      // Creative & Professional - Match exact server patterns
       { 
         regex: /✍️\s*(Generating \w+ content:|Creating \w+ content:)/i, 
         tool: 'text_generator', 
@@ -457,7 +414,6 @@ export class OptimizedChatService {
         action: 'Assisting with email' 
       },
       
-      // Health & Wellness - Match exact server patterns
       { 
         regex: /💪\s*(Logging fitness:|Tracking fitness:)/i, 
         tool: 'fitness_tracker', 
@@ -469,7 +425,6 @@ export class OptimizedChatService {
         action: 'Looking up nutrition info' 
       },
       
-      // Lifestyle Tools - Match exact server patterns
       { 
         regex: /🍽️\s*(Booking at |Booking reservation at)/i, 
         tool: 'reservation_booking', 
@@ -486,7 +441,6 @@ export class OptimizedChatService {
         action: 'Managing credits' 
       },
       
-      // Quick Generators - Match exact server patterns
       { 
         regex: /📱\s*(Generating QR code for |Creating QR code)/i, 
         tool: 'qr_generator', 
@@ -503,14 +457,12 @@ export class OptimizedChatService {
       if (pattern.regex.test(content)) {
         console.log(`🔧 OptimizedChat: Detected ${pattern.tool} execution from server response:`, content.substring(0, 100));
         
-        // Check for existing active execution for this tool
         const activeExecutions = toolExecutionService.getCurrentExecutions();
         const existingExecution = activeExecutions.find(exec => 
           exec.toolName === pattern.tool && exec.status !== 'completed' && exec.status !== 'error'
         );
         
         if (!existingExecution) {
-          // Start new tool execution tracking
           const executionId = toolExecutionService.startExecution(pattern.tool, { 
             detectedFromServer: true,
             serverMessage: content.trim()

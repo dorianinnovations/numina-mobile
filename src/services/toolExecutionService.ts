@@ -1,6 +1,5 @@
 import AutoPlaylistService from './autoPlaylistService';
 
-// Simple EventEmitter for React Native
 class SimpleEventEmitter {
   private listeners: { [event: string]: Function[] } = {};
 
@@ -78,11 +77,9 @@ class ToolExecutionService extends SimpleEventEmitter {
     return this.instance;
   }
 
-  // Start tracking a new tool execution
   startExecution(toolName: string, parameters: any = {}): string {
     const executionId = `${toolName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Extract query from various possible parameter sources
     const extractQuery = (params: any): string => {
       return params.query || params.action || params.searchType || params.mood || 
              params.playlistName || params.restaurantName || params.destination || 
@@ -99,7 +96,7 @@ class ToolExecutionService extends SimpleEventEmitter {
       details: {
         parameters,
         action: this.getActionDescription(toolName, parameters),
-        query: query, // Store the extracted query for display purposes
+        query: query,
         searchType: parameters.searchType || 'general',
       },
       progress: 0,
@@ -115,7 +112,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     return executionId;
   }
 
-  // Update execution progress
   updateProgress(executionId: string, progress: number, details?: any): void {
     const execution = this.executions.get(executionId);
     if (!execution) return;
@@ -124,7 +120,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     execution.status = 'executing';
     
     if (details) {
-      // Extract query from new details if not already set
       if (!execution.details.query && details) {
         const extractQuery = (params: any): string => {
           return params.query || params.action || params.searchType || params.mood || 
@@ -145,7 +140,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     this.emit('executionsUpdated', this.getAllExecutions());
   }
 
-  // Complete execution with results
   completeExecution(executionId: string, results: any): void {
     const execution = this.executions.get(executionId);
     if (!execution) return;
@@ -155,19 +149,16 @@ class ToolExecutionService extends SimpleEventEmitter {
     execution.progress = 100;
     execution.details.results = results;
 
-    // Remove from current executions
     this.currentExecutions = this.currentExecutions.filter(id => id !== executionId);
 
     console.log(`✅ Tool execution completed: ${execution.toolName} in ${execution.endTime - execution.startTime}ms (${executionId})`);
     
-    // Process music recommendations for auto-playlist
     this.processForAutoPlaylist(execution);
     
     this.emit('executionCompleted', execution);
     this.emit('executionsUpdated', this.getAllExecutions());
   }
 
-  // Process completed tool executions for auto-playlist management
   private async processForAutoPlaylist(execution: ToolExecution): Promise<void> {
     try {
       if (execution.status === 'completed' && execution.details.results) {
@@ -181,7 +172,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     }
   }
 
-  // Mark execution as failed
   failExecution(executionId: string, error: string): void {
     const execution = this.executions.get(executionId);
     if (!execution) return;
@@ -190,7 +180,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     execution.endTime = Date.now();
     execution.details.error = error;
 
-    // Remove from current executions
     this.currentExecutions = this.currentExecutions.filter(id => id !== executionId);
 
     console.error(`❌ Tool execution failed: ${execution.toolName} - ${error} (${executionId})`);
@@ -198,9 +187,7 @@ class ToolExecutionService extends SimpleEventEmitter {
     this.emit('executionsUpdated', this.getAllExecutions());
   }
 
-  // Process streaming tool response from chat
   processStreamingToolResponse(rawResponse: string): void {
-    // Parse tool execution from streaming response
     const toolCallMatch = rawResponse.match(/🔧 \*\*([^:]+)\*\*: ({.*})/);
     if (!toolCallMatch) return;
 
@@ -210,31 +197,26 @@ class ToolExecutionService extends SimpleEventEmitter {
     try {
       const parsedData = JSON.parse(responseData);
       
-      // Check if this is a new tool execution or update to existing
       let executionId = this.findExecutionByTool(toolName);
       
       if (!executionId) {
-        // Start new execution
         executionId = this.startExecution(toolName, parsedData);
       }
 
-      // Update with results
       if (parsedData.success !== undefined) {
         if (parsedData.success) {
           this.completeExecution(executionId, parsedData);
         } else {
           this.failExecution(executionId, parsedData.error || 'Tool execution failed');
         }
-      } else {
-        // Update progress
-        this.updateProgress(executionId, 50, { rawResponse: responseData });
-      }
+              } else {
+          this.updateProgress(executionId, 50, { rawResponse: responseData });
+        }
     } catch (error) {
       console.error('Error parsing tool response:', error);
     }
   }
 
-  // Find execution by tool name (for matching streaming responses)
   private findExecutionByTool(toolName: string): string | null {
     for (const execution of this.executions.values()) {
       if (execution.toolName === toolName && execution.status !== 'completed' && execution.status !== 'error') {
@@ -244,31 +226,26 @@ class ToolExecutionService extends SimpleEventEmitter {
     return null;
   }
 
-  // Get all executions (for UI display)
   getAllExecutions(): ToolExecution[] {
     return Array.from(this.executions.values()).sort((a, b) => a.startTime - b.startTime);
   }
 
-  // Get recent executions (last 20)
   getRecentExecutions(limit: number = 20): ToolExecution[] {
     return this.getAllExecutions().slice(-limit);
   }
 
-  // Get currently running executions
   getCurrentExecutions(): ToolExecution[] {
     return this.currentExecutions
       .map(id => this.executions.get(id))
       .filter(Boolean) as ToolExecution[];
   }
 
-  // Get active executions (not completed or errored)
   getActiveExecutions(): ToolExecution[] {
     return Array.from(this.executions.values()).filter(
       execution => execution.status !== 'completed' && execution.status !== 'error'
     );
   }
 
-  // Clear all executions (for new conversation)
   clearExecutions(): void {
     this.executions.clear();
     this.currentExecutions = [];
@@ -276,7 +253,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     this.emit('executionsUpdated', []);
   }
 
-  // Clear old executions (keep last 50)
   cleanupOldExecutions(): void {
     const allExecutions = this.getAllExecutions();
     if (allExecutions.length > 50) {
@@ -291,9 +267,7 @@ class ToolExecutionService extends SimpleEventEmitter {
     }
   }
 
-  // Generate action description based on tool and parameters
   private getActionDescription(toolName: string, parameters: any): string {
-    // Extract query from various possible parameter sources
     const extractQuery = (params: any): string => {
       return params.query || params.action || params.searchType || params.mood || 
              params.playlistName || params.restaurantName || params.destination || 
@@ -359,28 +333,21 @@ class ToolExecutionService extends SimpleEventEmitter {
     }
   }
 
-  // Auto-detect tool executions from chat message content
   detectToolExecutionsInMessage(message: string): void {
-    // Look for tool execution patterns in the message
     const toolPatterns = [
-      // Web search pattern
       { regex: /🔍.*?searching/i, tool: 'web_search', action: 'Starting web search' },
       { regex: /🌐.*?found.*?results/i, tool: 'web_search', action: 'Processing search results' },
       
-      // Music patterns
       { regex: /🎵.*?(music|song|playlist)/i, tool: 'music_recommendations', action: 'Generating music recommendations' },
       { regex: /🎧.*?(spotify|playlist)/i, tool: 'spotify_playlist', action: 'Creating Spotify playlist' },
       
-      // Restaurant patterns
       { regex: /🍽️.*?(restaurant|booking|reservation)/i, tool: 'reservation_booking', action: 'Processing restaurant booking' },
       
-      // Travel patterns
       { regex: /✈️.*?(travel|trip|itinerary)/i, tool: 'itinerary_generator', action: 'Planning travel itinerary' },
     ];
 
     for (const pattern of toolPatterns) {
       if (pattern.regex.test(message)) {
-        // Check for existing active execution for this tool
         const existingExecution = this.findExecutionByTool(pattern.tool);
         if (!existingExecution) {
           this.startExecution(pattern.tool, { detectedFromMessage: true });

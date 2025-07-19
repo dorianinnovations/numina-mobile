@@ -1,73 +1,90 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Animated, Easing } from 'react-native';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Navigation
 import { AppNavigator } from './navigation/AppNavigator';
-
-// Context Providers
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/SimpleAuthContext';
+import { RefreshProvider } from './contexts/RefreshContext';
 import { FontProvider } from './components/FontProvider';
-
-// Services
 import { NuminaColors } from './utils/colors';
-
-/**
- * Main App Component with Simplified Authentication Flow
- * 
- * Authentication-First Architecture:
- * 1. Initialize AuthManager first
- * 2. Wait for authentication state to be determined
- * 3. Only then initialize other services
- * 4. No race conditions, no token clearing issues
- */
-
-const AppContent: React.FC = () => {
-  const { isAuthenticated, isInitializing } = useAuth();
-  const [isAppReady, setIsAppReady] = useState(false);
+import AppInitializer from './services/appInitializer';
+const SmoothLoader: React.FC = () => {
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Initialize other services only after auth is ready
-    const initializeServices = async () => {
-      if (isInitializing) {
-        // Still initializing auth, wait
-        return;
-      }
+    Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 600,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
 
-      console.log('[SimpleApp] Auth initialization complete, starting services...');
+  const rotation = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={styles.loadingContainer}>
+      <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+        <View style={styles.perfectCircleSpinner} />
+      </Animated.View>
+    </View>
+  );
+};
+
+const AppContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [isAppReady, setIsAppReady] = useState(true); // INSTANT FIX: Start ready
+
+  useEffect(() => {
+    console.log('[SimpleApp] Initializing app services once on mount');
+    
+    const initializeServices = async () => {
       console.log('[SimpleApp] Authentication status:', { isAuthenticated });
 
-      // Here we would initialize other services that depend on auth
-      // For now, just mark app as ready
+      if (isAuthenticated) {
+        console.log('🚀 Starting three-tier system initialization...');
+        try {
+          const initResult = await AppInitializer.initialize();
+          console.log('✅ Tier 1 (Infrastructure) initialized:', initResult.success);
+          
+          if (initResult.success) {
+            const wsConnected = await AppInitializer.initializeWebSocketAfterAuth();
+            console.log('✅ Tier 2 (WebSocket) initialized:', wsConnected);
+          }
+          
+          await AppInitializer.performInitialDataSync();
+          console.log('✅ Tier 3 (Data Sync) initialized');
+          
+          console.log('🎉 Three-tier system initialization complete!');
+        } catch (error) {
+          console.error('❌ Three-tier system initialization failed:', error);
+        }
+      }
+
       setIsAppReady(true);
       console.log('[SimpleApp] App initialization complete');
     };
 
     initializeServices();
-  }, [isInitializing, isAuthenticated]);
+  }, []); // Run once on mount - no dependencies to prevent re-runs
 
-  // Show loading screen during initialization
-  if (isInitializing || !isAppReady) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={NuminaColors.primary} />
-        <Text style={styles.loadingText}>
-          {isInitializing ? 'Checking Authentication...' : 'Initializing Services...'}
-        </Text>
-        <Text style={styles.loadingSubtext}>
-          Setting up secure user session
-        </Text>
-      </View>
-    );
+  if (!isAppReady) {
+    console.log('🔄 SIMPLEAPP: Still loading, showing SmoothLoader');
+    return <SmoothLoader />;
   }
 
   console.log('[SimpleApp] Rendering main app, authenticated:', isAuthenticated);
+  console.log('🏗️ SIMPLEAPP: About to render AppNavigator');
 
-  // Render main app
   return <AppNavigator />;
 };
 
@@ -76,12 +93,14 @@ const SimpleApp: React.FC = () => {
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
-          <FontProvider>
-            <AuthProvider>
-              <AppContent />
-              <StatusBar style="auto" />
-            </AuthProvider>
-          </FontProvider>
+          <RefreshProvider>
+            <FontProvider>
+              <AuthProvider>
+                <AppContent />
+                <StatusBar style="auto" />
+              </AuthProvider>
+            </FontProvider>
+          </RefreshProvider>
         </ThemeProvider>
       </GestureHandlerRootView>
     </SafeAreaProvider>
@@ -94,21 +113,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
   },
-  loadingText: {
-    marginTop: 20,
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: NuminaColors.text,
-    textAlign: 'center',
-  },
-  loadingSubtext: {
-    marginTop: 10,
-    fontSize: 14,
-    color: NuminaColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
+  perfectCircleSpinner: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: 'transparent',
+    borderTopColor: NuminaColors.primary,
+    borderRightColor: NuminaColors.primary,
   },
 });
 

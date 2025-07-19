@@ -15,7 +15,6 @@ interface CloudEvent {
   currentParticipants: number;
   hostId: string;
   hostName: string;
-  // AI Enhancement Features
   aiMatchScore?: number;
   emotionalCompatibility?: 'high' | 'medium' | 'low';
   personalizedReason?: string;
@@ -46,7 +45,6 @@ interface CompatibleUser {
   connectionReason: string;
 }
 
-// Generate user-specific cache keys
 const getCacheKeys = (userId: string) => ({
   events: `@cloud_events_${userId}`,
   compatibility: `@compatibility_analysis_${userId}`,
@@ -69,12 +67,10 @@ class CloudMatchingService {
     return this.instance;
   }
 
-  // Get events with AI-powered matching and personalization
   async getAIMatchedEvents(filterMode?: string): Promise<CloudEvent[]> {
     try {
       const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
       
-      // Get events from backend with emotional context
       const response = await ApiService.getCloudEvents({
         filter: filterMode,
         userEmotionalState: emotionalState,
@@ -82,7 +78,6 @@ class CloudMatchingService {
       });
 
       if (response.success && response.data) {
-        // Transform server events to CloudEvent format
         const eventsArray = Array.isArray(response.data) ? response.data : [];
         const transformedEvents = this.transformServerEventsToCloudEvents(eventsArray);
         this.cachedEvents = transformedEvents;
@@ -90,24 +85,20 @@ class CloudMatchingService {
         return transformedEvents;
       } else {
         console.log('Cloud events API response:', response);
-        // Check cached events first
         const cached = await this.getCachedEvents();
         if (cached.length > 0) {
           return cached;
         }
-        // Only fallback to mock data if no cached events exist
         console.log('No cached events found, generating mock data as fallback');
         return this.generateMockEventsWithAI(emotionalState);
       }
     } catch (error) {
       console.error('Error getting AI matched events:', error);
-      // Return cached events or fallback
       const cached = await this.getCachedEvents();
       return cached.length > 0 ? cached : this.generateMockEventsWithAI();
     }
   }
 
-  // Transform server Event model to CloudEvent format
   private transformServerEventsToCloudEvents(serverEvents: any[]): CloudEvent[] {
     return serverEvents.map(serverEvent => {
       const event: CloudEvent = {
@@ -122,13 +113,12 @@ class CloudMatchingService {
         currentParticipants: serverEvent.participantCount || 0,
         hostId: serverEvent.organizer?._id || serverEvent.organizer,
         hostName: serverEvent.organizer?.profile?.name || 'Event Host',
-        // AI enhancement from server compatibility analysis
         aiMatchScore: serverEvent.compatibility?.compatibilityScore || 0,
         emotionalCompatibility: this.mapRecommendationToCompatibility(serverEvent.compatibility?.recommendationStrength),
         personalizedReason: serverEvent.compatibility?.reasons?.join(', ') || 'Good match for your interests',
         moodBoostPotential: serverEvent.compatibility?.moodBoostPrediction || serverEvent.emotionalContext?.moodBoostPotential || 5,
         communityVibe: this.getCommunityVibe(this.mapCategoryToType(serverEvent.category)),
-        suggestedConnections: [], // Will be populated by separate API call
+        suggestedConnections: [],
         aiInsights: `${serverEvent.compatibility?.recommendationStrength || 'medium'} compatibility match`,
         growthOpportunity: this.getGrowthOpportunity(serverEvent.category),
       };
@@ -136,7 +126,6 @@ class CloudMatchingService {
     });
   }
 
-  // Map server category to mobile app event type
   private mapCategoryToType(category: string): string {
     const categoryMap: { [key: string]: string } = {
       'wellness': 'fitness_wellness',
@@ -151,7 +140,6 @@ class CloudMatchingService {
     return categoryMap[category] || 'hobby_interest';
   }
 
-  // Map server recommendation strength to mobile compatibility
   private mapRecommendationToCompatibility(strength?: string): 'high' | 'medium' | 'low' {
     switch (strength) {
       case 'high': return 'high';
@@ -160,7 +148,6 @@ class CloudMatchingService {
     }
   }
 
-  // Generate growth opportunity based on event category
   private getGrowthOpportunity(category: string): string {
     const growthMap: { [key: string]: string } = {
       'wellness': 'Develop mindfulness and stress management skills',
@@ -175,7 +162,6 @@ class CloudMatchingService {
     return growthMap[category] || 'Discover new interests and expand your horizons';
   }
 
-  // Analyze compatibility for a specific event
   async analyzeEventCompatibility(eventId: string): Promise<CompatibilityAnalysis | null> {
     try {
       const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
@@ -186,7 +172,6 @@ class CloudMatchingService {
         await this.cacheCompatibilityAnalysis(eventId, response.data);
         return response.data;
       } else {
-        // Generate local compatibility analysis
         const event = this.cachedEvents.find(e => e.id === eventId);
         if (event) {
           return this.generateLocalCompatibilityAnalysis(event, emotionalState);
@@ -270,7 +255,7 @@ class CloudMatchingService {
   // Add missing cache methods
   private async getCachedUserMatches(): Promise<CompatibleUser[]> {
     try {
-      const userId = await SecureStorageService.getItem('userId');
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) return [];
       
       const cacheKey = getCacheKeys(userId).userMatches;
@@ -284,7 +269,7 @@ class CloudMatchingService {
 
   private async cacheUserMatches(users: CompatibleUser[]): Promise<void> {
     try {
-      const userId = await SecureStorageService.getItem('userId');
+      const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) return;
       
       const cacheKey = getCacheKeys(userId).userMatches;

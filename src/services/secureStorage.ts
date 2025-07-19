@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import SecureAuthManager from './secureAuthManager';
+import CloudAuth from './cloudAuth';
 
 /**
  * Secure storage service for React Native
@@ -23,20 +23,20 @@ class SecureStorageService {
     };
   }
 
-  // Token management - SINGLE SOURCE OF TRUTH: Use SecureAuthManager
+  // Token management - SINGLE SOURCE OF TRUTH: Use CloudAuth
   static async setToken(token: string): Promise<void> {
-    console.log('[SecureStorage] DEPRECATED: setToken - use SecureAuthManager instead');
-    // No-op: SecureAuthManager handles token storage now
+    console.log('[SecureStorage] DEPRECATED: setToken - use CloudAuth instead');
+    // No-op: CloudAuth handles token storage now
   }
 
   static async getToken(): Promise<string | null> {
-    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using SecureAuthManager.getCurrentToken()');
-    return SecureAuthManager.getInstance().getCurrentToken();
+    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using CloudAuth.getToken()');
+    return CloudAuth.getInstance().getToken();
   }
 
   static async removeToken(): Promise<void> {
-    console.log('[SecureStorage] DEPRECATED: removeToken - use SecureAuthManager.logout() instead');
-    // No-op: SecureAuthManager handles token removal now
+    console.log('[SecureStorage] DEPRECATED: removeToken - use CloudAuth.logout() instead');
+    // No-op: CloudAuth handles token removal now
   }
 
   // User data management - User-specific storage
@@ -260,7 +260,7 @@ class SecureStorageService {
       const allKeys = await AsyncStorage.getAllKeys();
       
       // NUCLEAR OPTION: Clear ALL cache and app data
-      // This ensures complete user isolation by removing everything
+      // Ensures complete user isolation by removing everything
       const numinaKeys = allKeys.filter(key => 
         // Core app data
         key.includes('numina_') || 
@@ -363,8 +363,8 @@ class SecureStorageService {
 
   // Check if user data exists (for session persistence)
   static async hasValidSession(): Promise<boolean> {
-    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using SecureAuthManager.isAuthenticated()');
-    return SecureAuthManager.getInstance().isAuthenticated();
+    console.log('[SecureStorage] SINGLE SOURCE OF TRUTH: Using CloudAuth.isAuthenticated()');
+    return CloudAuth.getInstance().isAuthenticated();
   }
 }
 

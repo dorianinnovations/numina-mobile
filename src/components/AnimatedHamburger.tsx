@@ -18,7 +18,7 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
   const middleBarScale = useRef(new Animated.Value(1)).current;
   const bottomBarAnim = useRef(new Animated.Value(0)).current;
   
-  // Advanced animations
+  // Animations
   const containerRotation = useRef(new Animated.Value(0)).current;
   const containerScale = useRef(new Animated.Value(1)).current;
   const glowOpacity = useRef(new Animated.Value(0)).current;
@@ -291,10 +291,6 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { translateY: topBarTransform },
                 { rotate: topBarRotation },
               ],
-              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
-              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />
@@ -311,10 +307,6 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { scaleX: middleBarScale },
                 { scaleY: middleBarScale },
               ],
-              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
-              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />
@@ -329,10 +321,6 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
                 { translateY: bottomBarTransform },
                 { rotate: bottomBarRotation },
               ],
-              shadowColor: color === '#6ec5ff' ? '#ffffff' : color,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: color === '#6ec5ff' ? 1.0 : 0.8,
-              shadowRadius: color === '#6ec5ff' ? 8 : 4,
             },
           ]}
         />
@@ -352,7 +340,6 @@ const styles = StyleSheet.create({
   },
   bar: {
     borderRadius: 2,
-    elevation: 4,
   },
   glow: {
     position: 'absolute',

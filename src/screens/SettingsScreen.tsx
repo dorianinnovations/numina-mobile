@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,14 +10,19 @@ import {
   Switch,
   Alert,
   AlertButton,
+  RefreshControl,
+  Animated,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/SimpleAuthContext';
 import { PageBackground } from '../components/PageBackground';
 import { Header } from '../components/Header';
 import SettingsService, { UserSettings } from '../services/settingsService';
 import { NuminaAnimations } from '../utils/animations';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import ApiService from '../services/api';
 
 interface SettingsScreenProps {
   onNavigateBack: () => void;
@@ -27,8 +32,24 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onNavigateBack,
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+  
+  // Pull-to-refresh functionality
+  const { refreshControl } = usePullToRefresh(async () => {
+    await loadSettings();
+  });
+  
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Animation values for delete modal
+  const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const containerScale = useRef(new Animated.Value(0.3)).current;
+  const containerOpacity = useRef(new Animated.Value(0)).current;
+  const trashScale = useRef(new Animated.Value(1)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
 
   // Load settings on mount
   useEffect(() => {
@@ -134,6 +155,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           await SettingsService.openAppStore();
           break;
           
+        case 'deleteAccount':
+          showDeleteAccountModal();
+          break;
+          
         default:
           console.log('Unknown navigation action:', action);
       }
@@ -196,6 +221,105 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     } catch (error) {
       console.error('Error toggling biometrics:', error);
       Alert.alert('Error', 'Failed to update biometric settings.');
+    }
+  };
+
+  const showDeleteAccountModal = () => {
+    setShowDeleteModal(true);
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(containerScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideDeleteModal = () => {
+    Animated.parallel([
+      Animated.timing(overlayOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerScale, {
+        toValue: 0.3,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(containerOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowDeleteModal(false);
+      setIsDeleting(false);
+      // Reset animation values
+      trashScale.setValue(1);
+      checkOpacity.setValue(0);
+    });
+  };
+
+  const confirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    
+    try {
+      // Animate trash can
+      Animated.sequence([
+        Animated.timing(trashScale, {
+          toValue: 1.2,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(trashScale, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Call delete account API
+      const response = await ApiService.deleteAccount();
+      
+      if (response.success) {
+        // Show success animation
+        setTimeout(() => {
+          Animated.timing(checkOpacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }).start();
+        }, 400);
+
+        // Wait a moment then logout and close modal
+        setTimeout(() => {
+          logout();
+          hideDeleteModal();
+        }, 1500);
+      } else {
+        throw new Error(response.error || 'Unknown error occurred');
+      }
+
+    } catch (error) {
+      console.error('Failed to delete account:', error);
+      Alert.alert(
+        'Error',
+        'Failed to delete account. Please try again or contact support.',
+        [{ text: 'OK' }]
+      );
+      setIsDeleting(false);
     }
   };
 
@@ -329,6 +453,19 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         },
       ]
     },
+    {
+      title: 'Account',
+      items: [
+        { 
+          icon: 'trash-alt', 
+          title: 'Delete Account', 
+          desc: 'Permanently delete your account and all data', 
+          type: 'navigate',
+          action: 'deleteAccount',
+          destructive: true
+        },
+      ]
+    },
   ];
 
   const renderSettingItem = (item: any, index: number) => {
@@ -418,6 +555,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         <ScrollView 
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
+          refreshControl={
+            <RefreshControl {...refreshControl} />
+          }
         >
           {settingsSections.map((section, sectionIndex) => (
             <View key={sectionIndex} style={styles.section}>
@@ -433,6 +573,136 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             </View>
           ))}
         </ScrollView>
+
+        {/* Delete Account Modal */}
+        {showDeleteModal && (
+          <Animated.View style={[
+            styles.successOverlay,
+            {
+              opacity: overlayOpacity,
+            }
+          ]}>
+            <Animated.View style={[
+              styles.successContainer,
+              {
+                backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+                borderColor: isDarkMode 
+                  ? 'rgba(255, 255, 255, 0.1)' 
+                  : 'rgba(255, 255, 255, 0.3)',
+                opacity: containerOpacity,
+                transform: [{ scale: containerScale }],
+              }
+            ]}>
+              {!isDeleting ? (
+                <>
+                  <FontAwesome5 
+                    name="exclamation-triangle" 
+                    size={48} 
+                    color={isDarkMode ? '#ff6b6b' : '#e53e3e'} 
+                  />
+                  
+                  <Text style={[
+                    styles.successTitle,
+                    { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                  ]}>
+                    Delete Account?
+                  </Text>
+                  
+                  <Text style={[
+                    styles.successMessage,
+                    { color: isDarkMode ? '#a0aec0' : '#718096' }
+                  ]}>
+                    This action cannot be undone. All your data will be permanently deleted.
+                  </Text>
+                  
+                  <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' }}>
+                    <TouchableOpacity
+                      style={[
+                        styles.closeButton,
+                        {
+                          backgroundColor: isDarkMode ? '#374151' : '#e2e8f0',
+                          flex: 1,
+                        }
+                      ]}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        hideDeleteModal();
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.closeButtonText,
+                        { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                      ]}>
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        styles.closeButton,
+                        {
+                          backgroundColor: isDarkMode ? '#dc2626' : '#e53e3e',
+                          flex: 1,
+                        }
+                      ]}
+                      onPress={confirmDeleteAccount}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[
+                        styles.closeButtonText,
+                        { color: '#ffffff' }
+                      ]}>
+                        Delete
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <Animated.View
+                    style={{
+                      transform: [{ scale: trashScale }]
+                    }}
+                  >
+                    <FontAwesome5 
+                      name="trash-alt" 
+                      size={48} 
+                      color={isDarkMode ? '#dc2626' : '#e53e3e'} 
+                    />
+                  </Animated.View>
+                  
+                  <Animated.View
+                    style={{
+                      opacity: checkOpacity,
+                      position: 'absolute',
+                    }}
+                  >
+                    <FontAwesome5 
+                      name="check-circle" 
+                      size={48} 
+                      color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
+                    />
+                  </Animated.View>
+                  
+                  <Text style={[
+                    styles.successTitle,
+                    { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                  ]}>
+                    Account Deleted
+                  </Text>
+                  
+                  <Text style={[
+                    styles.successMessage,
+                    { color: isDarkMode ? '#a0aec0' : '#718096' }
+                  ]}>
+                    Your account and all data have been permanently removed
+                  </Text>
+                </>
+              )}
+            </Animated.View>
+          </Animated.View>
+        )}
       </SafeAreaView>
     </PageBackground>
   );
@@ -499,5 +769,59 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '400',
     fontFamily: 'Inter_400Regular',
+  },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2000,
+  },
+  successContainer: {
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginHorizontal: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  successTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontSize: 16,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  closeButton: {
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  closeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

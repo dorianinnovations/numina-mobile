@@ -4,7 +4,7 @@
  */
 
 import ApiService from '../../src/services/api';
-import AuthManager from '../../src/services/authManager';
+import CloudAuth from '../../src/services/cloudAuth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock React Native components and APIs
@@ -137,9 +137,9 @@ describe('Mobile User Journey E2E Tests', () => {
       let error = null;
 
       try {
-        const authManager = AuthManager.getInstance();
-        expect(authManager).toBeDefined();
-        expect(authManager.getAuthState().isAuthenticated).toBe(false);
+        const cloudAuth = CloudAuth.getInstance();
+        expect(cloudAuth).toBeDefined();
+        expect(cloudAuth.getState().isAuthenticated).toBe(false);
         success = true;
       } catch (e) {
         error = e;
@@ -161,7 +161,7 @@ describe('Mobile User Journey E2E Tests', () => {
         success = true;
       } catch (e) {
         error = e;
-        // This might fail if server is not running, which is expected in tests
+        // Might fail if server is not running, which is expected in tests
         success = true; // Consider this a pass since it's testing the method exists
       } finally {
         metrics.recordTest('App Config Retrieval', 'initialization', success, Date.now() - startTime, error);
@@ -182,12 +182,12 @@ describe('Mobile User Journey E2E Tests', () => {
           confirmPassword: 'MobileTest123!'
         };
 
-        const authManager = AuthManager.getInstance();
-        const result = await authManager.signUp(credentials);
+        const cloudAuth = CloudAuth.getInstance();
+        const result = await cloudAuth.signup(credentials.email, credentials.password);
         
         if (result.success) {
-          authToken = authManager.getCurrentToken();
-          userId = authManager.getCurrentUserId();
+          authToken = cloudAuth.getToken();
+          userId = cloudAuth.getCurrentUserId();
           expect(authToken).toBeDefined();
           expect(userId).toBeDefined();
           success = true;
@@ -223,8 +223,8 @@ describe('Mobile User Journey E2E Tests', () => {
           email: testUserEmail
         }));
 
-        const authManager = AuthManager.getInstance();
-        const result = await authManager.initializeAuth();
+        const cloudAuth = CloudAuth.getInstance();
+        // CloudAuth doesn't need initialization - it's ready to use
         
         // In a real test, this might fail due to server validation
         // But we're testing the mobile auth flow logic
@@ -249,15 +249,15 @@ describe('Mobile User Journey E2E Tests', () => {
       let error = null;
 
       try {
-        const authManager = AuthManager.getInstance();
-        await authManager.logout();
+        const cloudAuth = CloudAuth.getInstance();
+        await cloudAuth.logout();
         
         // Verify local storage is cleared
         const token = await AsyncStorage.getItem('numina_auth_token');
         expect(token).toBeNull();
         
         // Verify auth state is reset
-        const authState = authManager.getAuthState();
+        const authState = cloudAuth.getState();
         expect(authState.isAuthenticated).toBe(false);
         expect(authState.user).toBeNull();
         
@@ -459,8 +459,8 @@ describe('Mobile User Journey E2E Tests', () => {
         // Set invalid token
         await AsyncStorage.setItem('numina_auth_token', 'invalid-token');
         
-        const authManager = AuthManager.getInstance();
-        const result = await authManager.initializeAuth();
+        const cloudAuth = CloudAuth.getInstance();
+        // CloudAuth doesn't need initialization - it's ready to use
         
         // Should handle invalid token gracefully
         expect(result).toBeDefined();

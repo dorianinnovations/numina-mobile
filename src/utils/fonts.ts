@@ -112,7 +112,7 @@ export const LineHeights = {
   tight: 1.25,
   snug: 1.375,
   normal: 1.5,
-  relaxed: 1.625, // Used for chat messages in web app
+  relaxed: 1.625, // Chat message line height
   loose: 2,
 };
 

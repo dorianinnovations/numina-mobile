@@ -193,7 +193,7 @@ export class FileUploadService {
       }
       
       // For other file types, we'll need server-side processing
-      // This is a placeholder for future OCR/PDF text extraction
+      // Placeholder for future OCR/PDF text extraction
       return '';
     } catch (error) {
       console.error('Text extraction failed:', error);
@@ -414,6 +414,6 @@ export class FileUploadService {
   public async cancelUpload(attachmentId: string): Promise<void> {
     this.activeUploads.delete(attachmentId);
     this.uploadQueue.delete(attachmentId);
-    // TODO: Implement actual upload cancellation
+    // Implement actual upload cancellation
   }
 }

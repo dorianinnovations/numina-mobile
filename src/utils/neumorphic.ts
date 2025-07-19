@@ -40,7 +40,7 @@ export class NeumorphicStyles {
     if (variant === 'inset' || pressed) {
       return {
         ...baseStyle,
-        // Note: React Native doesn't support inset shadows natively
+        // React Native doesn't support inset shadows natively
         // Inset shadows are simulated with border and background color changes
         borderWidth: 1,
         borderColor: this.theme.name === 'light' ? '#e5e7eb' : '#1a1a1a',

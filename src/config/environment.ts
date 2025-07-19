@@ -16,7 +16,6 @@ const releaseChannel = Constants.expoConfig?.updates?.requestHeaders?.['expo-cha
 const getEnvironmentConfig = (): EnvironmentConfig => {
   console.log('🔧 Environment detection:', { isDev, releaseChannel, __DEV__ });
   
-  // Always use production server - mobile app connects via tunnel
   console.log('📱 Using PRODUCTION server (mobile app via tunnel)');
   console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
   return {
@@ -32,14 +31,12 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
 
 export const ENV = getEnvironmentConfig();
 
-// Security headers for production
 export const SECURITY_HEADERS = {
   'X-API-Key': process.env.EXPO_PUBLIC_API_KEY || '',
   'X-App-Version': Constants.expoConfig?.version || '1.0.0',
   'X-Platform': 'mobile',
 };
 
-// Validate required environment variables
 export const validateEnvironment = (): boolean => {
   const requiredVars = [
     ENV.API_BASE_URL,
@@ -56,7 +53,6 @@ export const validateEnvironment = (): boolean => {
   return true;
 };
 
-// Feature flags
 export const FEATURE_FLAGS = {
   WALLET_ENABLED: ENV.WALLET_FEATURES_ENABLED,
   BIOMETRIC_AUTH: ENV.BIOMETRIC_AUTH_ENABLED,
