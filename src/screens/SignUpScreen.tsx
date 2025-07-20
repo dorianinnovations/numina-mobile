@@ -24,6 +24,7 @@ import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
 import { TermsOfService } from '../components/TermsOfService';
+import { PrivacyPolicy } from '../components/PrivacyPolicy';
 import AppInitializer from '../services/appInitializer';
 
 const { width } = Dimensions.get('window');
@@ -51,7 +52,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [isSignUpSuccess, setIsSignUpSuccess] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [hasReadTerms, setHasReadTerms] = useState(false);
+  const [hasReadPrivacy, setHasReadPrivacy] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -64,6 +70,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
   const confirmPasswordInputScaleAnim = useRef(new Animated.Value(1)).current;
+  const headerOpacityAnim = useRef(new Animated.Value(1)).current;
   
   // Input refs
   const emailInputRef = useRef<TextInput>(null);
@@ -85,6 +92,22 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       setError('Please fill in all fields');
       // Error haptic for validation failure
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+
+    if (!termsAccepted || !privacyAccepted) {
+      const missing = [];
+      if (!termsAccepted) missing.push('Terms of Service');
+      if (!privacyAccepted) missing.push('Privacy Policy');
+      
+      setError(`Please review and accept our ${missing.join(' and ')} below to continue`);
+      // Light haptic for gentle reminder
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
+      // Auto-scroll to terms section or highlight it
+      setTimeout(() => {
+        setError('');
+      }, 4000);
       return;
     }
 
@@ -153,7 +176,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         setAuthStatus('success');
         
         // TERMS ACCEPTANCE TRIGGER - Three-Tier System Activation
-        if (termsAccepted) {
+        if (termsAccepted && privacyAccepted) {
           console.log('🎯 Terms accepted on signup - triggering enhanced initialization...');
           
           // Small delay to let auth state settle, then trigger three-tier system
@@ -193,7 +216,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
       // Error haptic for unexpected errors
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
-      setError(err.message || 'An error occurred during sign up');
+      setError(err.message || 'Sign up failed');
       setIsSignUpSuccess(false);
       setAuthStatus('error');
       setTimeout(() => {
@@ -204,27 +227,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     }
   };
 
-  // Loading screen with minimal design
-  if (loading) {
-    return (
-      <PageBackground>
-        <SafeAreaView style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator 
-              size="large" 
-              color={isDarkMode ? '#ffffff' : '#000000'} 
-            />
-            <Text style={[
-              styles.loadingText, 
-              { color: isDarkMode ? '#ffffff' : '#000000' }
-            ]}>
-              Creating account...
-            </Text>
-          </View>
-        </SafeAreaView>
-      </PageBackground>
-    );
-  }
+  // No separate loading screen - AppNavigator handles loading overlay
 
   return (
     <PageBackground>
@@ -236,16 +239,18 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
         />
       
         {/* Header */}
-        <Header 
-          title="Numina"
-          showBackButton={true}
-          showMenuButton={true}
-          showAuthOptions={false}
-          onBackPress={() => {
-            onNavigateBack();
-          }}
-          onMenuPress={(key: string) => {}}
-        />
+        <Animated.View style={[styles.headerContainer, { opacity: headerOpacityAnim }]}>
+          <Header 
+            title="Numina"
+            showBackButton={true}
+            showMenuButton={true}
+            showAuthOptions={false}
+            onBackPress={() => {
+              onNavigateBack();
+            }}
+            onMenuPress={(key: string) => {}}
+          />
+        </Animated.View>
 
         <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
           <View style={{ flex: 1 }}>
@@ -322,20 +327,36 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             editable={!loading}
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
                             onFocus={() => {
-                                Animated.spring(emailInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(true);
+                                Animated.parallel([
+                                  Animated.spring(emailInputScaleAnim, {
+                                    toValue: 1.02,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 0.3,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                             onBlur={() => {
-                                Animated.spring(emailInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(false);
+                                Animated.parallel([
+                                  Animated.spring(emailInputScaleAnim, {
+                                    toValue: 1,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 1,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                           />
                         </Animated.View>
@@ -360,20 +381,36 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             editable={!loading}
                             onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                             onFocus={() => {
-                                Animated.spring(passwordInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(true);
+                                Animated.parallel([
+                                  Animated.spring(passwordInputScaleAnim, {
+                                    toValue: 1.02,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 0.3,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                             onBlur={() => {
-                                Animated.spring(passwordInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(false);
+                                Animated.parallel([
+                                  Animated.spring(passwordInputScaleAnim, {
+                                    toValue: 1,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 1,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                           />
                         </Animated.View>
@@ -401,30 +438,54 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               handleSubmit();
                             }}
                             onFocus={() => {
-                                Animated.spring(confirmPasswordInputScaleAnim, {
-                                  toValue: 1.02,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(true);
+                                Animated.parallel([
+                                  Animated.spring(confirmPasswordInputScaleAnim, {
+                                    toValue: 1.02,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 0.3,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                             onBlur={() => {
-                                Animated.spring(confirmPasswordInputScaleAnim, {
-                                  toValue: 1,
-                                  useNativeDriver: true,
-                                  speed: 50,
-                                  bounciness: 8,
-                                }).start();
+                                setIsInputFocused(false);
+                                Animated.parallel([
+                                  Animated.spring(confirmPasswordInputScaleAnim, {
+                                    toValue: 1,
+                                    useNativeDriver: true,
+                                    speed: 50,
+                                    bounciness: 8,
+                                  }),
+                                  Animated.timing(headerOpacityAnim, {
+                                    toValue: 1,
+                                    duration: 200,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
                             }}
                           />
                         </Animated.View>
                       </View>
 
-                      {/* Terms of Service Checkbox (Optional) */}
+                      {/* Terms of Service and Privacy Policy Checkboxes */}
                       <View style={styles.termsContainer}>
                         <TouchableOpacity
-                          style={styles.termsCheckboxContainer}
+                          style={[
+                            styles.termsCheckboxContainer,
+                          ]}
                           onPress={() => {
+                            if (!hasReadTerms) {
+                              // Force user to read terms first
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                              setShowTermsModal(true);
+                              return;
+                            }
                             // Light haptic for checkbox toggle
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             setTermsAccepted(!termsAccepted);
@@ -464,9 +525,70 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             >
                               Terms of Service
                             </Text>
-                            {' '}(optional)
+                          </Text>
+                          
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={[
+                            styles.termsCheckboxContainer,
+                          ]}
+                          onPress={() => {
+                            if (!hasReadPrivacy) {
+                              // Force user to read privacy policy first
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                              setShowPrivacyModal(true);
+                              return;
+                            }
+                            // Light haptic for checkbox toggle
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            setPrivacyAccepted(!privacyAccepted);
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <View style={[
+                            styles.termsCheckbox,
+                            {
+                              backgroundColor: privacyAccepted 
+                                ? (isDarkMode ? '#add5fa' : '#007AFF')
+                                : 'transparent',
+                              borderColor: privacyAccepted 
+                                ? (isDarkMode ? '#add5fa' : '#007AFF')
+                                : (isDarkMode ? '#666666' : '#cccccc'),
+                            }
+                          ]}>
+                            {privacyAccepted && (
+                              <FontAwesome5 
+                                name="check" 
+                                size={10} 
+                                color={isDarkMode ? '#000000' : '#ffffff'} 
+                              />
+                            )}
+                          </View>
+                          <Text style={[
+                            styles.termsCheckboxText,
+                            { color: isDarkMode ? '#ffffff' : '#000000' }
+                          ]}>
+                            I agree to the{' '}
+                            <Text 
+                              style={[
+                                styles.termsLinkText, 
+                                { color: isDarkMode ? '#add5fa' : '#007AFF' }
+                              ]}
+                              onPress={() => setShowPrivacyModal(true)}
+                            >
+                              Privacy Policy
+                            </Text>
                           </Text>
                         </TouchableOpacity>
+                        
+                        {/* Divider under privacy policy */}
+                        <View style={[
+                          styles.termsDivider,
+                          {
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                          }
+                        ]} />
                       </View>
 
                       {/* Sign Up Button with Animation */}
@@ -476,8 +598,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             style={[
                               styles.primaryButton,
                               {
-                                backgroundColor: isDarkMode ? '#c5c5c5' : '#add5fa',
+                                backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
                                 opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
+                                borderColor: isDarkMode ? '#333333' : 'transparent',
+                                borderWidth: isDarkMode ? 1 : 0,
                               }
                             ]}
                             onPress={handleSubmit}
@@ -488,7 +612,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               <View style={styles.buttonTextContainer}>
                                 <Text style={[
                                   styles.primaryButtonText, 
-                                  { color: isDarkMode ? '#000000' : '#ffffff' }
+                                  { color: isDarkMode ? '#ffffff' : '#ffffff' }
                                 ]}>
                                   {loading ? 'Creating Account...' : isSignUpSuccess ? 'Success' : 'Get Started'}
                                 </Text>
@@ -605,11 +729,55 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             <TermsOfService
               onAccept={(accepted) => {
                 setTermsAccepted(accepted);
+                setHasReadTerms(true);
                 if (accepted) {
-                  setTimeout(() => setShowTermsModal(false), 500);
+                  setShowTermsModal(false);
                 }
               }}
               accepted={termsAccepted}
+            />
+          </SafeAreaView>
+        </Modal>
+
+        {/* Privacy Policy Modal */}
+        <Modal
+          visible={showPrivacyModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowPrivacyModal(false)}
+        >
+          <SafeAreaView style={[
+            styles.modalContainer,
+            { backgroundColor: isDarkMode ? '#000000' : '#ffffff' }
+          ]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => {
+                  // Light haptic for modal close
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setShowPrivacyModal(false);
+                }}
+              >
+                <FontAwesome5 
+                  name="times" 
+                  size={20} 
+                  color={isDarkMode ? '#ffffff' : '#000000'} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            {/* Privacy Policy Component */}
+            <PrivacyPolicy
+              onAccept={(accepted) => {
+                setPrivacyAccepted(accepted);
+                setHasReadPrivacy(true);
+                if (accepted) {
+                  setShowPrivacyModal(false);
+                }
+              }}
+              accepted={privacyAccepted}
             />
           </SafeAreaView>
         </Modal>
@@ -622,11 +790,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
   keyboardAvoid: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
+    paddingTop: 100,
   },
   content: {
     width: '100%',
@@ -676,10 +852,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_400Regular',
   },
   formContent: {
-    gap: 24,
+    gap: 16,
   },
   inputGroup: {
-    gap: 16,
+    gap: 12,
   },
   input: {
     paddingHorizontal: 16,
@@ -779,21 +955,35 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_500Medium',
   },
   termsContainer: {
-    marginVertical: 8,
+    marginVertical: 16,
+    gap: 8,
+    paddingHorizontal: 4,
   },
   termsCheckboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  termsDivider: {
+    height: 1,
+    marginHorizontal: 12,
+    marginVertical: 4,
   },
   termsCheckbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 6,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    marginTop: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   termsCheckboxText: {
     fontSize: 14,

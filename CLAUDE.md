@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Code Style Guidelines
+
+- IMPORTANT: DO NOT ADD ANY COMMENTS to code unless explicitly requested by the user
+
 ## Project Overview
 
 **Numina Mobile** is a React Native mobile application for AI-powered personal growth and emotional wellness. The app features adaptive AI personality, real-time emotional analytics, cloud-based social matching, and streaming chat functionality with 25+ AI tools - all optimized for mobile experiences.
@@ -49,7 +53,7 @@ eas build --profile production    # Production build
 ### Component Architecture
 ```
 src/
-├── screens/               # Navigation endpoints
+├── screens/               # Navigation endpoints (15 screens)
 │   ├── HeroLandingScreen.tsx     # App entry point
 │   ├── SignInScreen.tsx          # Authentication
 │   ├── SignUpScreen.tsx          # User registration
@@ -58,20 +62,86 @@ src/
 │   ├── AnalyticsScreen.tsx       # Emotional analytics
 │   ├── CloudScreen.tsx           # Social features
 │   ├── WalletScreen.tsx          # Credits/subscription
-│   └── SettingsScreen.tsx        # App settings
-├── components/           # Reusable UI components
+│   ├── SettingsScreen.tsx        # App settings
+│   ├── AboutScreen.tsx           # About page
+│   ├── ProfileScreen.tsx         # User profile
+│   ├── SentimentScreen.tsx       # Sentiment analysis
+│   ├── DataCleanupScreen.tsx     # Data management
+│   ├── WelcomeScreen.tsx         # Welcome flow
+│   └── NuminaSensesV2.tsx        # Advanced AI features
+├── components/           # Reusable UI components (40+ components)
 │   ├── chat/             # Chat-specific components
-│   ├── Header.tsx        # Navigation header
-│   ├── PageBackground.tsx # Background component
-│   └── ScreenWrapper.tsx # Screen layout wrapper
+│   │   ├── ChatInput.tsx         # Message input
+│   │   ├── MessageBubble.tsx     # Message display
+│   │   ├── AttachmentPicker.tsx  # File attachments
+│   │   ├── AttachmentPreview.tsx # Attachment preview
+│   │   └── PhotoPreview.tsx      # Photo handling
+│   ├── Header.tsx                # Navigation header
+│   ├── PageBackground.tsx        # Background component
+│   ├── ScreenWrapper.tsx         # Screen layout wrapper
+│   ├── TermsOfService.tsx        # Terms of service modal
+│   ├── SubscriptionModal.tsx     # Subscription management
+│   ├── ToolExecutionModal.tsx    # AI tool execution
+│   ├── StreamingMarkdown.tsx     # Markdown streaming
+│   ├── AnimatedLightBeam.tsx     # UI animations
+│   ├── CascadingRecommendations.tsx # AI recommendations
+│   ├── LLMAnalyticsSection.tsx   # Analytics display
+│   ├── QuickAnalyticsModal.tsx   # Quick analytics
+│   └── [30+ more UI components]  # Additional components
 ├── contexts/             # React Context providers
 │   ├── SimpleAuthContext.tsx     # Authentication state
-│   └── ThemeContext.tsx          # Theme management
-├── hooks/                # Custom React hooks
-├── services/             # API and business logic
-├── utils/                # Utility functions
+│   ├── ThemeContext.tsx          # Theme management
+│   └── RefreshContext.tsx        # Pull-to-refresh context
+├── hooks/                # Custom React hooks (10+ hooks)
+│   ├── useAIPersonality.ts       # AI personality management
+│   ├── useCloudMatching.ts       # Social matching
+│   ├── useEmotionalAnalytics.ts  # Emotion tracking
+│   ├── useLLMAnalytics.ts        # LLM-powered analytics
+│   ├── useNuminaPersonality.ts   # Numina personality
+│   ├── useRealTimeEvents.ts      # Real-time features
+│   ├── usePullToRefresh.ts       # Pull to refresh
+│   └── useComprehensiveAnalytics.ts # Advanced analytics
+├── services/             # API and business logic (25+ services)
+│   ├── api.ts                    # Main API service
+│   ├── cloudAuth.ts              # Authentication
+│   ├── chatService.ts            # Chat functionality
+│   ├── optimizedChatService.ts   # Optimized chat
+│   ├── websocketService.ts       # WebSocket connections
+│   ├── fileUploadService.ts      # File handling
+│   ├── toolExecutionService.ts   # AI tool execution
+│   ├── cloudMatchingService.ts   # Social matching
+│   ├── emotionalAnalyticsAPI.ts  # Emotion analysis
+│   ├── comprehensiveAnalytics.ts # Advanced analytics
+│   ├── spotifyService.ts         # Spotify integration
+│   ├── batchApiService.ts        # Batch operations
+│   ├── offlineQueue.ts           # Offline support
+│   ├── realTimeSync.ts           # Real-time sync
+│   ├── secureStorage.ts          # Secure data storage
+│   ├── settingsService.ts        # App settings
+│   ├── syncService.ts            # Data synchronization
+│   ├── userDataSync.ts           # User data sync
+│   └── [10+ more services]       # Additional services
+├── utils/                # Utility functions (15+ utilities)
+│   ├── animations.ts             # Animation helpers
+│   ├── colors.ts                 # Color definitions
+│   ├── commonStyles.ts           # Shared styles
+│   ├── fonts.ts                  # Font management
+│   ├── themes.ts                 # Theme definitions
+│   ├── logger.ts                 # Logging utilities
+│   ├── errorHandler.ts           # Error handling
+│   ├── imagePreloader.ts         # Image optimization
+│   └── [7+ more utilities]       # Additional utilities
+├── types/                # TypeScript type definitions
+│   ├── message.ts                # Message types
+│   └── theme.ts                  # Theme types
+├── config/               # Configuration files
+│   ├── environment.ts            # Environment config
+│   ├── productionDirect.ts       # Production config
+│   └── eas-production.json       # EAS build config
+├── assets/               # Application assets
+│   └── images/                   # Image assets
 └── navigation/           # Navigation configuration
-    └── AppNavigator.tsx  # Main navigation stack
+    └── AppNavigator.tsx          # Main navigation stack
 ```
 
 ## API Integration

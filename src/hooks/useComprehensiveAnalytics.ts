@@ -79,7 +79,7 @@ export const useComprehensiveAnalytics = () => {
       }
       
       if (data.personalGrowth.milestones && Array.isArray(data.personalGrowth.milestones)) {
-        const achievedMilestones = data.personalGrowth.milestones.filter(m => m.achieved);
+        const achievedMilestones = data.personalGrowth?.milestones?.filter(m => m.achieved) || [];
         if (achievedMilestones.length > 0) {
           keyInsights.push(`${achievedMilestones.length} milestones achieved`);
         }

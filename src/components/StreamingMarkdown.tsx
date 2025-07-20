@@ -116,9 +116,16 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
   const markdownStyles = StyleSheet.create({
     body: {
       color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600],
-      fontSize: 16,
-      lineHeight: 24,
+      fontSize: 17,
+      lineHeight: 26,
       fontFamily: 'Inter_400Regular',
+      letterSpacing: -0.2,
+      fontWeight: '400',
+      marginBottom: 8,
+    },
+    paragraph: {
+      marginBottom: 12,
+      marginTop: 4,
     },
     heading1: {
       color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[700],

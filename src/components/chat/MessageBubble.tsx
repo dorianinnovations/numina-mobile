@@ -702,21 +702,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 8,
+    marginVertical: 4,
     marginHorizontal: 1,
   },
   userContainer: {
     alignItems: 'flex-end',
+    paddingRight: 8,
   },
   aiContainer: {
     alignItems: 'flex-start',
-    paddingLeft: 10, 
+    paddingLeft: 6, 
   },
   messageWrapper: {
     maxWidth: width * 0.95,
   },
   userMessageWrapper: {
-    maxWidth: width * 0.95,
+    maxWidth: width * 0.92,
   },
   botMessageContainer: {
     width: '100%',
@@ -727,6 +728,7 @@ const styles = StyleSheet.create({
   botTextContainer: {
     width: '100%',
     position: 'relative',
+    paddingVertical: 2,
   },
   h1Text: {
     fontSize: 26,
@@ -797,7 +799,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     overflow: 'hidden',
     position: 'relative',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     elevation: 3,
     shadowColor: '#000',
@@ -815,7 +817,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 18,
   },
   bubbleGradient: {
-    padding: 16,
+    padding: 12,
     position: 'relative',
   },
   userBubbleGradient: {
@@ -983,7 +985,8 @@ const styles = StyleSheet.create({
   },
   userMessageContainer: {
     alignItems: 'flex-end',
-    gap: 8,
+    gap: 4,
+    marginRight: 4,
   },
   photoAttachmentsContainer: {
     gap: 6,
@@ -999,9 +1002,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   streamingText: {
-    fontSize: 18,
-    lineHeight: 28,
+    fontSize: 17,
+    lineHeight: 26,
     fontWeight: '400',
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Inter_400Regular',
+    letterSpacing: -0.2,
   },
 });

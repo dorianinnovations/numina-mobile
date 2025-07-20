@@ -50,6 +50,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showSlowServerMessage, setShowSlowServerMessage] = useState(false);
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -61,6 +62,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
+  const headerOpacityAnim = useRef(new Animated.Value(1)).current;
   
   // Input refs
   const emailInputRef = useRef<TextInput>(null);
@@ -173,7 +175,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           
           // Set user-friendly error message
-          const errorMessage = result?.error || 'Invalid email or password. Please try again! 🔑';
+          const errorMessage = result?.error || 'Invalid email or password';
           setError(errorMessage);
           setIsSignInSuccess(false);
           setAuthStatus('error');
@@ -192,7 +194,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
       // Set graceful error message for unexpected errors
-      const errorMessage = err.message || 'Connection issue! Check your internet and try again 🌐';
+      const errorMessage = err.message || 'Connection failed';
       setError(errorMessage);
       setIsSignInSuccess(false);
       setAuthStatus('error');
@@ -224,18 +226,20 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         />
       
       {/* Header */}
-      <Header 
-        title="Numina"
-        showBackButton={true}
-        showMenuButton={true}
-        showAuthOptions={false}
-        onBackPress={() => {
-          // Fast exit - let navigation handle the transition
-          onNavigateBack();
-        }}
-        onTitlePress={onNavigateToHero}
-        onMenuPress={(key: string) => {}}
-      />
+      <Animated.View style={[styles.headerContainer, { opacity: headerOpacityAnim }]}>
+        <Header 
+          title="Numina"
+          showBackButton={true}
+          showMenuButton={true}
+          showAuthOptions={false}
+          onBackPress={() => {
+            // Fast exit - let navigation handle the transition
+            onNavigateBack();
+          }}
+          onTitlePress={onNavigateToHero}
+          onMenuPress={(key: string) => {}}
+        />
+      </Animated.View>
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={{ flex: 1 }}>
@@ -320,20 +324,36 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           editable={!loading}
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
                           onFocus={() => {
-                            Animated.spring(emailInputScaleAnim, {
-                              toValue: 1.02,
-                              useNativeDriver: true,
-                              speed: 50,
-                              bounciness: 8,
-                            }).start();
+                            setIsInputFocused(true);
+                            Animated.parallel([
+                              Animated.spring(emailInputScaleAnim, {
+                                toValue: 1.02,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }),
+                              Animated.timing(headerOpacityAnim, {
+                                toValue: 0.3,
+                                duration: 200,
+                                useNativeDriver: true,
+                              }),
+                            ]).start();
                           }}
                           onBlur={() => {
-                            Animated.spring(emailInputScaleAnim, {
-                              toValue: 1,
-                              useNativeDriver: true,
-                              speed: 50,
-                              bounciness: 8,
-                            }).start();
+                            setIsInputFocused(false);
+                            Animated.parallel([
+                              Animated.spring(emailInputScaleAnim, {
+                                toValue: 1,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }),
+                              Animated.timing(headerOpacityAnim, {
+                                toValue: 1,
+                                duration: 200,
+                                useNativeDriver: true,
+                              }),
+                            ]).start();
                           }}
                         />
                       </Animated.View>
@@ -364,20 +384,36 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             handleSubmit();
                           }}
                           onFocus={() => {
-                            Animated.spring(passwordInputScaleAnim, {
-                              toValue: 1.02,
-                              useNativeDriver: true,
-                              speed: 50,
-                              bounciness: 8,
-                            }).start();
+                            setIsInputFocused(true);
+                            Animated.parallel([
+                              Animated.spring(passwordInputScaleAnim, {
+                                toValue: 1.02,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }),
+                              Animated.timing(headerOpacityAnim, {
+                                toValue: 0.3,
+                                duration: 200,
+                                useNativeDriver: true,
+                              }),
+                            ]).start();
                           }}
                           onBlur={() => {
-                            Animated.spring(passwordInputScaleAnim, {
-                              toValue: 1,
-                              useNativeDriver: true,
-                              speed: 50,
-                              bounciness: 8,
-                            }).start();
+                            setIsInputFocused(false);
+                            Animated.parallel([
+                              Animated.spring(passwordInputScaleAnim, {
+                                toValue: 1,
+                                useNativeDriver: true,
+                                speed: 50,
+                                bounciness: 8,
+                              }),
+                              Animated.timing(headerOpacityAnim, {
+                                toValue: 1,
+                                duration: 200,
+                                useNativeDriver: true,
+                              }),
+                            ]).start();
                           }}
                         />
                       </Animated.View>
@@ -390,8 +426,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           style={[
                             styles.primaryButton,
                             {
-                              backgroundColor: '#add5fa',
+                              backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
                               opacity: (loading || isSignInSuccess) ? 0.9 : 1,
+                              borderColor: isDarkMode ? '#333333' : 'transparent',
+                              borderWidth: isDarkMode ? 1 : 0,
                             }
                           ]}
                           onPress={handleSubmit}
@@ -402,7 +440,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             <View style={styles.buttonTextContainer}>
                               <Text style={[
                                 styles.primaryButtonText, 
-                                { color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff' }
+                                { color: isDarkMode ? '#ffffff' : '#ffffff' }
                               ]}>
                                 {loading ? 'Signing In' : isSignInSuccess ? 'Success!' : 'Sign In'}
                               </Text>
@@ -495,11 +533,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
+  },
   keyboardAvoid: {
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
     paddingVertical: 32,
+    paddingTop: 100,
   },
   content: {
     width: '100%',

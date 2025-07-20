@@ -17,7 +17,8 @@ import { WalletScreen } from "../screens/WalletScreen";
 import { CloudScreen } from "../screens/CloudScreen";
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { TutorialScreen } from "../screens/TutorialScreen";
-import { AnimatedLightBeamExample } from "../components/AnimatedLightBeamExample";
+import { ExperienceLevelSelector } from "../components/ExperienceLevelSelector";
+import { ExperienceLevelService } from "../services/experienceLevelService";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
 
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   Welcome: undefined;
   SignIn: undefined;
   SignUp: undefined;
+  ExperienceLevel: undefined;
   About: undefined;
   Chat: undefined;
   Analytics: undefined;
@@ -35,7 +37,6 @@ export type RootStackParamList = {
   Cloud: undefined;
   Sentiment: undefined;
   Tutorial: undefined;
-  LightBeamExample: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -100,7 +101,13 @@ export const AppNavigator: React.FC = () => {
   const { isAuthenticated, loading } = useAuth();
   const navigationRef = useRef<any>(null);
   
+  // Prevent navigation resets during component re-renders
+  const hasInitialized = useRef(false);
+  
   console.log('🏗️ APPNAVIGATOR: Component rendering - isAuthenticated:', isAuthenticated, 'loading:', loading);
+  console.log('🏗️ APPNAVIGATOR: hasInitialized.current:', hasInitialized.current);
+  console.log('🏗️ APPNAVIGATOR: Will show loading overlay?', loading);
+  console.log('🏗️ APPNAVIGATOR: NavigationContainer always shown (no unmounting)');
   
   const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -167,47 +174,66 @@ export const AppNavigator: React.FC = () => {
   const hasNavigated = useRef(false);
   
   useEffect(() => {
+    // CRITICAL FIX: Only run auth routing logic when auth state actually changes
+    const authStateChanged = prevAuthState.current !== isAuthenticated;
+    
+    if (!authStateChanged || !hasInitialized.current) {
+      // No auth change or not yet initialized - don't run routing logic to prevent loops
+      if (!hasInitialized.current) {
+        console.log('🔄 AUTH ROUTING: Initial render, skipping routing logic');
+        hasInitialized.current = true;
+        prevAuthState.current = isAuthenticated;
+      } else {
+        console.log('🔄 AUTH ROUTING: No auth state change, skipping routing logic');
+      }
+      return;
+    }
+    
+    console.log('🔄 AUTH ROUTING: Auth state changed from', prevAuthState.current, 'to', isAuthenticated);
+    
     // Only run when navigationRef is ready and not during initial load
     if (navigationRef.current && !loading) {
       const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-      const authStateChanged = prevAuthState.current !== isAuthenticated;
       
-      console.log('🔄 AUTH ROUTING USEEFFECT: Current route:', currentRoute, 'isAuthenticated:', isAuthenticated, 'loading:', loading, 'authStateChanged:', authStateChanged, 'hasNavigated:', hasNavigated.current);
+      prevAuthState.current = isAuthenticated;
       
-      // Only perform navigation on actual auth state changes and not during initial load
-      if (authStateChanged && hasNavigated.current) {
-        console.log('🔄 AUTH ROUTING: Auth state changed from', prevAuthState.current, 'to', isAuthenticated);
-        prevAuthState.current = isAuthenticated;
+      // Small delay to allow explicit navigation to take precedence
+      setTimeout(() => {
+        const currentRouteAfterDelay = navigationRef.current?.getCurrentRoute()?.name;
         
-        if (isAuthenticated) {
-          console.log('🔄 AUTH ROUTING: User authenticated, navigating to Chat');
-          navigationRef.current.reset({
-            index: 0,
-            routes: [{ name: 'Chat' }],
+        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp') {
+          // Only auto-route if NOT coming from signup (signup has explicit navigation)
+          console.log('🔄 AUTH ROUTING: Authenticated user detected, current route:', currentRouteAfterDelay);
+          
+          // Check if user has set experience level - MANDATORY for all authenticated users
+          ExperienceLevelService.hasSetExperienceLevel().then((hasSet) => {
+            if (!hasSet) {
+              console.log('🔄 AUTH ROUTING: User MUST set experience level - redirecting');
+              navigationRef.current?.reset({
+                index: 0,
+                routes: [{ name: 'ExperienceLevel' }],
+              });
+            } else {
+              console.log('🔄 AUTH ROUTING: User authenticated with experience level, navigating to Chat');
+              navigationRef.current?.reset({
+                index: 0,
+                routes: [{ name: 'Chat' }],
+              });
+            }
           });
-        } else {
-          // CRITICAL: Only navigate away if user was previously authenticated (real logout)
-          // Never navigate away from auth screens during failed login attempts
-          if (prevAuthState.current === true) {
-            console.log('🔄 AUTH ROUTING: User logged out (was authenticated), returning to Hero');
-            navigationRef.current.reset({
-              index: 0,
-              routes: [{ name: 'Hero' }],
-            });
-          } else {
-            console.log('🔄 AUTH ROUTING: User was never authenticated, no navigation needed');
-          }
+        } else if (!isAuthenticated && hasNavigated.current && currentRouteAfterDelay !== 'Hero' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'ExperienceLevel') {
+          console.log('🔄 AUTH ROUTING: User logged out, returning to Hero');
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [{ name: 'Hero' }],
+          });
         }
-      } else if (authStateChanged) {
-        // First auth state change - just update the ref, don't navigate
-        console.log('🔄 AUTH ROUTING: First auth state change, updating ref only');
-        prevAuthState.current = isAuthenticated;
+        
         hasNavigated.current = true;
-      } else {
-        console.log('🔄 AUTH ROUTING: Auth state unchanged, no navigation needed');
-      }
+      }, 50);
     } else {
-      console.log('🔄 AUTH ROUTING SKIPPED: navigationRef not ready or still loading');
+      console.log('🔄 AUTH ROUTING: Navigation not ready, deferring routing');
+      prevAuthState.current = isAuthenticated;
     }
   }, [isAuthenticated, loading]);
 
@@ -221,39 +247,14 @@ export const AppNavigator: React.FC = () => {
     outputRange: [0, 1, 1, 1, 0],
   });
 
-  if (loading) {
-    return (
-      <View style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff',
-      }}>
-        <FastRingLoader 
-          size={18} 
-          color={isDarkMode ? '#6ec5ff' : '#add5fa'} 
-          strokeWidth={2}
-        />
-        <Animated.Text style={{
-          marginTop: 16,
-          fontSize: 11,
-          color: isDarkMode ? '#888888' : '#666666',
-          fontWeight: '400',
-          textAlign: 'center',
-          paddingHorizontal: 40,
-          transform: [{ rotateX }],
-          opacity,
-        }}>
-          {loadingMessages[loadingMessageIndex]}
-        </Animated.Text>
-      </View>
-    );
-  }
+  // CRITICAL FIX: Don't unmount NavigationContainer during loading to prevent navigation reset
 
   console.log('🏗️ APPNAVIGATOR: About to render NavigationContainer');
   
   return (
-    <NavigationContainer 
+    <View style={{ flex: 1 }}>
+      <NavigationContainer 
+        key="main-navigation" // Prevent complete re-initialization
       ref={(ref) => {
         navigationRef.current = ref;
         console.log('🏗️ NAVIGATION CONTAINER: Ref set, ready:', !!ref);
@@ -366,9 +367,35 @@ export const AppNavigator: React.FC = () => {
             <SignUpScreen
               onNavigateBack={() => navigation.goBack()}
               onSignUpSuccess={() => {
-                console.log('✅ SIGNUP SUCCESS - letting auth state handle navigation');
+                console.log('✅ SIGNUP SUCCESS - MANDATORY experience level selection required');
+                // Immediate navigation to prevent auth routing from interfering
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'ExperienceLevel' }],
+                });
               }}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="ExperienceLevel"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <ExperienceLevelSelector
+              onSelectionComplete={async (level) => {
+                console.log('✅ EXPERIENCE LEVEL SELECTED:', level);
+                await ExperienceLevelService.setExperienceLevel(level);
+                console.log('💾 Experience level saved, navigating to Chat');
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Chat' }],
+                });
+              }}
+              // onSkip removed - experience level selection is now MANDATORY for all users
             />
           )}
         </Stack.Screen>
@@ -487,21 +514,48 @@ export const AppNavigator: React.FC = () => {
             <TutorialScreen 
               onNavigateHome={() => navigation.navigate("Hero")}
               onStartChat={() => navigation.navigate("SignUp")}
+              onTitlePress={() => navigation.navigate("Hero")}
+              onMenuPress={createMenuHandler(navigation)}
             />
           )}
         </Stack.Screen>
 
-        <Stack.Screen
-          name="LightBeamExample"
-          options={{
-            ...mobileTransition,
-          }}
-        >
-          {({ navigation }) => (
-            <AnimatedLightBeamExample />
-          )}
-        </Stack.Screen>
       </Stack.Navigator>
     </NavigationContainer>
+    
+    {/* Loading overlay - only for app initialization, not form validation */}
+    {loading && (
+      <View style={{ 
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff',
+        zIndex: 1000,
+        pointerEvents: 'box-none', // Allow touches to pass through when appropriate
+      }}>
+        <FastRingLoader 
+          size={18} 
+          color={isDarkMode ? '#6ec5ff' : '#add5fa'} 
+          strokeWidth={2}
+        />
+        <Animated.Text style={{
+          marginTop: 16,
+          fontSize: 11,
+          color: isDarkMode ? '#888888' : '#666666',
+          fontWeight: '400',
+          textAlign: 'center',
+          paddingHorizontal: 40,
+          transform: [{ rotateX }],
+          opacity,
+        }}>
+          {loadingMessages[loadingMessageIndex]}
+        </Animated.Text>
+      </View>
+    )}
+  </View>
   );
 };

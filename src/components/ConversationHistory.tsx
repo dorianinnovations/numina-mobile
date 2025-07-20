@@ -629,6 +629,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                   style={{
                     opacity: checkOpacity,
                     position: 'absolute',
+                    top: 20,
                   }}
                 >
                   <FontAwesome5 
@@ -651,6 +652,9 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 ]}>
                   All conversation history has been permanently deleted
                 </Text>
+                
+                {/* Spacer to match button area height */}
+                <View style={{ height: 68, marginTop: 24 }} />
               </>
             )}
           </Animated.View>
@@ -840,7 +844,7 @@ const styles = StyleSheet.create({
     zIndex: 3000,
   },
   modalContainer: {
-    padding: 20,
+    padding: 32,
     borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',

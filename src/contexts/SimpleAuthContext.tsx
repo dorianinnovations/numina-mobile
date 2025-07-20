@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import CloudAuth, { AuthState, User } from '../services/cloudAuth';
 import ApiService from '../services/api';
+import { ExperienceLevelService } from '../services/experienceLevelService';
 
 /**
  * Simplified Authentication Context
@@ -152,6 +153,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       if (result.success) {
         console.log('[AuthContext] Sign up successful');
+        
+        // MANDATORY: Clear any existing experience level for new users
+        await ExperienceLevelService.clearExperienceLevel();
+        console.log('🔄 AUTH CONTEXT: Experience level cleared for new user - three-tier system now mandatory');
       } else {
         console.error('[AuthContext] Sign up failed:', result.error);
       }

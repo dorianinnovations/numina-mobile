@@ -69,7 +69,6 @@ numina-mobile/
 │   │   │   ├── AttachmentPicker.tsx    # File attachment picker
 │   │   │   ├── AttachmentPreview.tsx   # File preview component
 │   │   │   └── index.ts                # Chat components export
-│   │   ├── GradientBackground.tsx      # Gradient background effects
 │   │   ├── AnimatedToolText.tsx        # AI tool execution animations
 │   │   ├── StreamingMarkdown.tsx       # Real-time markdown rendering
 │   │   ├── Header.tsx                  # Navigation header

@@ -12,6 +12,7 @@ import {
   Platform,
   Linking,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -68,23 +69,41 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   const signInButtonPressScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Professional entrance animation sequence
+    // IMMEDIATE VISIBILITY FIX: Set all elements visible first, then animate
+    fadeAnim.setValue(1);
+    scaleAnim.setValue(1);
+    slideAnim.setValue(0);
+    titleOpacity.setValue(1);
+    titleY.setValue(0);
+    brandOpacity.setValue(1);
+    brandY.setValue(0);
+    exploreButtonOpacity.setValue(1);
+    exploreButtonY.setValue(0);
+    signUpButtonOpacity.setValue(1);
+    signUpButtonY.setValue(0);
+    signInButtonOpacity.setValue(1);
+    signInButtonY.setValue(0);
+    characterOpacity.setValue(1);
+
     Animated.sequence([
-      // Initial content fade in
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
           duration: 800,
-          useNativeDriver: false,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
           duration: 800,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ]),
       
-      // Enhanced title animation with easing
       Animated.parallel([
         Animated.timing(titleOpacity, {
           toValue: 1,
@@ -98,7 +117,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         }),
       ]),
       
-      // Professional brand text animation
       Animated.parallel([
         Animated.timing(brandOpacity, {
           toValue: 1,
@@ -112,9 +130,13 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         }),
       ]),
       
-      // Staggered button entrance animations
+      Animated.timing(characterOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      
       Animated.stagger(200, [
-        // Explore button
         Animated.parallel([
           Animated.timing(exploreButtonOpacity, {
             toValue: 1,
@@ -165,12 +187,12 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
       Animated.timing(characterOpacity, {
         toValue: 0,
         duration: 100,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 100,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }),
     ]).start(() => {
       toggleTheme();
@@ -178,63 +200,66 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
       Animated.timing(characterOpacity, {
         toValue: 1,
         duration: 100,
-        useNativeDriver: false,
+        useNativeDriver: true,
       }).start();
     });
   };
 
-  const handleAppStorePress = () => {
+  const handleExploreButtonPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Navigate immediately, run animation in background
+    onNavigateToTutorial();
     Animated.sequence([
       Animated.timing(exploreButtonPressScale, {
         toValue: 0.95,
-        duration: 100,
+        duration: 50,
         useNativeDriver: true,
       }),
       Animated.spring(exploreButtonPressScale, {
         toValue: 1,
-        tension: 150,
-        friction: 8,
+        tension: 200,
+        friction: 6,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      Linking.openURL('https://apps.apple.com/app/numina');
-    });
+    ]).start();
   };
 
-  const handlePlayStorePress = () => {
+  const handleSignUpButtonPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Navigate immediately, run animation in background
+    onNavigateToSignUp();
     Animated.sequence([
       Animated.timing(signUpButtonPressScale, {
         toValue: 0.95,
-        duration: 100,
+        duration: 50,
         useNativeDriver: true,
       }),
       Animated.spring(signUpButtonPressScale, {
         toValue: 1,
-        tension: 150,
-        friction: 8,
+        tension: 200,
+        friction: 6,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.numina');
-    });
+    ]).start();
   };
 
   const handleSignInButtonPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Navigate immediately, run animation in background
+    onNavigateToSignIn();
     Animated.sequence([
       Animated.timing(signInButtonPressScale, {
         toValue: 0.95,
-        duration: 100,
+        duration: 50,
         useNativeDriver: true,
       }),
       Animated.spring(signInButtonPressScale, {
         toValue: 1,
-        tension: 150,
-        friction: 8,
+        tension: 200,
+        friction: 6,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      onNavigateToSignIn();
-    });
+    ]).start();
   };
 
   const iconRotation = rotateAnim.interpolate({
@@ -267,7 +292,10 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           styles.content,
           {
             opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
+            transform: [
+              { translateY: slideAnim },
+              { scale: scaleAnim }
+            ],
           },
         ]}
       >
@@ -325,7 +353,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         >
           {/* Professional Staggered Button Animations */}
           
-          {/* Explore Numina Button */}
+          {/* Get Started Button */}
           <Animated.View 
             style={{ 
               opacity: exploreButtonOpacity,
@@ -343,7 +371,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 shadowOffset: { width: 0, height: 4 },
                 elevation: 6,
               }]}
-              onPress={handleAppStorePress}
+              onPress={handleExploreButtonPress}
               activeOpacity={0.9}
             >
                 <View
@@ -360,20 +388,17 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     }
                   ]}
                 >
-                  <View style={styles.buttonContent}>
-                    <FontAwesome5 name="apple" size={18} color={isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500]} />
-                    <Text style={[
-                      styles.primaryButtonText, 
-                      { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
-                    ]}>
-                      Download for iOS
-                    </Text>
-                  </View>
+                  <Text style={[
+                    styles.primaryButtonText, 
+                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                  ]}>
+                    Explore Numina
+                  </Text>
                 </View>
               </TouchableOpacity>
           </Animated.View>
 
-          {/* Play Store Button */}
+          {/* Explore Tutorial Button */}
           <Animated.View 
             style={{ 
               opacity: signUpButtonOpacity,
@@ -391,7 +416,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 shadowOffset: { width: 0, height: 3 },
                 elevation: 5,
               }]}
-              onPress={handlePlayStorePress}
+              onPress={handleSignUpButtonPress}
               activeOpacity={0.9}
             >
                 <View
@@ -408,15 +433,12 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     }
                   ]}
                 >
-                  <View style={styles.buttonContent}>
-                    <FontAwesome5 name="google-play" size={18} color={isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500]} />
-                    <Text style={[
-                      styles.primaryButtonText, 
-                      { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
-                    ]}>
-                      Download for Android
-                    </Text>
-                  </View>
+                  <Text style={[
+                    styles.primaryButtonText, 
+                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                  ]}>
+                    Create Account
+                  </Text>
                 </View>
               </TouchableOpacity>
           </Animated.View>
@@ -454,7 +476,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // Desktop: Center with max width
     alignSelf: 'center',
     width: '100%',
     maxWidth: Platform.OS === 'web' ? 1400 : '100%',
@@ -469,21 +490,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: Platform.OS === 'web' ? 60 : 24, // Desktop: More padding
-    paddingVertical: Platform.OS === 'web' ? 80 : 40,  // Desktop: More vertical space
+    paddingHorizontal: Platform.OS === 'web' ? 60 : 24,
+    paddingVertical: Platform.OS === 'web' ? 80 : 40,  
   },
   titleContainer: {
-    maxWidth: Platform.OS === 'web' ? 800 : width * 0.9, // Desktop: Fixed max width
-    marginBottom: Platform.OS === 'web' ? 60 : 48,       // Desktop: More spacing
+    maxWidth: Platform.OS === 'web' ? 800 : width * 0.9, 
+    marginBottom: Platform.OS === 'web' ? 60 : 48,       
   },
   welcomeText: {
-    fontSize: Platform.OS === 'web' ? 18 : (width < 350 ? 10 : width < 400 ? 14 : 16), // Desktop: Larger text
+    fontSize: Platform.OS === 'web' ? 18 : (width < 350 ? 10 : width < 400 ? 14 : 16), 
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: Platform.OS === 'web' ? 24 : (width < 350 ? 14 : width < 400 ? 16 : 17), // Desktop: Better line height
+    lineHeight: Platform.OS === 'web' ? 24 : (width < 350 ? 14 : width < 400 ? 16 : 17), 
     letterSpacing: -1.2,
     opacity: 0.8,  
-    paddingHorizontal: Platform.OS === 'web' ? 40 : 24, // Desktop: More padding
+    paddingHorizontal: Platform.OS === 'web' ? 40 : 24, 
     fontFamily: 'Nunito_400Regular',
   },
   brandText: {
@@ -506,7 +527,7 @@ const styles = StyleSheet.create({
 
   buttonsContainer: {
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 500,
     alignItems: 'center',
     gap: 12,
   },
@@ -521,9 +542,9 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    paddingVertical: 9.2,
-    paddingHorizontal: 100.4,
-    borderRadius: 6,
+    paddingVertical: 11,
+    paddingHorizontal: 130,
+    borderRadius: 8,
     alignItems: 'center',
   },
   primaryButtonText: {
@@ -534,9 +555,9 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: '100%',
-    paddingVertical: 9.2,
-    paddingHorizontal: 120,
-    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
     alignItems: 'center',
   },
   secondaryButtonText: {

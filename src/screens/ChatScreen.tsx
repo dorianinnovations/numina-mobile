@@ -850,11 +850,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         onQuickAnalyticsPress={() => setShowQuickAnalyticsModal(true)}
         currentConversationId={conversation?.id}
         title="Numina"
-        subtitle={
-          emotionalState 
-            ? `🧠 AI Active • ${emotionalState.mood || 'Analyzing'} • ${emotionalState.intensity?.toFixed(1) || '?'}/10`
-            : "Live Chat • Intelligent Tools • Deep Understanding"
-        }
         headerProps={{
           isVisible: headerVisible,
           isStreaming: isStreaming,
@@ -1051,15 +1046,15 @@ const styles = StyleSheet.create({
   },
   chatContainer: {
     flex: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: 2,
   },
   messagesList: {
     flex: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: 2,
   },
   messagesContent: {
-    paddingTop: 180,
-    paddingBottom: 120,
+    paddingTop: 120,
+    paddingBottom: 80,
     flexGrow: 1,
     justifyContent: 'flex-start',
   },

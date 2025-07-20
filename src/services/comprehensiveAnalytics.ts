@@ -374,8 +374,13 @@ class ComprehensiveAnalyticsService {
 
     try {
       weeklyReport = await this.apiRequest<any>('/emotional-analytics/weekly-report');
-    } catch (error) {
-      console.log('Weekly report not available:', error);
+    } catch (error: any) {
+      // Check if it's the expected "not yet generated" error
+      if (error?.message?.includes('Weekly report not yet generated') || error?.status === 404) {
+        console.log('Weekly report not yet generated - this is normal for new users');
+      } else {
+        console.log('Weekly report not available:', error);
+      }
     }
 
     try {

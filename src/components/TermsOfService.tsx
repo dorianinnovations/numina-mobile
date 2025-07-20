@@ -8,6 +8,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -25,6 +26,7 @@ export const TermsOfService: React.FC<TermsOfServiceProps> = ({
   const { isDarkMode } = useTheme();
   const [hasScrolledToBottom, setHasScrolledToBottom] = useState(false);
   const checkboxScaleAnim = useRef(new Animated.Value(1)).current;
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -204,10 +206,8 @@ We may terminate or suspend your Account and access to the Service immediately, 
 If you have any questions about these Terms, please contact us at:
 
 Numina LLC
-San Francisco, California, USA
-support@numinaai.com
-
-[End of Terms of Service]`;
+San Diego, California, USA
+numinaworks@gmail.com`;
 
   return (
     <View style={styles.container}>
@@ -236,6 +236,7 @@ support@numinaai.com
         }
       ]}>
         <ScrollView
+          ref={scrollViewRef}
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           onScroll={handleScroll}
@@ -252,22 +253,32 @@ support@numinaai.com
         
         {/* Scroll indicator */}
         {!hasScrolledToBottom && (
-          <View style={[
-            styles.scrollIndicator,
-            { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)' }
-          ]}>
-            <FontAwesome5 
-              name="chevron-down" 
-              size={16} 
-              color={isDarkMode ? '#ffffff' : '#000000'} 
+          <TouchableOpacity 
+            style={styles.scrollIndicator}
+            onPress={() => {
+              scrollViewRef.current?.scrollToEnd({ animated: true });
+            }}
+            activeOpacity={0.8}
+          >
+            <BlurView 
+              intensity={20} 
+              tint={isDarkMode ? 'dark' : 'light'}
+              style={styles.blurOverlay}
             />
-            <Text style={[
-              styles.scrollIndicatorText,
-              { color: isDarkMode ? '#ffffff' : '#000000' }
-            ]}>
-              Scroll to read all terms
-            </Text>
-          </View>
+            <View style={styles.scrollIndicatorContent}>
+              <FontAwesome5 
+                name="chevron-down" 
+                size={16} 
+                color={isDarkMode ? '#ffffff' : '#000000'} 
+              />
+              <Text style={[
+                styles.scrollIndicatorText,
+                { color: isDarkMode ? '#ffffff' : '#000000' }
+              ]}>
+                Tap to scroll to bottom
+              </Text>
+            </View>
+          </TouchableOpacity>
         )}
       </View>
 
@@ -377,10 +388,20 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 12,
-    alignItems: 'center',
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
+    overflow: 'hidden',
+  },
+  blurOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  scrollIndicatorContent: {
+    padding: 12,
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
@@ -393,6 +414,7 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 12,
     gap: 12,
   },
@@ -405,12 +427,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxTextContainer: {
-    flex: 1,
   },
   checkboxText: {
     fontSize: 14,
     fontWeight: '500',
     fontFamily: 'System',
+    textAlign: 'center',
   },
   statusText: {
     fontSize: 12,

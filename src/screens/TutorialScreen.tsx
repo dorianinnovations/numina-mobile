@@ -11,6 +11,7 @@ import {
   StatusBar,
   Easing,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,85 +37,38 @@ const PLEASURE_EASING = {
   smooth: Easing.out(Easing.quad),
   breathe: Easing.inOut(Easing.quad),
 };
-const getFeatureDescription = (feature: string, stepId: number): string => {
-  const descriptions: { [key: string]: string } = {
-    "Real-time behavioral analysis": "AI learns your communication style, decision patterns, and preferences as you interact",
-    "Adaptive AI personality": "Your assistant's tone and approach evolves to match your personality and mood",
-    "Pattern recognition engine": "Identifies recurring themes in your conversations and behavioral tendencies",
-    "Predictive insights": "Anticipates your needs and suggests relevant information before you ask",
-    
-    // AI Tools
-    "Web search & research": "Access real-time information from across the internet with intelligent summarization",
-    "Real-time data lookup": "Get live updates on stocks, crypto, weather, news, and market data instantly",
-    "Content generation": "Create text, code, emails, and creative content with context-aware AI assistance",
-    "Smart automation": "Automate repetitive tasks with natural language commands and intelligent workflows",
-    
-    // Emotional Analytics
-    "Weekly emotion reports": "Comprehensive analysis of your emotional patterns with visual insights and trends",
-    "Stress pattern detection": "Identify triggers, peak stress times, and environmental factors affecting your mood",
-    "Growth recommendations": "Personalized suggestions for emotional wellness and personal development",
-    "Mood correlation insights": "Understand how your emotions relate to activities, people, and life events"
-  };
-  
-  return descriptions[feature] || "Advanced AI capabilities designed to enhance your digital experience";
-};
 
-// Tutorial steps with authentic mass-appeal messaging
+// Learn steps
 const tutorialSteps = [
   {
     id: 1,
-    title: "Numina Actually Knows You",
-    description: "While others track surface metrics, Numina learns how you really think. Not invasive—just observant. Like a good friend who remembers what matters.",
-    icon: "activity",
-    features: [
-      "Real personality understanding",
-      "Privacy-first intelligence",
-      "Growth insights that matter"
-    ]
+    title: "Disconnected Tools",
+    description: "Right now, your tools are disconnected. A weather app that doesn't know your travel plans. A music app that misses your mood. Each is a separate conversation, starting from scratch every time. It's digital noise.",
+    icon: "shuffle"
   },
   {
     id: 2,
-    title: "Just Talk Normally",
-    description: "No commands to learn. Say 'find pizza and check the weather'—Numina handles both in one response. 25+ tools working invisibly.",
-    icon: "tool",
-    features: [
-      "Natural conversation works",
-      "25+ tools, zero syntax",
-      "Real-time streaming results"
-    ]
+    title: "One Continuous Conversation",
+    description: "Numina is different. It's one continuous conversation that gets smarter with every interaction.",
+    icon: "message-circle"
   },
   {
     id: 3,
-    title: "Remembers What Matters",
-    description: "Every conversation builds on the last. Your preferences, goals, context—remembered smartly while keeping costs low for everyone.",
-    icon: "clock",
-    features: [
-      "Context that helps",
-      "Smart cost optimization",
-      "Memory that grows with you"
-    ]
+    title: "Seamless Integration",
+    description: "Ask for a coffee shop recommendation and the weather for your walk there—in the same breath. It remembers, adapts, and works seamlessly, whether you're online or on a flight.",
+    icon: "map-pin"
   },
   {
     id: 4,
-    title: "Fast Enough to Keep Up",
-    description: "Enterprise-grade performance, personal pricing. Sub-second responses because waiting kills conversations.",
-    icon: "zap",
-    features: [
-      "Under 1-second responses",
-      "Enterprise performance",
-      "85% instant cache hits"
-    ]
+    title: "Beyond Convenience",
+    description: "This is about more than convenience; it's about clarity. By unifying your tasks, Numina provides a space to be more productive while also uncovering insights about how you think.",
+    icon: "trending-up"
   },
   {
     id: 5,
-    title: "Your Thinking Partner",
-    description: "Not replacing human connection—supporting it. Real intelligence, real help, whenever you're ready to begin.",
-    icon: "heart",
-    features: [
-      "Always here, never pushy",
-      "Real conversations, real results",
-      "Ready when you are"
-    ]
+    title: "Start Your Conversation",
+    description: "Stop juggling apps and start a single conversation that's always on your side.",
+    icon: "send"
   }
 ];
 
@@ -158,47 +112,17 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   // Progress dot animations
   const progressAnims = useRef(tutorialSteps.map(() => new Animated.Value(0))).current;
   
-  // Feature list stagger animations with flying neural connectors
-  const featureAnims = useRef([0, 1, 2].map((_, index) => ({
-    opacity: new Animated.Value(0),
-    translateY: new Animated.Value(15),
-    scale: new Animated.Value(0.95),
-    connectorGlow: new Animated.Value(0),
-    connectorPulse: new Animated.Value(0),
-    connectorWidth: new Animated.Value(0),
-    neuralSpark: new Animated.Value(0),
-    // Orderly erratic values - each connector has unique behavior
-    erraticFlicker: new Animated.Value(0),
-    erraticPulse: new Animated.Value(0),
-    erraticGlow: new Animated.Value(0),
-    // Flying and movement animations
-    flyingX: new Animated.Value(0),
-    flyingY: new Animated.Value(0),
-    flyingRotate: new Animated.Value(0),
-    flyingScale: new Animated.Value(1),
-    neuralFlow: new Animated.Value(0),
-    orbitAngle: new Animated.Value(0),
-    dimensionalShift: new Animated.Value(0),
-    particleTrail: new Animated.Value(0),
-    waveRipple: new Animated.Value(0),
-    // Unique timing per connector based on index
-    baseDelay: 800 + (index * 400), // 800ms, 1200ms, 1600ms, 2000ms
-    flickerInterval: 1500 + (index * 300), // Varying flicker speeds
-    pulseOffset: index * 0.25, // Phase offset for wave effect
-    flyingPattern: index % 4, // 0=circular, 1=figure8, 2=spiral, 3=chaotic
-  }))).current;
   
   // Ambient background animations
   const ambientPulse1 = useRef(new Animated.Value(0)).current;
   const ambientPulse2 = useRef(new Animated.Value(0)).current;
   const ambientFloat = useRef(new Animated.Value(0)).current;
 
-  // Ultra-smooth entrance sequence
-  useEffect(() => {
+  // Initialize animations function
+  const initializeAnimations = () => {
     fadeAnim.setValue(1);
     ScreenTransitions.slideInLeft(slideAnim);
     
-    // Instant card appearance with pleasure bounce
     Animated.sequence([
       Animated.parallel([
         Animated.timing(cardOpacity, {
@@ -222,7 +146,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
       }),
     ]).start();
     
-    // Instant icon with elastic pleasure
     setTimeout(() => {
       Animated.sequence([
         Animated.spring(iconScale, {
@@ -240,9 +163,8 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
       ]).start();
     }, PLEASURE_TIMINGS.SNAP);
     
-    // Animate progress dots with stagger
     progressAnims.forEach((anim, index) => {
-      if (index === 0) {
+      if (index === currentStep) {
         setTimeout(() => {
           Animated.spring(anim, {
             toValue: 1,
@@ -254,19 +176,23 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
       }
     });
     
-    // Stagger feature animations
-    setTimeout(() => {
-      animateFeatures();
-    }, PLEASURE_TIMINGS.ELEGANT);
-    
-    // Start ambient animations
     startAmbientAnimations();
+  };
+
+  // Focus effect to reinitialize animations when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      initializeAnimations();
+    }, [currentStep])
+  );
+
+  // entrance sequence
+  useEffect(() => {
+    initializeAnimations();
   }, []);
 
-  // Pleasure-focused step transition
   useEffect(() => {
     if (currentStep > 0) {
-      // Instant icon transition with micro-bounce
       Animated.sequence([
         Animated.timing(iconScale, {
           toValue: 0.85,
@@ -288,7 +214,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         }),
       ]).start();
       
-      // Progress dot animation
       progressAnims.forEach((anim, index) => {
         if (index === currentStep) {
           Animated.spring(anim, {
@@ -307,416 +232,9 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         }
       });
       
-      // Re-animate features
-      setTimeout(() => {
-        animateFeatures();
-      }, PLEASURE_TIMINGS.SNAP);
     }
   }, [currentStep]);
   
-      // Neural feature animation with connector effects
-  const animateFeatures = () => {
-    featureAnims.forEach((anim, index) => {
-      // Reset all animations
-      anim.opacity.setValue(0);
-      anim.translateY.setValue(15);
-      anim.scale.setValue(0.95);
-      anim.connectorGlow.setValue(0);
-      anim.connectorPulse.setValue(0);
-      anim.connectorWidth.setValue(0);
-      anim.neuralSpark.setValue(0);
-      
-      // Animate with advanced stagger
-      setTimeout(() => {
-        // Main feature animation
-        Animated.parallel([
-          Animated.timing(anim.opacity, {
-            toValue: 1,
-            duration: PLEASURE_TIMINGS.SMOOTH,
-            easing: PLEASURE_EASING.smooth,
-            useNativeDriver: true,
-          }),
-          Animated.spring(anim.translateY, {
-            toValue: 0,
-            tension: 120,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.spring(anim.scale, {
-            toValue: 1,
-            tension: 140,
-            friction: 6,
-            useNativeDriver: true,
-          }),
-        ]).start();
-        
-        // Neural connector sequence
-        setTimeout(() => {
-          // 1. Width expansion
-          Animated.timing(anim.connectorWidth, {
-            toValue: 1,
-            duration: 200,
-            easing: PLEASURE_EASING.snap,
-            useNativeDriver: false,
-          }).start();
-          
-          // 2. Glow activation
-          setTimeout(() => {
-            Animated.timing(anim.connectorGlow, {
-              toValue: 1,
-              duration: 150,
-              easing: PLEASURE_EASING.smooth,
-              useNativeDriver: false,
-            }).start();
-            
-            // 3. Neural spark
-            setTimeout(() => {
-              Animated.sequence([
-                Animated.timing(anim.neuralSpark, {
-                  toValue: 1,
-                  duration: 300,
-                  easing: PLEASURE_EASING.smooth,
-                  useNativeDriver: true,
-                }),
-                Animated.timing(anim.neuralSpark, {
-                  toValue: 0,
-                  duration: 200,
-                  easing: PLEASURE_EASING.smooth,
-                  useNativeDriver: true,
-                }),
-              ]).start();
-              
-              // 4. Start orderly erratic behaviors
-              // Base pulse with unique timing per connector
-              Animated.loop(
-                Animated.sequence([
-                  Animated.timing(anim.connectorPulse, {
-                    toValue: 1,
-                    duration: 1200 + (index * 200), // Varying speeds
-                    easing: PLEASURE_EASING.breathe,
-                    useNativeDriver: false,
-                  }),
-                  Animated.timing(anim.connectorPulse, {
-                    toValue: 0,
-                    duration: 1200 + (index * 200),
-                    easing: PLEASURE_EASING.breathe,
-                    useNativeDriver: false,
-                  }),
-                ])
-              ).start();
-              
-              // Erratic flicker - random intensity bursts
-              const startErraticFlicker = () => {
-                const nextFlicker = () => {
-                  const delay = 500 + Math.random() * 2500;
-                  setTimeout(() => {
-                    Animated.sequence([
-                      Animated.timing(anim.erraticFlicker, {
-                        toValue: 0.3 + Math.random() * 0.7,
-                        duration: 80 + Math.random() * 120,
-                        easing: PLEASURE_EASING.snap,
-                        useNativeDriver: false,
-                      }),
-                      Animated.timing(anim.erraticFlicker, {
-                        toValue: 0,
-                        duration: 200 + Math.random() * 300,
-                        easing: PLEASURE_EASING.smooth,
-                        useNativeDriver: false,
-                      }),
-                    ]).start(() => nextFlicker());
-                  }, delay);
-                };
-                setTimeout(nextFlicker, anim.baseDelay);
-              };
-              
-              // Erratic glow surges
-              const startErraticGlow = () => {
-                const nextGlow = () => {
-                  const delay = 1000 + Math.random() * 4000;
-                  setTimeout(() => {
-                    Animated.sequence([
-                      Animated.timing(anim.erraticGlow, {
-                        toValue: 0.6 + Math.random() * 0.4,
-                        duration: 150 + Math.random() * 200,
-                        easing: PLEASURE_EASING.snap,
-                        useNativeDriver: false,
-                      }),
-                      Animated.timing(anim.erraticGlow, {
-                        toValue: 0,
-                        duration: 400 + Math.random() * 600,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: false,
-                      }),
-                    ]).start(() => nextGlow());
-                  }, delay);
-                };
-                setTimeout(nextGlow, anim.baseDelay + 300);
-              };
-              
-              // Erratic pulse variations - sometimes double pulses
-              const startErraticPulse = () => {
-                const nextPulse = () => {
-                  const delay = 2000 + Math.random() * 3000;
-                  setTimeout(() => {
-                    const isDouble = Math.random() > 0.7;
-                    if (isDouble) {
-                      // Double pulse
-                      Animated.sequence([
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0.6,
-                          duration: 120,
-                          easing: PLEASURE_EASING.snap,
-                          useNativeDriver: false,
-                        }),
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0,
-                          duration: 80,
-                          easing: PLEASURE_EASING.smooth,
-                          useNativeDriver: false,
-                        }),
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0.8,
-                          duration: 100,
-                          easing: PLEASURE_EASING.snap,
-                          useNativeDriver: false,
-                        }),
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0,
-                          duration: 200,
-                          easing: PLEASURE_EASING.breathe,
-                          useNativeDriver: false,
-                        }),
-                      ]).start(() => nextPulse());
-                    } else {
-                      // Single pulse with random intensity
-                      Animated.sequence([
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0.4 + Math.random() * 0.4,
-                          duration: 100 + Math.random() * 100,
-                          easing: PLEASURE_EASING.snap,
-                          useNativeDriver: false,
-                        }),
-                        Animated.timing(anim.erraticPulse, {
-                          toValue: 0,
-                          duration: 200 + Math.random() * 200,
-                          easing: PLEASURE_EASING.smooth,
-                          useNativeDriver: false,
-                        }),
-                      ]).start(() => nextPulse());
-                    }
-                  }, delay);
-                };
-                setTimeout(nextPulse, anim.baseDelay + 600);
-              };
-              
-              // Flying and movement behaviors
-              const startFlyingAnimations = () => {
-                // Continuous orbital movement with unique patterns per connector
-                const flyingPattern = anim.flyingPattern;
-                
-                if (flyingPattern === 0) {
-                  // Circular orbit
-                  Animated.loop(
-                    Animated.timing(anim.orbitAngle, {
-                      toValue: 1,
-                      duration: 8000 + (index * 1000), // Varying orbit speeds
-                      easing: Easing.linear,
-                      useNativeDriver: true,
-                    })
-                  ).start();
-                } else if (flyingPattern === 1) {
-                  // Figure-8 pattern
-                  Animated.loop(
-                    Animated.sequence([
-                      Animated.timing(anim.flyingX, {
-                        toValue: 3,
-                        duration: 2000,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(anim.flyingX, {
-                        toValue: -3,
-                        duration: 4000,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(anim.flyingX, {
-                        toValue: 0,
-                        duration: 2000,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: true,
-                      }),
-                    ])
-                  ).start();
-                  
-                  Animated.loop(
-                    Animated.sequence([
-                      Animated.timing(anim.flyingY, {
-                        toValue: -2,
-                        duration: 4000,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(anim.flyingY, {
-                        toValue: 2,
-                        duration: 4000,
-                        easing: PLEASURE_EASING.breathe,
-                        useNativeDriver: true,
-                      }),
-                    ])
-                  ).start();
-                } else if (flyingPattern === 2) {
-                  // Spiral pattern
-                  Animated.loop(
-                    Animated.parallel([
-                      Animated.timing(anim.orbitAngle, {
-                        toValue: 1,
-                        duration: 6000,
-                        easing: Easing.linear,
-                        useNativeDriver: true,
-                      }),
-                      Animated.sequence([
-                        Animated.timing(anim.flyingScale, {
-                          toValue: 1.5,
-                          duration: 3000,
-                          easing: PLEASURE_EASING.breathe,
-                          useNativeDriver: true,
-                        }),
-                        Animated.timing(anim.flyingScale, {
-                          toValue: 0.5,
-                          duration: 3000,
-                          easing: PLEASURE_EASING.breathe,
-                          useNativeDriver: true,
-                        }),
-                      ]),
-                    ])
-                  ).start();
-                } else {
-                  // Chaotic movement
-                  const chaosMove = () => {
-                    const randomX = (Math.random() - 0.5) * 8;
-                    const randomY = (Math.random() - 0.5) * 4;
-                    const randomRotate = Math.random() * 360;
-                    const duration = 1000 + Math.random() * 2000;
-                    
-                    Animated.parallel([
-                      Animated.timing(anim.flyingX, {
-                        toValue: randomX,
-                        duration: duration,
-                        easing: PLEASURE_EASING.elastic,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(anim.flyingY, {
-                        toValue: randomY,
-                        duration: duration,
-                        easing: PLEASURE_EASING.elastic,
-                        useNativeDriver: true,
-                      }),
-                      Animated.timing(anim.flyingRotate, {
-                        toValue: randomRotate,
-                        duration: duration,
-                        easing: PLEASURE_EASING.smooth,
-                        useNativeDriver: true,
-                      }),
-                    ]).start(() => chaosMove());
-                  };
-                  setTimeout(chaosMove, 500 + (index * 200));
-                }
-                
-                // Neural flow animation
-                Animated.loop(
-                  Animated.sequence([
-                    Animated.timing(anim.neuralFlow, {
-                      toValue: 1,
-                      duration: 2000 + (index * 300),
-                      easing: PLEASURE_EASING.smooth,
-                      useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.neuralFlow, {
-                      toValue: 0,
-                      duration: 2000 + (index * 300),
-                      easing: PLEASURE_EASING.smooth,
-                      useNativeDriver: true,
-                    }),
-                  ])
-                ).start();
-                
-                // Dimensional shift effect
-                const dimensionalShift = () => {
-                  const nextShift = () => {
-                    const delay = 3000 + Math.random() * 5000;
-                    setTimeout(() => {
-                      Animated.sequence([
-                        Animated.timing(anim.dimensionalShift, {
-                          toValue: 1,
-                          duration: 300,
-                          easing: PLEASURE_EASING.snap,
-                          useNativeDriver: true,
-                        }),
-                        Animated.timing(anim.dimensionalShift, {
-                          toValue: 0,
-                          duration: 500,
-                          easing: PLEASURE_EASING.breathe,
-                          useNativeDriver: true,
-                        }),
-                      ]).start(() => nextShift());
-                    }, delay);
-                  };
-                  nextShift();
-                };
-                
-                // Particle trail effect
-                Animated.loop(
-                  Animated.sequence([
-                    Animated.timing(anim.particleTrail, {
-                      toValue: 1,
-                      duration: 1500,
-                      easing: Easing.linear,
-                      useNativeDriver: true,
-                    }),
-                    Animated.timing(anim.particleTrail, {
-                      toValue: 0,
-                      duration: 100,
-                      easing: Easing.linear,
-                      useNativeDriver: true,
-                    }),
-                  ])
-                ).start();
-                
-                // Wave ripple effect
-                const waveRipple = () => {
-                  const nextRipple = () => {
-                    const delay = 2000 + Math.random() * 4000;
-                    setTimeout(() => {
-                      Animated.timing(anim.waveRipple, {
-                        toValue: 1,
-                        duration: 800,
-                        easing: PLEASURE_EASING.smooth,
-                        useNativeDriver: true,
-                      }).start(() => {
-                        anim.waveRipple.setValue(0);
-                        nextRipple();
-                      });
-                    }, delay);
-                  };
-                  nextRipple();
-                };
-                
-                setTimeout(dimensionalShift, 1000 + (index * 500));
-                setTimeout(waveRipple, 1500 + (index * 300));
-              };
-              
-              // Start all behaviors with offsets
-              setTimeout(startErraticFlicker, 200 + (index * 100));
-              setTimeout(startErraticGlow, 800 + (index * 150));
-              setTimeout(startErraticPulse, 1200 + (index * 200));
-              setTimeout(startFlyingAnimations, 1600 + (index * 250));
-            }, 100);
-          }, 50);
-        }, index * 20);
-      }, index * 60); // Staggered entry
-    });
-  };
   
   // Continuous ambient pleasure animations
   const startAmbientAnimations = () => {
@@ -792,65 +310,59 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     ).start();
   };
 
-  // Ultra-responsive button interactions
+  // Smooth button interactions
   const handleNext = () => {
     if (currentStep < tutorialSteps.length - 1) {
-      // Satisfying haptic feedback
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // Gentle tutorial haptic
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
-      // Instant pleasure response
+      // Subtle scale animation
       Animated.sequence([
         Animated.timing(buttonScale, {
-          toValue: 0.92,
-          duration: PLEASURE_TIMINGS.INSTANT,
+          toValue: 0.96,
+          duration: 80,
           easing: PLEASURE_EASING.snap,
           useNativeDriver: true,
         }),
-        Animated.spring(buttonScale, {
-          toValue: 1.02,
-          tension: 150,
-          friction: 4,
-          useNativeDriver: true,
-        }),
-        Animated.spring(buttonScale, {
+        Animated.timing(buttonScale, {
           toValue: 1,
-          tension: 120,
-          friction: 8,
+          duration: 120,
+          easing: PLEASURE_EASING.smooth,
           useNativeDriver: true,
         }),
       ]).start();
       
-      // Instant step change for maximum responsiveness
+      // Step change
       setTimeout(() => {
         setCurrentStep(prev => prev + 1);
-      }, PLEASURE_TIMINGS.INSTANT);
+      }, 50);
     }
   };
 
   const handlePrev = () => {
     if (currentStep > 0) {
-      // Light haptic for backward navigation
+      // Gentle back haptic
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
-      // Quick reverse animation
+      // Subtle scale animation
       Animated.sequence([
         Animated.timing(buttonScale, {
-          toValue: 0.94,
-          duration: PLEASURE_TIMINGS.INSTANT,
+          toValue: 0.96,
+          duration: 80,
           easing: PLEASURE_EASING.snap,
           useNativeDriver: true,
         }),
-        Animated.spring(buttonScale, {
+        Animated.timing(buttonScale, {
           toValue: 1,
-          tension: 140,
-          friction: 6,
+          duration: 120,
+          easing: PLEASURE_EASING.smooth,
           useNativeDriver: true,
         }),
       ]).start();
       
       setTimeout(() => {
         setCurrentStep(prev => prev - 1);
-      }, PLEASURE_TIMINGS.INSTANT);
+      }, 50);
     }
   };
 
@@ -858,39 +370,33 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     // Success haptic for completion
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     
-    // Ultra-fast completion animation
+    // Gentle completion animation
     Animated.sequence([
       Animated.timing(buttonScale, {
-        toValue: 0.92,
-        duration: 30, // Ultra fast
-        easing: PLEASURE_EASING.snap,
-        useNativeDriver: true,
-      }),
-      Animated.timing(buttonScale, {
-        toValue: 1.05,
-        duration: 40, // Ultra fast
+        toValue: 0.96,
+        duration: 80,
         easing: PLEASURE_EASING.snap,
         useNativeDriver: true,
       }),
       Animated.timing(buttonScale, {
         toValue: 1,
-        duration: 30, // Ultra fast
+        duration: 120,
         easing: PLEASURE_EASING.smooth,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Instant exit transition
+      // Smooth exit transition
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 60, // Much faster
-          easing: PLEASURE_EASING.snap,
+          duration: 200,
+          easing: PLEASURE_EASING.smooth,
           useNativeDriver: true,
         }),
         Animated.timing(cardScale, {
-          toValue: 0.9,
-          duration: 60, // Much faster
-          easing: PLEASURE_EASING.snap,
+          toValue: 0.95,
+          duration: 200,
+          easing: PLEASURE_EASING.smooth,
           useNativeDriver: true,
         }),
       ]).start(() => {
@@ -1044,7 +550,8 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               </Text>
             </View>
 
-            {/* Main Title */}
+
+            {/* Step Title */}
             <Text style={[
               styles.creativeTitle,
               { color: isDarkMode ? '#ffffff' : '#000000' }
@@ -1060,247 +567,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               {step.description}
             </Text>
 
-            {/* Neural Interface Display */}
-            {/* Neural Interface Display */}
-            <View style={styles.neuralInterface}>
-              {step.features.map((feature, index) => (
-                <Animated.View
-                  key={index}
-                  style={[
-                    styles.neuralNode,
-                    {
-                      opacity: featureAnims[index]?.opacity || 1,
-                      transform: [
-                        { translateY: featureAnims[index]?.translateY || 0 },
-                        { scale: featureAnims[index]?.scale || 1 },
-                      ],
-                    }
-                  ]}
-                >
-                  {/* Flying Neural Connector Container */}
-                  <Animated.View style={[
-                    styles.neuralConnectorContainer,
-                    {
-                      transform: [
-                        // Flying movements based on pattern
-                        { 
-                          translateX: featureAnims[index]?.flyingPattern === 0 
-                            ? featureAnims[index]?.orbitAngle.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 360],
-                              }).interpolate({
-                                inputRange: [0, 90, 180, 270, 360],
-                                outputRange: [0, 1, 0, -1, 0],
-                              }) || 0
-                            : Animated.multiply(
-                                featureAnims[index]?.flyingX || 0,
-                                0.5
-                              )
-                        },
-                        { 
-                          translateY: featureAnims[index]?.flyingPattern === 0
-                            ? featureAnims[index]?.orbitAngle.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 360],
-                              }).interpolate({
-                                inputRange: [0, 90, 180, 270, 360],
-                                outputRange: [0, -0.5, 0, 0.5, 0],
-                              }) || 0
-                            : Animated.multiply(
-                                featureAnims[index]?.flyingY || 0,
-                                0.5
-                              )
-                        },
-                        { 
-                          rotate: featureAnims[index]?.flyingRotate.interpolate({
-                            inputRange: [0, 360],
-                            outputRange: ['0deg', '360deg'],
-                          }) || '0deg'
-                        },
-                        { 
-                          scale: Animated.multiply(
-                            featureAnims[index]?.flyingScale || 1,
-                            Animated.add(
-                              1,
-                              Animated.multiply(
-                                featureAnims[index]?.dimensionalShift || 0,
-                                0.3
-                              )
-                            )
-                          )
-                        },
-                      ],
-                    }
-                  ]}>
-                    {/* Base connector with width animation */}
-                    <Animated.View style={[
-                      styles.baseConnector,
-                      {
-                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        width: featureAnims[index]?.connectorWidth.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 2],
-                        }) || 2,
-                      }
-                    ]} />
-                    
-                    {/* Glow layer with erratic surges */}
-                    <Animated.View style={[
-                      styles.connectorGlow,
-                      {
-                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        opacity: Animated.add(
-                          featureAnims[index]?.connectorGlow.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 0.4],
-                          }) || 0,
-                          Animated.multiply(
-                            featureAnims[index]?.erraticGlow || 0,
-                            0.3
-                          )
-                        ),
-                        width: Animated.add(
-                          featureAnims[index]?.connectorGlow.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [2, 6],
-                          }) || 2,
-                          featureAnims[index]?.erraticGlow.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 3],
-                          }) || 0
-                        ),
-                      }
-                    ]} />
-                    
-                    {/* Pulse layer with erratic variations */}
-                    <Animated.View style={[
-                      styles.connectorPulse,
-                      {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
-                        opacity: Animated.add(
-                          featureAnims[index]?.connectorPulse.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 0.6],
-                          }) || 0,
-                          featureAnims[index]?.erraticPulse || 0
-                        ),
-                      }
-                    ]} />
-                    
-                    {/* Erratic flicker overlay */}
-                    <Animated.View style={[
-                      styles.connectorFlicker,
-                      {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
-                        opacity: featureAnims[index]?.erraticFlicker || 0,
-                      }
-                    ]} />
-                    
-                    {/* Neural spark */}
-                    <Animated.View style={[
-                      styles.neuralSpark,
-                      {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
-                        opacity: featureAnims[index]?.neuralSpark || 0,
-                        transform: [{
-                          translateY: featureAnims[index]?.neuralSpark.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [8, -8],
-                          }) || 0,
-                        }],
-                      }
-                    ]} />
-                    
-                    {/* Data points */}
-                    <Animated.View style={[
-                      styles.connectorDataPoint,
-                      styles.dataPointTop,
-                      {
-                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        opacity: featureAnims[index]?.connectorGlow.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 0.7],
-                        }) || 0,
-                      }
-                    ]} />
-                    
-                    <Animated.View style={[
-                      styles.connectorDataPoint,
-                      styles.dataPointBottom,
-                      {
-                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        opacity: featureAnims[index]?.connectorPulse.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 0.5],
-                        }) || 0,
-                      }
-                    ]} />
-                    
-                    {/* Flying particle trails */}
-                    <Animated.View style={[
-                      styles.particleTrail,
-                      {
-                        backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        opacity: featureAnims[index]?.particleTrail.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 0.6],
-                        }) || 0,
-                        transform: [{
-                          translateY: featureAnims[index]?.particleTrail.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, -20],
-                          }) || 0,
-                        }],
-                      }
-                    ]} />
-                    
-                    {/* Neural flow streams */}
-                    <Animated.View style={[
-                      styles.neuralFlowStream,
-                      {
-                        backgroundColor: isDarkMode ? '#ffffff' : '#ffffff',
-                        opacity: featureAnims[index]?.neuralFlow.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 0.8],
-                        }) || 0,
-                        transform: [{
-                          scaleY: featureAnims[index]?.neuralFlow.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 1.5],
-                          }) || 1,
-                        }],
-                      }
-                    ]} />
-                    
-                    {/* Wave ripple effect */}
-                    <Animated.View style={[
-                      styles.waveRipple,
-                      {
-                        borderColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                        opacity: featureAnims[index]?.waveRipple.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.8, 0],
-                        }) || 0,
-                        transform: [{
-                          scale: featureAnims[index]?.waveRipple.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.5, 3],
-                          }) || 1,
-                        }],
-                      }
-                    ]} />
-                  </Animated.View>
-                  <View style={styles.nodeContent}>
-                    <Text style={[
-                      styles.nodeLabel,
-                      { color: isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.9)' }
-                    ]}>
-                      {feature}
-                    </Text>
-                  </View>
-                </Animated.View>
-              ))}
-            </View>
 
           </Animated.View>
 
@@ -1313,7 +579,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               },
             ]}
           >
-            {/* Neural Processing Core */}
+            {/* Neural Processing Core for all steps */}
             <View style={styles.neuralCore}>
               {/* Scanning Grid */}
               <View style={[
@@ -1405,75 +671,81 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
             </View>
           </Animated.View>
 
-          {/* Action Buttons - Full Width */}
-          <View style={styles.fullWidthButtonContainer}>
-            <Animated.View 
-              style={{ 
-                transform: [{ scale: buttonScale }],
-                width: '100%',
-              }}
-            >
-              <View style={styles.primaryButtonContainer}>
+          {/* Connected Button Pair */}
+          <View style={styles.connectedButtonContainer}>
+            <View style={[
+              styles.buttonPair,
+              {
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
+              }
+            ]}>
+              {/* Left Button */}
+              {currentStep > 0 ? (
                 <TouchableOpacity
                   style={[
-                    styles.primaryButton,
+                    styles.leftButton,
                     {
-                      backgroundColor: '#add5fa',
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)',
                     }
                   ]}
-                  onPress={() => {
-                    console.log('Button pressed!');
-                    if (isLastStep) {
-                      handleFinish();
-                    } else {
-                      handleNext();
-                    }
-                  }}
-                  activeOpacity={0.95}
-                >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff' }
-                  ]}>
-                    {isLastStep ? 'Start Your Journey' : 'Continue →'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-
-            {/* Navigation Row */}
-            <View style={styles.navigationRow}>
-              {currentStep > 0 && (
-                <TouchableOpacity
-                  style={styles.navButton}
                   onPress={handlePrev}
-                  activeOpacity={0.7}
+                  activeOpacity={0.8}
                 >
                   <Text style={[
-                    styles.navButtonText,
-                    { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }
+                    styles.buttonText,
+                    { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }
                   ]}>
                     ← Back
                   </Text>
                 </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[
+                    styles.leftButton,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
+                    }
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    onStartChat();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.buttonText,
+                    { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
+                  ]}>
+                    Skip
+                  </Text>
+                </TouchableOpacity>
               )}
-              
-              <View style={styles.navSpacer} />
-              
+
+              {/* Right Button */}
               <TouchableOpacity
-                style={styles.navButton}
+                style={[
+                  styles.rightButton,
+                  {
+                    backgroundColor: '#add5fa',
+                  }
+                ]}
                 onPress={() => {
-                  // Light haptic for starting chat
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  onStartChat();
+                  if (isLastStep) {
+                    handleFinish();
+                  } else {
+                    handleNext();
+                  }
                 }}
-                activeOpacity={0.7}
+                activeOpacity={0.9}
               >
                 <Text style={[
-                  styles.navButtonText,
-                  { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }
+                  styles.buttonText,
+                  { 
+                    color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff',
+                    fontWeight: '600'
+                  }
                 ]}>
-                  Skip
+                  {isLastStep ? 'Start Conversation' : 'Continue →'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1684,39 +956,76 @@ const styles = StyleSheet.create({
     paddingTop: 200,
     paddingBottom: 32,
     position: 'relative',
-    justifyContent: 'center', // Center vertically
+    justifyContent: 'flex-start',
   },
   contentArea: {
-    flex: 1,
+    height: 280,
     paddingRight: 120,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'flex-start',
     zIndex: 10,
     maxWidth: '100%',
   },
   visualElement: {
     position: 'absolute',
-    top: '50%',
+    top: '35%',
     right: 24,
     transform: [{ translateY: -60 }],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  fullWidthButtonContainer: {
+  connectedButtonContainer: {
     width: '100%',
-    gap: 16,
-    marginTop: 32,
+    marginTop: 60,
+  },
+  buttonPair: {
+    flexDirection: 'row',
+    width: '100%',
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  leftButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopLeftRadius: 10,
+    borderBottomLeftRadius: 10,
+  },
+  rightButton: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: -0.3,
+    fontFamily: 'Nunito_500Medium',
   },
   
   // Step Badge
   stepBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: 'rgba(173, 213, 250, 0.1)',
+    position: 'absolute',
+    top: 60,
+    left: 0,
   },
   stepNumber: {
     fontSize: 14,
@@ -1735,6 +1044,15 @@ const styles = StyleSheet.create({
   },
   
   // Creative Content
+  contextualHeading: {
+    fontSize: 28,
+    fontWeight: '600',
+    fontFamily: 'CrimsonPro_600SemiBold',
+    letterSpacing: -1,
+    marginBottom: 24,
+    textAlign: 'left',
+    lineHeight: 34,
+  },
   creativeTitle: {
     fontSize: 32,
     fontWeight: '700',
@@ -1742,155 +1060,24 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
     marginBottom: 16,
     textAlign: 'left',
+    position: 'absolute',
+    top: 120,
+    left: 0,
+    right: 0,
   },
   creativeDescription: {
     fontSize: 16,
     lineHeight: 24,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
-    marginBottom: 24,
     textAlign: 'left',
+    position: 'absolute',
+    top: 180,
+    left: 0,
+    right: 0,
+    height: 120,
   },
   
-  // Neural Interface (2055 Future Design)
-  neuralInterface: {
-    gap: 8,
-    marginBottom: 32,
-    marginLeft: 4,
-    width: '100%', // Full width container
-    flex: 1, // Take available space
-  },
-  neuralNode: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 28,
-    width: '100%', // Ensure full width
-    maxWidth: '100%', // Prevent overflow
-  },
-  // Neural Connector System
-  neuralConnectorContainer: {
-    position: 'relative',
-    width: 8,
-    height: 16,
-    marginRight: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'visible',
-    zIndex: 1,
-    flexShrink: 0, // Don't shrink this container
-    flexGrow: 0, // Don't grow this container
-  },
-  baseConnector: {
-    position: 'absolute',
-    height: 16,
-    borderRadius: 1,
-  },
-  connectorGlow: {
-    position: 'absolute',
-    height: 14,
-    borderRadius: 3,
-    shadowColor: '#add5fa',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  connectorPulse: {
-    position: 'absolute',
-    width: 1,
-    height: 8,
-    borderRadius: 0.5,
-    top: 4,
-  },
-  connectorFlicker: {
-    position: 'absolute',
-    width: 0.5,
-    height: 12,
-    borderRadius: 0.25,
-    top: 2,
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 1,
-    elevation: 2,
-  },
-  neuralSpark: {
-    position: 'absolute',
-    width: 1,
-    height: 2,
-    borderRadius: 0.5,
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  connectorDataPoint: {
-    position: 'absolute',
-    width: 1.5,
-    height: 1.5,
-    borderRadius: 0.75,
-  },
-  dataPointTop: {
-    top: 1,
-    right: -1,
-  },
-  dataPointBottom: {
-    bottom: 1,
-    left: -1,
-  },
-  
-  // Flying and Movement Effects
-  particleTrail: {
-    position: 'absolute',
-    width: 0.5,
-    height: 8,
-    borderRadius: 0.25,
-    right: -2,
-    top: 4,
-    shadowColor: '#add5fa',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  neuralFlowStream: {
-    position: 'absolute',
-    width: 0.8,
-    height: 12,
-    borderRadius: 0.4,
-    left: -3,
-    top: 2,
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 1,
-    elevation: 4,
-  },
-  waveRipple: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    top: 0,
-    left: -4,
-  },
-  nodeContent: {
-    flex: 1,
-    zIndex: 5,
-    position: 'relative',
-    minWidth: 0, // Allow text to wrap
-    width: '100%', // Take remaining space
-  },
-  nodeLabel: {
-    fontSize: 15,
-    fontWeight: '400',
-    fontFamily: 'Nunito_400Regular',
-    letterSpacing: -0.2,
-    lineHeight: 20,
-    zIndex: 10,
-  },
   
   // Creative Buttons
   creativeButtonContainer: {
@@ -1991,4 +1178,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
+
+
 });

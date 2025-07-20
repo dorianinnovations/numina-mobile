@@ -211,6 +211,14 @@ const CustomPieChart: React.FC<{
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let currentAngle = -Math.PI / 2; // Start from top
   
+  if (total === 0) {
+    return (
+      <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ color: isDarkMode ? '#8B8B8B' : '#666' }}>No data available</Text>
+      </View>
+    );
+  }
+  
   return (
     <View style={{ alignItems: 'center' }}>
       <Svg width={width} height={height}>
@@ -634,7 +642,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             {/* Temporal Insights */}
             <View style={styles.insightsSection}>
               <Text style={[styles.insightText, { color: isDarkMode ? '#aaa' : '#666' }]}>
-                🕐 Peak activity: {behavioralMetrics.temporalPatterns.mostActiveHours[0]}:00-{behavioralMetrics.temporalPatterns.mostActiveHours[behavioralMetrics.temporalPatterns.mostActiveHours.length - 1]}:00
+                🕐 Peak activity: {behavioralMetrics.temporalPatterns.mostActiveHours?.length > 0 ? `${behavioralMetrics.temporalPatterns.mostActiveHours[0]}:00-${behavioralMetrics.temporalPatterns.mostActiveHours[behavioralMetrics.temporalPatterns.mostActiveHours.length - 1]}:00` : 'No data'}
               </Text>
               <Text style={[styles.insightText, { color: isDarkMode ? '#aaa' : '#666' }]}>
                 ⏱️ Avg session: {behavioralMetrics.temporalPatterns.sessionDuration.average} minutes
@@ -789,7 +797,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             {/* Milestones */}
             <View style={styles.milestonesSection}>
               <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Milestones Achieved</Text>
-              {personalGrowth.milestones.filter(m => m.achieved).slice(0, 3).map((milestone, index) => (
+              {(personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).slice(0, 3) : []).map((milestone, index) => (
                 <View key={milestone.id} style={styles.milestoneItem}>
                   <View style={[styles.milestoneIcon, { backgroundColor: chartColors[index] }]}>
                     <Feather name="check" size={16} color="#fff" />
@@ -815,7 +823,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 🎯 Engagement: {personalGrowth.growthSummary.engagementMetrics.dailyEngagementScore.toFixed(1)}/10
               </Text>
               <Text style={[styles.insightText, { color: isDarkMode ? '#aaa' : '#666' }]}>
-                🏆 Milestones: {personalGrowth.milestones.filter(m => m.achieved).length} achieved
+                🏆 Milestones: {(personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).length : 0)} achieved
               </Text>
             </View>
           </View>
@@ -921,7 +929,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               <View style={[styles.statCard, { backgroundColor: isDarkMode ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)' }]}>
                 <Feather name="trending-up" size={24} color="#3B82F6" />
                 <Text style={[styles.statValue, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                  {personalGrowth?.milestones.filter(m => m.achieved).length || 0}
+                  {personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).length : 0}
                 </Text>
                 <Text style={[styles.statLabel, { color: isDarkMode ? '#888' : '#666' }]}>
                   Milestones

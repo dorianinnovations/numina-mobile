@@ -89,18 +89,18 @@ class CloudAuth {
         if (error.toLowerCase().includes('validation failed')) {
           // Check if it's email validation specifically
           if (data.errors && data.errors.some(e => e.path === 'email')) {
-            error = 'Please enter a valid email address (e.g., name@example.com) 📧';
+            error = 'Invalid email format';
           } else {
-            error = 'Please check your input and try again! ✏️';
+            error = 'Invalid input';
           }
         } else if (error.toLowerCase().includes('incorrect email') || error.toLowerCase().includes('incorrect password')) {
-          error = 'Incorrect email or password. Please try again! 🔑';
+          error = 'Incorrect email or password';
         } else if (error.toLowerCase().includes('user not found')) {
-          error = 'Account not found. Please check your email or sign up! 📧';
+          error = 'Account not found';
         } else if (error.toLowerCase().includes('password')) {
-          error = 'Password incorrect. Give it another try! 🔐';
+          error = 'Incorrect password';
         } else if (error.toLowerCase().includes('email')) {
-          error = 'Email not found. Double-check the spelling! 📧';
+          error = 'Email not found';
         }
         
         console.error('🔐 CLOUD AUTH: Login failed:', error);
@@ -146,20 +146,20 @@ class CloudAuth {
         if (error.toLowerCase().includes('validation failed')) {
           // Check if it's email validation specifically
           if (data.errors && data.errors.some(e => e.path === 'email')) {
-            error = 'Please enter a valid email address (e.g., name@example.com) 📧';
+            error = 'Invalid email format';
           } else if (data.errors && data.errors.some(e => e.path === 'password')) {
-            error = 'Password requirements not met. Try a stronger password! 🔐';
+            error = 'Password too weak';
           } else {
-            error = 'Please check your input and try again! ✏️';
+            error = 'Invalid input';
           }
         } else if (error.toLowerCase().includes('email already exists') || error.toLowerCase().includes('already registered')) {
-          error = 'Account already exists! Try logging in instead 😊';
+          error = 'Email already registered';
         } else if (error.toLowerCase().includes('invalid email')) {
-          error = 'Please enter a valid email address 📧';
+          error = 'Invalid email format';
         } else if (error.toLowerCase().includes('password')) {
-          error = 'Password requirements not met. Try a stronger password! 🔐';
+          error = 'Password too weak';
         } else if (error.toLowerCase().includes('email')) {
-          error = 'Email issue detected. Please check and try again! 📧';
+          error = 'Email error';
         }
         
         console.error('🔐 CLOUD AUTH: Signup failed:', error);
