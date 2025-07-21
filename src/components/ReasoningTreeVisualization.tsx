@@ -152,7 +152,7 @@ export const ReasoningTreeVisualization: React.FC<ReasoningTreeProps> = ({
 
   const getNodeIcon = (type: string) => {
     switch (type) {
-      case 'analysis': return 'brain';
+      case 'analysis': return 'lightbulb-on';
       case 'factor': return 'database';
       case 'conclusion': return 'check-circle';
       case 'alternative': return 'git-branch';
@@ -336,7 +336,7 @@ export const ReasoningTreeVisualization: React.FC<ReasoningTreeProps> = ({
               end={{ x: 1, y: 0 }}
             >
               <MaterialCommunityIcons
-                name="brain"
+                name="lightbulb-on"
                 size={24}
                 color="#ffffff"
               />

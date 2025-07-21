@@ -312,7 +312,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           ]}
         >
           <Text style={[styles.welcomeText, { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600] }]}>
-            <Text style={{ color: isDarkMode ? '#87CEEB' : '#0099ff' }}>Search</Text>, <Text style={{ color: isDarkMode ? '#B0E0E6' : '#6999ff' }}>connect</Text>, <Text style={{ color: isDarkMode ? '#ADD8E6' : '#7972ff' }}>experience</Text>.
+            <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#a3c3ff' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#c6ade6' : '#7972ff' }}>patterns</Text>
           </Text>
           
           {/* Enhanced Brand Text Animation */}
@@ -341,7 +341,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
     
 
-        {/* Action Buttons - styled exactly like your web version */}
+        {/* Action Buttons - Stacked vertically */}
         <Animated.View
           style={[
             styles.buttonsContainer,
@@ -351,17 +351,18 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             },
           ]}
         >
-          {/* Professional Staggered Button Animations */}
-          
-          {/* Get Started Button */}
+          {/* Explore Button */}
           <Animated.View 
-            style={{ 
-              opacity: exploreButtonOpacity,
-              transform: [
-                { scale: exploreButtonPressScale },
-                { translateY: exploreButtonY }
-              ]
-            }}
+            style={[
+              styles.stackedButtonContainer,
+              { 
+                opacity: exploreButtonOpacity,
+                transform: [
+                  { scale: exploreButtonPressScale },
+                  { translateY: exploreButtonY }
+                ]
+              }
+            ]}
           >
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
@@ -379,7 +380,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     styles.primaryButton,
                     {
                       backgroundColor: isDarkMode 
-                        ? '#add5fa'
+                        ? '#9fb9ff'
                         : '#ffffff',
                       borderColor: isDarkMode 
                         ? '#343333'
@@ -392,21 +393,24 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     styles.primaryButtonText, 
                     { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
                   ]}>
-                    Explore Numina
+                    Explore
                   </Text>
                 </View>
               </TouchableOpacity>
           </Animated.View>
 
-          {/* Explore Tutorial Button */}
+          {/* Create Account Button */}
           <Animated.View 
-            style={{ 
-              opacity: signUpButtonOpacity,
-              transform: [
-                { scale: signUpButtonPressScale },
-                { translateY: signUpButtonY }
-              ]
-            }}
+            style={[
+              styles.stackedButtonContainer,
+              { 
+                opacity: signUpButtonOpacity,
+                transform: [
+                  { scale: signUpButtonPressScale },
+                  { translateY: signUpButtonY }
+                ]
+              }
+            ]}
           >
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
@@ -443,7 +447,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               </TouchableOpacity>
           </Animated.View>
 
-          {/* Sign In Link */}
+          {/* Sign In Link - Underneath */}
           <Animated.View 
             style={{ 
               opacity: signInButtonOpacity,
@@ -527,9 +531,20 @@ const styles = StyleSheet.create({
 
   buttonsContainer: {
     width: '100%',
-    maxWidth: 500,
     alignItems: 'center',
     gap: 12,
+  },
+  stackedButtonContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  halfWidth: {
+    width: '50%',
   },
   primaryButtonContainer: {
     width: '100%',
@@ -542,13 +557,14 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    paddingVertical: 11,
-    paddingHorizontal: 130,
+    height: 37,
+    paddingHorizontal: 8,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     letterSpacing: -0.5,
     fontFamily: 'Nunito_500Medium',

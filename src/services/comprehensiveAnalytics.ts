@@ -1,5 +1,6 @@
 import CloudAuth from './cloudAuth';
 import NetInfo from '@react-native-community/netinfo';
+import ApiService from './api';
 
 
 
@@ -231,27 +232,75 @@ class ComprehensiveAnalyticsService {
   }
 
   async getPersonalGrowthInsights(timeframe: 'week' | 'month' | 'quarter' = 'week'): Promise<PersonalGrowthInsights> {
-    const [growthSummary, milestones] = await Promise.all([
-      this.apiRequest<any>(`/personal-insights/growth-summary?timeframe=${timeframe}`),
-      this.apiRequest<any>('/personal-insights/milestones')
-    ]);
+    try {
+      const [growthSummaryResponse, milestonesResponse] = await Promise.all([
+        ApiService.getPersonalGrowthSummary(timeframe),
+        ApiService.apiRequest('/personal-insights/milestones')
+      ]);
 
-    return {
-      growthSummary,
-      milestones
-    };
+      // Transform API response to match interface
+      const apiData = growthSummaryResponse?.data;
+      const growthSummary = {
+        timeframe,
+        emotionalPatterns: {
+          frequency: apiData?.metrics?.topEmotions?.reduce((acc: any, emotion: any) => {
+            acc[emotion.emotion] = emotion.count;
+            return acc;
+          }, {}) || {},
+          intensity: { average: 0, trend: 'stable' as const },
+          positivityRatio: apiData?.metrics?.positivityRatio || 0
+        },
+        engagementMetrics: {
+          conversationCount: 0,
+          dailyEngagementScore: apiData?.metrics?.engagementScore || 0,
+          consistencyScore: 0
+        },
+        insights: apiData?.aiInsights ? [apiData.aiInsights] : [],
+        recommendations: []
+      };
+
+      const milestones = milestonesResponse?.data || [];
+
+      return {
+        growthSummary,
+        milestones: Array.isArray(milestones) ? milestones : []
+      };
+    } catch (error) {
+      console.error('Error fetching personal growth insights:', error);
+      // Return safe fallback structure
+      return {
+        growthSummary: {
+          timeframe,
+          emotionalPatterns: {
+            frequency: {},
+            intensity: { average: 0, trend: 'stable' as const },
+            positivityRatio: 0
+          },
+          engagementMetrics: {
+            conversationCount: 0,
+            dailyEngagementScore: 0,
+            consistencyScore: 0
+          },
+          insights: [],
+          recommendations: []
+        },
+        milestones: []
+      };
+    }
   }
 
   async getBehavioralMetrics(): Promise<BehavioralMetrics> {
     const [userProfile, ubpmContext, emotionalSession] = await Promise.all([
-      this.apiRequest<any>('/profile'),
-      this.apiRequest<any>('/test-ubpm/context'),
-      this.apiRequest<any>('/emotional-analytics/current-session').catch(() => ({ dailyEngagementScore: 7.5, conversationCount: 3 }))
+      ApiService.getUserProfile(),
+      ApiService.getUBPMContext(),
+      ApiService.getCurrentSessionAnalytics().catch(() => ({ success: true, data: { dailyEngagementScore: 7.5, conversationCount: 3 } }))
     ]);
 
-    const behaviorProfile = userProfile?.behaviorProfile || {};
+    const behaviorProfile = (userProfile?.data as any)?.behaviorProfile || {};
     const personalityData = behaviorProfile.personality || {};
     const temporalData = behaviorProfile.temporalPatterns || {};
+    const ubpmData = ubpmContext?.data || {};
+    const sessionData = emotionalSession?.data || {};
     const emotionalData = behaviorProfile.emotionalProfile || {};
 
     return {
@@ -260,12 +309,12 @@ class ComprehensiveAnalyticsService {
         responseLength: behaviorProfile.communicationStyle?.responseLength || 'moderate',
         complexity: behaviorProfile.communicationStyle?.complexity || 'intermediate',
         messageLength: {
-          average: ubpmContext.messageLength?.average || 50,
-          variation: ubpmContext.messageLength?.variation || 0.2,
-          trend: ubpmContext.messageLength?.trend || 'stable'
+          average: ubpmData.messageLength?.average || 50,
+          variation: ubpmData.messageLength?.variation || 0.2,
+          trend: ubpmData.messageLength?.trend || 'stable'
         },
-        questionFrequency: ubpmContext.questionFrequency || 0.3,
-        emotionalExpression: ubpmContext.emotionalExpression || 0.6
+        questionFrequency: ubpmData.questionFrequency || 0.3,
+        emotionalExpression: ubpmData.emotionalExpression || 0.6
       },
       personalityTraits: {
         openness: personalityData.openness || { score: 0.7, confidence: 0.6 },
@@ -322,14 +371,14 @@ class ComprehensiveAnalyticsService {
         motivations: behaviorProfile.goalsAndAspirations?.motivations || ['self-improvement', 'helping others']
       },
       decisionPatterns: {
-        decisionStyle: ubpmContext.decisionStyle || 'collaborative',
-        adviceSeekingFrequency: ubpmContext.adviceSeekingFrequency || 0.4,
-        problemSolvingApproach: ubpmContext.problemSolvingApproach || 'analytical',
-        riskTolerance: ubpmContext.riskTolerance || 0.5
+        decisionStyle: ubpmData.decisionStyle || 'collaborative',
+        adviceSeekingFrequency: ubpmData.adviceSeekingFrequency || 0.4,
+        problemSolvingApproach: ubpmData.problemSolvingApproach || 'analytical',
+        riskTolerance: ubpmData.riskTolerance || 0.5
       },
       engagementMetrics: {
-        dailyEngagementScore: emotionalSession.dailyEngagementScore || 7.5,
-        conversationCount: emotionalSession.conversationCount || 3,
+        dailyEngagementScore: sessionData.dailyEngagementScore || 7.5,
+        conversationCount: sessionData.conversationCount || 3,
         toolUsageFrequency: {},
         featureAdoption: {},
         retentionScore: 0.8
@@ -373,27 +422,41 @@ class ComprehensiveAnalyticsService {
     }
 
     try {
+      // First try to get existing report
       weeklyReport = await this.apiRequest<any>('/emotional-analytics/weekly-report');
     } catch (error: any) {
-      // Check if it's the expected "not yet generated" error
+      // If no report exists, try force generation
       if (error?.message?.includes('Weekly report not yet generated') || error?.status === 404) {
-        console.log('Weekly report not yet generated - this is normal for new users');
+        try {
+          console.log('Attempting to force generate weekly report...');
+          weeklyReport = await this.apiRequest<any>('/emotional-analytics/weekly-report?force=true');
+        } catch (forceError: any) {
+          console.log('Weekly report not yet generated - this is normal for new users');
+          // Create a basic fallback structure
+          weeklyReport = {
+            message: 'Weekly report being generated',
+            status: 'pending',
+            progress: 0,
+            suggestion: 'Check back later for your weekly insights'
+          };
+        }
       } else {
         console.log('Weekly report not available:', error);
       }
     }
 
-    try {
-      history = await this.apiRequest<any>('/emotion-history/?limit=100');
-    } catch (error) {
-      console.log('Emotion history not available:', error);
-    }
+    // DISABLED: emotion-history endpoint removed from server
+    // try {
+    //   history = await this.apiRequest<any>('/emotion-history/?limit=100');
+    // } catch (error) {
+    //   console.log('Emotion history not available:', error);
+    // }
 
-    try {
-      stats = await this.apiRequest<any>('/emotion-history/stats?days=30');
-    } catch (error) {
-      console.log('Emotion stats not available:', error);
-    }
+    // try {
+    //   stats = await this.apiRequest<any>('/emotion-history/stats?days=30');
+    // } catch (error) {
+    //   console.log('Emotion stats not available:', error);
+    // }
 
     return {
       currentSession,
@@ -427,24 +490,19 @@ class ComprehensiveAnalyticsService {
   }
 
   async getCascadingRecommendations(focusArea: string = 'general', depth: number = 3): Promise<any> {
-    return this.apiRequest<any>('/cascading-recommendations/generate', {
-      method: 'POST',
-      body: JSON.stringify({
-        depth,
-        focusArea,
-        includeReasoningTree: true,
-        contextWindow: 30
-      })
-    });
+    return {
+      success: true,
+      data: {
+        recommendations: [],
+        reasoning: {},
+        cascadeDepth: 0
+      }
+    };
   }
 
   async triggerUBPMAnalysis(): Promise<any> {
-    return this.apiRequest<any>('/test-ubpm/trigger', {
-      method: 'POST',
-      body: JSON.stringify({
-        triggerType: 'analytics_dashboard'
-      })
-    });
+    const response = await ApiService.triggerUBPMAnalysis();
+    return response.data;
   }
 
   async getAllAnalytics(): Promise<{
@@ -495,7 +553,7 @@ class ComprehensiveAnalyticsService {
     try {
       recommendations = await this.getCascadingRecommendations('growth', 3);
     } catch (error) {
-      console.log('Recommendations not available:', error);
+      recommendations = { success: true, data: { recommendations: [] } };
     }
 
     return {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -13,37 +13,41 @@ export const PageBackground: React.FC<PageBackgroundProps> = ({
   style 
 }) => {
   const { isDarkMode } = useTheme();
+  
+  const backgroundComponent = useMemo(() => {
+    if (isDarkMode) {
+      return (
+        <View 
+          style={[
+            styles.container, 
+            { backgroundColor: '#0a0a0a' },
+            style
+          ]}
+        >
+          {children}
+        </View>
+      );
+    }
 
-  if (isDarkMode) {
     return (
-      <View 
-        style={[
-          styles.container, 
-          { backgroundColor: '#0a0a0a' },
-          style
+      <LinearGradient
+        colors={[
+          '#ffffff',  
+          '#fff2f2',  
+          '#e2f1ff',  
+          'rgb(227, 242, 255)',  
+          '#f5f8ff',  
         ]}
+        style={[styles.container, style]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         {children}
-      </View>
+      </LinearGradient>
     );
-  }
+  }, [isDarkMode, style, children]);
 
-  return (
-    <LinearGradient
-      colors={[
-        '#ffffff',  
-        '#fff2f2',  
-        '#e2f1ff',  
-        'rgb(227, 242, 255)',  
-        '#f5f8ff',  
-      ]}
-      style={[styles.container, style]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      {children}
-    </LinearGradient>
-  );
+  return backgroundComponent;
 };
 
 const styles = StyleSheet.create({

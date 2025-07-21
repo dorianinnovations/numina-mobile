@@ -176,7 +176,11 @@ export class ChatService {
         return textData || 'No response received';
       }
     } catch (error: any) {
-      // Return user-friendly error message
+      // Check for rate limit errors first
+      if (error.status === 429 || error.message?.includes('429') || error.message?.includes('Thank you for using Numina, please upgrade')) {
+        throw error; // Re-throw rate limit errors so they can be handled properly by ChatScreen
+      }
+      // Return user-friendly error message for other errors
       return `I apologize, but I'm having trouble connecting right now. Please check your internet connection and try again. If the problem persists, it might be a temporary server issue.`;
     }
   }

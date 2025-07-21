@@ -24,6 +24,7 @@ import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { useNavigation } from '@react-navigation/native';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { TierBadge } from '../components/TierBadge';
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
@@ -410,9 +411,14 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               <Text style={[styles.fieldLabel, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
                 Email
               </Text>
-              <Text style={[styles.fieldValue, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
-                {profile.email}
-              </Text>
+              <View style={styles.emailRow}>
+                <Text style={[styles.fieldValue, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+                  {profile.email}
+                </Text>
+                {userData?.tierInfo && (
+                  <TierBadge tier={userData.tierInfo.tier} size="medium" />
+                )}
+              </View>
             </View>
 
             {/* Bio */}
@@ -653,6 +659,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Nunito_400Regular',
     lineHeight: 24,
+  },
+  emailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   input: {
     borderWidth: 1,

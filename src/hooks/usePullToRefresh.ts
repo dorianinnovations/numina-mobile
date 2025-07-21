@@ -32,7 +32,7 @@ export const usePullToRefresh = (onRefresh?: () => Promise<void>) => {
     colors: ['#6ec5ff', '#87ceeb'], // Multiple colors for Android
     progressBackgroundColor: isDarkMode ? '#202020' : '#f8fafc',
     titleColor: isDarkMode ? '#6ec5ff' : '#4a90e2',
-    size: 'default' as const,
+    size: 1,
   };
 
   return {

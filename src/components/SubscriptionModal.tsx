@@ -14,6 +14,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import ApiService from '../services/api';
+import { CustomAlert, AlertButton } from './CustomAlert';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +44,23 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('');
+  
+  // Custom alert state for better UX
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title?: string;
+    message?: string;
+    buttons?: AlertButton[];
+  }>({ visible: false });
+
+  const showAlert = (title: string, message: string, buttons?: AlertButton[]) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons: buttons || [{ text: 'OK' }]
+    });
+  };
 
   useEffect(() => {
     if (visible) {
@@ -62,96 +80,98 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         // Fallback to hardcoded plans
         const fallbackPlans: PricingPlan[] = [
           {
-            name: 'basic',
+            name: 'core',
             displayName: 'Core',
-            price: 19.99,
+            price: 0,
             currency: 'USD',
             duration: '/month',
             features: [
-              'Basic AI Tools',
-              'Limited Conversations',
+              'Basic AI Chat',
+              '1 Daily Request',
               'Standard Support'
             ]
           },
           {
-            name: 'premium',
+            name: 'pro',
             displayName: 'Pro',
-            price: 49.99,
+            price: 29.99,
             currency: 'USD',
             duration: '/month',
             savings: 'Most Popular',
             features: [
               'All AI Tools',
-              'Unlimited Conversations',
-              'Priority Support',
-              'Advanced Analytics'
+              '200 Daily Requests',
+              'Emotional Analysis',
+              'Personalized Insights',
+              'Priority Support'
             ]
           },
           {
-            name: 'enterprise',
-            displayName: 'Prestige',
-            price: 199.99,
+            name: 'aether',
+            displayName: 'Aether',
+            price: 99.99,
             currency: 'USD',
             duration: '/month',
             features: [
-              'Everything in Premium',
-              'Custom AI Models',
-              'Enterprise Support',
-              'API Access',
-              'Custom Integrations'
+              'Everything in Pro',
+              'Unlimited Requests',
+              'Priority Processing',
+              'Advanced Analytics',
+              'Early Access Features'
             ]
           }
         ];
         setPlans(fallbackPlans);
-        setSelectedPlan('premium');
+        setSelectedPlan('pro');
       }
     } catch (error) {
       console.error('Error loading pricing:', error);
       // Use fallback plans on error
       const fallbackPlans: PricingPlan[] = [
         {
-          name: 'basic',
+          name: 'core',
           displayName: 'Core',
-          price: 19.99,
+          price: 0,
           currency: 'USD',
           duration: '/month',
           features: [
-            'Basic AI Tools',
-            'Limited Conversations',
+            'Basic AI Chat',
+            '1 Daily Request',
             'Standard Support'
           ]
         },
         {
-          name: 'premium',
+          name: 'pro',
           displayName: 'Pro',
-          price: 49.99,
+          price: 29.99,
           currency: 'USD',
           duration: '/month',
           savings: 'Most Popular',
           features: [
             'All AI Tools',
-            'Unlimited Conversations',
-            'Priority Support',
-            'Advanced Analytics'
+            '200 Daily Requests',
+            'Emotional Analysis',
+            'Personalized Insights',
+            'Priority Support'
           ]
         },
         {
-          name: 'enterprise',
-          displayName: 'Prestige',
-          price: 199.99,
+          name: 'aether',
+          displayName: 'Aether',
+          price: 99.99,
           currency: 'USD',
           duration: '/month',
           features: [
-            'Everything in Premium',
-            'Custom AI Models',
-            'Enterprise Support',
-            'API Access',
-            'Custom Integrations'
+            'Everything in Pro',
+            'Unlimited Requests',
+            'Priority Processing',
+            'Advanced Analytics',
+            'Early Access Features'
           ]
         }
       ];
       setPlans(fallbackPlans);
-      setSelectedPlan('premium');
+      setSelectedPlan('pro');
     } finally {
       setLoading(false);
     }
@@ -159,7 +179,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   const handleSubscribe = async () => {
     if (!selectedPlan) {
-      Alert.alert('Error', 'Please select a plan');
+      showAlert('Error', 'Please select a plan');
       return;
     }
 
@@ -202,7 +222,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
 
   const renderPlanCard = (plan: PricingPlan) => {
     const isSelected = selectedPlan === plan.name;
-    const isPopular = plan.name === 'premium';
+    const isPopular = plan.name === 'pro';
     
     return (
       <TouchableOpacity

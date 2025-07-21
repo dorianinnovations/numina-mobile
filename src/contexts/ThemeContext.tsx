@@ -141,7 +141,7 @@ export const useTheme = (): ThemeContextType => {
     
     return context;
   } catch (error) {
-    console.warn('ThemeContext: Accessing theme before provider ready, using defaults:', error.message);
+    console.warn('ThemeContext: Accessing theme before provider ready, using defaults:', error instanceof Error ? error.message : String(error));
     // Return safe defaults to prevent app crash
     return {
       theme: lightTheme,

@@ -4,6 +4,7 @@ import {
   Text,
   TouchableOpacity,
   Animated,
+  Easing,
   StyleSheet,
   Dimensions,
   Vibration,
@@ -17,7 +18,6 @@ import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
 import { MessageAttachment } from '../../types/message';
 import StreamingMarkdown from '../StreamingMarkdown';
-import { WordByWordStreaming } from '../WordByWordStreaming';
 import FadeInDown from '../FadeInDown';
 import { PhotoPreview } from './PhotoPreview';
 
@@ -59,71 +59,22 @@ interface MessageBubbleProps {
   onPersonalityFeedback?: (feedback: 'helpful' | 'not_helpful' | 'love_it') => void;
 }
 
-// Component for rendering formatted bot messages with streaming energy pulse
+// Component for rendering formatted bot messages - no duplicate streaming
 const BotMessageContent: React.FC<{
   text: string | undefined;
-  previousLength: number;
-  newContentOpacity: Animated.Value;
   isStreaming?: boolean;
   theme: any;
-}> = ({ text, previousLength, newContentOpacity, isStreaming, theme }) => {
-  // Handle undefined text
+}> = ({ text, isStreaming, theme }) => {
   const safeText = text || '';
   
-  // Animated values for energy pulse effect
-  const pulseAnimation = useRef(new Animated.Value(0)).current;
-  // NUKED: Removed complex glow and gradient animations
-  
-  // Start energy pulse animation when streaming
-  useEffect(() => {
-    if (isStreaming) {
-      // Continuous energy pulse through text
-      // SAFE: Single simple pulse with native driver
-      const simplePulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnimation, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true, // NATIVE PERFORMANCE
-          }),
-          Animated.timing(pulseAnimation, {
-            toValue: 0.7,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      
-      simplePulse.start();
-      
-      return () => {
-        simplePulse.stop();
-      };
-    } else {
-      pulseAnimation.setValue(0);
-    }
-  }, [isStreaming]);
-  
-  // SAFE: Simple opacity pulse with native driver
-  const animatedOpacity = pulseAnimation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 1],
-  });
-  
   return (
-    <Animated.View style={[
-      styles.botTextContainer,
-      isStreaming && { opacity: animatedOpacity }
-    ]}>
-      <WordByWordStreaming
+    <View style={styles.botTextContainer}>
+      <StreamingMarkdown
         content={safeText}
-        isStreaming={isStreaming || false}
         isComplete={!isStreaming}
-        style={styles.streamingContainer}
-        textStyle={styles.streamingText}
-        showCursor={true}
+        showCursor={isStreaming}
       />
-    </Animated.View>
+    </View>
   );
 };
 
@@ -137,28 +88,25 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [isPressed, setIsPressed] = useState(false);
-  const [displayedText, setDisplayedText] = useState('');
-  const [previousLength, setPreviousLength] = useState(0);
   const [showPersonalityIndicator, setShowPersonalityIndicator] = useState(false);
   const [feedbackGiven, setFeedbackGiven] = useState(false);
   const [hasStartedStreaming, setHasStartedStreaming] = useState(false);
   
+  const isUser = message?.sender === 'user';
+  const isAI = message?.sender === 'numina';
+  
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(80)).current;
+  const slideAnim = useRef(new Animated.Value(isUser ? 100 : 80)).current; // User slides from right, AI from left
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const pressAnim = useRef(new Animated.Value(1)).current;
-  const newContentOpacity = useRef(new Animated.Value(1)).current;
   const timestampOpacity = useRef(new Animated.Value(0)).current;
   const personalityHeaderOpacity = useRef(new Animated.Value(0)).current;
   const personalityHeaderSlide = useRef(new Animated.Value(20)).current;
 
-  const isUser = message?.sender === 'user';
-  const isAI = message?.sender === 'numina';
-
   // Entry animation with stagger - rise from bottom effect (near send button)
   useEffect(() => {
-    const delay = index * 80;
+    const delay = index * 15; // Much faster stagger
     
     // Log
     if (isAI) {
@@ -168,232 +116,79 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 400,
+        duration: isUser ? 80 : 140, // Much faster fade for user messages
         delay,
         useNativeDriver: true,
       }),
-      Animated.spring(slideAnim, {
+      Animated.timing(slideAnim, {
         toValue: 0,
         delay,
+        duration: isUser ? 180 : 220, // Slower for gentle settling
         useNativeDriver: true,
-        tension: 80,
-        friction: 8,
+        easing: isUser ? 
+          Easing.out(Easing.cubic) : // Fast start, slow gentle seat
+          Easing.out(Easing.quad), // Smooth deceleration for AI
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 300,
+        duration: isUser ? 100 : 140, // Slightly slower scale to match settling
         delay,
         useNativeDriver: true,
+        easing: isUser ? Easing.out(Easing.ease) : Easing.out(Easing.quad),
       }),
     ]).start();
     if (isUser) {
       timestampOpacity.setValue(1);
     }
     if (isAI && message.personalityContext) {
-      const personalityDelay = delay + 220;
+      const personalityDelay = delay + 100;
       Animated.parallel([
         Animated.spring(personalityHeaderOpacity, {
           toValue: 1,
           delay: personalityDelay,
           useNativeDriver: true,
-          speed: 12,
-          bounciness: 8,
+          speed: 20,
+          bounciness: 6,
         }),
         Animated.spring(personalityHeaderSlide, {
           toValue: 0,
           delay: personalityDelay,
           useNativeDriver: true,
-          speed: 12,
-          bounciness: 8,
+          speed: 20,
+          bounciness: 6,
         }),
       ]).start();
     }
   }, [index, isUser, isAI, message.personalityContext?.communicationStyle]);
 
-  // Progressive fade-in for new content chunks and timestamp
+  // Simple haptic feedback for streaming start/end
   useEffect(() => {
-    try {
-      const safeText = message?.text || '';
-      setDisplayedText(safeText);
-      
-      if (safeText && message?.isStreaming) {
-        // More dynamic haptic feedback when bot starts streaming
-        if (!hasStartedStreaming && isAI) {
-          // Create an "awakening" sequence that feels like AI coming to life
-          const createAliveStartHaptic = async () => {
-            try {
-              // First pulse: "waking up"
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              
-              // Brief pause for timing
-              await new Promise(resolve => setTimeout(resolve, 60));
-              
-              // Second slightly stronger pulse
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              
-              // Shorter pause for building energy
-              await new Promise(resolve => setTimeout(resolve, 40));
-              
-              // Final pulse
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              
-            } catch (error) {
-              console.error('Error in alive start haptic:', error);
-              // Fallback to simple haptic if sequence fails
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }
-          };
-          
-          // Execute haptic sequence
-          createAliveStartHaptic();
-          setHasStartedStreaming(true);
-        }
-        
-        // Check if new content was added
-        if (safeText.length > previousLength) {
-          // Animate the new content fading in
-          newContentOpacity.setValue(0.5);
-          Animated.timing(newContentOpacity, {
-            toValue: 1,
-            duration: 150,
-            useNativeDriver: true,
-          }).start();
-          
-          // Simplified haptic feedback during streaming for better performance
-          if (isAI && hasStartedStreaming) {
-            const textAdded = safeText.length - previousLength;
-            const shouldPulse = textAdded >= 20 && (safeText.length % 50 === 0); // Reduced frequency
-            
-            if (shouldPulse) {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-            }
-          }
-          
-          setPreviousLength(safeText.length);
-        }
-        // Hide timestamp while streaming
-        timestampOpacity.setValue(0);
-      } else if (safeText && !message?.isStreaming) {
-        // Completed message - ensure full opacity
-        newContentOpacity.setValue(1);
-        setPreviousLength(safeText.length);
-        
-        // More dynamic haptic feedback when bot finishes streaming
-        if (hasStartedStreaming && isAI) {
-          // Create an intelligent "breathing" completion sequence that feels alive
-          const createAliveCompletionHaptic = async () => {
-            try {
-              const messageLength = safeText.length;
-              const isLongMessage = messageLength > 200;
-              const isVeryLongMessage = messageLength > 500;
-              
-              // Analyze message content for personality-based haptic patterns
-              const messageContent = safeText.toLowerCase();
-              const isQuestionResponse = messageContent.includes('?') || messageContent.includes('question');
-              const isCodeResponse = messageContent.includes('```') || messageContent.includes('code') || messageContent.includes('function');
-              const isEmotionalResponse = messageContent.includes('feel') || messageContent.includes('emotion') || messageContent.includes('understand');
-              const isExplanationResponse = messageContent.includes('explain') || messageContent.includes('because') || messageContent.includes('therefore');
-              
-              // Adaptive timing based on message length and content
-              const baseDelay = isLongMessage ? 100 : 80;
-              const finalDelay = isVeryLongMessage ? 250 : 200;
-              
-              // First impact: Strong signal that completion is happening
-              // Use stronger haptic for longer messages (more "satisfying")
-              const initialIntensity = isLongMessage 
-                ? Haptics.ImpactFeedbackStyle.Heavy 
-                : Haptics.ImpactFeedbackStyle.Medium;
-              await Haptics.impactAsync(initialIntensity);
-              
-              // Brief pause to create rhythm
-              await new Promise(resolve => setTimeout(resolve, baseDelay));
-              
-              // Content-based middle sequence
-              if (isEmotionalResponse) {
-                // Gentle, flowing pattern for emotional responses
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 20));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 60));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } else if (isCodeResponse) {
-                // Precise, structured pattern for code responses
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                await new Promise(resolve => setTimeout(resolve, baseDelay - 20));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay - 20));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } else if (isQuestionResponse) {
-                // Inquisitive, lighter pattern for questions
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 30));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 30));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } else if (isExplanationResponse) {
-                // Methodical, confident pattern for explanations
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              } else {
-                // Default pattern for general responses
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                await new Promise(resolve => setTimeout(resolve, baseDelay + 40));
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }
-              
-              // For longer messages, add more satisfying conclusion
-              if (isLongMessage) {
-                await new Promise(resolve => setTimeout(resolve, finalDelay));
-                // Deep satisfaction haptic for completing long responses
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                
-                // Extra "contentment" pulse for very long messages
-                if (isVeryLongMessage) {
-                  await new Promise(resolve => setTimeout(resolve, 150));
-                  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }
-              } else {
-                // For shorter messages, lighter conclusion
-                await new Promise(resolve => setTimeout(resolve, finalDelay));
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              }
-              
-            } catch (error) {
-              console.error('Error in alive completion haptic:', error);
-              // Fallback to simple haptic if sequence fails
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            }
-          };
-          
-          // Execute the alive haptic sequence
-          createAliveCompletionHaptic();
-        }
-        
-        // Fade in timestamp after message completes
-        setTimeout(() => {
-          Animated.timing(timestampOpacity, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }).start();
-        }, 300); // Small delay after message completion
-      }
-    } catch (error) {
-      console.error('Error in MessageBubble text effect:', error);
-      setDisplayedText(message?.text || '');
-      // Show timestamp immediately if there's an error
-      timestampOpacity.setValue(1);
+    if (message?.isStreaming && !hasStartedStreaming && isAI) {
+      // Simple haptic when streaming starts
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      setHasStartedStreaming(true);
+      // Hide timestamp while streaming
+      timestampOpacity.setValue(0);
+    } else if (!message?.isStreaming && hasStartedStreaming && isAI) {
+      // Simple haptic when streaming completes
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      setHasStartedStreaming(false);
+      // Show timestamp after completion
+      setTimeout(() => {
+        Animated.timing(timestampOpacity, {
+          toValue: 1,
+          duration: 140,
+          useNativeDriver: true,
+        }).start();
+      }, 140);
     }
-  }, [message?.text, message?.isStreaming, hasStartedStreaming, isAI]);
+  }, [message?.isStreaming, hasStartedStreaming, isAI]);
 
   const handlePressIn = () => {
     setIsPressed(true);
     Animated.timing(pressAnim, {
       toValue: 0.98,
-      duration: 50,
+      duration: 25,
       useNativeDriver: true,
     }).start();
   };
@@ -402,7 +197,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
     setIsPressed(false);
     Animated.timing(pressAnim, {
       toValue: 1,
-      duration: 50,
+      duration: 25,
       useNativeDriver: true,
     }).start();
   };
@@ -442,16 +237,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   const getPersonalityColor = (style: string) => {
     switch (style) {
       case 'supportive': return '#87c3eb';
-      case 'direct': return '#4DABF7';
+      case 'direct': return '#f2ff79';
       case 'collaborative': return '#6BCF7F';
-      case 'encouraging': return '#FFD93D';
-      default: return '#8E8E93';
+      case 'encouraging': return '#a179ff';
+      default: return '#9ac9c6b0';
     }
   };
 
   const getPersonalityIcon = (style: string) => {
     switch (style) {
-      case 'supportive': return 'brain';
+      case 'supportive': return 'heart';
       case 'direct': return 'bullseye';
       case 'collaborative': return 'users';
       case 'encouraging': return 'star';
@@ -470,14 +265,15 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
   };
 
   return (
-    <FadeInDown delay={index * 100} duration={400} distance={-30}>
+    <FadeInDown delay={index * 20} duration={isUser ? 90 : 150} distance={isUser ? 0 : -30}>
       <Animated.View
         style={[
           styles.container,
           {
             opacity: fadeAnim,
             transform: [
-              { translateY: slideAnim },
+              { translateX: isUser ? slideAnim : 0 }, // User slides from right
+              { translateY: isUser ? 0 : slideAnim }, // AI slides from bottom (current behavior)
               { scale: scaleAnim },
             ],
           },
@@ -514,7 +310,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             )}
             
             {/* Text Message Bubble (only if there's text) */}
-            {displayedText.trim() && (
+            {message.text?.trim() && (
               <LinearGradient
                 colors={isDarkMode 
                   ? ['#2d2d2d', '#262626', '#232323'] 
@@ -544,7 +340,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
                       fontFamily: 'Nunito_400Regular',
                     }
                   ]}>
-                    {displayedText}
+                    {message.text}
                   </Text>
                 </View>
               </LinearGradient>
@@ -624,9 +420,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
             )}
             
             <BotMessageContent 
-              text={displayedText}
-              previousLength={previousLength}
-              newContentOpacity={newContentOpacity}
+              text={message.text}
               isStreaming={message.isStreaming}
               theme={{ isDarkMode }}
             />
@@ -1005,7 +799,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 26,
     fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
     letterSpacing: -0.2,
   },
 });

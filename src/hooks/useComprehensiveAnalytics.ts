@@ -74,12 +74,15 @@ export const useComprehensiveAnalytics = () => {
       totalDataPoints += 10;
       completenessScore += 1;
       
-      if (data.personalGrowth.growthSummary?.positivityRatio > 0.7) {
-        keyInsights.push(`High positivity ratio: ${Math.round(data.personalGrowth.growthSummary.positivityRatio * 100)}%`);
+      if (data.personalGrowth.growthSummary && 
+          typeof data.personalGrowth.growthSummary === 'object' &&
+          data.personalGrowth.growthSummary.emotionalPatterns &&
+          data.personalGrowth.growthSummary.emotionalPatterns.positivityRatio > 0.7) {
+        keyInsights.push(`High positivity ratio: ${Math.round(data.personalGrowth.growthSummary.emotionalPatterns.positivityRatio * 100)}%`);
       }
       
       if (data.personalGrowth.milestones && Array.isArray(data.personalGrowth.milestones)) {
-        const achievedMilestones = data.personalGrowth?.milestones?.filter(m => m.achieved) || [];
+        const achievedMilestones = data.personalGrowth.milestones.filter(m => m && m.achieved) || [];
         if (achievedMilestones.length > 0) {
           keyInsights.push(`${achievedMilestones.length} milestones achieved`);
         }
@@ -111,7 +114,8 @@ export const useComprehensiveAnalytics = () => {
       totalDataPoints += 15;
       completenessScore += 1;
       
-      if (data.emotionalAnalytics.stats?.averageIntensity) {
+      if (data.emotionalAnalytics.stats && 
+          typeof data.emotionalAnalytics.stats.averageIntensity === 'number') {
         const avgIntensity = data.emotionalAnalytics.stats.averageIntensity;
         keyInsights.push(`Avg emotional intensity: ${avgIntensity.toFixed(1)}/10`);
       }

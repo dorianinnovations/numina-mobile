@@ -208,7 +208,7 @@ export class FileUploadService {
         throw new Error('Only image attachments can be converted to base64');
       }
 
-      console.log('🖼️ Converting image to base64 for vision:', attachment.name);
+      // console.log('🖼️ Converting image to base64 for vision:', attachment.name);
 
       // Read file as base64
       const base64String = await FileSystem.readAsStringAsync(attachment.uri, {
@@ -317,11 +317,11 @@ export class FileUploadService {
     try {
       if (attachment.type === 'image') {
         // For images, convert to base64 for GPT-4o vision
-        console.log('📸 Processing image for GPT-4o vision:', attachment.name);
+        // console.log('📸 Processing image for GPT-4o vision:', attachment.name);
         return await this.convertImageToBase64(attachment);
       } else {
         // For other files, use traditional server upload
-        console.log('📎 Uploading file to server:', attachment.name);
+        // console.log('📎 Uploading file to server:', attachment.name);
         return await this.uploadFile(attachment);
       }
     } catch (error) {

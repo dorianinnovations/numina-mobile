@@ -84,6 +84,18 @@ export const Header: React.FC<HeaderProps> = ({
   const conversationsButtonScale = useRef(new Animated.Value(1)).current;
   const brainButtonScale = useRef(new Animated.Value(1)).current;
   const visibilityAnim = useRef(new Animated.Value(1)).current;
+  
+  // Border color animations
+  const backButtonBorderColor = useRef(new Animated.Value(0)).current;
+  const conversationsButtonBorderColor = useRef(new Animated.Value(0)).current;
+  const menuButtonBorderColor = useRef(new Animated.Value(0)).current;
+  const brainButtonBorderColor = useRef(new Animated.Value(0)).current;
+  
+  // Shadow animations
+  const backButtonShadow = useRef(new Animated.Value(0)).current;
+  const conversationsButtonShadow = useRef(new Animated.Value(0)).current;
+  const menuButtonShadow = useRef(new Animated.Value(0)).current;
+  const brainButtonShadow = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -121,19 +133,49 @@ export const Header: React.FC<HeaderProps> = ({
   const handleBackArrowPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    Animated.sequence([
-      Animated.timing(backButtonScale, {
-        toValue: 0.97,
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(backButtonScale, {
-        toValue: 1,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(backButtonScale, {
+          toValue: 0.97,
+          duration: 80,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(backButtonScale, {
+          toValue: 1,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(backButtonBorderColor, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(backButtonBorderColor, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(backButtonShadow, {
+          toValue: 1,
+          duration: 50,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(backButtonShadow, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
     ]).start();
     
     setBackArrowPressed(true);
@@ -147,29 +189,95 @@ export const Header: React.FC<HeaderProps> = ({
   const handleMenuButtonPress = (event: any) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    Animated.sequence([
-      Animated.timing(menuButtonScale, {
-        toValue: 0.97,
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(menuButtonScale, {
-        toValue: 1,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(menuButtonScale, {
+          toValue: 0.97,
+          duration: 80,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(menuButtonScale, {
+          toValue: 1,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(menuButtonBorderColor, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(menuButtonBorderColor, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(menuButtonShadow, {
+          toValue: 1,
+          duration: 50,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(menuButtonShadow, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
     ]).start();
 
-    event.target.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-      setMenuButtonPosition({ x: pageX, y: pageY, width, height });
-      setMenuVisible(true);
-    });
+    // Toggle menu visibility instead of always setting it to true
+    if (menuVisible) {
+      setMenuVisible(false);
+    } else {
+      event.target.measure((x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
+        setMenuButtonPosition({ x: pageX, y: pageY, width, height });
+        setMenuVisible(true);
+      });
+    }
   };
 
   const handleConversationsButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(conversationsButtonBorderColor, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(conversationsButtonBorderColor, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(conversationsButtonShadow, {
+          toValue: 1,
+          duration: 50,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(conversationsButtonShadow, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+    ]).start();
     
     setConversationsPressed(true);
     
@@ -182,19 +290,49 @@ export const Header: React.FC<HeaderProps> = ({
   const handleBrainButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     
-    Animated.sequence([
-      Animated.timing(brainButtonScale, {
-        toValue: 0.97,
-        duration: 80,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(brainButtonScale, {
-        toValue: 1,
-        duration: 120,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(brainButtonScale, {
+          toValue: 0.97,
+          duration: 80,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(brainButtonScale, {
+          toValue: 1,
+          duration: 120,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(brainButtonBorderColor, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(brainButtonBorderColor, {
+          toValue: 0,
+          duration: 200,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(brainButtonShadow, {
+          toValue: 1,
+          duration: 50,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+        Animated.timing(brainButtonShadow, {
+          toValue: 0,
+          duration: 250,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: false,
+        }),
+      ]),
     ]).start();
     
     setBrainPressed(true);
@@ -212,6 +350,80 @@ export const Header: React.FC<HeaderProps> = ({
     setConversationsVisible(false);
   };
 
+  // Interpolated border colors
+  const backButtonBorder = backButtonBorderColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+      '#87CEEB' // Light blue
+    ],
+  });
+
+  const conversationsButtonBorder = conversationsButtonBorderColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+      '#87CEEB' // Light blue
+    ],
+  });
+
+  const menuButtonBorder = menuButtonBorderColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+      '#87CEEB' // Light blue
+    ],
+  });
+
+  const brainButtonBorder = brainButtonBorderColor.interpolate({
+    inputRange: [0, 1],
+    outputRange: [
+      isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.6)',
+      '#87CEEB' // Light blue
+    ],
+  });
+
+  // Interpolated shadow properties
+  const backButtonShadowRadius = backButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.5, 8],
+  });
+
+  const backButtonShadowOpacity = backButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isDarkMode ? 0.2 : 0.08, 0.4],
+  });
+
+  const conversationsButtonShadowRadius = conversationsButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.5, 8],
+  });
+
+  const conversationsButtonShadowOpacity = conversationsButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isDarkMode ? 0.2 : 0.08, 0.4],
+  });
+
+  const menuButtonShadowRadius = menuButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.5, 8],
+  });
+
+  const menuButtonShadowOpacity = menuButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isDarkMode ? 0.2 : 0.08, 0.4],
+  });
+
+  const brainButtonShadowRadius = brainButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1.5, 8],
+  });
+
+  const brainButtonShadowOpacity = brainButtonShadow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [isDarkMode ? 0.2 : 0.08, 0.4],
+  });
+
   const headerContent = (
     <AnimatedGradientBorder
       isActive={isRefreshing || globalRefreshing}
@@ -221,12 +433,14 @@ export const Header: React.FC<HeaderProps> = ({
       style={{ flex: 1 }}
     >
       <BlurView
-        intensity={isDarkMode ? 40 : 60}
-        tint={isDarkMode ? 'dark' : 'default'}
+        intensity={isDarkMode ? 15 : 5}
+        tint={isDarkMode ? 'dark' : 'light'}
         style={[
           styles.blurContainer,
           {
             borderWidth: 0,
+            
+            backgroundColor: isDarkMode ? 'rgb(9, 9, 9)' : 'rgba(227, 237, 255, 0.397)',
           },
         ]}
       >
@@ -274,131 +488,127 @@ export const Header: React.FC<HeaderProps> = ({
 
               {showBackButton && (
                 <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
-                  <TouchableOpacity
-                      style={[
-                        styles.iconButton,
-                        {
-                          backgroundColor: isDarkMode 
-                            ? 'rgba(255, 255, 255, 0.05)' 
-                            : 'rgba(255, 255, 255, 1)',
-                          borderColor: isDarkMode 
-                            ? 'rgba(255, 255, 255, 0.08)' 
-                            : 'rgba(255, 255, 255, 0.6)',
-                          shadowColor: '#000000',
-                          shadowOffset: { width: 0, height: 1 },
-                          shadowOpacity: isDarkMode ? 0.2 : 0.08,
-                          shadowRadius: 1.5,
-                          elevation: 1,
-                        }
-                      ]}
+                  <Animated.View
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: backButtonShadowOpacity,
+                        shadowRadius: backButtonShadowRadius,
+                        elevation: 1,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
                       onPress={handleBackArrowPress}
                       activeOpacity={0.8}
                     >
                       <AnimatedBackArrow
-                        color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                        color={isDarkMode ? '#6ec5ff' : '#616161'}
                         size={16}
                         isPressed={backArrowPressed}
                       />
                     </TouchableOpacity>
+                  </Animated.View>
                 </Animated.View>
               )}
 
               {showConversationsButton && (
                 <Animated.View style={{ transform: [{ scale: conversationsButtonScale }] }}>
-                  <TouchableOpacity
+                  <Animated.View
                     style={[
                       styles.iconButton,
                       {
-                        backgroundColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'rgba(255, 255, 255, 1)',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.08)' 
-                          : 'rgba(255, 255, 255, 0.6)',
-                        shadowColor: '#000000',
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
                         shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
-                        shadowRadius: 1.5,
+                        shadowOpacity: conversationsButtonShadowOpacity,
+                        shadowRadius: conversationsButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: showBackButton ? 12 : 0,
+                        marginLeft: showBackButton ? 8 : 0,
                       }
                     ]}
-                    onPress={handleConversationsButtonPress}
-                    activeOpacity={0.8}
                   >
-                    <AnimatedConversationsIcon
-                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
-                      size={16}
-                      isPressed={conversationsPressed}
-                    />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleConversationsButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedConversationsIcon
+                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        size={16}
+                        isPressed={conversationsPressed}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
                 </Animated.View>
               )}
 
               {showQuickAnalyticsButton && (
                 <Animated.View style={{ transform: [{ scale: brainButtonScale }] }}>
-                  <TouchableOpacity
+                  <Animated.View
                     style={[
                       styles.iconButton,
                       {
-                        backgroundColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'rgba(255, 255, 255, 1)',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.08)' 
-                          : 'rgba(255, 255, 255, 0.6)',
-                        shadowColor: '#000000',
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
                         shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
-                        shadowRadius: 1.5,
+                        shadowOpacity: brainButtonShadowOpacity,
+                        shadowRadius: brainButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                        marginLeft: (showBackButton || showConversationsButton) ? 8 : 0,
                       }
                     ]}
-                    onPress={handleBrainButtonPress}
-                    activeOpacity={0.8}
                   >
-                    <FontAwesome5
-                      name="chart-line"
-                      size={16}
-                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
-                      style={{
-                        opacity: brainPressed ? 0.7 : 1,
-                      }}
-                    />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleBrainButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <FontAwesome5
+                        name="chart-line"
+                        size={16}
+                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        style={{
+                          opacity: brainPressed ? 0.7 : 1,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
                 </Animated.View>
               )}
 
               {showMenuButton && (
                 <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
-                  <TouchableOpacity
+                  <Animated.View
                     style={[
                       styles.iconButton,
                       {
-                        backgroundColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.05)' 
-                          : 'rgba(255, 255, 255, 1)',
-                        borderColor: isDarkMode 
-                          ? 'rgba(255, 255, 255, 0.08)' 
-                          : 'rgba(255, 255, 255, 0.6)',
-                        shadowColor: '#000000',
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
                         shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: isDarkMode ? 0.2 : 0.08,
-                        shadowRadius: 1.5,
+                        shadowOpacity: menuButtonShadowOpacity,
+                        shadowRadius: menuButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 12 : 0,
+                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 8 : 0,
                       }
                     ]}
-                    onPress={handleMenuButtonPress}
-                    activeOpacity={0.8}
                   >
-                    <AnimatedHamburger
-                      isOpen={menuVisible}
-                      color={isDarkMode ? '#6ec5ff' : '#4a5568'}
-                      size={16}
-                    />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleMenuButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedHamburger
+                        isOpen={menuVisible}
+                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        size={16}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
                 </Animated.View>
               )}
             </View>
@@ -431,12 +641,13 @@ export const Header: React.FC<HeaderProps> = ({
               style={{ flex: 1 }}
             >
               <BlurView
-                intensity={isDarkMode ? 40 : 60}
-                tint={isDarkMode ? 'dark' : 'default'}
+                intensity={isDarkMode ? 15 : 30}
+                tint={isDarkMode ? 'dark' : 'light'}
                 style={[
                   styles.blurContainer,
                   {
                     borderWidth: 0,
+                    backgroundColor: isDarkMode ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.1)',
                   },
                 ]}
               >
@@ -489,11 +700,8 @@ export const Header: React.FC<HeaderProps> = ({
                                 styles.iconButton,
                                 {
                                   backgroundColor: isDarkMode 
-                                    ? 'rgba(255, 255, 255, 0.05)' 
+                                    ? 'rgba(255, 255, 255, 0.02)' 
                                     : 'rgba(255, 255, 255, 1)',
-                                  borderColor: isDarkMode 
-                                    ? 'rgba(255, 255, 255, 0.08)' 
-                                    : 'rgba(255, 255, 255, 0.6)',
                                   shadowColor: '#000000',
                                   shadowOffset: { width: 0, height: 1 },
                                   shadowOpacity: isDarkMode ? 0.2 : 0.08,
@@ -505,7 +713,7 @@ export const Header: React.FC<HeaderProps> = ({
                               activeOpacity={0.8}
                             >
                               <AnimatedBackArrow
-                                color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                                color={isDarkMode ? '#6ec5ff' : '#616161'}
                                 size={16}
                                 isPressed={backArrowPressed}
                               />
@@ -522,9 +730,6 @@ export const Header: React.FC<HeaderProps> = ({
                                 backgroundColor: isDarkMode 
                                   ? 'rgba(255, 255, 255, 0.05)' 
                                   : 'rgba(255, 255, 255, 1)',
-                                borderColor: isDarkMode 
-                                  ? 'rgba(255, 255, 255, 0.08)' 
-                                  : 'rgba(255, 255, 255, 0.6)',
                                 shadowColor: '#000000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDarkMode ? 0.2 : 0.08,
@@ -537,7 +742,7 @@ export const Header: React.FC<HeaderProps> = ({
                             activeOpacity={0.8}
                           >
                             <AnimatedConversationsIcon
-                              color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                              color={isDarkMode ? '#6ec5ff' : '#616161'}
                               size={16}
                               isPressed={conversationsPressed}
                             />
@@ -554,9 +759,6 @@ export const Header: React.FC<HeaderProps> = ({
                                 backgroundColor: isDarkMode 
                                   ? 'rgba(255, 255, 255, 0.05)' 
                                   : 'rgba(255, 255, 255, 1)',
-                                borderColor: isDarkMode 
-                                  ? 'rgba(255, 255, 255, 0.08)' 
-                                  : 'rgba(255, 255, 255, 0.6)',
                                 shadowColor: '#000000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDarkMode ? 0.2 : 0.08,
@@ -571,7 +773,7 @@ export const Header: React.FC<HeaderProps> = ({
                             <FontAwesome5
                               name="chart-line"
                               size={16}
-                              color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                              color={isDarkMode ? '#6ec5ff' : '#616161'}
                               style={{
                                 opacity: brainPressed ? 0.7 : 1,
                               }}
@@ -589,9 +791,6 @@ export const Header: React.FC<HeaderProps> = ({
                                 backgroundColor: isDarkMode 
                                   ? 'rgba(255, 255, 255, 0.05)' 
                                   : 'rgba(255, 255, 255, 1)',
-                                borderColor: isDarkMode 
-                                  ? 'rgba(255, 255, 255, 0.08)' 
-                                  : 'rgba(255, 255, 255, 0.6)',
                                 shadowColor: '#000000',
                                 shadowOffset: { width: 0, height: 1 },
                                 shadowOpacity: isDarkMode ? 0.2 : 0.08,
@@ -605,7 +804,7 @@ export const Header: React.FC<HeaderProps> = ({
                           >
                             <AnimatedHamburger
                               isOpen={menuVisible}
-                              color={isDarkMode ? '#6ec5ff' : '#4a5568'}
+                              color={isDarkMode ? '#6ec5ff' : '#616161'}
                               size={16}
                             />
                           </TouchableOpacity>
@@ -650,6 +849,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 100,
+    backgroundColor: 'rgba(10, 10, 10, 0.3)',
+    borderRadius: 12,
   },
   blurContainer: {
     flex: 1,
@@ -697,14 +898,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   iconButton: {
-    width: 44,  // Larger touch target
+    width: 44,
     height: 44,
-    borderRadius: 12,  // More rounded for modern look
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
     backgroundColor: 'transparent',
-    // Better interaction feedback
     overflow: 'hidden',
   },
 });

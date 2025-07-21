@@ -81,16 +81,16 @@ class AppInitializer {
     const errors: string[] = [];
     const warnings: string[] = [];
 
-    console.log('🚀 Starting app initialization...');
+    // console.log('🚀 Starting app initialization...');
 
     try {
       // Step 1: Initialize API service and validate connection
-      console.log('📡 Initializing API service...');
+      // console.log('📡 Initializing API service...');
       try {
         const connected = await ApiService.checkConnection();
         if (connected) {
           this.initializationStatus.apiService = 'success';
-          console.log('✅ API service initialized successfully');
+          // console.log('✅ API service initialized successfully');
         } else {
           this.initializationStatus.apiService = 'failed';
           errors.push('API service test failed');
@@ -101,11 +101,11 @@ class AppInitializer {
       }
 
       // Step 2: Initialize app configuration
-      console.log('⚙️ Loading app configuration...');
+      // console.log('⚙️ Loading app configuration...');
       try {
         const config = await appConfigService.initialize();
         this.initializationStatus.appConfig = 'success';
-        console.log('✅ App configuration loaded successfully');
+        // console.log('✅ App configuration loaded successfully');
         
         // Update API base URL from config
         const endpoints = appConfigService.getEndpoints();
@@ -121,36 +121,36 @@ class AppInitializer {
       }
 
       // Step 3: Initialize offline queue service
-      console.log('📦 Initializing offline queue...');
+      // console.log('📦 Initializing offline queue...');
       try {
         await offlineQueueService.initialize();
         this.initializationStatus.offlineQueue = 'success';
-        console.log('✅ Offline queue initialized successfully');
+        // console.log('✅ Offline queue initialized successfully');
       } catch (error) {
         this.initializationStatus.offlineQueue = 'failed';
         errors.push(`Offline queue initialization failed: ${error}`);
       }
 
       // Step 4: Initialize sync service
-      console.log('🔄 Initializing sync service...');
+      // console.log('🔄 Initializing sync service...');
       try {
         await syncService.initialize();
         this.initializationStatus.syncService = 'success';
-        console.log('✅ Sync service initialized successfully');
+        // console.log('✅ Sync service initialized successfully');
       } catch (error) {
         this.initializationStatus.syncService = 'failed';
         errors.push(`Sync service initialization failed: ${error}`);
       }
 
       // Step 5: Initialize WebSocket (if user is authenticated)
-      console.log('🔌 Initializing WebSocket...');
+      // console.log('🔌 Initializing WebSocket...');
       try {
         const token = await SecureStorageService.getToken();
         if (token) {
           const connected = await getWebSocketService().initialize();
           if (connected) {
             this.initializationStatus.websocket = 'success';
-            console.log('✅ WebSocket connected successfully');
+            // console.log('✅ WebSocket connected successfully');
           } else {
             this.initializationStatus.websocket = 'failed';
             warnings.push('WebSocket connection failed - will retry when authenticated');
@@ -165,22 +165,22 @@ class AppInitializer {
       }
 
       // Step 6: Initialize push notifications
-      console.log('🔔 Initializing push notifications...');
+      // console.log('🔔 Initializing push notifications...');
       try {
         await this.initializePushNotifications();
         this.initializationStatus.pushNotifications = 'success';
-        console.log('✅ Push notifications initialized successfully');
+        // console.log('✅ Push notifications initialized successfully');
       } catch (error) {
         this.initializationStatus.pushNotifications = 'failed';
         warnings.push(`Push notifications initialization failed: ${error}`);
       }
 
       // Step 7: Setup network monitoring
-      console.log('📶 Setting up network monitoring...');
+      // console.log('📶 Setting up network monitoring...');
       this.setupNetworkMonitoring();
 
       // Step 8: Setup app state monitoring
-      console.log('📱 Setting up app state monitoring...');
+      // console.log('📱 Setting up app state monitoring...');
       this.setupAppStateMonitoring();
 
       // Determine overall success
@@ -197,7 +197,7 @@ class AppInitializer {
       }
 
       const duration = Date.now() - startTime;
-      console.log(`🎉 App initialization completed in ${duration}ms`);
+      // console.log(`🎉 App initialization completed in ${duration}ms`);
 
       return {
         success: this.initializationStatus.overall === 'success',
@@ -253,7 +253,7 @@ class AppInitializer {
       const platform = Platform.OS as 'ios' | 'android';
       await ApiService.registerPushToken(token.data, platform);
 
-      console.log('Push notification token registered:', token.data);
+      // console.log('Push notification token registered:', token.data);
 
     } catch (error) {
       console.error('Push notifications setup failed:', error);
@@ -266,7 +266,7 @@ class AppInitializer {
    */
   private static setupNetworkMonitoring(): void {
     NetInfo.addEventListener(state => {
-      console.log('Network state changed:', state.isConnected);
+      // console.log('Network state changed:', state.isConnected);
       
       if (state.isConnected) {
         // Trigger sync when network is restored
@@ -299,17 +299,17 @@ class AppInitializer {
    */
   static async initializeWebSocketAfterAuth(): Promise<boolean> {
     try {
-      console.log('🔌 Initializing WebSocket after authentication...');
+      // console.log('🔌 Initializing WebSocket after authentication...');
       
       const connected = await getWebSocketService().initialize();
       
       if (connected) {
         this.initializationStatus.websocket = 'success';
-        console.log('✅ WebSocket connected after authentication');
+        // console.log('✅ WebSocket connected after authentication');
         return true;
       } else {
         this.initializationStatus.websocket = 'failed';
-        console.log('❌ WebSocket connection failed after authentication');
+        // console.log('❌ WebSocket connection failed after authentication');
         return false;
       }
     } catch (error) {
@@ -324,17 +324,17 @@ class AppInitializer {
    */
   static async performInitialDataSync(): Promise<void> {
     try {
-      console.log('🔄 Performing initial data sync...');
+      // console.log('🔄 Performing initial data sync...');
       
       // Get initial data using batch API
       const batchApiService = getBatchApiService();
       const initialData = await batchApiService.getInitialData();
-      console.log('Initial data loaded:', initialData);
+      // console.log('Initial data loaded:', initialData);
       
       // Trigger full sync
       await syncService.forceFullSync();
       
-      console.log('✅ Initial data sync completed');
+      // console.log('✅ Initial data sync completed');
     } catch (error) {
       console.error('Initial data sync failed:', error);
       throw error;
@@ -376,7 +376,7 @@ class AppInitializer {
    * Cleanup services
    */
   static cleanup(): void {
-    console.log('🧹 Cleaning up app services...');
+    // console.log('🧹 Cleaning up app services...');
     
     try {
       getWebSocketService().disconnect();
@@ -384,7 +384,7 @@ class AppInitializer {
       const batchApiService = getBatchApiService();
       batchApiService.clearBatch();
       
-      console.log('✅ App services cleaned up');
+      // console.log('✅ App services cleaned up');
     } catch (error) {
       console.error('Error during cleanup:', error);
     }
@@ -421,7 +421,7 @@ class AppInitializer {
    * Reinitialize failed services
    */
   static async reinitializeFailedServices(): Promise<InitializationResult> {
-    console.log('🔄 Reinitializing failed services...');
+    // console.log('🔄 Reinitializing failed services...');
     
     const errors: string[] = [];
     const warnings: string[] = [];

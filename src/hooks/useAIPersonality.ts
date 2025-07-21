@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import AIPersonalityService from '../services/aiPersonalityService';
+import { log } from '../utils/logger';
 
 interface UserEmotionalState {
   mood: string;
@@ -32,7 +33,6 @@ interface UseAIPersonalityReturn {
   sendAdaptiveChatMessage: (prompt: string, onChunk: (chunk: string, context?: PersonalityContext) => void, attachments?: any[]) => Promise<{ content: string; personalityContext: PersonalityContext }>;
   submitFeedback: (messageId: string, feedback: 'helpful' | 'not_helpful' | 'love_it', style: string) => Promise<void>;
   getContextualSuggestions: () => string[];
-  getAdaptivePlaceholder: () => string;
   error: string | null;
   retryAnalysis: () => Promise<void>;
 }
@@ -109,9 +109,9 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     }
   }, [emotionalState]);
 
-  const getPersonalityRecommendations = useCallback(async (): Promise<AIPersonality> => {
+  const getPersonalityRecommendations = useCallback(async (currentEmotionalState?: UserEmotionalState): Promise<AIPersonality> => {
     try {
-      const personality = await aiPersonalityService.getPersonalityRecommendations(emotionalState || undefined);
+      const personality = await aiPersonalityService.getPersonalityRecommendations(currentEmotionalState || emotionalState || undefined);
       
       // Check if component is still mounted before updating state
       if (isMountedRef.current) {
@@ -126,7 +126,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
       }
       throw err;
     }
-  }, [emotionalState]);
+  }, []); // Remove emotionalState dependency to prevent circular updates
 
   const sendAdaptiveChatMessage = useCallback(async (
     prompt: string,
@@ -165,11 +165,6 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     return aiPersonalityService.getContextualSuggestions(emotionalState);
   }, [emotionalState]);
 
-  const getAdaptivePlaceholder = useCallback((): string => {
-    if (!emotionalState || !aiPersonality) return 'Share your thoughts...';
-    return aiPersonalityService.getAdaptivePlaceholder(emotionalState, aiPersonality);
-  }, [emotionalState, aiPersonality]);
-
   const retryAnalysis = useCallback(async (): Promise<void> => {
     // Reset analysis time to force fresh analysis
     lastAnalysisRef.current = 0;
@@ -187,7 +182,7 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
         analysisDebounceRef.current = setTimeout(async () => {
           // Check if component is still mounted before proceeding
           if (!isMountedRef.current) {
-            console.log('⏳ Component unmounted during initialization, skipping');
+            log.debug('Component unmounted during initialization, skipping', null, 'useAIPersonality');
             return;
           }
           
@@ -196,12 +191,12 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
             await getPersonalityRecommendations();
           } catch (err) {
             // Silently handle initialization errors
-            console.warn('Failed to initialize AI personality:', err);
+            log.warn('Failed to initialize AI personality during mount', err, 'useAIPersonality');
           }
         }, 1000); // 1 second delay for initial load
       } catch (err) {
         // Silently handle initialization errors
-        console.warn('Failed to initialize AI personality:', err);
+        log.warn('Failed to initialize AI personality on timeout', err, 'useAIPersonality');
       }
     };
 
@@ -234,7 +229,6 @@ export const useAIPersonality = (): UseAIPersonalityReturn => {
     sendAdaptiveChatMessage,
     submitFeedback,
     getContextualSuggestions,
-    getAdaptivePlaceholder,
     error,
     retryAnalysis,
   };

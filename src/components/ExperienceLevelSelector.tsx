@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 import { PageBackground } from './PageBackground';
-import { AnimatedGradientBorder } from './AnimatedGradientBorder';
+import { HeaderGradient } from './HeaderGradient';
 
 const { width } = Dimensions.get('window');
 
@@ -99,115 +99,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
   const [expandedCard, setExpandedCard] = useState<ExperienceLevel | null>(null);
   const [isExpanding, setIsExpanding] = useState(false);
   
-  // Premium light gradient colors for each option
-  const premiumGradientColors = {
-    private: isDarkMode ? [
-      // Private - Light Green/Emerald Tech
-      'rgba(15, 20, 15, 1)',       // Deep green-dark
-      'rgba(20, 30, 25, 1)',       // Building green
-      'rgba(25, 40, 30, 1)',       // Subtle green
-      'rgba(34, 197, 94, 0.3)',    // Light emerald glow
-      'rgba(52, 211, 153, 0.6)',   // Bright emerald
-      'rgba(110, 231, 183, 0.8)',  // Light mint
-      'rgba(167, 243, 208, 0.9)',  // Very light mint
-      'rgba(209, 250, 229, 0.7)',  // Pale mint
-      'rgba(167, 243, 208, 0.6)',  // Light mint fade
-      'rgba(110, 231, 183, 0.4)',  // Emerald fade
-      'rgba(52, 211, 153, 0.3)',   // Bright emerald fade
-      'rgba(34, 197, 94, 0.2)',    // Light emerald fade
-      'rgba(25, 40, 30, 1)',       // Back to green
-      'rgba(20, 30, 25, 1)',       // Deep green
-      'rgba(15, 20, 15, 1)',       // Back to start
-    ] : [
-      // Private Light Mode - Soft emerald pastels
-      'rgba(247, 254, 251, 1)',    // Clean white-green
-      'rgba(240, 253, 244, 1)',    // Very light green
-      'rgba(220, 252, 231, 1)',    // Soft mint
-      'rgba(187, 247, 208, 0.6)',  // Light emerald
-      'rgba(134, 239, 172, 0.7)',  // Medium emerald
-      'rgba(74, 222, 128, 0.5)',   // Bright emerald
-      'rgba(34, 197, 94, 0.4)',    // Strong emerald
-      'rgba(22, 163, 74, 0.3)',    // Deep emerald
-      'rgba(34, 197, 94, 0.3)',    // Strong emerald fade
-      'rgba(74, 222, 128, 0.4)',   // Bright emerald fade
-      'rgba(134, 239, 172, 0.5)',  // Medium emerald fade
-      'rgba(187, 247, 208, 0.4)',  // Light emerald fade
-      'rgba(220, 252, 231, 1)',    // Soft mint
-      'rgba(240, 253, 244, 1)',    // Very light green
-      'rgba(247, 254, 251, 1)',    // Back to white-green
-    ],
-    personal: isDarkMode ? [
-      // Personal - Light Blue/Sky Tech
-      'rgba(15, 18, 25, 1)',       // Deep blue-dark
-      'rgba(20, 25, 35, 1)',       // Building blue
-      'rgba(30, 40, 55, 1)',       // Subtle blue
-      'rgba(59, 130, 246, 0.3)',   // Light blue glow
-      'rgba(96, 165, 250, 0.6)',   // Sky blue
-      'rgba(147, 197, 253, 0.8)',  // Light sky
-      'rgba(186, 230, 253, 0.9)',  // Very light blue
-      'rgba(224, 242, 254, 0.7)',  // Pale blue
-      'rgba(186, 230, 253, 0.6)',  // Light sky fade
-      'rgba(147, 197, 253, 0.4)',  // Light sky fade
-      'rgba(96, 165, 250, 0.3)',   // Sky blue fade
-      'rgba(59, 130, 246, 0.2)',   // Light blue fade
-      'rgba(30, 40, 55, 1)',       // Back to blue
-      'rgba(20, 25, 35, 1)',       // Deep blue
-      'rgba(15, 18, 25, 1)',       // Back to start
-    ] : [
-      // Personal Light Mode - Soft blue pastels
-      'rgba(248, 250, 252, 1)',    // Clean white
-      'rgba(241, 245, 249, 1)',    // Very light blue
-      'rgba(226, 232, 240, 1)',    // Soft blue-gray
-      'rgba(191, 219, 254, 0.6)',  // Light blue
-      'rgba(147, 197, 253, 0.7)',  // Medium blue
-      'rgba(96, 165, 250, 0.8)',   // Bright blue
-      'rgba(59, 130, 246, 0.6)',   // Strong blue
-      'rgba(37, 99, 235, 0.4)',    // Deep blue
-      'rgba(59, 130, 246, 0.5)',   // Strong blue fade
-      'rgba(96, 165, 250, 0.6)',   // Bright blue fade
-      'rgba(147, 197, 253, 0.5)',  // Medium blue fade
-      'rgba(191, 219, 254, 0.4)',  // Light blue fade
-      'rgba(226, 232, 240, 1)',    // Soft blue-gray
-      'rgba(241, 245, 249, 1)',    // Very light blue
-      'rgba(248, 250, 252, 1)',    // Back to white
-    ],
-    cloud_find_beta: isDarkMode ? [
-      // Cloud Find - Light Purple/Violet Tech
-      'rgba(18, 15, 25, 1)',       // Deep purple-dark
-      'rgba(25, 20, 35, 1)',       // Building purple
-      'rgba(35, 30, 50, 1)',       // Subtle purple
-      'rgba(139, 92, 246, 0.3)',   // Light purple glow
-      'rgba(168, 139, 250, 0.6)',  // Medium purple
-      'rgba(196, 181, 253, 0.8)',  // Light purple
-      'rgba(221, 214, 254, 0.9)',  // Very light purple
-      'rgba(237, 233, 254, 0.7)',  // Pale purple
-      'rgba(221, 214, 254, 0.6)',  // Light purple fade
-      'rgba(196, 181, 253, 0.4)',  // Light purple fade
-      'rgba(168, 139, 250, 0.3)',  // Medium purple fade
-      'rgba(139, 92, 246, 0.2)',   // Light purple fade
-      'rgba(35, 30, 50, 1)',       // Back to purple
-      'rgba(25, 20, 35, 1)',       // Deep purple
-      'rgba(18, 15, 25, 1)',       // Back to start
-    ] : [
-      // Cloud Find Light Mode - Soft purple pastels
-      'rgba(250, 248, 255, 1)',    // Clean white-purple
-      'rgba(245, 243, 255, 1)',    // Very light purple
-      'rgba(237, 233, 254, 1)',    // Soft purple
-      'rgba(221, 214, 254, 0.6)',  // Light purple
-      'rgba(196, 181, 253, 0.7)',  // Medium purple
-      'rgba(168, 139, 250, 0.8)',  // Bright purple
-      'rgba(139, 92, 246, 0.6)',   // Strong purple
-      'rgba(124, 58, 237, 0.4)',   // Deep purple
-      'rgba(139, 92, 246, 0.5)',   // Strong purple fade
-      'rgba(168, 139, 250, 0.6)',  // Bright purple fade
-      'rgba(196, 181, 253, 0.5)',  // Medium purple fade
-      'rgba(221, 214, 254, 0.4)',  // Light purple fade
-      'rgba(237, 233, 254, 1)',    // Soft purple
-      'rgba(245, 243, 255, 1)',    // Very light purple
-      'rgba(250, 248, 255, 1)',    // Back to white-purple
-    ]
-  };
-  
+ 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -430,53 +322,6 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
   const renderLevelCard = (level: LevelOption, index: number) => {
     const isSelected = selectedLevel === level.id;
 
-    const lightGradientColors = {
-      private: ['rgba(34, 197, 94, 0.08)', 'rgba(22, 163, 74, 0.05)', 'rgba(21, 128, 61, 0.03)'],
-      personal: ['rgba(59, 130, 246, 0.08)', 'rgba(37, 99, 235, 0.05)', 'rgba(30, 58, 138, 0.03)'],
-      cloud_find_beta: ['rgba(139, 92, 246, 0.08)', 'rgba(124, 58, 237, 0.05)', 'rgba(91, 33, 182, 0.03)']
-    };
-    
-    // Premium dim color schemes
-    const premiumDimColors = {
-      private: {
-        primary: 'rgba(34, 197, 94, 0.85)',
-        secondary: 'rgba(22, 163, 74, 0.75)',
-        accent: 'rgba(34, 197, 94, 0.65)',
-        gradient: ['rgba(34, 197, 94, 0.18)', 'rgba(22, 163, 74, 0.12)', 'rgba(21, 128, 61, 0.08)', 'rgba(0, 0, 0, 0.95)'],
-        glow: 'rgba(34, 197, 94, 0.35)',
-        shadow: 'rgba(34, 197, 94, 0.25)',
-        border: 'rgba(34, 197, 94, 0.45)',
-        text: 'rgba(34, 197, 94, 0.95)',
-        shimmer: 'rgba(34, 197, 94, 0.15)',
-        highlight: 'rgba(34, 197, 94, 0.08)',
-      },
-      personal: {
-        primary: 'rgba(59, 130, 246, 0.85)',
-        secondary: 'rgba(37, 99, 235, 0.75)',
-        accent: 'rgba(59, 130, 246, 0.65)',
-        gradient: ['rgba(59, 130, 246, 0.18)', 'rgba(37, 99, 235, 0.12)', 'rgba(30, 58, 138, 0.08)', 'rgba(0, 0, 0, 0.95)'],
-        glow: 'rgba(59, 130, 246, 0.35)',
-        shadow: 'rgba(59, 130, 246, 0.25)',
-        border: 'rgba(59, 130, 246, 0.45)',
-        text: 'rgba(59, 130, 246, 0.95)',
-        shimmer: 'rgba(59, 130, 246, 0.15)',
-        highlight: 'rgba(59, 130, 246, 0.08)',
-      },
-      cloud_find_beta: {
-        primary: 'rgba(139, 92, 246, 0.85)',
-        secondary: 'rgba(124, 58, 237, 0.75)',
-        accent: 'rgba(139, 92, 246, 0.65)',
-        gradient: ['rgba(139, 92, 246, 0.18)', 'rgba(124, 58, 237, 0.12)', 'rgba(91, 33, 182, 0.08)', 'rgba(0, 0, 0, 0.95)'],
-        glow: 'rgba(139, 92, 246, 0.35)',
-        shadow: 'rgba(139, 92, 246, 0.25)',
-        border: 'rgba(139, 92, 246, 0.45)',
-        text: 'rgba(139, 92, 246, 0.95)',
-        shimmer: 'rgba(139, 92, 246, 0.15)',
-        highlight: 'rgba(139, 92, 246, 0.08)',
-      },
-    };
-
-    const premiumColors = premiumDimColors[level.id];
     const darkBase = {
       unselectedCard: ['rgba(25, 25, 30, 0.8)', 'rgba(20, 20, 25, 0.6)', 'rgba(15, 15, 20, 0.4)'],
       border: 'rgba(255, 255, 255, 0.06)',
@@ -500,12 +345,11 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
           }
         ]}
       >
-        <AnimatedGradientBorder
+        <HeaderGradient
           isActive={isSelected}
           borderRadius={12}
           borderWidth={level.id === 'private' ? 1 : level.id === 'personal' ? 2 : 1}
           animationSpeed={level.id === 'private' ? 4000 : level.id === 'personal' ? 2000 : 3000}
-          gradientColors={premiumGradientColors[level.id]}
         >
           <LinearGradient
             colors={isDarkMode ? 
@@ -560,7 +404,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
 
           </TouchableOpacity>
           </LinearGradient>
-        </AnimatedGradientBorder>
+        </HeaderGradient>
       </Animated.View>
     );
   };
@@ -639,12 +483,11 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                 ],
               }}
             >
-              <AnimatedGradientBorder
+              <HeaderGradient
                 isActive={true}
                 borderRadius={24}
                 borderWidth={expandedCard === 'private' ? 2 : expandedCard === 'personal' ? 3 : 2}
                 animationSpeed={expandedCard === 'private' ? 3000 : expandedCard === 'personal' ? 1500 : 2500}
-                gradientColors={premiumGradientColors[expandedCard!]}
               >
               <View
                 style={styles.expandedModal}
@@ -694,19 +537,13 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                     const level = EXPERIENCE_LEVELS.find(l => l.id === expandedCard);
                     if (!level) return null;
                     
-                    const premiumColors = {
-                      private: { primary: '#34D399', secondary: '#10B981', accent: '#A7F3D0' },
-                      personal: { primary: '#60A5FA', secondary: '#3B82F6', accent: '#BFDBFE' },
-                      cloud_find_beta: { primary: '#A78BFA', secondary: '#8B5CF6', accent: '#DDD6FE' }
-                    }[level.id];
-                    
                     return (
                       <View style={styles.modalContentContainer}>
                         {/* Subtitle & Description */}
                         <View style={styles.modalIntroSection}>
                           <Text style={[
                             styles.modalSubtitle,
-                            { color: isDarkMode ? premiumColors.primary : premiumColors.secondary }
+                            { color: level.color }
                           ]}>
                             {level.subtitle}
                           </Text>
@@ -722,7 +559,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                         <View style={styles.modalSection}>
                           <Text style={[
                             styles.sectionTitle,
-                            { color: isDarkMode ? premiumColors.accent : premiumColors.primary }
+                            { color: level.color }
                           ]}>
                             Core Features
                           </Text>
@@ -730,12 +567,12 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                             <View key={index} style={styles.featureItem}>
                               <View style={[
                                 styles.featureIcon,
-                                { backgroundColor: isDarkMode ? `${premiumColors.primary}20` : `${premiumColors.primary}15` }
+                                { backgroundColor: `${level.color}20` }
                               ]}>
                                 <MaterialIcons 
                                   name="check" 
                                   size={14} 
-                                  color={premiumColors.primary} 
+                                  color={level.color} 
                                 />
                               </View>
                               <Text style={[
@@ -752,7 +589,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                         <View style={styles.modalSection}>
                           <Text style={[
                             styles.sectionTitle,
-                            { color: isDarkMode ? premiumColors.accent : premiumColors.primary }
+                            { color: level.color }
                           ]}>
                             {level.id === 'private' ? 'Privacy Benefits' : 
                              level.id === 'personal' ? 'Growth Benefits' : 'Social Benefits'}
@@ -780,7 +617,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                               <MaterialIcons 
                                 name={level.id === 'private' ? 'security' : level.id === 'personal' ? 'trending-up' : 'people'} 
                                 size={16} 
-                                color={premiumColors.secondary} 
+                                color={level.color} 
                               />
                               <Text style={[
                                 styles.benefitText,
@@ -798,7 +635,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                             style={[
                               styles.modalActionButton,
                               { 
-                                backgroundColor: premiumColors.primary,
+                                backgroundColor: level.color,
                               }
                             ]}
                             onPress={() => {
@@ -819,7 +656,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                 </Animated.ScrollView>
               </BlurView>
               </View>
-            </AnimatedGradientBorder>
+            </HeaderGradient>
             </Animated.View>
           </View>
         </Modal>

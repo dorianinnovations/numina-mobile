@@ -9,6 +9,7 @@ import {
   Dimensions,
   ScrollView,
   SafeAreaView,
+  PanResponder,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,6 +48,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   const [isClosing, setIsClosing] = useState(false);
   const [showQuickQueries, setShowQuickQueries] = useState(false);
   const [showQuickQueryModal, setShowQuickQueryModal] = useState(false);
+  const [modalState, setModalState] = useState<'small' | 'large' | 'full' | 'very-large'>('large'); // small card, large modal, full screen, very large
   const fileUploadService = FileUploadService.getInstance();
 
   // Quick query options - expanded for scrollable modal
@@ -94,7 +96,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   const photoLibraryButtonScale = useRef(new Animated.Value(1)).current;
   const fileButtonScale = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(screenHeight * 0.3)).current;
-  const backgroundOpacity = useRef(new Animated.Value(0)).current;
+  // Removed backgroundOpacity - no dim functionality
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
@@ -103,24 +105,141 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
   const quickModalOverlayOpacity = useRef(new Animated.Value(0)).current;
   const quickModalScale = useRef(new Animated.Value(0.9)).current;
   const quickModalOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Pan gesture refs for swipe functionality
+  const panY = useRef(new Animated.Value(0)).current;
+  const lastGestureState = useRef(0);
+  
+  // Modal height states
+  const modalHeights = {
+    small: screenHeight * 0.15,     // Small card
+    large: screenHeight * 0.7,      // Default modal
+    full: screenHeight * 0.95,      // Full screen
+    'very-large': screenHeight * 0.98 // Almost entire screen
+  };
+  
+  // Create pan responder for swipe gestures
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Respond to vertical gestures with lower threshold
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        lastGestureState.current = 0;
+        panY.setOffset(0);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Direct tracking with resistance
+        let newValue = gestureState.dy;
+        
+        // Add resistance when going beyond reasonable bounds
+        if (newValue < -100) {
+          const resistance = Math.max(0.3, 1 - Math.abs(newValue + 100) / 200);
+          newValue = -100 + (newValue + 100) * resistance;
+        }
+        if (newValue > 200) {
+          const resistance = Math.max(0.3, 1 - Math.abs(newValue - 200) / 200);
+          newValue = 200 + (newValue - 200) * resistance;
+        }
+        
+        panY.setValue(newValue);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const velocity = gestureState.vy;
+        const displacement = gestureState.dy;
+        
+        // Determine target state based on gesture with lower thresholds
+        let targetState: 'small' | 'large' | 'full' | 'very-large' = modalState;
+        
+        if (Math.abs(velocity) > 0.2 || Math.abs(displacement) > 20) {
+          if (displacement < -20 || velocity < -0.2) {
+            // Swipe up - expand through all states
+            if (modalState === 'small') {
+              targetState = 'large';
+            } else if (modalState === 'large') {
+              targetState = 'full';
+            } else if (modalState === 'full') {
+              targetState = 'very-large';
+            }
+          } else if (displacement > 20 || velocity > 0.2) {
+            // Swipe down - collapse or dismiss
+            if (modalState === 'very-large') {
+              targetState = 'full';
+            } else if (modalState === 'full') {
+              targetState = 'large';
+            } else if (modalState === 'large') {
+              targetState = 'small';
+            } else if (modalState === 'small') {
+              // Dismiss via swipe - use same logic as tap outside
+              handleClose();
+              return;
+            }
+          }
+        }
+        
+        // Debug log for testing
+        console.log(`🎯 Swipe: ${modalState} → ${targetState}, displacement: ${displacement.toFixed(1)}, velocity: ${velocity.toFixed(2)}`);
+        
+        animateToState(targetState);
+      },
+    })
+  ).current;
+  
+  const animateToState = (newState: 'small' | 'large' | 'full' | 'very-large') => {
+    setModalState(newState);
+    
+    // Calculate slide position based on state
+    let targetY = 0;
+    switch (newState) {
+      case 'small':
+        targetY = screenHeight * 0.85;
+        break;
+      case 'large':
+        targetY = screenHeight * 0.3;
+        break;
+      case 'full':
+        targetY = screenHeight * 0.05;
+        break;
+      case 'very-large':
+        targetY = screenHeight * 0.01; // Almost at the very top
+        break;
+    }
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    Animated.parallel([
+      Animated.spring(panY, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 7,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: targetY,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 7,
+      }),
+    ]).start();
+  };
 
   useEffect(() => {
     if (visible && !isClosing) {
-      // Reset closing state and animate in
+      // Complete reset when opening
+      setModalState('large');
       setIsClosing(false);
+      panY.setValue(0); // Reset any lingering pan values
       
       // Haptic feedback when modal opens
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       
       // Animate modal in
       Animated.parallel([
-        Animated.timing(backgroundOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
         Animated.spring(slideAnim, {
-          toValue: 0,
+          toValue: screenHeight * 0.3, // Large modal position
           tension: 120,
           friction: 12,
           useNativeDriver: true,
@@ -145,55 +264,67 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
     }
   }, [visible, isClosing]);
 
+  // Simple cleanup when modal becomes invisible
+  useEffect(() => {
+    if (!visible) {
+      // Stop all animations and reset values
+      panY.stopAnimation();
+      slideAnim.stopAnimation();
+      contentOpacity.stopAnimation();
+      scaleAnim.stopAnimation();
+      
+      // Reset all values immediately
+      panY.setValue(0);
+      slideAnim.setValue(screenHeight * 0.3);
+      scaleAnim.setValue(0.9);
+      rotateAnim.setValue(0);
+      contentOpacity.setValue(0);
+      setModalState('large');
+      setIsClosing(false);
+    }
+  }, [visible]);
+
   const handleClose = async () => {
-    if (isClosing) return; // Prevent multiple close calls
+    if (isClosing) return; 
     
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsClosing(true);
 
-    // Fast, vertical-only exit animation: slide down, fade out, slight rotate, no scale
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: screenHeight * 0.9,
-          duration: 120,
-          easing: Easing.bezier(0.22, 1, 0.36, 1),
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 100,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-        Animated.timing(contentOpacity, {
-          toValue: 0.2,
-          duration: 120,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-      // Finish fading out after slide is done for trailing effect
+    // Stop all running animations first
+    panY.stopAnimation();
+    slideAnim.stopAnimation();
+    contentOpacity.stopAnimation();
+    scaleAnim.stopAnimation();
+
+    // Immediate cleanup to prevent stuck states
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: screenHeight * 1.2, // Slide further down
+        duration: 200,
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+        useNativeDriver: true,
+      }),
+      // Removed background opacity animation
       Animated.timing(contentOpacity, {
         toValue: 0,
-        duration: 100,
+        duration: 150,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
-      // Background fade out after modal is mostly gone
-      Animated.timing(backgroundOpacity, {
-        toValue: 0,
-        duration: 90,
+      Animated.timing(scaleAnim, {
+        toValue: 0.8,
+        duration: 150,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Reset animation values for next open
+      // Complete reset of all animation values and state
       slideAnim.setValue(screenHeight * 0.3);
-      backgroundOpacity.setValue(0);
       scaleAnim.setValue(0.9);
       rotateAnim.setValue(0);
       contentOpacity.setValue(0);
+      panY.setValue(0); // Reset pan gesture value
+      setModalState('large'); // Reset to default state
       setIsClosing(false);
       onClose();
     });
@@ -381,24 +512,16 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
-        {/* Background */}
-        <Animated.View
-          style={[
-            styles.modalBackground,
-            {
-              opacity: backgroundOpacity,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            style={styles.backgroundTouchable}
-            onPress={handleClose}
-            activeOpacity={1}
-          />
-        </Animated.View>
+        {/* Background - No Dim */}
+        <TouchableOpacity
+          style={styles.backgroundTouchable}
+          onPress={handleClose}
+          activeOpacity={1}
+        />
 
-        {/* Modal Content */}
+        {/* Modal Content with Swipe Gestures */}
         <Animated.View
+          {...panResponder.panHandlers}
           style={[
             styles.modalContainer,
             {
@@ -406,8 +529,9 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
               borderColor: isDarkMode
                 ? 'rgba(255, 255, 255, 0.1)'
                 : 'rgba(0, 0, 0, 0.1)',
+              height: modalHeights[modalState],
               transform: [
-                { translateY: slideAnim },
+                { translateY: Animated.add(slideAnim, panY) },
                 { scale: scaleAnim },
                 { 
                   rotateX: rotateAnim.interpolate({
@@ -429,8 +553,22 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
             style={styles.modalContent}
           >
             <SafeAreaView style={styles.safeArea}>
-              {/* Header */}
-              <View style={styles.header}>
+              {/* Swipe Indicator */}
+              <View style={styles.swipeIndicatorContainer}>
+                <View style={[
+                  styles.swipeIndicator,
+                  {
+                    backgroundColor: modalState === 'very-large' 
+                      ? (isDarkMode ? '#71c9fc' : '#4a90e2')
+                      : (isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)'),
+                    width: modalState === 'very-large' ? 60 : 40,
+                  }
+                ]} />
+              </View>
+
+              {/* Header - Only show full header in large/full/very-large states */}
+              {modalState !== 'small' && (
+                <View style={styles.header}>
                 <View style={styles.headerLeft}>
                   <FontAwesome5
                     name="bolt"
@@ -514,9 +652,39 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                   </TouchableOpacity>
                 </View>
               </View>
+              )}
 
-              {/* Status Summary */}
-              <View style={styles.statusSummary}>
+              {/* Small Card Content */}
+              {modalState === 'small' && (
+                <View style={styles.smallCardContent}>
+                  <View style={styles.smallCardInfo}>
+                    <FontAwesome5
+                      name="bolt"
+                      size={16}
+                      color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                    />
+                    <Text style={[
+                      styles.smallCardTitle,
+                      { color: isDarkMode ? '#f9fafb' : '#1f2937' }
+                    ]}>
+                      {toolExecutions.length > 0 
+                        ? `${toolExecutions.filter(e => e.status === 'executing').length} active tools`
+                        : 'Spawner'
+                      }
+                    </Text>
+                  </View>
+                  <Text style={[
+                    styles.smallCardHint,
+                    { color: isDarkMode ? '#9ca3af' : '#6b7280' }
+                  ]}>
+                    Swipe up through 4 sizes
+                  </Text>
+                </View>
+              )}
+
+              {/* Status Summary - Only show in large/full/very-large states */}
+              {modalState !== 'small' && (
+                <View style={styles.statusSummary}>
                 <View style={styles.statusItem}>
                   <FontAwesome5
                     name="cog"
@@ -559,22 +727,24 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                   </View>
                 )}
               </View>
+              )}
 
-
-              {/* Tool Execution Stream */}
-              <ScrollView 
-                style={styles.scrollContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                <AIToolExecutionStream
-                  executions={toolExecutions}
-                  ubpmInsights={ubpmInsights}
-                  isVisible={true}
-                  onToggleVisibility={() => {}}
-                  currentMessage={currentMessage}
-                  onAcknowledgeUBPM={onAcknowledgeUBPM}
-                />
-              </ScrollView>
+              {/* Tool Execution Stream - Only show in large/full/very-large states */}
+              {modalState !== 'small' && (
+                <ScrollView 
+                  style={styles.scrollContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  <AIToolExecutionStream
+                    executions={toolExecutions}
+                    ubpmInsights={ubpmInsights}
+                    isVisible={true}
+                    onToggleVisibility={() => {}}
+                    currentMessage={currentMessage}
+                    onAcknowledgeUBPM={onAcknowledgeUBPM}
+                  />
+                </ScrollView>
+              )}
             </SafeAreaView>
           </LinearGradient>
         </Animated.View>
@@ -631,7 +801,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
                 <View style={styles.quickModalHeader}>
                   <View style={styles.headerLeft}>
                     <FontAwesome5
-                      name="brain"
+                      name="lightbulb"
                       size={22}
                       color={isDarkMode ? '#71c9fc' : '#4a90e2'}
                     />
@@ -731,8 +901,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalContainer: {
-    height: screenHeight * 0.7,
-    maxHeight: 400,
+    // Height is set dynamically via modalHeights[modalState]
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderWidth: 1,
@@ -924,5 +1093,35 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 20,
     letterSpacing: -0.2,
+  },
+  // Swipe functionality styles
+  swipeIndicatorContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  swipeIndicator: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+  },
+  smallCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  smallCardInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  smallCardTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  smallCardHint: {
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });

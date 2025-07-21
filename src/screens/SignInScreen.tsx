@@ -13,16 +13,18 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback, // <-- add this
+  Easing,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { Header } from '../components/Header';
+import { log } from '../utils/logger';
 import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
 import { NuminaColors } from '../utils/colors';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 interface SignInScreenProps {
   onNavigateBack: () => void;
@@ -37,7 +39,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onNavigateToSignUp,
   onNavigateToHero,
 }) => {
-  console.log('🔑 SIGNIN SCREEN: Component mounting/rendering');
+  log.debug('Component mounting/rendering', null, 'SignInScreen');
   
   const { theme, isDarkMode } = useTheme();
   const { login, loading: authLoading } = useAuth();
@@ -63,20 +65,21 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
   const headerOpacityAnim = useRef(new Animated.Value(1)).current;
+  const cardTranslateYAnim = useRef(new Animated.Value(0)).current;
   
   // Input refs
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    console.log('🔑 SIGNIN SCREEN: useEffect mount called');
+    log.debug('useEffect mount called', null, 'SignInScreen');
     // Fast tech entry - no conflicting animations with navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
     slideAnim.setValue(0); // Start in final position for navigation compatibility
     
     return () => {
-      console.log('🔑 SIGNIN SCREEN: Component unmounting!');
+      log.debug('Component unmounting', null, 'SignInScreen');
     };
   }, []);
 
@@ -97,19 +100,19 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   };
 
   const handleSubmit = async () => {
-    console.log('🔑 SIGNIN SCREEN: handleSubmit called - starting login attempt');
+    log.debug('handleSubmit called - starting login attempt', null, 'SignInScreen');
     
     // Dismiss keyboard when form is submitted
     Keyboard.dismiss();
     
     if (!email.trim() || !password.trim()) {
-      console.log('🔑 SIGNIN SCREEN: Validation failed - empty fields');
+      log.warn('Validation failed - empty fields', null, 'SignInScreen');
       setError('Please fill in all fields');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       return;
     }
 
-    console.log('🔑 SIGNIN SCREEN: Validation passed, proceeding with login for:', email.trim());
+    log.info('Validation passed, proceeding with login', { email: email.trim() }, 'SignInScreen');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     setError('');
@@ -157,12 +160,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         password: password.trim(),
       });
 
-      console.log('🔑 SIGNIN SCREEN: Login result:', result);
-      console.log('🔑 SIGNIN SCREEN: result.success type:', typeof result.success, 'value:', result.success);
+      log.debug('Login result', { result, successType: typeof result.success }, 'SignInScreen');
 
       try {
         if (result && result.success === true) {
-          console.log('✅ SIGNIN SCREEN: Login successful, calling onSignInSuccess');
+          log.info('Login successful, calling onSignInSuccess', null, 'SignInScreen');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           
           setIsSignInSuccess(true);
@@ -171,7 +173,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           // Call success callback immediately - auth routing will handle navigation
           onSignInSuccess();
         } else {
-          console.log('❌ SIGNIN SCREEN: Login failed, staying on signin screen');
+          log.warn('Login failed, staying on signin screen', null, 'SignInScreen');
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
           
           // Set user-friendly error message
@@ -186,7 +188,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
           }, 3000); // Extended to 3 seconds for better visibility
         }
       } catch (authError) {
-        console.error('🔑 SIGNIN SCREEN: Error in auth result processing:', authError);
+        log.error('Error in auth result processing', authError, 'SignInScreen');
         setError('Authentication error occurred');
         setAuthStatus('error');
       }
@@ -204,7 +206,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setAuthStatus('idle');
       }, 3000); // Extended to 3 seconds for better visibility
     } finally {
-      console.log('🔑 SIGNIN SCREEN: Login attempt complete, cleaning up state');
+      log.debug('Login attempt complete, cleaning up state', null, 'SignInScreen');
       setLocalLoading(false);
       setShowSlowServerMessage(false);
       
@@ -256,6 +258,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                   transform: [
                     { translateX: slideAnim },
                     { scale: scaleAnim },
+                    { translateY: cardTranslateYAnim },
                   ],
                 },
               ]}
@@ -265,8 +268,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                 <View style={[
                   styles.formContainer, 
                   isDarkMode ? {
-                    backgroundColor: '#111111',
-                    borderColor: '#222222',
+                    backgroundColor: '#0a0a0a',
+                    borderColor: '#181818',
+                    borderWidth: 1.2,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.6,
+                    shadowRadius: 12,
+                    elevation: 15,
                   } : styles.glassmorphic
                 ]}>
                   {/*  header */}
@@ -306,8 +315,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             styles.input,
                             { 
                               color: isDarkMode ? '#ffffff' : '#000000',
-                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                              borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
+                              borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
                             }
                           ]}
                           placeholder="Email"
@@ -325,6 +334,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
                           onFocus={() => {
                             setIsInputFocused(true);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             Animated.parallel([
                               Animated.spring(emailInputScaleAnim, {
                                 toValue: 1.02,
@@ -333,8 +343,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                                 bounciness: 8,
                               }),
                               Animated.timing(headerOpacityAnim, {
-                                toValue: 0.3,
-                                duration: 200,
+                                toValue: 0,
+                                duration: 100,
+                                useNativeDriver: true,
+                              }),
+                              Animated.timing(cardTranslateYAnim, {
+                                toValue: -0.10 * height,
+                                duration: 500,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -350,7 +366,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 1,
-                                duration: 200,
+                                duration: 100,
+                                useNativeDriver: true,
+                              }),
+                              Animated.timing(cardTranslateYAnim, {
+                                toValue: 0,
+                                duration: 500,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -364,8 +386,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             styles.input,
                             { 
                               color: isDarkMode ? '#ffffff' : '#000000',
-                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                              borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
+                              borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
                             }
                           ]}
                           placeholder="Password"
@@ -385,6 +407,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           }}
                           onFocus={() => {
                             setIsInputFocused(true);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             Animated.parallel([
                               Animated.spring(passwordInputScaleAnim, {
                                 toValue: 1.02,
@@ -393,8 +416,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                                 bounciness: 8,
                               }),
                               Animated.timing(headerOpacityAnim, {
-                                toValue: 0.3,
-                                duration: 200,
+                                toValue: 0,
+                                duration: 100,
+                                useNativeDriver: true,
+                              }),
+                              Animated.timing(cardTranslateYAnim, {
+                                toValue: -0.10 * height,
+                                duration: 500,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -410,7 +439,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 1,
-                                duration: 200,
+                                duration: 100,
+                                useNativeDriver: true,
+                              }),
+                              Animated.timing(cardTranslateYAnim, {
+                                toValue: 0,
+                                duration: 500,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -426,9 +461,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           style={[
                             styles.primaryButton,
                             {
-                              backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+                              backgroundColor: isDarkMode ? '#0a0a0a' : '#add5fa',
                               opacity: (loading || isSignInSuccess) ? 0.9 : 1,
-                              borderColor: isDarkMode ? '#333333' : 'transparent',
+                              borderColor: isDarkMode ? '#262626' : 'transparent',
                               borderWidth: isDarkMode ? 1 : 0,
                             }
                           ]}
@@ -562,18 +597,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
   glassmorphic: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderColor: 'rgba(255, 255, 255, 0.3)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 32,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+    backdropFilter: 'blur(20px)',
   },
 
   header: {

@@ -378,7 +378,6 @@ describe('Mobile-Backend Integration Tests', () => {
         // Test analytics API methods exist
         expect(typeof ApiService.generateLLMInsights).toBe('function');
         expect(typeof ApiService.getPersonalGrowthSummary).toBe('function');
-        expect(typeof ApiService.getSentimentInsights).toBe('function');
         
         try {
           await ApiService.generateLLMInsights({

@@ -12,6 +12,7 @@ import { RefreshProvider } from './contexts/RefreshContext';
 import { FontProvider } from './components/FontProvider';
 import { NuminaColors } from './utils/colors';
 import AppInitializer from './services/appInitializer';
+import { log } from './utils/logger';
 const SmoothLoader: React.FC = () => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
@@ -45,45 +46,45 @@ const AppContent: React.FC = () => {
   const [isAppReady, setIsAppReady] = useState(true); // INSTANT FIX: Start ready
 
   useEffect(() => {
-    console.log('[SimpleApp] Initializing app services once on mount');
+    log.debug('Initializing app services once on mount', null, 'SimpleApp');
     
     const initializeServices = async () => {
-      console.log('[SimpleApp] Authentication status:', { isAuthenticated });
+      log.info('Authentication status', { isAuthenticated }, 'SimpleApp');
 
       if (isAuthenticated) {
-        console.log('🚀 Starting three-tier system initialization...');
+        log.info('Starting three-tier system initialization', null, 'SimpleApp');
         try {
           const initResult = await AppInitializer.initialize();
-          console.log('✅ Tier 1 (Infrastructure) initialized:', initResult.success);
+          log.info('Tier 1 (Infrastructure) initialized', { success: initResult.success }, 'SimpleApp');
           
           if (initResult.success) {
             const wsConnected = await AppInitializer.initializeWebSocketAfterAuth();
-            console.log('✅ Tier 2 (WebSocket) initialized:', wsConnected);
+            log.info('Tier 2 (WebSocket) initialized', { connected: wsConnected }, 'SimpleApp');
           }
           
           await AppInitializer.performInitialDataSync();
-          console.log('✅ Tier 3 (Data Sync) initialized');
+          log.info('Tier 3 (Data Sync) initialized', null, 'SimpleApp');
           
-          console.log('🎉 Three-tier system initialization complete!');
+          log.info('Three-tier system initialization complete', null, 'SimpleApp');
         } catch (error) {
-          console.error('❌ Three-tier system initialization failed:', error);
+          log.error('Three-tier system initialization failed', error, 'SimpleApp');
         }
       }
 
       setIsAppReady(true);
-      console.log('[SimpleApp] App initialization complete');
+      log.debug('App initialization complete', null, 'SimpleApp');
     };
 
     initializeServices();
   }, []); // Run once on mount - no dependencies to prevent re-runs
 
   if (!isAppReady) {
-    console.log('🔄 SIMPLEAPP: Still loading, showing SmoothLoader');
+    log.debug('Still loading, showing SmoothLoader', null, 'SimpleApp');
     return <SmoothLoader />;
   }
 
-  console.log('[SimpleApp] Rendering main app, authenticated:', isAuthenticated);
-  console.log('🏗️ SIMPLEAPP: About to render AppNavigator');
+  log.debug('Rendering main app', { authenticated: isAuthenticated }, 'SimpleApp');
+  log.debug('About to render AppNavigator', null, 'SimpleApp');
 
   return <AppNavigator />;
 };

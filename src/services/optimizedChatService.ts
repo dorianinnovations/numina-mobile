@@ -2,6 +2,7 @@ import ApiService from './api';
 import CloudAuth from './cloudAuth';
 import { CHAT_API_CONFIG } from './api';
 import ToolExecutionService from './toolExecutionService';
+import { log } from '../utils/logger';
 
 /**
  * Optimized Chat Service - High Performance Version
@@ -47,12 +48,12 @@ export class OptimizedChatService {
         return await this.directRequest(message, { temperature, n_predict }, attachments);
       }
     } catch (error: any) {
-      console.error('💫 PREMIUM SPEED: Primary endpoint failed, attempting fallback...', error);
+      log.warn('Primary endpoint failed, attempting fallback', error, 'PREMIUM_SPEED');
       
       try {
         return await this.legacyFallback(message, onStreamingUpdate, { temperature, n_predict }, attachments);
       } catch (fallbackError: any) {
-        console.error('❌ PREMIUM SPEED: Both endpoints failed:', fallbackError);
+        log.error('Both endpoints failed', fallbackError, 'PREMIUM_SPEED');
         throw new Error(error.message || 'Failed to send message');
       }
     }
@@ -64,7 +65,7 @@ export class OptimizedChatService {
     options?: { temperature: number; n_predict: number },
     attachments?: any[]
   ): Promise<string> {
-    console.log('🔄 FALLBACK: Using legacy /completion endpoint');
+    log.info('Using legacy /completion endpoint', undefined, 'FALLBACK');
     
     const token = CloudAuth.getInstance().getToken();
     const { temperature = 0.8, n_predict = 1024 } = options || {};
@@ -165,7 +166,7 @@ export class OptimizedChatService {
               if (content.includes('🔧 **') && !hasReceivedToolResult) {
                 hasReceivedToolResult = true;
                 initialResponseLength = fullContent.length;
-                console.log('🔧 Tool result detected, tracking for deduplication');
+                log.debug('Tool result detected, tracking for deduplication', undefined, 'TOOL_TRACKING');
               }
               
               const shouldUpdate = this.shouldUpdateUI(content, fullContent.length);
@@ -211,17 +212,22 @@ export class OptimizedChatService {
   }
 
   private shouldUpdateUI(newContent: string, currentLength: number): boolean {
-    if (currentLength < 100) return true;
+    // Reduced frequency to prevent info overload
+    if (currentLength < 50) return true;
     
-    if (currentLength > 1000 && newContent.length < 10) {
-      return Math.random() < 0.3;
+    // For long messages, reduce update frequency significantly  
+    if (currentLength > 500 && newContent.length < 15) {
+      return Math.random() < 0.1; // Much lower frequency
     }
     
-    if (newContent.length > 20 || newContent.includes('\n')) return true;
+    // Only update for meaningful chunks
+    if (newContent.length > 30 || newContent.includes('\n\n')) return true;
     
+    // Always update for tool indicators
     if (newContent.includes('🔧') || newContent.includes('**')) return true;
     
-    return true; // Default to updating
+    // Default to less frequent updates
+    return newContent.length > 15;
   }
 
   private processStreamChunk(
@@ -229,12 +235,16 @@ export class OptimizedChatService {
     onContentReceived: (content: string) => void
   ): void {
     const lines = chunk.split('\n');
+    let accumulatedContent = '';
     
     for (const line of lines) {
       if (line.startsWith('data: ')) {
         const data = line.substring(6).trim();
         
         if (data === '[DONE]') {
+          if (accumulatedContent) {
+            onContentReceived(accumulatedContent);
+          }
           return;
         }
         
@@ -245,16 +255,21 @@ export class OptimizedChatService {
         try {
           const parsed = JSON.parse(data);
           if (parsed.content) {
-            onContentReceived(parsed.content);
+            accumulatedContent += parsed.content;
           } else if (parsed.data && parsed.data.response) {
-            onContentReceived(parsed.data.response);
+            accumulatedContent += parsed.data.response;
           }
         } catch {
           if (data && data !== '[DONE]' && !data.includes('keepAlive')) {
-            onContentReceived(data);
+            accumulatedContent += data;
           }
         }
       }
+    }
+    
+    // Send accumulated content in batches to reduce update frequency
+    if (accumulatedContent) {
+      onContentReceived(accumulatedContent);
     }
   }
 
@@ -281,7 +296,7 @@ export class OptimizedChatService {
     );
 
     if (isUBPMQuery) {
-      console.log('UBPM Query Detected');
+      log.debug('UBPM Query Detected', undefined, 'UBPM');
       
       // Use higher temperature for more creative UBPM analysis
       return await this.sendOptimizedMessage(query, onStreamingUpdate, {
@@ -312,8 +327,21 @@ export class OptimizedChatService {
   private detectAndTriggerToolExecution(content: string): void {
     if (!content) return;
     
-    if (content.includes('🔍') || content.includes('🎵') || content.includes('📰')) {
+    // Check for any web search related content 
+    if (content.includes('🔍') || content.includes('🎵') || content.includes('📰') || content.includes('🌐') || 
+        content.toLowerCase().includes('search') || content.toLowerCase().includes('found') || 
+        content.toLowerCase().includes('results') || content.toLowerCase().includes('web')) {
       console.log('🔧 OptimizedChat: Checking content for tool patterns:', content.substring(0, 200));
+      
+      // Debug: Log any 🌐 patterns we find
+      if (content.includes('🌐')) {
+        console.log('🔧 OptimizedChat: Found 🌐 in content:', content.substring(0, 300));
+      }
+      
+      // Debug: Check for any search completion indicators
+      if (content.toLowerCase().includes('found') && content.toLowerCase().includes('result')) {
+        console.log('🔧 OptimizedChat: Found potential search completion:', content.substring(0, 300));
+      }
     }
     
     const toolExecutionService = ToolExecutionService.getInstance();
@@ -323,6 +351,12 @@ export class OptimizedChatService {
         regex: /🔍\s*(Searching the web for:|Searching web for:|Web search for:)/i, 
         tool: 'web_search', 
         action: 'Searching the web' 
+      },
+      { 
+        regex: /🔍.*\*\*Found \d+ search results:\*\*/i, 
+        tool: 'web_search', 
+        action: 'Found search results',
+        isCompletion: true
       },
       { 
         regex: /📰\s*(Searching latest news:|News search for:|Finding latest news)/i, 
@@ -462,7 +496,14 @@ export class OptimizedChatService {
           exec.toolName === pattern.tool && exec.status !== 'completed' && exec.status !== 'error'
         );
         
-        if (!existingExecution) {
+        // Handle completion patterns differently
+        if ((pattern as any).isCompletion && existingExecution) {
+          console.log(`🔧 OptimizedChat: Completing ${pattern.tool} execution (${existingExecution.id})`);
+          toolExecutionService.completeExecution(existingExecution.id, { 
+            success: true,
+            serverResponse: content.trim()
+          });
+        } else if (!existingExecution && !(pattern as any).isCompletion) {
           const executionId = toolExecutionService.startExecution(pattern.tool, { 
             detectedFromServer: true,
             serverMessage: content.trim()

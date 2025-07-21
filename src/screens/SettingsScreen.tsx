@@ -26,13 +26,15 @@ import ApiService from '../services/api';
 
 interface SettingsScreenProps {
   onNavigateBack: () => void;
+  onNavigateToSignIn?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onNavigateBack,
+  onNavigateToSignIn,
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, isAuthenticated } = useAuth();
   
   // Pull-to-refresh functionality
   const { refreshControl } = usePullToRefresh(async () => {
@@ -51,10 +53,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const trashScale = useRef(new Animated.Value(1)).current;
   const checkOpacity = useRef(new Animated.Value(0)).current;
 
-  // Load settings on mount
+  // Load settings on mount (only if authenticated)
   useEffect(() => {
-    loadSettings();
-  }, []);
+    if (isAuthenticated) {
+      loadSettings();
+    } else {
+      setLoading(false);
+    }
+  }, [isAuthenticated]);
 
   const loadSettings = async () => {
     try {
@@ -157,6 +163,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           
         case 'deleteAccount':
           showDeleteAccountModal();
+          break;
+          
+        case 'signIn':
+          // Navigate to sign in for unauthenticated users
+          if (onNavigateToSignIn) {
+            onNavigateToSignIn();
+          } else {
+            onNavigateBack(); // Fallback to going back
+          }
           break;
           
         default:
@@ -323,7 +338,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
   };
 
-  if (loading || !settings) {
+  if (loading || (isAuthenticated && !settings)) {
     return (
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -342,7 +357,67 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     );
   }
 
-  const settingsSections = [
+  // Define settings sections based on authentication status
+  const getSettingsSections = () => {
+    if (!isAuthenticated) {
+      // Limited settings for unauthenticated users
+      return [
+        {
+          title: 'Appearance',
+          items: [
+            { 
+              icon: 'moon', 
+              title: 'Dark Mode', 
+              desc: 'Toggle between light and dark theme',
+              type: 'switch',
+              value: isDarkMode,
+              onToggle: toggleTheme,
+            },
+          ]
+        },
+        {
+          title: 'Support',
+          items: [
+            { 
+              icon: 'question-circle', 
+              title: 'Help Center', 
+              desc: 'Get help and support', 
+              type: 'navigate',
+              action: 'helpCenter'
+            },
+            { 
+              icon: 'comment-dots', 
+              title: 'Send Feedback', 
+              desc: 'Help us improve Numina', 
+              type: 'navigate',
+              action: 'sendFeedback'
+            },
+            { 
+              icon: 'star', 
+              title: 'Rate App', 
+              desc: 'Rate us on the App Store', 
+              type: 'navigate',
+              action: 'rateApp'
+            },
+          ]
+        },
+        {
+          title: 'Account',
+          items: [
+            { 
+              icon: 'sign-in-alt', 
+              title: 'Sign In', 
+              desc: 'Access your account and all features', 
+              type: 'navigate',
+              action: 'signIn'
+            },
+          ]
+        },
+      ];
+    }
+    
+    // Full settings for authenticated users
+    return [
     {
       title: 'Appearance',
       items: [
@@ -466,7 +541,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         },
       ]
     },
-  ];
+    ];
+  };
+  
+  const settingsSections = getSettingsSections();
 
   const renderSettingItem = (item: any, index: number) => {
     const handleSwitchToggle = (value: boolean) => {
@@ -556,7 +634,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            <RefreshControl {...refreshControl} />
+            isAuthenticated ? <RefreshControl {...refreshControl} /> : undefined
           }
         >
           {settingsSections.map((section, sectionIndex) => (

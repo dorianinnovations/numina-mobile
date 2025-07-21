@@ -18,6 +18,7 @@ export interface Message {
   attachments?: MessageAttachment[];
   hasFileContext?: boolean;
   personalityContext?: any;
+  isSystem?: boolean;
 }
 
 export interface Conversation {
@@ -77,6 +78,9 @@ class ConversationStorageService {
       }));
 
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(optimized));
+      
+      // Notify analytics that conversation data has changed
+      this.notifyAnalyticsOfUpdate();
     } catch (error) {
       console.error('Error saving conversations:', error);
       throw new Error('Failed to save conversations');
@@ -428,6 +432,17 @@ class ConversationStorageService {
     }
     
     return conv;
+  }
+
+  // Notify analytics services that conversation data has been updated
+  private static notifyAnalyticsOfUpdate(): void {
+    try {
+      // Invalidate AI personality cache to force fresh analysis with new conversation data
+      AsyncStorage.removeItem('@ai_emotional_state_cache');
+      console.log('📊 Analytics: Invalidated emotional state cache due to conversation update');
+    } catch (error) {
+      console.warn('Failed to notify analytics of conversation update:', error);
+    }
   }
 }
 

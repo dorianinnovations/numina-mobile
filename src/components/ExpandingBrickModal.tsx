@@ -216,7 +216,7 @@ export const ExpandingBrickModal: React.FC<ExpandingBrickModalProps> = ({
     }
   };
 
-  const getBrickColors = () => {
+  const getBrickColors = (): string[] => {
     if (dangerMode) {
       return isDarkMode 
         ? ['rgba(248, 113, 113, 0.15)', 'rgba(239, 68, 68, 0.1)', 'rgba(185, 28, 28, 0.05)']
@@ -228,7 +228,7 @@ export const ExpandingBrickModal: React.FC<ExpandingBrickModalProps> = ({
       : ['#EFF6FF', '#DBEAFE', '#BFDBFE'];
   };
 
-  const getModalColors = () => {
+  const getModalColors = (): string[] => {
     if (dangerMode) {
       return isDarkMode
         ? ['rgba(248, 113, 113, 0.1)', 'rgba(239, 68, 68, 0.05)', 'rgba(0, 0, 0, 0.9)']
@@ -260,7 +260,7 @@ export const ExpandingBrickModal: React.FC<ExpandingBrickModalProps> = ({
         activeOpacity={0.8}
       >
         <LinearGradient
-          colors={getBrickColors()}
+          colors={getBrickColors() as any}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.brickGradient}
@@ -343,7 +343,7 @@ export const ExpandingBrickModal: React.FC<ExpandingBrickModalProps> = ({
             ]}
           >
             <LinearGradient
-              colors={getModalColors()}
+              colors={getModalColors() as any}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.modalGradient}

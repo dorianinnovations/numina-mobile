@@ -75,7 +75,7 @@ export const useEmotionalAnalytics = () => {
       // First try to fetch from API if online
       const netInfo = await NetInfo.fetch();
       const token = CloudAuth.getInstance().getToken();
-      console.log('[useEmotionalAnalytics] Loading emotions, token available:', !!token);
+      // console.log('[useEmotionalAnalytics] Loading emotions, token available:', !!token);
       
       if (netInfo.isConnected && token) {
         try {
@@ -94,7 +94,7 @@ export const useEmotionalAnalytics = () => {
           // Sync any offline data
           await emotionalAnalyticsAPI.syncOfflineData();
         } catch (apiError) {
-          console.warn('API fetch failed, falling back to local:', apiError);
+          // console.warn('API fetch failed, falling back to local:', apiError);
         }
       }
       
@@ -110,7 +110,7 @@ export const useEmotionalAnalytics = () => {
         generateWeeklyReportFromUserData(emotions);
       }
     } catch (err) {
-      console.error('Failed to load user emotions:', err);
+      // console.error('Failed to load user emotions:', err);
     }
   };
 
@@ -307,14 +307,14 @@ export const useEmotionalAnalytics = () => {
       
       // If online sync was successful, update sync status
       if (!result.local) {
-        console.log('🌐 Emotion successfully synced to server!', {
+        // console.log('🌐 Emotion successfully synced to server!', {
           mood: emotionData.mood,
           intensity: emotionData.intensity,
           syncStatus: 'online',
           userId: userId
         });
       } else {
-        console.log('💾 Emotion saved locally (will sync when online)', {
+        // console.log('💾 Emotion saved locally (will sync when online)', {
           mood: emotionData.mood,
           intensity: emotionData.intensity,
           syncStatus: 'offline',

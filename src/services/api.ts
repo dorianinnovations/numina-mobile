@@ -1,7 +1,8 @@
 import NetInfo from '@react-native-community/netinfo';
 import CloudAuth from './cloudAuth';
 import ToolExecutionService from './toolExecutionService';
-
+import LocationContextService from './locationContextService';
+import { log } from '../utils/logger';
 
 import ENV, { SECURITY_HEADERS, validateEnvironment } from '../config/environment';
 
@@ -29,7 +30,7 @@ export const CHAT_API_CONFIG = {
   }
 };
 
-const REQUEST_TIMEOUT = 60000;
+const REQUEST_TIMEOUT = 15000; // Reduced to 15 seconds for mobile optimization
 
 interface ApiResponse<T = any> {
   success: boolean;
@@ -215,17 +216,18 @@ interface AppConfig {
 
 class ApiService {
   private static baseURL = API_BASE_URL;
+  private static pendingEmotionalAnalysis: Promise<ApiResponse<UserEmotionalState>> | null = null;
 
   private static async validateNetworkState(): Promise<boolean> {
     try {
       const netInfo = await NetInfo.fetch();
       if (!netInfo.isConnected) {
-        console.warn('🌐 API: No network connection available');
+        log.warn('No network connection available', undefined, 'API');
         return false;
       }
       return true;
     } catch (error) {
-      console.error('🌐 API: Failed to check network state:', error);
+      log.error('Failed to check network state', error, 'API');
       return false;
     }
   }
@@ -239,14 +241,36 @@ class ApiService {
       timestamp: new Date().toISOString(),
     };
     
-    console.error('❌ API Error:', errorInfo);
+    log.error('API Error', errorInfo, 'API');
     
     if (__DEV__) {
-      console.group('🔍 Detailed Error Info');
-      console.log('Context:', context);
-      console.log('Endpoint:', endpoint);
-      console.log('Error:', error);
-      console.groupEnd();
+      log.debug('Detailed Error Info', { context, endpoint, error }, 'API');
+    }
+  }
+
+  // Safe JSON parsing helper
+  private static async parseJsonSafely(response: Response): Promise<any> {
+    const contentType = response.headers.get('content-type');
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.warn('🚨 API: Server returned non-JSON response:', text.substring(0, 200));
+      
+      // Try to extract error message from HTML if it's an error page
+      if (text.includes('<title>') && text.includes('Error')) {
+        const titleMatch = text.match(/<title>(.*?)<\/title>/);
+        const errorMsg = titleMatch ? titleMatch[1] : 'Server returned HTML error page';
+        throw new Error(errorMsg);
+      }
+      
+      throw new Error('Server returned non-JSON response');
+    }
+    
+    try {
+      return await response.json();
+    } catch (error) {
+      console.error('🚨 API: JSON parse error:', error);
+      throw new Error('Invalid JSON response from server');
     }
   }
 
@@ -259,8 +283,7 @@ class ApiService {
     
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
-    console.log('🌐 API: Making request to:', `${this.baseURL}${endpoint}`);
-    console.log('🌐 API: Base URL is:', this.baseURL);
+    log.debug('Making request', { url: `${this.baseURL}${endpoint}`, baseURL: this.baseURL }, 'API');
     
     const isNetworkAvailable = await this.validateNetworkState();
     if (!isNetworkAvailable) {
@@ -309,12 +332,11 @@ class ApiService {
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({ message: 'Network error' }));
+          const errorData = await this.parseJsonSafely(response).catch(() => ({ message: 'Network error' }));
           
           if (response.status === 401 && 
               !endpoint.includes('/login') && 
               !endpoint.includes('/signup') &&
-              !endpoint.includes('/sentiment-data') &&
               !endpoint.includes('/analytics/llm') &&
               !endpoint.includes('/ai/personality-recommendations') &&
               !endpoint.includes('/ai/emotional-state') &&
@@ -337,7 +359,7 @@ class ApiService {
           throw new Error(errorData.message || `HTTP ${response.status}`);
         }
 
-        const data = await response.json();
+        const data = await this.parseJsonSafely(response);
         
         return {
           success: true,
@@ -584,51 +606,6 @@ class ApiService {
     });
   }
 
-  // Sentiment data endpoints
-  static async getSentimentInsights(): Promise<ApiResponse<any>> {
-    console.log('🔍 API: Checking sentiment insights endpoint...');
-    try {
-      const response = await this.apiRequest('/sentiment-data/insights');
-      console.log('✅ API: Sentiment insights response:', response);
-      return response;
-    } catch (error: any) {
-      console.log('❌ API: Sentiment insights error:', error);
-      // If endpoint doesn't exist yet, return empty data instead of failing
-      if (error.message?.includes('404') || error.message?.includes('Cannot GET')) {
-        return {
-          success: false,
-          error: 'No data available yet'
-        };
-      }
-      throw error;
-    }
-  }
-
-  static async getAggregatedEmotionalData(options?: {
-    timeRange?: string;
-    groupBy?: string;
-    includeIntensity?: boolean;
-  }): Promise<ApiResponse<any>> {
-    const params = new URLSearchParams();
-    if (options?.timeRange) params.append('timeRange', options.timeRange);
-    if (options?.groupBy) params.append('groupBy', options.groupBy);
-    if (options?.includeIntensity !== undefined) params.append('includeIntensity', String(options.includeIntensity));
-    
-    return this.apiRequest(`/sentiment-data/aggregated?${params.toString()}`);
-  }
-
-  static async getDemographicPatterns(): Promise<ApiResponse<any>> {
-    return this.apiRequest('/sentiment-data/demographics');
-  }
-
-  static async getRealTimeInsights(): Promise<ApiResponse<any>> {
-    return this.apiRequest('/sentiment-data/realtime');
-  }
-
-  // Sentiment snapshots - matching web app
-  static async getSentimentSnapshots(timeRange: string = '10m'): Promise<ApiResponse<any>> {
-    return this.apiRequest(`/sentiment-snapshots?timeRange=${timeRange}`);
-  }
 
   // Growth Insights Dashboard endpoints
   static async getPersonalGrowthSummary(timeframe: string = 'week'): Promise<ApiResponse<{
@@ -810,17 +787,57 @@ class ApiService {
     conversationHistory?: any[];
     timeContext?: string;
   } = {}): Promise<ApiResponse<UserEmotionalState>> {
-    return this.apiRequest('/ai/emotional-state', {
-      method: 'POST',
-      body: JSON.stringify({
-        recentEmotions: options.recentEmotions || [],
-        conversationHistory: options.conversationHistory || [],
-        timeContext: options.timeContext || new Date().toISOString(),
-        model: 'openai/gpt-4o-mini',
-        maxTokens: 800,
-        temperature: 0.3
-      }),
-    });
+    // Request deduplication - return pending analysis if already in progress
+    if (this.pendingEmotionalAnalysis) {
+      log.debug('Returning pending emotional analysis to prevent duplicate requests', null, 'ApiService');
+      return this.pendingEmotionalAnalysis;
+    }
+
+    // Add aggressive timeout for emotional state analysis
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      log.warn('Emotional state analysis timeout after 8 seconds - failing fast for mobile UX', null, 'ApiService');
+      controller.abort();
+    }, 8000); // 8 second timeout specifically for emotional analysis
+
+    // Create and store the pending analysis promise
+    this.pendingEmotionalAnalysis = (async () => {
+      try {
+        const response = await this.apiRequest('/ai/emotional-state', {
+          method: 'POST',
+          body: JSON.stringify({
+            recentEmotions: options.recentEmotions || [],
+            conversationHistory: options.conversationHistory || [],
+            timeContext: options.timeContext || new Date().toISOString(),
+            model: 'openai/gpt-4o-mini',
+            maxTokens: 500, // Reduced from 800 to 500 for faster response
+            temperature: 0.3
+          }),
+          signal: controller.signal, // Add abort signal
+        });
+        
+        clearTimeout(timeoutId);
+        return response;
+      } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof Error && error.name === 'AbortError') {
+          log.warn('Emotional state analysis timed out - falling back to default state', null, 'ApiService');
+          return {
+            success: false,
+            error: 'Analysis timeout - using cached state'
+          } as ApiResponse<UserEmotionalState>;
+        }
+        
+        log.error('Emotional state analysis failed', error, 'ApiService');
+        throw error;
+      } finally {
+        // Always clear pending analysis when complete (success or failure)
+        this.pendingEmotionalAnalysis = null;
+        clearTimeout(timeoutId); // Ensure timeout is cleared
+      }
+    })();
+
+    return this.pendingEmotionalAnalysis;
   }
 
   static async getPersonalityRecommendations(emotionalState: UserEmotionalState): Promise<ApiResponse<{
@@ -863,6 +880,17 @@ class ApiService {
       console.log('🖼️ ADAPTIVE_CHAT: Image-only message detected for GPT-4o vision');
     }
 
+    // Create personality context from the personalityStyle that was already determined
+    const defaultPersonalityContext: PersonalityContext = {
+      communicationStyle: (message.personalityStyle as 'supportive' | 'direct' | 'collaborative' | 'encouraging') || 'supportive',
+      emotionalTone: message.emotionalContext?.mood === 'happy' || message.emotionalContext?.mood === 'excited' ? 'celebratory' : 
+                    message.emotionalContext?.mood === 'anxious' || message.emotionalContext?.mood === 'stressed' ? 'calming' :
+                    message.emotionalContext?.mood === 'thoughtful' ? 'analytical' : 'supportive',
+      adaptedResponse: true,
+      userMoodDetected: message.emotionalContext?.mood,
+      responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`,
+    };
+
     console.log('Chat Request Started');
     console.log('🔄 ADAPTIVE_CHAT: Message payload:', {
       message: messageText,
@@ -872,12 +900,14 @@ class ApiService {
       messageLength: messageText.length,
       endpoint: chatUrl
     });
+    console.log('🧠 ADAPTIVE_CHAT: Using personality context:', defaultPersonalityContext);
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       let lastProcessedIndex = 0;
       let fullContent = '';
-      let personalityContext: PersonalityContext | null = null;
+      let personalityContext: PersonalityContext | null = defaultPersonalityContext;
+      let chunkCounter = 0;
       
       xhr.open('POST', chatUrl, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
@@ -906,14 +936,17 @@ class ApiService {
                       const parsed = JSON.parse(content);
                       
                       if (parsed && parsed.content) {
-                        fullContent += parsed.content;
+                        const newContent = parsed.content;
+                        fullContent += newContent;
+                        chunkCounter++;
                         
                         // Log content chunks to understand server response
-                        console.log('🔄 ADAPTIVE_CHAT: Server chunk:', parsed.content.substring(0, 100), '...');
+                        console.log(`🔄 ADAPTIVE_CHAT: Chunk ${chunkCounter}:`, newContent.substring(0, 100), '...');
                         
                         // Detect tool execution patterns from server response
-                        this.detectAndTriggerToolExecution(parsed.content);
+                        this.detectAndTriggerToolExecution(newContent);
                         
+                        // Send only accumulated content, not just the chunk
                         onChunk(fullContent, personalityContext || undefined);
                       }
                       if (parsed && parsed.personalityContext) {
@@ -927,10 +960,14 @@ class ApiService {
                       });
                       // For non-JSON content (like plain text streaming), add directly
                       if (content && content.length > 0) {
-                        fullContent += content;
+                        const newContent = content;
+                        fullContent += newContent;
+                        chunkCounter++;
+                        
+                        console.log(`🔄 ADAPTIVE_CHAT: Raw chunk ${chunkCounter}:`, newContent.substring(0, 100), '...');
                         
                         // Detect tool execution patterns from server response
-                        this.detectAndTriggerToolExecution(content);
+                        this.detectAndTriggerToolExecution(newContent);
                         
                         onChunk(fullContent, personalityContext || undefined);
                       }
@@ -969,11 +1006,7 @@ class ApiService {
               console.log('Chat Response Complete:', fullContent.length, 'chars');
               resolve({
                 content: fullContent,
-                personalityContext: personalityContext || {
-                  communicationStyle: 'supportive',
-                  emotionalTone: 'supportive',
-                  adaptedResponse: false
-                }
+                personalityContext: personalityContext || defaultPersonalityContext
               });
             } else {
               console.log('🔄 ADAPTIVE_CHAT: No streaming content received');
@@ -988,8 +1021,8 @@ class ApiService {
                   resolve({
                     content: jsonResponse.data.response,
                     personalityContext: {
-                      communicationStyle: jsonResponse.data.tone || 'supportive',
-                      emotionalTone: jsonResponse.data.tone || 'supportive',
+                      communicationStyle: jsonResponse.data.tone || defaultPersonalityContext.communicationStyle,
+                      emotionalTone: jsonResponse.data.tone || defaultPersonalityContext.emotionalTone,
                       adaptedResponse: true,
                       userMoodDetected: message.emotionalContext?.mood,
                       responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`
@@ -1004,6 +1037,22 @@ class ApiService {
                 reject(new Error('Failed to parse adaptive chat response'));
               }
             }
+          } else if (xhr.status === 429) {
+            console.error('🔄 CHAT: Rate limit reached (429)', xhr.status);
+            try {
+              const errorResponse = JSON.parse(xhr.responseText);
+              const rateLimitError = new Error(errorResponse.message || 'Rate limit exceeded');
+              (rateLimitError as any).status = 429;
+              (rateLimitError as any).tier = errorResponse.tier;
+              (rateLimitError as any).upgradeOptions = errorResponse.upgradeOptions;
+              (rateLimitError as any).isRateLimit = true;
+              reject(rateLimitError);
+            } catch (parseError) {
+              const rateLimitError = new Error('Rate limit exceeded');
+              (rateLimitError as any).status = 429;
+              (rateLimitError as any).isRateLimit = true;
+              reject(rateLimitError);
+            }
           } else {
             console.error('🔄 CHAT: HTTP error', xhr.status);
             reject(new Error(`Adaptive chat request failed: ${xhr.status}`));
@@ -1014,12 +1063,16 @@ class ApiService {
         }
       };
       
-      // Set timeout before sending - increased for tool execution
-      xhr.timeout = 120000; // 2 minutes for tool execution + follow-up
+      // Set aggressive timeout for mobile UX - tools should be fast
+      xhr.timeout = 30000; // 30 seconds max for mobile chat (reduced from 2 minutes)
+      
+      // Get location context for AI tools
+      const locationContext = LocationContextService.getInstance().getCurrentLocationContext();
       
       const requestPayload = {
         ...message,
-        stream: true
+        stream: true,
+        userContext: locationContext
       };
       
       console.log('🔄 ADAPTIVE_CHAT: Sending payload:', requestPayload);
@@ -1344,7 +1397,7 @@ class ApiService {
     return this.apiRequest('/api/test');
   }
 
-  // ========== CASCADING RECOMMENDATIONS METHODS ==========
+  // ========== CASCADING RECOMMENDATIONS METHODS (DEPRECATED) ==========
   
   // Generate cascading recommendations with reasoning trees
   static async generateCascadingRecommendations(options: {
@@ -1352,15 +1405,14 @@ class ApiService {
     focusArea?: string;
     includeReasoningTree?: boolean;
   } = {}): Promise<ApiResponse<any>> {
-    return this.apiRequest('/cascading-recommendations/generate', {
-      method: 'POST',
-      body: JSON.stringify({
-        depth: options.depth || 3,
-        focusArea: options.focusArea || 'general',
-        includeReasoningTree: options.includeReasoningTree !== false,
-        stream: false, // Use static version by default
-      }),
-    });
+    return {
+      success: true,
+      data: {
+        recommendations: [],
+        reasoning: {},
+        cascadeDepth: 0
+      }
+    };
   }
 
   // Generate cascading recommendations with streaming
@@ -1372,80 +1424,36 @@ class ApiService {
     } = {},
     onChunk: (chunk: any) => void
   ): Promise<{ content: any; complete: boolean }> {
-    const token = CloudAuth.getInstance().getToken();
-    const url = `${this.baseURL}/cascading-recommendations/generate`;
-
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      let lastProcessedIndex = 0;
-      let finalContent: any = null;
-      
-      xhr.open('POST', url, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.setRequestHeader('Accept', 'text/event-stream');
-      xhr.setRequestHeader('Cache-Control', 'no-cache');
-      
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
-          const currentLength = xhr.responseText.length;
-          const newText = xhr.responseText.slice(lastProcessedIndex);
-          
-          if (newText) {
-            lastProcessedIndex = currentLength;
-            
-            // Process new chunks in real-time
-            const lines = newText.split('\n');
-            
-            for (const line of lines) {
-              if (line.trim() && line.startsWith('data: ')) {
-                const content = line.substring(6).trim();
-                if (content !== '[DONE]') {
-                  try {
-                    const parsed = JSON.parse(content);
-                    onChunk(parsed);
-                    
-                    // Store final complete data
-                    if (parsed.type === 'complete') {
-                      finalContent = parsed.data;
-                    }
-                  } catch {
-                    // Handle non-JSON content
-                    if (content) {
-                      onChunk({ type: 'text', content });
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      };
-      
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve({ content: finalContent, complete: true });
-        } else {
-          reject(new Error(`Streaming request failed: ${xhr.status}`));
-        }
-      };
-      
-      xhr.onerror = () => {
-        reject(new Error('Network error'));
-      };
-      
-      xhr.send(JSON.stringify({
-        depth: options.depth || 3,
-        focusArea: options.focusArea || 'general',
-        includeReasoningTree: options.includeReasoningTree !== false,
-        stream: true, // Enable streaming
-      }));
+    // Return empty data silently
+    onChunk({
+      type: 'complete',
+      data: {
+        recommendations: [],
+        reasoning: {},
+        cascadeDepth: 0
+      }
     });
+    
+    return {
+      content: {
+        recommendations: [],
+        reasoning: {},
+        cascadeDepth: 0
+      },
+      complete: true
+    };
   }
 
   // Get user context for cascading recommendations
   static async getCascadingContext(): Promise<ApiResponse<any>> {
-    return this.apiRequest('/cascading-recommendations/context');
+    return {
+      success: true,
+      data: {
+        context: {},
+        userProfile: {},
+        behavioralData: {}
+      }
+    };
   }
 
   // ========== NUMINA PERSONALITY METHODS ==========
@@ -1482,11 +1490,15 @@ class ApiService {
   // ========== WALLET & CREDIT POOL METHODS ==========
 
   // Execute tool with payment
-  static async executeToolWithPayment(toolName: string, args: any = {}): Promise<ApiResponse<any>> {
+  static async executeToolWithPayment(toolName: string, args: any = {}, userContext: any = {}): Promise<ApiResponse<any>> {
     try {
       return await this.apiRequest('/tools/execute', {
         method: 'POST',
-        body: JSON.stringify({ toolName, arguments: args }),
+        body: JSON.stringify({ 
+          toolName, 
+          arguments: args,
+          userContext 
+        }),
       });
     } catch (error: any) {
       // Graceful fallback for missing wallet endpoints
@@ -1812,19 +1824,8 @@ class ApiService {
     });
   }
 
-  // Detect tool execution patterns from server streaming responses
-  private static detectAndTriggerToolExecution(content: string): void {
-    if (!content) return;
-
-    // Debug log
-    if (content.includes('🔍') || content.includes('🎵') || content.includes('📰')) {
-      console.log('🔧 API: Checking content for tool patterns:', content.substring(0, 200));
-    }
-
-    const toolExecutionService = ToolExecutionService.getInstance();
-    
-    // Tool execution patterns from server responses - VERY SPECIFIC to avoid false positives
-    const toolPatterns = [
+  // Pre-compiled regex patterns for performance
+  private static toolPatterns = [
       // Music & Entertainment - Match server's exact patterns
       { 
         regex: /🎵\s*(Finding music recommendations|Getting music recommendations)/i, 
@@ -1842,6 +1843,12 @@ class ApiService {
         regex: /🔍\s*(Searching the web for:|Searching web for:|Web search for:)/i, 
         tool: 'web_search', 
         action: 'Searching the web' 
+      },
+      { 
+        regex: /🔍.*\*\*Found \d+ search results:\*\*/i, 
+        tool: 'web_search', 
+        action: 'Found search results',
+        isCompletion: true
       },
       { 
         regex: /📰\s*(Searching latest news:|News search for:|Finding latest news)/i, 
@@ -1967,9 +1974,36 @@ class ApiService {
       },
     ];
 
-    for (const pattern of toolPatterns) {
+  // Debounce tool detection to improve performance during heavy streaming
+  private static toolDetectionLastRun = 0;
+  private static toolDetectionDebounceMs = 100; // Run at most every 100ms
+
+  // Detect tool execution patterns from server streaming responses (optimized)
+  private static detectAndTriggerToolExecution(content: string): void {
+    if (!content) return;
+    
+    // Performance optimization: Early return if no emoji patterns found
+    if (!content.match(/[🔍🎵📰🌐🎧🐦🎓🔢🌡️💰💱📧🏃‍♂️🖼️📍🎼🏨📊📈⏰🌍🔒]/)) {
+      return;
+    }
+    
+    // Debounce tool detection for performance
+    const now = Date.now();
+    if (now - this.toolDetectionLastRun < this.toolDetectionDebounceMs) {
+      return;
+    }
+    this.toolDetectionLastRun = now;
+    
+    // Debug log (only when relevant patterns found)
+    if (content.includes('🔍') || content.includes('🎵') || content.includes('📰') || content.includes('🌐')) {
+      log.debug('Checking content for tool patterns', { preview: content.substring(0, 200) }, 'ApiService');
+    }
+
+    const toolExecutionService = ToolExecutionService.getInstance();
+
+    for (const pattern of this.toolPatterns) {
       if (pattern.regex.test(content)) {
-        console.log(`🔧 API: Detected ${pattern.tool} execution from server response:`, content.substring(0, 100));
+        log.info('Detected tool execution from server response', { tool: pattern.tool, preview: content.substring(0, 100) }, 'ApiService');
         
         // Check for existing active execution for this tool
         const activeExecutions = toolExecutionService.getCurrentExecutions();
@@ -1977,13 +2011,20 @@ class ApiService {
           exec.toolName === pattern.tool && exec.status !== 'completed' && exec.status !== 'error'
         );
         
-        if (!existingExecution) {
+        // Handle completion patterns differently
+        if ((pattern as any).isCompletion && existingExecution) {
+          log.info('Completing tool execution', { tool: pattern.tool, executionId: existingExecution.id }, 'ApiService');
+          toolExecutionService.completeExecution(existingExecution.id, { 
+            success: true,
+            serverResponse: content.trim()
+          });
+        } else if (!existingExecution && !(pattern as any).isCompletion) {
           // Start new tool execution tracking
           const executionId = toolExecutionService.startExecution(pattern.tool, { 
             detectedFromServer: true,
             serverMessage: content.trim()
           });
-          console.log(`🔧 API: Started tracking ${pattern.tool} execution (${executionId})`);
+          log.info('Started tracking tool execution', { tool: pattern.tool, executionId }, 'ApiService');
           
           // Update progress to show it's executing
           setTimeout(() => {
@@ -2167,14 +2208,14 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        const errorData = await this.parseJsonSafely(response).catch(() => ({ message: 'Upload failed' }));
         return {
           success: false,
           error: errorData.message || `Upload failed with status ${response.status}`
         };
       }
 
-      const data = await response.json();
+      const data = await this.parseJsonSafely(response);
       return {
         success: true,
         data: {
@@ -2293,6 +2334,44 @@ class ApiService {
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // ========== UBPM & EMOTIONAL ANALYTICS ENDPOINTS ==========
+  
+  // Get UBPM context data
+  static async getUBPMContext(): Promise<ApiResponse<any>> {
+    return await this.apiRequest('/test-ubpm/context');
+  }
+
+  // Get current emotional session analytics
+  static async getCurrentSessionAnalytics(): Promise<ApiResponse<any>> {
+    return await this.apiRequest('/emotional-analytics/current-session');
+  }
+
+  // Trigger UBPM analysis (for real-time behavioral updates)
+  static async triggerUBPMAnalysis(): Promise<ApiResponse<any>> {
+    return await this.apiRequest('/test-ubpm/trigger-analysis', {
+      method: 'POST',
+      body: JSON.stringify({
+        analysisType: 'comprehensive',
+        includePersonality: true,
+        includeBehavioral: true
+      }),
+    });
+  }
+
+  // ========== TIER SYSTEM ENDPOINTS ==========
+  
+  // Get user tier information
+  static async getUserTierInfo(): Promise<ApiResponse<any>> {
+    return await this.apiRequest('/tier-test/info');
+  }
+
+  // Get upgrade message
+  static async getUpgradeMessage(): Promise<ApiResponse<any>> {
+    return await this.apiRequest('/ai/upgrade-message', {
+      method: 'POST',
+    });
   }
 }
 

@@ -18,6 +18,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
+import { StarField } from '../components/StarField';
+import { ShootingStars } from '../components/ShootingStars';
+import { LiquidProgress } from '../components/LiquidProgress';
 import { NuminaColors } from '../utils/colors';
 
 const { width } = Dimensions.get('window');
@@ -42,34 +45,41 @@ const PLEASURE_EASING = {
 const tutorialSteps = [
   {
     id: 1,
-    title: "Disconnected Tools",
-    description: "Right now, your tools are disconnected. A weather app that doesn't know your travel plans. A music app that misses your mood. Each is a separate conversation, starting from scratch every time. It's digital noise.",
-    icon: "shuffle"
+    title: "Learn from your patterns",
+    description: "Start chatting naturally, Numina learns your communication style in real-time—adapting its responses to match your pace and preferences while intelligently keeping track of the important context",
+    icon: "grid"
   },
   {
     id: 2,
-    title: "One Continuous Conversation",
-    description: "Numina is different. It's one continuous conversation that gets smarter with every interaction.",
-    icon: "message-circle"
+    title: "UBPM",
+    description: "The User Behavior Profile Model empowers already exceptional AI platforms like GPT-4o and Claude Opus to intelligently understand your unique patterns, preferences, and behavioral nuances in a profound way.",
+    icon: "layers"
   },
   {
     id: 3,
-    title: "Seamless Integration",
-    description: "Ask for a coffee shop recommendation and the weather for your walk there—in the same breath. It remembers, adapts, and works seamlessly, whether you're online or on a flight.",
-    icon: "map-pin"
+    title: "Analytics",
+    description: "Take a peek at your analytics at any time to see what is being added to the contextual pool of your important data.",
+    icon: "bar-chart-2"
   },
   {
     id: 4,
-    title: "Beyond Convenience",
-    description: "This is about more than convenience; it's about clarity. By unifying your tasks, Numina provides a space to be more productive while also uncovering insights about how you think.",
-    icon: "trending-up"
+    title: "Connect",
+    description: "Using real context you create, get connected with other users who share your interests and preferences, or discover potential new matches through intelligent compatibility patterns that reveal unexpected connections.",
+    icon: "users"
   },
   {
     id: 5,
-    title: "Start Your Conversation",
-    description: "Stop juggling apps and start a single conversation that's always on your side.",
-    icon: "send"
+    title: "Privacy & Data",
+    description: "Your data, your call, end of story. We value your privacy, and make it our mission to never sell your data to anyone. ",
+    icon: "map"
+  },
+  {
+    id: 6,
+    title: "Start for free",
+    description: "Start collecting insights, explore new connections, and begin to meet your true self.",
+    icon: "message-circle"
   }
+
 ];
 
 interface TutorialScreenProps {
@@ -87,6 +97,10 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
+  const [displayedTitle, setDisplayedTitle] = useState('');
+  const [displayedDescription, setDisplayedDescription] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [hasStreamed, setHasStreamed] = useState<Set<number>>(new Set());
   
   // Core animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -112,11 +126,60 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   // Progress dot animations
   const progressAnims = useRef(tutorialSteps.map(() => new Animated.Value(0))).current;
   
+  // Liquid progress animations
+  const liquidFlow = useRef(new Animated.Value(0)).current;
+  const liquidBubbles = useRef(tutorialSteps.map(() => ({
+    x: new Animated.Value(0),
+    y: new Animated.Value(0),
+    scale: new Animated.Value(0),
+    opacity: new Animated.Value(0),
+  }))).current;
+  const liquidWave = useRef(new Animated.Value(0)).current;
+  const liquidShimmer = useRef(new Animated.Value(0)).current;
   
-  // Ambient background animations
-  const ambientPulse1 = useRef(new Animated.Value(0)).current;
-  const ambientPulse2 = useRef(new Animated.Value(0)).current;
+  // Text content animations
+  const textOpacity = useRef(new Animated.Value(1)).current;
+  const textScale = useRef(new Animated.Value(1)).current;
+  
+  // Ambient background animations with locked initial state
+  const ambientPulse1 = useRef(new Animated.Value(0.4)).current;
+  const ambientPulse2 = useRef(new Animated.Value(0.6)).current;
   const ambientFloat = useRef(new Animated.Value(0)).current;
+  
+  // Flag to track if animations have been initialized to prevent re-initialization
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Optimized streaming text function with cleanup
+  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const streamingRef = useRef(false);
+  
+  const streamText = (text: string, setter: (text: string) => void) => {
+    return new Promise<void>((resolve) => {
+      let index = 0;
+      streamingRef.current = true;
+      setter('');
+      
+      const stream = () => {
+        if (!streamingRef.current) {
+          resolve();
+          return;
+        }
+        
+        if (index < text.length) {
+          // Show fewer characters to reduce load
+          const charsToShow = Math.min(3, text.length - index);
+          setter(text.slice(0, index + charsToShow));
+          index += charsToShow;
+          streamTimeoutRef.current = setTimeout(stream, 12); // Slower to reduce load
+        } else {
+          streamingRef.current = false;
+          resolve();
+        }
+      };
+      
+      stream();
+    });
+  };
 
   // Initialize animations function
   const initializeAnimations = () => {
@@ -132,7 +195,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
           useNativeDriver: true,
         }),
         Animated.spring(cardScale, {
-          toValue: 1.02,
+          toValue: 0.98,
           tension: 120,
           friction: 6,
           useNativeDriver: true,
@@ -149,7 +212,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     setTimeout(() => {
       Animated.sequence([
         Animated.spring(iconScale, {
-          toValue: 1.15,
+          toValue: 0.85,
           tension: 150,
           friction: 4,
           useNativeDriver: true,
@@ -179,20 +242,61 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     startAmbientAnimations();
   };
 
-  // Focus effect to reinitialize animations when screen comes into focus
+  // Focus effect - only initialize once, don't reset on focus to prevent layout shifts
   useFocusEffect(
     React.useCallback(() => {
-      initializeAnimations();
-    }, [currentStep])
+      if (!isInitialized) {
+        initializeAnimations();
+        setIsInitialized(true);
+      }
+    }, [isInitialized, currentStep])
   );
 
-  // entrance sequence
+  // entrance sequence - only run once
   useEffect(() => {
-    initializeAnimations();
-  }, []);
+    if (!isInitialized) {
+      initializeAnimations();
+      
+      // Start streaming immediately for the first step
+      const initialStep = tutorialSteps[0];
+      const streamInitialContent = async () => {
+        setIsStreaming(true);
+        await streamText(initialStep.title, setDisplayedTitle);
+        await streamText(initialStep.description, setDisplayedDescription);
+        setIsStreaming(false);
+        setIsInitialized(true); // Set initialized after streaming completes
+      };
+      
+      // Start streaming without delay for first render
+      streamInitialContent();
+    }
+    
+    return () => {
+      // Cleanup streaming timeout and stop streaming to prevent memory leaks
+      streamingRef.current = false;
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+      }
+    };
+  }, [isInitialized]);
 
   useEffect(() => {
+    const step = tutorialSteps[currentStep];
+    
+    // Always stream content when step changes, except skip initial load if already handled
+    if (!(currentStep === 0 && !isInitialized)) {
+      const streamNewContent = async () => {
+        setIsStreaming(true);
+        await streamText(step.title, setDisplayedTitle);
+        await streamText(step.description, setDisplayedDescription);
+        setIsStreaming(false);
+      };
+      
+      streamNewContent();
+    }
+    
     if (currentStep > 0) {
+      
       Animated.sequence([
         Animated.timing(iconScale, {
           toValue: 0.85,
@@ -201,7 +305,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
           useNativeDriver: true,
         }),
         Animated.spring(iconScale, {
-          toValue: 1.08,
+          toValue: 0.92,
           tension: 140,
           friction: 5,
           useNativeDriver: true,
@@ -232,91 +336,88 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         }
       });
       
+      // Animate liquid flow with equal discrete steps
+      Animated.timing(liquidFlow, {
+        toValue: currentStep / (tutorialSteps.length - 1),
+        duration: 150,
+        useNativeDriver: false,
+      }).start();
+      
+      // Animate liquid bubbles for current step
+      if (currentStep < liquidBubbles.length) {
+        const bubble = liquidBubbles[currentStep];
+        Animated.sequence([
+          Animated.delay(50),
+          Animated.parallel([
+            Animated.timing(bubble.scale, {
+              toValue: 1,
+              duration: 100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bubble.opacity, {
+              toValue: 1,
+              duration: 80,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bubble.y, {
+              toValue: -15,
+              duration: 120,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.timing(bubble.opacity, {
+            toValue: 0,
+            duration: 60,
+            useNativeDriver: true,
+          }),
+        ]).start(() => {
+          bubble.y.setValue(0);
+          bubble.scale.setValue(0);
+        });
+      }
+      
     }
+    
+    return () => {
+      // Stop streaming when component unmounts or step changes
+      streamingRef.current = false;
+      if (streamTimeoutRef.current) {
+        clearTimeout(streamTimeoutRef.current);
+      }
+    };
   }, [currentStep]);
   
   
-  // Continuous ambient pleasure animations
+  // Locked ambient animations for stable layout
   const startAmbientAnimations = () => {
-    // Subtle card float
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(cardFloat, {
-          toValue: 1,
-          duration: 4000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-        Animated.timing(cardFloat, {
-          toValue: 0,
-          duration: 4000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-    
-    // Icon breathing pulse
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(iconPulse, {
-          toValue: 1,
-          duration: 2500,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-        Animated.timing(iconPulse, {
-          toValue: 0,
-          duration: 2500,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-    
-    // Ambient background pulses
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(ambientPulse1, {
-          toValue: 1,
-          duration: 6000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ambientPulse1, {
-          toValue: 0,
-          duration: 6000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-    
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(ambientPulse2, {
-          toValue: 1,
-          duration: 8000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-        Animated.timing(ambientPulse2, {
-          toValue: 0,
-          duration: 8000,
-          easing: PLEASURE_EASING.breathe,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    // Only set values if not already initialized to prevent layout shifts
+    if (!isInitialized) {
+      cardFloat.setValue(0);
+      iconPulse.setValue(0.5);
+      ambientPulse1.setValue(0.4);
+      ambientPulse2.setValue(0.6);
+      cardGlow.setValue(0.3);
+      
+      // Disabled liquid animations to prevent overheating
+      liquidWave.setValue(0);
+      liquidShimmer.setValue(0);
+    }
   };
 
-  // Smooth button interactions
-  const handleNext = () => {
+  // Smooth button interactions with streaming text
+  const handleNext = async () => {
     if (currentStep < tutorialSteps.length - 1) {
-      // Gentle tutorial haptic
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Check if advancing to the last step for success haptics
+      const nextStep = currentStep + 1;
+      if (nextStep === tutorialSteps.length - 1) {
+        // Success haptic when reaching final step
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        // Gentle tutorial haptic for other steps
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
       
-      // Subtle scale animation
+      // Button animation
       Animated.sequence([
         Animated.timing(buttonScale, {
           toValue: 0.96,
@@ -332,19 +433,17 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         }),
       ]).start();
       
-      // Step change
-      setTimeout(() => {
-        setCurrentStep(prev => prev + 1);
-      }, 50);
+      // Change step and stream new content
+      setCurrentStep(prev => prev + 1);
     }
   };
 
-  const handlePrev = () => {
+  const handlePrev = async () => {
     if (currentStep > 0) {
       // Gentle back haptic
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
-      // Subtle scale animation
+      // Button animation
       Animated.sequence([
         Animated.timing(buttonScale, {
           toValue: 0.96,
@@ -360,9 +459,8 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
         }),
       ]).start();
       
-      setTimeout(() => {
-        setCurrentStep(prev => prev - 1);
-      }, 50);
+      // Change step and stream previous content
+      setCurrentStep(prev => prev - 1);
     }
   };
 
@@ -405,11 +503,18 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
     });
   };
 
-  const step = tutorialSteps[currentStep];
+  const step = tutorialSteps[currentStep] || tutorialSteps[0];
   const isLastStep = currentStep === tutorialSteps.length - 1;
 
   return (
     <PageBackground>
+      <StarField 
+        density="low" 
+        animated={false} 
+        interactive={false}
+        constellation={false}
+      />
+      
       <SafeAreaView style={styles.container}>
         <StatusBar 
           barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
@@ -430,77 +535,58 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
           onMenuPress={onMenuPress}
         />
 
-        {/* Numina Neural Background */}
-        <Animated.View style={[styles.neuralBackground, { opacity: ambientPulse1.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.9] }) }]}>
-          {/* Synaptic Network */}
-          <Animated.View style={[
-            styles.synapticNode,
-            styles.synapticNode1,
+        {/* LOCKED Neural Network Background - No animations */}
+        <View style={[styles.neuralNetworkBackground, { 
+          opacity: 0.4
+        }]}>
+          {/* Central Hub Node - STATIC */}
+          <View style={[
+            styles.centralNode,
             { 
               backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-              transform: [{
-                scale: ambientPulse1.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1.2],
-                })
-              }]
             }
           ]} />
+          
+          {/* Radial Connections */}
+          <View style={[styles.radialConnection, styles.connectionTop,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.25)' : 'rgba(59,130,246,0.25)' }]} />
+          <View style={[styles.radialConnection, styles.connectionTopRight,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)' }]} />
+          <View style={[styles.radialConnection, styles.connectionRight,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.3)' : 'rgba(59,130,246,0.3)' }]} />
+          <View style={[styles.radialConnection, styles.connectionBottomRight,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.15)' : 'rgba(59,130,246,0.15)' }]} />
+          <View style={[styles.radialConnection, styles.connectionBottom,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)' }]} />
+          <View style={[styles.radialConnection, styles.connectionBottomLeft,
+            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.25)' : 'rgba(59,130,246,0.25)' }]} />
+          
+          {/* Satellite Nodes - STATIC */}
           <View style={[
-            styles.synapticConnection,
-            styles.connection1,
-            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.3)' : 'rgba(59,130,246,0.3)' }
-          ]} />
-        </Animated.View>
-        
-        <Animated.View style={[styles.neuralBackground, { 
-          opacity: ambientPulse2.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] }),
-          transform: [{
-            translateY: ambientFloat.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, -8],
-            })
-          }]
-        }]}>
-          {/* Emotional Wavelength */}
-          <View style={[
-            styles.emotionalWave,
-            styles.emotionalWave1,
-            { backgroundColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)' }
-          ]} />
-          <Animated.View style={[
-            styles.emotionalWave,
-            styles.emotionalWave2,
+            styles.satelliteNode, styles.nodeTop,
             { 
-              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.15)' : 'rgba(59,130,246,0.15)',
-              transform: [{
-                scaleX: ambientPulse2.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [1, 1.3],
-                })
-              }]
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.8)' : 'rgba(59,130,246,0.8)',
             }
           ]} />
-        </Animated.View>
-        
-        <Animated.View style={[styles.neuralBackground, { 
-          opacity: ambientPulse1.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.5] }),
-          transform: [{
-            rotate: ambientPulse1.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', '15deg'],
-            })
-          }]
-        }]}>
-          {/* Memory Fragment */}
           <View style={[
-            styles.memoryFragment,
+            styles.satelliteNode, styles.nodeTopRight,
             { 
-              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.1)' : 'rgba(59,130,246,0.1)',
-              borderColor: isDarkMode ? 'rgba(173,213,250,0.2)' : 'rgba(59,130,246,0.2)',
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.6)' : 'rgba(59,130,246,0.6)',
             }
           ]} />
-        </Animated.View>
+          <View style={[
+            styles.satelliteNode, styles.nodeBottomRight,
+            { 
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.7)' : 'rgba(59,130,246,0.7)',
+            }
+          ]} />
+          <View style={[
+            styles.satelliteNode, styles.nodeBottomLeft,
+            { 
+              backgroundColor: isDarkMode ? 'rgba(173,213,250,0.5)' : 'rgba(59,130,246,0.5)',
+            }
+          ]} />
+        </View>
 
         {/* Flexible Content Layout */}
         <Animated.View
@@ -508,7 +594,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
             styles.flexibleLayout,
             {
               opacity: fadeAnim,
-              transform: [{ translateX: slideAnim }],
             },
           ]}
         >
@@ -554,27 +639,46 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
             {/* Step Title */}
             <Text style={[
               styles.creativeTitle,
-              { color: isDarkMode ? '#ffffff' : '#000000' }
+              { 
+                color: isDarkMode ? '#ffffff' : '#000000',
+                fontFamily: 'CrimsonPro_600SemiBold',
+                letterSpacing: -0.5,
+              }
             ]}>
-              {step.title}
+              {displayedTitle}
+              {isStreaming && displayedTitle.length < step.title.length && (
+                <Text style={{ opacity: 0.8, color: isDarkMode ? '#add5fa' : '#3b82f6' }}>_</Text>
+              )}
             </Text>
 
             {/* Description */}
             <Text style={[
               styles.creativeDescription,
-              { color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }
+              { 
+                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                fontFamily: 'Nunito_400Regular',
+                fontSize: 16,
+                letterSpacing: -0.1,
+              }
             ]}>
-              {step.description}
+              {displayedDescription}
+              {isStreaming && displayedDescription.length < step.description.length && (
+                <Text style={{ opacity: 0.8, color: isDarkMode ? '#add5fa' : '#3b82f6' }}>_</Text>
+              )}
             </Text>
 
 
           </Animated.View>
 
-          {/* Visual Element - Positioned Absolutely */}
+          {/* Icon Container - LOCKED Top Right Position */}
           <Animated.View
             style={[
-              styles.visualElement,
+              styles.iconContainer,
               {
+                position: 'absolute',
+                top: 120,
+                right: 24,
+                zIndex: 10,
                 opacity: cardOpacity,
               },
             ]}
@@ -651,105 +755,230 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               ]} />
             </View>
 
-            {/* Progress Visualization */}
-            <View style={styles.progressVisualization}>
-              {tutorialSteps.map((_, index) => (
-                <View key={index} style={styles.progressLine}>
-                  <Animated.View
-                    style={[
-                      styles.progressSegment,
-                      {
-                        backgroundColor: index <= currentStep 
-                          ? (isDarkMode ? '#add5fa' : '#3b82f6')
-                          : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-                        transform: [{ scale: progressAnims[index] }],
-                      },
-                    ]}
-                  />
+            {/* Step-specific Interactive Elements */}
+            <View style={styles.stepInteractives}>
+              {currentStep === 0 && (
+                <Animated.View
+                  style={[
+                    styles.pulsingOrb,
+                    {
+                      opacity: iconPulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.3, 0.8],
+                      }),
+                      transform: [{
+                        scale: iconPulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.8, 1.2],
+                        })
+                      }],
+                    },
+                  ]}
+                >
+                  <View style={[
+                    styles.orbCore,
+                    { 
+                      backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.4)' : 'rgba(59, 130, 246, 0.3)',
+                      shadowColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                    }
+                  ]} />
+                </Animated.View>
+              )}
+              
+              {currentStep === 1 && (
+                <View style={styles.dataNodes}>
+                  {[0, 1, 2].map((index) => (
+                    <Animated.View
+                      key={index}
+                      style={[
+                        styles.dataNode,
+                        {
+                          opacity: ambientPulse1.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.2, 0.9],
+                          }),
+                          transform: [{
+                            translateY: ambientPulse1.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0, -5 * (index + 1)],
+                            })
+                          }],
+                          left: 20 + index * 15,
+                          top: 10 + index * 8,
+                        },
+                      ]}
+                    >
+                      <View style={[
+                        styles.nodePoint,
+                        { backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6' }
+                      ]} />
+                    </Animated.View>
+                  ))}
                 </View>
-              ))}
+              )}
+              
+              {currentStep === 2 && (
+                <Animated.View
+                  style={[
+                    styles.analyticsWave,
+                    {
+                      opacity: ambientPulse2.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.4, 0.9],
+                      }),
+                      transform: [{
+                        scaleX: ambientPulse2.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 1.4],
+                        })
+                      }],
+                    },
+                  ]}
+                >
+                  <View style={[
+                    styles.waveBar,
+                    { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.6)' : 'rgba(59, 130, 246, 0.5)' }
+                  ]} />
+                </Animated.View>
+              )}
+              
+              {currentStep === 3 && (
+                <View style={styles.connectionWeb}>
+                  {[0, 1, 2, 3].map((index) => (
+                    <Animated.View
+                      key={index}
+                      style={[
+                        styles.connectionNode,
+                        {
+                          opacity: iconPulse.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.3, 0.8],
+                          }),
+                          transform: [{
+                            rotate: iconPulse.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [`${index * 90}deg`, `${index * 90 + 15}deg`],
+                            })
+                          }],
+                          top: 30 + Math.sin(index) * 20,
+                          left: 30 + Math.cos(index) * 20,
+                        },
+                      ]}
+                    >
+                      <View style={[
+                        styles.connectionDot,
+                        { backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6' }
+                      ]} />
+                      <View style={[
+                        styles.connectionLine,
+                        { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.3)' : 'rgba(59, 130, 246, 0.2)' }
+                      ]} />
+                    </Animated.View>
+                  ))}
+                </View>
+              )}
+              
+              {currentStep === 4 && (
+                <Animated.View
+                  style={[
+                    styles.finalGlow,
+                    {
+                      opacity: cardGlow,
+                      transform: [{
+                        scale: cardGlow.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 1.5],
+                        })
+                      }],
+                    },
+                  ]}
+                >
+                  <View style={[
+                    styles.glowRing,
+                    { 
+                      borderColor: isDarkMode ? 'rgba(173, 213, 250, 0.8)' : 'rgba(59, 130, 246, 0.6)',
+                      shadowColor: isDarkMode ? '#add5fa' : '#3b82f6',
+                    }
+                  ]} />
+                </Animated.View>
+              )}
             </View>
           </Animated.View>
 
-          {/* Connected Button Pair */}
-          <View style={styles.connectedButtonContainer}>
-            <View style={[
-              styles.buttonPair,
-              {
-                borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)',
-              }
-            ]}>
-              {/* Left Button */}
-              {currentStep > 0 ? (
-                <TouchableOpacity
-                  style={[
-                    styles.leftButton,
-                    {
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.9)',
-                    }
-                  ]}
-                  onPress={handlePrev}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[
-                    styles.buttonText,
-                    { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)' }
-                  ]}>
-                    ← Back
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.leftButton,
-                    {
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)',
-                    }
-                  ]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    onStartChat();
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[
-                    styles.buttonText,
-                    { color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }
-                  ]}>
-                    Skip
-                  </Text>
-                </TouchableOpacity>
-              )}
-
-              {/* Right Button */}
-              <TouchableOpacity
-                style={[
-                  styles.rightButton,
-                  {
-                    backgroundColor: '#add5fa',
-                  }
-                ]}
-                onPress={() => {
-                  if (isLastStep) {
-                    handleFinish();
-                  } else {
-                    handleNext();
-                  }
+          {/* Floating Chevron Buttons */}
+          <View style={styles.floatingButtonContainer}>
+            {/* Left Button */}
+            <TouchableOpacity
+              style={styles.glowingChevron}
+              onPress={currentStep > 0 ? handlePrev : onNavigateHome}
+              activeOpacity={0.6}
+            >
+              <Feather
+                name={currentStep > 0 ? "chevron-left" : "arrow-left"}
+                size={36}
+                color={isDarkMode ? 'rgba(255,255,255,0.9)' : 'rgba(0,0,0,0.8)'}
+                style={{
+                  shadowColor: isDarkMode ? '#ffffff' : '#000000',
+                  shadowOpacity: 0.8,
+                  shadowRadius: 8,
+                  elevation: 5,
                 }}
-                activeOpacity={0.9}
-              >
+              />
+            </TouchableOpacity>
+
+            {/* Right Button */}
+            <TouchableOpacity
+              style={styles.glowingChevron}
+              onPress={() => {
+                if (isLastStep) {
+                  handleFinish();
+                } else {
+                  handleNext();
+                }
+              }}
+              activeOpacity={0.6}
+            >
+              {isLastStep ? (
                 <Text style={[
-                  styles.buttonText,
+                  styles.finishButtonText,
                   { 
-                    color: isDarkMode ? NuminaColors.darkMode[600] : '#ffffff',
-                    fontWeight: '600'
+                    color: isDarkMode ? '#add5fa' : '#add5fa',
+                    fontWeight: '600',
+                    shadowColor: '#add5fa',
+                    shadowOpacity: 0.8,
+                    shadowRadius: 8,
+                    elevation: 5,
                   }
                 ]}>
-                  {isLastStep ? 'Start Conversation' : 'Continue →'}
+                  Start
                 </Text>
-              </TouchableOpacity>
-            </View>
+              ) : (
+                <Feather
+                  name="chevron-right"
+                  size={36}
+                  color="#add5fa"
+                  style={{
+                    shadowColor: '#add5fa',
+                    shadowOpacity: 0.8,
+                    shadowRadius: 8,
+                    elevation: 5,
+                  }}
+                />
+              )}
+            </TouchableOpacity>
           </View>
+        </Animated.View>
+        
+        {/* Bottom Liquid Bar - Absolute positioning */}
+        <Animated.View style={[styles.bottomLiquidBar, { opacity: fadeAnim }]}>
+          <LiquidProgress
+            currentStep={currentStep}
+            totalSteps={tutorialSteps.length}
+            liquidFlow={liquidFlow}
+            liquidBubbles={liquidBubbles}
+            liquidWave={liquidWave}
+            liquidShimmer={liquidShimmer}
+          />
         </Animated.View>
       </SafeAreaView>
     </PageBackground>
@@ -760,67 +989,99 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  // Numina Neural Background Elements
-  neuralBackground: {
+  // Organized Neural Network Background
+  neuralNetworkBackground: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     zIndex: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
-  // Synaptic Network
-  synapticNode: {
+  // Central Hub Node
+  centralNode: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  
+  // Radial Connections
+  radialConnection: {
+    position: 'absolute',
+    height: 1,
+    borderRadius: 0.5,
+  },
+  connectionTop: {
+    width: 60,
+    top: -30,
+    left: -30,
+    transform: [{ rotate: '90deg' }],
+  },
+  connectionTopRight: {
+    width: 50,
+    top: -25,
+    left: 10,
+    transform: [{ rotate: '45deg' }],
+  },
+  connectionRight: {
+    width: 70,
+    top: -0.5,
+    left: 4,
+    transform: [{ rotate: '0deg' }],
+  },
+  connectionBottomRight: {
+    width: 55,
+    top: 20,
+    left: 15,
+    transform: [{ rotate: '-45deg' }],
+  },
+  connectionBottom: {
+    width: 45,
+    top: 30,
+    left: -22.5,
+    transform: [{ rotate: '90deg' }],
+  },
+  connectionBottomLeft: {
+    width: 65,
+    top: 15,
+    left: -50,
+    transform: [{ rotate: '135deg' }],
+  },
+  
+  // Satellite Nodes
+  satelliteNode: {
     position: 'absolute',
     width: 4,
     height: 4,
     borderRadius: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  synapticNode1: {
-    top: '25%',
-    left: '12%',
+  nodeTop: {
+    top: -60,
+    left: -2,
   },
-  synapticConnection: {
-    position: 'absolute',
-    height: 1,
+  nodeTopRight: {
+    top: -35,
+    left: 35,
   },
-  connection1: {
-    top: '25%',
-    left: '12%',
-    width: 120,
-    transform: [{ rotate: '35deg' }],
+  nodeBottomRight: {
+    top: 35,
+    left: 40,
   },
-  
-  // Emotional Wavelengths
-  emotionalWave: {
-    position: 'absolute',
-    height: 2,
-    borderRadius: 1,
-  },
-  emotionalWave1: {
-    top: '60%',
-    right: '8%',
-    width: 80,
-    transform: [{ rotate: '-12deg' }],
-  },
-  emotionalWave2: {
-    top: '62%',
-    right: '10%',
-    width: 60,
-    transform: [{ rotate: '-12deg' }],
-  },
-  
-  // Memory Fragments
-  memoryFragment: {
-    position: 'absolute',
-    top: '45%',
-    right: '25%',
-    width: 32,
-    height: 24,
-    borderRadius: 3,
-    borderWidth: 1,
-    transform: [{ rotate: '8deg' }],
+  nodeBottomLeft: {
+    top: 25,
+    left: -65,
   },
   content: {
     flex: 1,
@@ -848,12 +1109,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 108,
+    height: 108,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    // Position is now set inline to be absolute
   },
   textContent: {
     width: '100%',
@@ -949,7 +1209,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_400Regular',
   },
   
-  // Flexible Layout Styles
+  // LOCKED Layout Styles - Fixed positioning
   flexibleLayout: {
     flex: 1,
     paddingHorizontal: 24,
@@ -960,19 +1220,34 @@ const styles = StyleSheet.create({
   },
   contentArea: {
     height: 280,
-    paddingRight: 120,
+    width: '70%', // Fixed width instead of padding
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
-    zIndex: 10,
-    maxWidth: '100%',
+    zIndex: 5,
+    position: 'relative',
   },
-  visualElement: {
-    position: 'absolute',
-    top: '35%',
-    right: 24,
-    transform: [{ translateY: -60 }],
+  floatingButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 160,
+    paddingHorizontal: 40,
+  },
+  glowingChevron: {
+    padding: 12,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  finishButton: {
+    width: 80,
+    paddingHorizontal: 16,
+  },
+  finishButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+    fontFamily: 'Nunito_600SemiBold',
   },
   connectedButtonContainer: {
     width: '100%',
@@ -1054,10 +1329,11 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   creativeTitle: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '700',
     fontFamily: 'CrimsonPro_700Bold',
     letterSpacing: -1.2,
+    lineHeight: 38,
     marginBottom: 16,
     textAlign: 'left',
     position: 'absolute',
@@ -1066,18 +1342,17 @@ const styles = StyleSheet.create({
     right: 0,
   },
   creativeDescription: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 17,
+    lineHeight: 20,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     textAlign: 'left',
     position: 'absolute',
-    top: 180,
+    top: 220,
     left: 0,
     right: 0,
     height: 120,
   },
-  
   
   // Creative Buttons
   creativeButtonContainer: {
@@ -1103,14 +1378,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // Neural Processing Core (2055 Design)
+  // Neural Processing Core - LOCKED position
   neuralCore: {
     width: 108,
     height: 108,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    marginBottom: 32,
+    // Removed marginBottom to prevent layout shifts
   },
   scanningGrid: {
     position: 'absolute',
@@ -1179,5 +1454,134 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
 
-
+  // Step-specific Interactive Elements
+  stepInteractives: {
+    position: 'absolute',
+    top: -50,
+    right: -30,
+    width: 100,
+    height: 100,
+    zIndex: 1,
+  },
+  
+  // Step 0: Pulsing Orb
+  pulsingOrb: {
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: 20,
+    right: 20,
+  },
+  orbCore: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  
+  // Step 1: Data Nodes
+  dataNodes: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: 80,
+    height: 60,
+  },
+  dataNode: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nodePoint: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  
+  // Step 2: Analytics Wave
+  analyticsWave: {
+    position: 'absolute',
+    top: 40,
+    right: 10,
+    width: 60,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  waveBar: {
+    width: 50,
+    height: 3,
+    borderRadius: 2,
+  },
+  
+  // Step 3: Connection Web
+  connectionWeb: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 80,
+    height: 80,
+  },
+  connectionNode: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  connectionDot: {
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+  },
+  connectionLine: {
+    position: 'absolute',
+    width: 20,
+    height: 1,
+    top: 1,
+    left: 3,
+    borderRadius: 0.5,
+  },
+  
+  // Step 4: Final Glow
+  finalGlow: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowRing: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  
+  // Bottom Liquid Bar - Absolute positioning
+  bottomLiquidBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: '50%',
+    transform: [{ translateX: -width * 0.5 }],
+    height: 16,
+    width: width * 1.6,
+    zIndex: 15,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

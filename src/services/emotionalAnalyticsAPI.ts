@@ -175,18 +175,19 @@ export const getCurrentSession = async (refresh = false) => {
 // Get day insights
 export const getDayInsights = async (day: string) => {
   try {
-    if (await canUseOnlineAPI()) {
-      const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
-        headers: await createAuthHeaders()
-      });
-      const result = await handleApiResponse(response);
-      // Filter emotions for the specific day
-      const dayEmotions = (result.data || []).filter((emotion: any) => {
-        const emotionDate = new Date(emotion.timestamp).toLocaleDateString();
-        return emotionDate === day;
-      });
-      return dayEmotions;
-    }
+    // DISABLED: emotion-history endpoint removed from server
+    // if (await canUseOnlineAPI()) {
+    //   const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
+    //     headers: await createAuthHeaders()
+    //   });
+    //   const result = await handleApiResponse(response);
+    //   // Filter emotions for the specific day
+    //   const dayEmotions = (result.data || []).filter((emotion: any) => {
+    //     const emotionDate = new Date(emotion.timestamp).toLocaleDateString();
+    //     return emotionDate === day;
+    //   });
+    //   return dayEmotions;
+    // }
     
     // Fallback to local generation
     return await offlineEmotionStorage.generateDayInsights(day);
@@ -199,16 +200,17 @@ export const getDayInsights = async (day: string) => {
 // Get weekly report
 export const getWeeklyReport = async () => {
   try {
-    if (await canUseOnlineAPI()) {
-      const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
-        headers: await createAuthHeaders()
-      });
-      const result = await handleApiResponse(response);
-      // Generate weekly report from emotion history
-      const emotions = result.data || [];
-      const weeklyData = generateWeeklyReportFromEmotions(emotions);
-      return weeklyData;
-    }
+    // DISABLED: emotion-history endpoint removed from server
+    // if (await canUseOnlineAPI()) {
+    //   const response = await fetch(`${getBaseApiUrl()}/emotion-history`, {
+    //     headers: await createAuthHeaders()
+    //   });
+    //   const result = await handleApiResponse(response);
+    //   // Generate weekly report from emotion history
+    //   const emotions = result.data || [];
+    //   const weeklyData = generateWeeklyReportFromEmotions(emotions);
+    //   return weeklyData;
+    // }
     
     // Fallback to local generation
     return await offlineEmotionStorage.generateWeeklyReport();
@@ -221,20 +223,21 @@ export const getWeeklyReport = async () => {
 // Get session history
 export const getSessionHistory = async (limit = 50, offset = 0) => {
   try {
-    if (await canUseOnlineAPI()) {
-      const response = await fetch(
-        `${getBaseApiUrl()}/emotion-history`,
-        { headers: await createAuthHeaders() }
-      );
-      const result = await handleApiResponse(response);
-      // Apply limit and offset to the response
-      const emotions = result.data || [];
-      const paginatedEmotions = emotions.slice(offset, offset + limit);
-      return {
-        sessions: paginatedEmotions,
-        totalCount: emotions.length
-      };
-    }
+    // DISABLED: emotion-history endpoint removed from server
+    // if (await canUseOnlineAPI()) {
+    //   const response = await fetch(
+    //     `${getBaseApiUrl()}/emotion-history`,
+    //     { headers: await createAuthHeaders() }
+    //   );
+    //   const result = await handleApiResponse(response);
+    //   // Apply limit and offset to the response
+    //   const emotions = result.data || [];
+    //   const paginatedEmotions = emotions.slice(offset, offset + limit);
+    //   return {
+    //     sessions: paginatedEmotions,
+    //     totalCount: emotions.length
+    //   };
+    // }
     
     return await offlineEmotionStorage.getSessionHistory(limit, offset);
   } catch (error) {

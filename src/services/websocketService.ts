@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import CloudAuth from './cloudAuth';
 import ENV from '../config/environment';
+import { log } from '../utils/logger';
 
 
 
@@ -84,7 +85,7 @@ class WebSocketService {
     
     wsUrl = wsUrl.replace('https://', 'wss://').replace('http://', 'ws://');
     
-    console.log('🔌 WebSocket will connect to:', wsUrl);
+    log.info('WebSocket will connect to', { wsUrl }, 'WebSocketService');
     
     this.config = {
       serverUrl: wsUrl,
@@ -115,8 +116,7 @@ class WebSocketService {
         return false;
       }
       
-      console.log('🔐 WebSocket auth token length:', token.length, 'chars');
-      console.log('🔐 WebSocket auth token prefix:', token.substring(0, 20) + '...');
+      log.debug('WebSocket auth token configured', { length: token.length }, 'WebSocketService');
 
       this.connectionStatus.isConnecting = true;
 
@@ -316,7 +316,7 @@ class WebSocketService {
 
     this.socket.on('ubpm_insight', (data: any) => {
       this.debug('🧠 UBPM insight received:', data);
-      this.emitToHandlers('ubmp_insight', data);
+      this.emitToHandlers('ubpm_insight', data);
     });
 
     // Tool execution events for beautiful status indicators
@@ -606,11 +606,61 @@ class WebSocketService {
     console.log('👥 Current Rooms:', Array.from(this.currentRooms));
     
     if (this.socket) {
-      console.log('⚡ Socket Status:', this.socket.connected ? 'CONNECTED' : 'DISCONNECTED');
-      console.log('🆔 Socket ID:', this.socket.id || 'No ID');
+        log.debug('Socket status', { connected: this.socket.connected, id: this.socket.id || 'No ID' }, 'WebSocketService');
     } else {
-      console.log('❌ No Socket Instance');
+      log.warn('No Socket Instance', null, 'WebSocketService');
     }
+  }
+
+  /**
+   * Comprehensive cleanup method to prevent memory leaks
+   */
+  cleanup(): void {
+    log.info('Starting WebSocket cleanup', null, 'WebSocketService');
+    
+    // Clear reconnection timer
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+      log.debug('Cleared reconnection timer', null, 'WebSocketService');
+    }
+    
+    // Remove all event handlers
+    if (this.eventHandlers.size > 0) {
+      log.debug('Clearing event handlers', { count: this.eventHandlers.size }, 'WebSocketService');
+      this.eventHandlers.clear();
+    }
+    
+    // Clear rooms
+    if (this.currentRooms.size > 0) {
+      log.debug('Clearing current rooms', { count: this.currentRooms.size }, 'WebSocketService');
+      this.currentRooms.clear();
+    }
+    
+    // Reset connection status
+    this.connectionStatus = {
+      isConnected: false,
+      isConnecting: false,
+      reconnectAttempts: 0
+    };
+    
+    // Properly disconnect socket
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+      log.debug('Socket disconnected and cleaned up', null, 'WebSocketService');
+    }
+    
+    log.info('WebSocket cleanup completed', null, 'WebSocketService');
+  }
+
+  /**
+   * Destroy instance and cleanup all resources
+   */
+  destroy(): void {
+    this.cleanup();
+    // Additional destroy logic if needed in the future
   }
 }
 
@@ -623,6 +673,14 @@ export const getWebSocketService = (): WebSocketService => {
     instance = new WebSocketService();
   }
   return instance;
+};
+
+export const destroyWebSocketService = (): void => {
+  if (instance) {
+    instance.destroy();
+    instance = null;
+    log.info('WebSocket service instance destroyed', null, 'WebSocketService');
+  }
 };
 
 export default getWebSocketService;

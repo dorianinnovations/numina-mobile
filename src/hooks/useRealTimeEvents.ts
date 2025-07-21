@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import RealTimeSyncService, { RealTimeEvent, EventComment } from '../services/realTimeSync';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import * as Haptics from 'expo-haptics';
+import { log } from '../utils/logger';
 
 export interface UseRealTimeEventsReturn {
   events: RealTimeEvent[];
@@ -28,6 +29,8 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
   const [isConnected, setIsConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const isMountedRef = useRef(true);
   
   const { userData } = useAuth();
   const syncService = RealTimeSyncService.getInstance();
@@ -167,25 +170,35 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
 
   // Load initial data from cache and server
   const loadInitialData = useCallback(async () => {
+    if (!isMountedRef.current) return;
+    
     setIsLoading(true);
     try {
       // Load from cache first
       const cachedEvents = syncService.getAllEvents();
-      setEvents(cachedEvents);
+      if (isMountedRef.current) {
+        setEvents(cachedEvents);
+      }
       
       // Load comments for each event
       const allComments: { [eventId: string]: EventComment[] } = {};
       cachedEvents.forEach(event => {
         allComments[event.id] = syncService.getEventComments(event.id);
       });
-      setComments(allComments);
       
-      setIsConnected(syncService.isConnectedToServer());
+      if (isMountedRef.current) {
+        setComments(allComments);
+        setIsConnected(syncService.isConnectedToServer());
+      }
     } catch (error) {
-      console.error('Error loading initial data:', error);
-      setError('Failed to load events');
+      log.error('Error loading initial data', error, 'useRealTimeEvents');
+      if (isMountedRef.current) {
+        setError('Failed to load events');
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
@@ -200,7 +213,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       
       return event;
     } catch (error) {
-      console.error('Error creating event:', error);
+      // console.error('Error creating event:', error);
       setError('Failed to create event');
       throw error;
     }
@@ -214,7 +227,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       }
       return updatedEvent;
     } catch (error) {
-      console.error('Error updating event:', error);
+      // console.error('Error updating event:', error);
       setError('Failed to update event');
       throw error;
     }
@@ -233,7 +246,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       }
       return success;
     } catch (error) {
-      console.error('Error deleting event:', error);
+      // console.error('Error deleting event:', error);
       setError('Failed to delete event');
       throw error;
     }
@@ -260,7 +273,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       }
       return success;
     } catch (error) {
-      console.error('Error joining event:', error);
+      // console.error('Error joining event:', error);
       setError('Failed to join event');
       throw error;
     }
@@ -287,7 +300,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       }
       return success;
     } catch (error) {
-      console.error('Error leaving event:', error);
+      // console.error('Error leaving event:', error);
       setError('Failed to leave event');
       throw error;
     }
@@ -306,7 +319,7 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
       
       return comment;
     } catch (error) {
-      console.error('Error adding comment:', error);
+      // console.error('Error adding comment:', error);
       setError('Failed to add comment');
       throw error;
     }
@@ -341,4 +354,11 @@ export const useRealTimeEvents = (): UseRealTimeEventsReturn => {
     refreshEvents,
     clearError,
   };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 };

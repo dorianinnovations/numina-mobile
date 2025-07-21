@@ -71,6 +71,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
   const confirmPasswordInputScaleAnim = useRef(new Animated.Value(1)).current;
   const headerOpacityAnim = useRef(new Animated.Value(1)).current;
+  const keyboardSlideAnim = useRef(new Animated.Value(0)).current;
   
   // Input refs
   const emailInputRef = useRef<TextInput>(null);
@@ -82,6 +83,53 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
     slideAnim.setValue(0); // Start in final position for navigation compatibility
+  }, []);
+
+  // Keyboard listeners for subtle slide-up animation
+  useEffect(() => {
+    const keyboardWillShowListener = Keyboard.addListener('keyboardWillShow', (event) => {
+      Animated.timing(keyboardSlideAnim, {
+        toValue: -12, // Very subtle 12px slide up
+        duration: (event.duration || 250) * 1.2, // 20% slower for smoothness
+        useNativeDriver: true,
+      }).start();
+    });
+    
+    const keyboardWillHideListener = Keyboard.addListener('keyboardWillHide', (event) => {
+      Animated.timing(keyboardSlideAnim, {
+        toValue: 0,
+        duration: (event.duration || 250) * 1.2, // 20% slower for smoothness
+        useNativeDriver: true,
+      }).start();
+    });
+    
+    // Android fallback listeners
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      if (Platform.OS === 'android') {
+        Animated.timing(keyboardSlideAnim, {
+          toValue: -12, // Very subtle 12px slide up
+          duration: 240, // Slower for smoothness
+          useNativeDriver: true,
+        }).start();
+      }
+    });
+    
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      if (Platform.OS === 'android') {
+        Animated.timing(keyboardSlideAnim, {
+          toValue: 0,
+          duration: 240, // Slower for smoothness
+          useNativeDriver: true,
+        }).start();
+      }
+    });
+    
+    return () => {
+      keyboardWillShowListener?.remove();
+      keyboardWillHideListener?.remove();
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
   }, []);
 
   const handleSubmit = async () => {
@@ -266,6 +314,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     opacity: fadeAnim,
                     transform: [
                       { translateX: slideAnim },
+                      { translateY: keyboardSlideAnim }, // Subtle slide up on keyboard
                       { scale: scaleAnim },
                     ],
                   },
@@ -276,8 +325,14 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                   <View style={[
                     styles.formContainer, 
                     isDarkMode ? {
-                      backgroundColor: '#111111',
-                      borderColor: '#222222',
+                      backgroundColor: '#0a0a0a',
+                      borderColor: '#181818',
+                      borderWidth: 1.3,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 6 },
+                      shadowOpacity: 0.7,
+                      shadowRadius: 16,
+                      elevation: 18,
                     } : styles.glassmorphic
                   ]}>
                     {/* Clean header */}
@@ -291,13 +346,13 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           },
                         ]}
                       >
-                        Ready to begin?
+                        Glad you made it.
                       </Animated.Text>
                       <Text style={[
                         styles.subtitle, 
                         { color: isDarkMode ? '#888888' : '#666666' }
                       ]}>
-                        Create your Numina account for free
+                        Create your credentials to get started
                       </Text>
                     </View>
 
@@ -312,8 +367,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
                               }
                             ]}
                             placeholder="Email"
@@ -328,6 +383,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             onSubmitEditing={() => passwordInputRef.current?.focus()}
                             onFocus={() => {
                                 setIsInputFocused(true);
+                                // Light haptic for input focus
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 Animated.parallel([
                                   Animated.spring(emailInputScaleAnim, {
                                     toValue: 1.02,
@@ -336,8 +393,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                     bounciness: 8,
                                   }),
                                   Animated.timing(headerOpacityAnim, {
-                                    toValue: 0.3,
-                                    duration: 200,
+                                    toValue: 0,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -353,7 +410,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 200,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -367,8 +424,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
                               }
                             ]}
                             placeholder="Password"
@@ -382,6 +439,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
                             onFocus={() => {
                                 setIsInputFocused(true);
+                                // Light haptic for input focus
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 Animated.parallel([
                                   Animated.spring(passwordInputScaleAnim, {
                                     toValue: 1.02,
@@ -390,8 +449,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                     bounciness: 8,
                                   }),
                                   Animated.timing(headerOpacityAnim, {
-                                    toValue: 0.3,
-                                    duration: 200,
+                                    toValue: 0,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -407,7 +466,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 200,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -421,8 +480,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
+                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
                               }
                             ]}
                             placeholder="Confirm Password"
@@ -439,6 +498,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             }}
                             onFocus={() => {
                                 setIsInputFocused(true);
+                                // Light haptic for input focus
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 Animated.parallel([
                                   Animated.spring(confirmPasswordInputScaleAnim, {
                                     toValue: 1.02,
@@ -447,8 +508,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                     bounciness: 8,
                                   }),
                                   Animated.timing(headerOpacityAnim, {
-                                    toValue: 0.3,
-                                    duration: 200,
+                                    toValue: 0,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -464,7 +525,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 200,
+                                    duration: 100,
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -586,7 +647,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         <View style={[
                           styles.termsDivider,
                           {
-                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                            backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.1)',
                           }
                         ]} />
                       </View>
@@ -598,9 +659,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             style={[
                               styles.primaryButton,
                               {
-                                backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+                                backgroundColor: isDarkMode ? '#0a0a0a' : '#add5fa',
                                 opacity: (loading || isSignUpSuccess) ? 0.9 : 1,
-                                borderColor: isDarkMode ? '#333333' : 'transparent',
+                                borderColor: isDarkMode ? '#262626' : 'transparent',
                                 borderWidth: isDarkMode ? 1 : 0,
                               }
                             ]}
@@ -819,18 +880,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 6,
   },
   glassmorphic: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 32,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 12,
   },
   header: {
     marginBottom: 32,
@@ -852,7 +913,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_400Regular',
   },
   formContent: {
-    gap: 16,
+    gap: 5,
   },
   inputGroup: {
     gap: 12,
@@ -884,6 +945,7 @@ const styles = StyleSheet.create({
     minHeight: 38,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
   },
   buttonContent: {
     flexDirection: 'row',
@@ -910,6 +972,7 @@ const styles = StyleSheet.create({
   linkButton: {
     paddingVertical: 12,
     alignItems: 'center',
+    marginTop: 4,
   },
   linkText: {
     fontSize: 14,
@@ -955,26 +1018,28 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_500Medium',
   },
   termsContainer: {
-    marginVertical: 16,
-    gap: 8,
+    marginTop: 32,
+    marginBottom: 16,
+    gap: 16,
     paddingHorizontal: 4,
   },
   termsCheckboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    paddingVertical: 8,
+    paddingVertical: 1,
     paddingHorizontal: 16,
   },
   termsDivider: {
     height: 1,
     marginHorizontal: 12,
-    marginVertical: 4,
+    marginTop: 12,
+    marginBottom: 16,
   },
   termsCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
+    width: 15,
+    height: 15,
+    borderRadius: 2,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',

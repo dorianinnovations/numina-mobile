@@ -3,6 +3,8 @@
  * Consolidates the 60+ duplicate error handling patterns across the app
  */
 
+import { log } from './logger';
+
 export interface ErrorContext {
   service: string;
   operation: string;
@@ -19,21 +21,21 @@ export class ErrorHandler {
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
     };
-    console.error(`❌ [${context.service}]: ${context.operation} failed:`, errorInfo);
+    log.error(`${context.operation} failed`, error, context.service);
   }
 
   /**
    * Log warning with consistent format
    */
   static logWarning(context: ErrorContext, message: string): void {
-    console.warn(`⚠️ [${context.service}]: ${message}`, context);
+    log.warn(message, context, context.service);
   }
 
   /**
    * Log success with consistent format
    */
   static logSuccess(context: ErrorContext, message: string): void {
-    console.log(`✅ [${context.service}]: ${message}`, context);
+    log.info(message, context, context.service);
   }
 
   /**

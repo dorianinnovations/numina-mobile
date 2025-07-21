@@ -1,8 +1,16 @@
 import ENV from '../config/environment';
+import { ErrorHandler } from '../utils/errorHandler';
+import { log } from '../utils/logger';
 
 interface User {
   id: string;
   email: string;
+  tierInfo?: {
+    tier: 'CORE' | 'PRO' | 'AETHER';
+    dailyUsage: number;
+    dailyLimit: number;
+    features: Record<string, boolean>;
+  };
 }
 
 interface AuthState {
@@ -52,6 +60,14 @@ class CloudAuth {
     return {};
   }
 
+  // Update user information
+  updateUser(user: User) {
+    if (this.authState.isAuthenticated) {
+      this.authState.user = user;
+      this.notifyListeners();
+    }
+  }
+
   // Login with email/password
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
@@ -78,6 +94,16 @@ class CloudAuth {
         
         this.notifyListeners();
         console.log('🔐 CLOUD AUTH: Login successful for user:', data.data.user.id);
+        
+        // Sync conversations after successful login
+        this.syncConversationsOnLogin().catch(error => {
+          ErrorHandler.logError(
+            { service: 'CloudAuth', operation: 'Conversation sync' },
+            error
+          );
+          // Don't fail login if sync fails - this is background operation
+        });
+        
         return { success: true };
       } else {
         // IMPORTANT: Do NOT update auth state on login failure
@@ -103,11 +129,17 @@ class CloudAuth {
           error = 'Email not found';
         }
         
-        console.error('🔐 CLOUD AUTH: Login failed:', error);
+        ErrorHandler.logError(
+          { service: 'CloudAuth', operation: 'Login' },
+          error
+        );
         return { success: false, error };
       }
     } catch (error) {
-      console.error('🔐 CLOUD AUTH: Login error:', error);
+      ErrorHandler.logError(
+        { service: 'CloudAuth', operation: 'Login' },
+        error
+      );
       return { success: false, error: 'Connection issue! Check your internet and try again 🌐' };
     }
   }
@@ -162,11 +194,17 @@ class CloudAuth {
           error = 'Email error';
         }
         
-        console.error('🔐 CLOUD AUTH: Signup failed:', error);
+        ErrorHandler.logError(
+          { service: 'CloudAuth', operation: 'Signup' },
+          error
+        );
         return { success: false, error };
       }
     } catch (error) {
-      console.error('🔐 CLOUD AUTH: Signup error:', error);
+      ErrorHandler.logError(
+        { service: 'CloudAuth', operation: 'Signup' },
+        error
+      );
       return { success: false, error: 'Connection issue! Check your internet and try again 🌐' };
     }
   }
@@ -201,6 +239,69 @@ class CloudAuth {
   // Get token for API calls
   getToken(): string | null {
     return this.authState.token;
+  }
+
+  // Sync conversations to server after login
+  private async syncConversationsOnLogin(): Promise<void> {
+    try {
+      if (!this.isAuthenticated()) {
+        console.log('🔄 SYNC: Skipping sync - not authenticated');
+        return;
+      }
+
+      console.log('🔄 SYNC: Starting conversation sync...');
+      
+      // Import conversation storage dynamically to avoid circular imports
+      const { default: ConversationStorageService } = await import('./conversationStorage');
+      
+      // Load local conversations
+      const conversations = await ConversationStorageService.loadConversations();
+      
+      if (conversations.length === 0) {
+        console.log('🔄 SYNC: No local conversations to sync');
+        return;
+      }
+
+      console.log(`🔄 SYNC: Syncing ${conversations.length} conversations to server`);
+
+      // Call sync endpoint
+      console.log('🔄 SYNC: Making request to:', `${ENV.API_BASE_URL}/conversation/sync-conversations`);
+      console.log('🔄 SYNC: Auth token present:', !!this.getToken());
+      
+      const response = await fetch(`${ENV.API_BASE_URL}/conversation/sync-conversations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.getToken()}`
+        },
+        body: JSON.stringify({
+          conversations,
+          lastSyncTimestamp: new Date().toISOString()
+        })
+      });
+
+      console.log('🔄 SYNC: Response status:', response.status);
+      console.log('🔄 SYNC: Response headers:', Object.fromEntries(response.headers.entries()));
+
+      // Check if response is actually JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('🔄 SYNC: Server returned non-JSON response:', textResponse.substring(0, 200));
+        throw new Error('Server returned non-JSON response');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log(`🔄 SYNC: Success! ${result.syncedMessages} messages synced, ${result.skippedMessages} skipped`);
+      } else {
+        console.error('🔄 SYNC: Server sync failed:', result.error);
+      }
+
+    } catch (error) {
+      console.error('🔄 SYNC: Conversation sync error:', error);
+    }
   }
 }
 

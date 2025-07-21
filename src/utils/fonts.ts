@@ -34,6 +34,10 @@ import {
   CrimsonPro_800ExtraBold,
   CrimsonPro_900Black,
 } from '@expo-google-fonts/crimson-pro';
+import {
+  SpaceMono_400Regular,
+  SpaceMono_700Bold,
+} from '@expo-google-fonts/space-mono';
 
 /**
  * Font System for Numina React Native
@@ -69,6 +73,13 @@ export const FontFamilies = {
     ios: 'Nunito',
     android: 'nunito',
     default: 'Nunito',
+  }),
+  
+  // Console/monospace font - for terminal-style text
+  console: Platform.select({
+    ios: 'SpaceMono',
+    android: 'spacemono',
+    default: 'Space Mono',
   }),
   
   // Fallback system fonts
@@ -284,6 +295,14 @@ export const TextStyles = {
     lineHeight: FontSizes.xs * LineHeights.normal,
     letterSpacing: LetterSpacing.normal,
   },
+  
+  // Console/terminal text style
+  console: {
+    fontFamily: 'SpaceMono_400Regular',
+    fontSize: FontSizes.base,
+    lineHeight: FontSizes.base * LineHeights.normal,
+    letterSpacing: LetterSpacing.normal,
+  },
 };
 
 // Font loading configuration - using Google Fonts
@@ -321,6 +340,10 @@ export const fontAssets = {
   CrimsonPro_700Bold,
   CrimsonPro_800ExtraBold,
   CrimsonPro_900Black,
+  
+  // Space Mono family (console/terminal text)
+  SpaceMono_400Regular,
+  SpaceMono_700Bold,
 };
 
 // Load fonts function
@@ -337,7 +360,8 @@ export const areFontsLoaded = (): boolean => {
   return Font.isLoaded('Nunito_400Regular') && 
          Font.isLoaded('Inter_400Regular') && 
          Font.isLoaded('OpenSans_400Regular') &&
-         Font.isLoaded('CrimsonPro_400Regular');
+         Font.isLoaded('CrimsonPro_400Regular') &&
+         Font.isLoaded('SpaceMono_400Regular');
 };
 
 // Utility function to get font family with weight (Google Fonts naming)

@@ -15,12 +15,12 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WalletScreen } from "../screens/WalletScreen";
 import { CloudScreen } from "../screens/CloudScreen";
-import { SentimentScreen } from "../screens/SentimentScreen";
 import { TutorialScreen } from "../screens/TutorialScreen";
 import { ExperienceLevelSelector } from "../components/ExperienceLevelSelector";
 import { ExperienceLevelService } from "../services/experienceLevelService";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
+import { log } from "../utils/logger";
 
 export type RootStackParamList = {
   Hero: undefined;
@@ -35,7 +35,6 @@ export type RootStackParamList = {
   Settings: undefined;
   Wallet: undefined;
   Cloud: undefined;
-  Sentiment: undefined;
   Tutorial: undefined;
 };
 
@@ -104,10 +103,7 @@ export const AppNavigator: React.FC = () => {
   // Prevent navigation resets during component re-renders
   const hasInitialized = useRef(false);
   
-  console.log('🏗️ APPNAVIGATOR: Component rendering - isAuthenticated:', isAuthenticated, 'loading:', loading);
-  console.log('🏗️ APPNAVIGATOR: hasInitialized.current:', hasInitialized.current);
-  console.log('🏗️ APPNAVIGATOR: Will show loading overlay?', loading);
-  console.log('🏗️ APPNAVIGATOR: NavigationContainer always shown (no unmounting)');
+  log.debug('Component rendering', { isAuthenticated, loading, hasInitialized: hasInitialized.current }, 'AppNavigator');
   
   const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -156,14 +152,13 @@ export const AppNavigator: React.FC = () => {
     switch (key) {
       case 'chat': navigation.navigate('Chat'); break;
       case 'analytics': navigation.navigate('Analytics'); break;
-      case 'sentiment': navigation.navigate('Sentiment'); break;
       case 'cloud': navigation.navigate('Cloud'); break;
       case 'wallet': navigation.navigate('Wallet'); break;
       case 'profile': navigation.navigate('Profile'); break;
       case 'settings': navigation.navigate('Settings'); break;
       case 'about': navigation.navigate('About'); break;
       case 'signout': {
-        console.log('🔓 MENU: User signed out - routing will handle navigation to Hero');
+        log.info('User signed out - routing will handle navigation to Hero', null, 'AppNavigator');
         break;
       }
       default: break;
@@ -180,16 +175,16 @@ export const AppNavigator: React.FC = () => {
     if (!authStateChanged || !hasInitialized.current) {
       // No auth change or not yet initialized - don't run routing logic to prevent loops
       if (!hasInitialized.current) {
-        console.log('🔄 AUTH ROUTING: Initial render, skipping routing logic');
+        log.debug('Initial render, skipping routing logic', null, 'AppNavigator');
         hasInitialized.current = true;
         prevAuthState.current = isAuthenticated;
       } else {
-        console.log('🔄 AUTH ROUTING: No auth state change, skipping routing logic');
+        log.debug('No auth state change, skipping routing logic', null, 'AppNavigator');
       }
       return;
     }
     
-    console.log('🔄 AUTH ROUTING: Auth state changed from', prevAuthState.current, 'to', isAuthenticated);
+    log.info('Auth state changed', { from: prevAuthState.current, to: isAuthenticated }, 'AppNavigator');
     
     // Only run when navigationRef is ready and not during initial load
     if (navigationRef.current && !loading) {
@@ -203,18 +198,18 @@ export const AppNavigator: React.FC = () => {
         
         if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp') {
           // Only auto-route if NOT coming from signup (signup has explicit navigation)
-          console.log('🔄 AUTH ROUTING: Authenticated user detected, current route:', currentRouteAfterDelay);
+          log.debug('Authenticated user detected', { currentRoute: currentRouteAfterDelay }, 'AppNavigator');
           
           // Check if user has set experience level - MANDATORY for all authenticated users
           ExperienceLevelService.hasSetExperienceLevel().then((hasSet) => {
             if (!hasSet) {
-              console.log('🔄 AUTH ROUTING: User MUST set experience level - redirecting');
+              log.info('User MUST set experience level - redirecting', null, 'AppNavigator');
               navigationRef.current?.reset({
                 index: 0,
                 routes: [{ name: 'ExperienceLevel' }],
               });
             } else {
-              console.log('🔄 AUTH ROUTING: User authenticated with experience level, navigating to Chat');
+              log.info('User authenticated with experience level, navigating to Chat', null, 'AppNavigator');
               navigationRef.current?.reset({
                 index: 0,
                 routes: [{ name: 'Chat' }],
@@ -222,7 +217,7 @@ export const AppNavigator: React.FC = () => {
             }
           });
         } else if (!isAuthenticated && hasNavigated.current && currentRouteAfterDelay !== 'Hero' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'ExperienceLevel') {
-          console.log('🔄 AUTH ROUTING: User logged out, returning to Hero');
+          log.info('User logged out, returning to Hero', null, 'AppNavigator');
           navigationRef.current?.reset({
             index: 0,
             routes: [{ name: 'Hero' }],
@@ -232,7 +227,7 @@ export const AppNavigator: React.FC = () => {
         hasNavigated.current = true;
       }, 50);
     } else {
-      console.log('🔄 AUTH ROUTING: Navigation not ready, deferring routing');
+      log.warn('Navigation not ready, deferring routing', null, 'AppNavigator');
       prevAuthState.current = isAuthenticated;
     }
   }, [isAuthenticated, loading]);
@@ -249,7 +244,7 @@ export const AppNavigator: React.FC = () => {
 
   // CRITICAL FIX: Don't unmount NavigationContainer during loading to prevent navigation reset
 
-  console.log('🏗️ APPNAVIGATOR: About to render NavigationContainer');
+  log.debug('About to render NavigationContainer', null, 'AppNavigator');
   
   return (
     <View style={{ flex: 1 }}>
@@ -257,7 +252,7 @@ export const AppNavigator: React.FC = () => {
         key="main-navigation" // Prevent complete re-initialization
       ref={(ref) => {
         navigationRef.current = ref;
-        console.log('🏗️ NAVIGATION CONTAINER: Ref set, ready:', !!ref);
+        log.debug('Navigation container ref set', { ready: !!ref }, 'AppNavigator');
         if (ref) {
           const currentRoute = ref.getCurrentRoute()?.name;
           console.log('🏗️ NAVIGATION CONTAINER: Initial route after ref set:', currentRoute);
@@ -461,6 +456,7 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <SettingsScreen 
               onNavigateBack={() => navigation.goBack()}
+              onNavigateToSignIn={() => navigation.navigate('SignIn')}
             />
           )}
         </Stack.Screen>
@@ -486,19 +482,6 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <CloudScreen 
-              onNavigateBack={() => navigation.goBack()}
-            />
-          )}
-        </Stack.Screen>
-
-        <Stack.Screen
-          name="Sentiment"
-          options={{
-            ...mobileTransition,
-          }}
-        >
-          {({ navigation }) => (
-            <SentimentScreen 
               onNavigateBack={() => navigation.goBack()}
             />
           )}

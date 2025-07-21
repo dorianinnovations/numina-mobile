@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { log } from '../utils/logger';
 // Dynamic import to prevent circular dependency
 
 // Complete the auth session for web browsers
@@ -63,23 +64,23 @@ class SpotifyService {
 
   async authenticateWithSpotify(): Promise<SpotifyTokens> {
     try {
-      console.log('🎵 Starting Spotify authentication...');
+      // console.log('🎵 Starting Spotify authentication...');
       
       // Validate configuration
       if (this.config.clientId === 'your_spotify_client_id' || !this.config.clientId) {
-        console.log('🎵 No Spotify Client ID configured, using mock authentication for development');
+        // console.log('🎵 No Spotify Client ID configured, using mock authentication for development');
         return this.mockAuthentication();
       }
       
-      console.log('🎵 Spotify Client ID found:', this.config.clientId.substring(0, 8) + '...');
-      console.log('🎵 Redirect URI:', this.config.redirectUri);
+      // console.log('🎵 Spotify Client ID found:', this.config.clientId.substring(0, 8) + '...');
+      // console.log('🎵 Redirect URI:', this.config.redirectUri);
       
       // Generate PKCE challenge
       const codeVerifier = this.generateCodeVerifier();
       const codeChallenge = await this.generateCodeChallenge(codeVerifier);
       
-      console.log('🎵 Generated code verifier length:', codeVerifier.length);
-      console.log('🎵 Generated code challenge length:', codeChallenge.length);
+      // console.log('🎵 Generated code verifier length:', codeVerifier.length);
+      // console.log('🎵 Generated code challenge length:', codeChallenge.length);
       
       // Store code verifier for token exchange
       await AsyncStorage.setItem('spotify_code_verifier', codeVerifier);
@@ -97,7 +98,7 @@ class SpotifyService {
       const result = await request.promptAsync(this.discovery);
 
       if (result.type === 'success') {
-        console.log('🎵 Spotify auth success, exchanging code for tokens...');
+        log.info('Spotify auth success, exchanging code for tokens', null, 'SpotifyService');
         
         // Exchange authorization code for access token
         const storedVerifier = await AsyncStorage.getItem('spotify_code_verifier');
@@ -134,10 +135,10 @@ class SpotifyService {
   }
 
   private async exchangeCodeForTokens(code: string, codeVerifier: string): Promise<SpotifyTokens> {
-    console.log('🎵 Exchanging code for tokens...');
-    console.log('🎵 Code verifier length for exchange:', codeVerifier.length);
-    console.log('🎵 Code verifier first 20 chars:', codeVerifier.substring(0, 20));
-    console.log('🎵 Code verifier last 20 chars:', codeVerifier.substring(-20));
+    // console.log('🎵 Exchanging code for tokens...');
+    // console.log('🎵 Code verifier length for exchange:', codeVerifier.length);
+    // console.log('🎵 Code verifier first 20 chars:', codeVerifier.substring(0, 20));
+    // console.log('🎵 Code verifier last 20 chars:', codeVerifier.substring(-20));
     
     // Validate code verifier format
     const validChars = /^[A-Za-z0-9\-._~]+$/;
@@ -150,12 +151,12 @@ class SpotifyService {
     }
     
     const storedVerifier = await AsyncStorage.getItem('spotify_code_verifier');
-    console.log('🎵 Code verifier matches stored?', codeVerifier === storedVerifier);
-    console.log('🎵 Stored verifier length:', storedVerifier?.length || 'null');
+    // console.log('🎵 Code verifier matches stored?', codeVerifier === storedVerifier);
+    // console.log('🎵 Stored verifier length:', storedVerifier?.length || 'null');
     
     // Double-check redirect URI matches what was used in authorization
     const currentRedirectUri = this.config.redirectUri;
-    console.log('🎵 Using redirect URI:', currentRedirectUri);
+    // console.log('🎵 Using redirect URI:', currentRedirectUri);
     
     const requestBody = {
       grant_type: 'authorization_code',
@@ -165,15 +166,15 @@ class SpotifyService {
       code_verifier: codeVerifier,
     };
     
-    console.log('🎵 Token exchange request body:', {
-      grant_type: requestBody.grant_type,
-      codeLength: requestBody.code.length,
-      redirect_uri: requestBody.redirect_uri,
-      client_id: requestBody.client_id.substring(0, 8) + '...',
-      code_verifier_length: requestBody.code_verifier.length,
-      code_verifier_start: requestBody.code_verifier.substring(0, 10) + '...',
-      code_verifier_end: '...' + requestBody.code_verifier.substring(-10)
-    });
+    // console.log('🎵 Token exchange request body:', {
+    //   grant_type: requestBody.grant_type,
+    //   codeLength: requestBody.code.length,
+    //   redirect_uri: requestBody.redirect_uri,
+    //   client_id: requestBody.client_id.substring(0, 8) + '...',
+    //   code_verifier_length: requestBody.code_verifier.length,
+    //   code_verifier_start: requestBody.code_verifier.substring(0, 10) + '...',
+    //   code_verifier_end: '...' + requestBody.code_verifier.substring(-10)
+    // });
     
     try {
       const response = await fetch(this.discovery.tokenEndpoint, {
@@ -185,11 +186,10 @@ class SpotifyService {
         body: new URLSearchParams(requestBody).toString(),
       });
 
-      console.log('🎵 Spotify token response status:', response.status);
-      console.log('🎵 Spotify token response headers:', Object.fromEntries(response.headers.entries()));
+      log.debug('Spotify token exchange response', { status: response.status }, 'SpotifyService');
 
       const responseText = await response.text();
-      console.log('🎵 Spotify token response body:', responseText);
+      // Token response body intentionally not logged for security
 
       if (!response.ok) {
         throw new Error(`Token exchange failed: ${response.status} - ${responseText}`);
@@ -272,7 +272,7 @@ class SpotifyService {
           if (tokenAge < expirationTime) {
             return tokens;
           } else {
-            console.log('🎵 Spotify tokens expired, need to re-authenticate');
+            log.info('Spotify tokens expired, need to re-authenticate', null, 'SpotifyService');
             await this.clearStoredTokens();
           }
         }
@@ -313,7 +313,7 @@ class SpotifyService {
       const { default: ApiService } = await import('./api');
       await ApiService.disconnectSpotifyAccount();
       
-      console.log('🎵 Spotify account disconnected');
+      // console.log('🎵 Spotify account disconnected');
     } catch (error) {
       console.error('Error disconnecting Spotify:', error);
       throw error;
@@ -353,8 +353,8 @@ class SpotifyService {
   }
 
   private async generateCodeChallenge(codeVerifier: string): Promise<string> {
-    console.log('🎵 Generating challenge for verifier:', codeVerifier.substring(0, 10) + '...');
-    console.log('🎵 Verifier length for challenge:', codeVerifier.length);
+    // console.log('🎵 Generating challenge for verifier:', codeVerifier.substring(0, 10) + '...');
+    // console.log('🎵 Verifier length for challenge:', codeVerifier.length);
     
     try {
       const digest = await Crypto.digestStringAsync(
@@ -363,8 +363,8 @@ class SpotifyService {
         { encoding: Crypto.CryptoEncoding.BASE64 }
       );
       
-      console.log('🎵 SHA256 digest (BASE64):', digest.substring(0, 20) + '...');
-      console.log('🎵 SHA256 digest length:', digest.length);
+      // console.log('🎵 SHA256 digest (BASE64):', digest.substring(0, 20) + '...');
+      // console.log('🎵 SHA256 digest length:', digest.length);
       
       // RFC 7636 compliant base64url conversion (no padding, URL-safe chars)
       const base64Url = digest
@@ -372,8 +372,8 @@ class SpotifyService {
         .replace(/\//g, '_')
         .replace(/=+$/, ''); // Remove all trailing padding
       
-      console.log('🎵 Final code challenge (BASE64URL):', base64Url.substring(0, 20) + '...');
-      console.log('🎵 Challenge length:', base64Url.length);
+      // console.log('🎵 Final code challenge (BASE64URL):', base64Url.substring(0, 20) + '...');
+      // console.log('🎵 Challenge length:', base64Url.length);
       
       // Validate the challenge meets RFC 7636 requirements
       if (base64Url.length < 43) {
@@ -395,7 +395,7 @@ class SpotifyService {
 
 
   private async mockAuthentication(): Promise<SpotifyTokens> {
-    console.log('🎵 Using mock Spotify authentication for development');
+    // console.log('🎵 Using mock Spotify authentication for development');
     
     // Simulate a delay
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -428,7 +428,7 @@ class SpotifyService {
     try {
       await this.sendTokensToBackend(mockTokens, mockProfile);
     } catch (error) {
-      console.log('🎵 Backend connection failed (expected in development):', error);
+      // console.log('🎵 Backend connection failed (expected in development):', error);
     }
     
     return mockTokens;

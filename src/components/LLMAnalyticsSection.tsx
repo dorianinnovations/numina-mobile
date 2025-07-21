@@ -8,11 +8,16 @@ import {
   ActivityIndicator,
   Animated,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 import { useLLMAnalytics } from '../hooks/useLLMAnalytics';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface LLMAnalyticsSectionProps {
   isVisible?: boolean;
@@ -25,6 +30,23 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
   const [refreshing, setRefreshing] = useState(false);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Animation values for floating orbs
+  const orb1X = useRef(new Animated.Value(0)).current;
+  const orb1Y = useRef(new Animated.Value(0)).current;
+  const orb2X = useRef(new Animated.Value(0)).current;
+  const orb2Y = useRef(new Animated.Value(0)).current;
+  const orb3X = useRef(new Animated.Value(0)).current;
+  const orb3Y = useRef(new Animated.Value(0)).current;
+
+  // Scale animations for pulsing effect
+  const orb1Scale = useRef(new Animated.Value(1)).current;
+  const orb2Scale = useRef(new Animated.Value(1)).current;
+  const orb3Scale = useRef(new Animated.Value(1)).current;
+
+  // Card entrance animation
+  const cardScale = useRef(new Animated.Value(0.9)).current;
+  const cardOpacity = useRef(new Animated.Value(0)).current;
   
   const {
     llmInsights,
@@ -48,15 +70,85 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
       generateInsights({ days: 30, focus: 'general' });
     }
     
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+    // Section entrance animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardScale, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(cardOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Create floating animation for orbs
+    const createFloatingAnimation = (xValue: Animated.Value, yValue: Animated.Value, scaleValue: Animated.Value, delay: number) => {
+      const floating = Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(xValue, {
+              toValue: Math.random() * 25 - 12.5,
+              duration: 7000 + Math.random() * 3000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(yValue, {
+              toValue: Math.random() * 25 - 12.5,
+              duration: 7000 + Math.random() * 3000,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.parallel([
+            Animated.timing(xValue, {
+              toValue: Math.random() * 25 - 12.5,
+              duration: 7000 + Math.random() * 3000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(yValue, {
+              toValue: Math.random() * 25 - 12.5,
+              duration: 7000 + Math.random() * 3000,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      );
+
+      const pulsing = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleValue, {
+            toValue: 1.2,
+            duration: 6000 + Math.random() * 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleValue, {
+            toValue: 0.8,
+            duration: 6000 + Math.random() * 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+
+      setTimeout(() => {
+        floating.start();
+        pulsing.start();
+      }, delay);
+    };
+
+    // Start animations with different delays
+    createFloatingAnimation(orb1X, orb1Y, orb1Scale, 0);
+    createFloatingAnimation(orb2X, orb2Y, orb2Scale, 2000);
+    createFloatingAnimation(orb3X, orb3Y, orb3Scale, 4000);
   }, [isVisible, hasCachedInsights, generateInsights]);
 
   const tabs = [
-    { id: 'insights', label: 'Insights', icon: 'brain', color: NuminaColors.purple },
+    { id: 'insights', label: 'Insights', icon: 'lightbulb-on', color: NuminaColors.purple },
     { id: 'patterns', label: 'Patterns', icon: 'trending-up', color: NuminaColors.green },
     { id: 'recommendations', label: 'Tips', icon: 'target', color: NuminaColors.chatBlue[400] },
     { id: 'weekly', label: 'Weekly', icon: 'star', color: NuminaColors.yellow },
@@ -91,8 +183,8 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
     const iconSize = 20;
     
     switch (iconName) {
-      case 'brain':
-        return <MaterialCommunityIcons name="brain" size={iconSize} color={iconColor} />;
+      case 'lightbulb-on':
+        return <MaterialCommunityIcons name="lightbulb-on" size={iconSize} color={iconColor} />;
       case 'trending-up':
         return <Feather name="trending-up" size={iconSize} color={iconColor} />;
       case 'target':
@@ -105,10 +197,101 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.9) return NuminaColors.green;
-    if (confidence >= 0.7) return NuminaColors.yellow;
-    return NuminaColors.pink;
+    if (confidence >= 0.9) return '#00ff88';
+    if (confidence >= 0.7) return '#ffd93d';
+    return '#ff6b9d';
   };
+
+  const getConfidenceTrend = (confidence: number): 'up' | 'down' | 'neutral' => {
+    if (confidence >= 0.8) return 'up';
+    if (confidence <= 0.6) return 'down';
+    return 'neutral';
+  };
+
+  const getTrendColor = (trend: 'up' | 'down' | 'neutral') => {
+    switch (trend) {
+      case 'up': return '#00ff88';
+      case 'down': return '#ff4757';
+      default: return '#00aaff';
+    }
+  };
+
+  const GlowingOrb: React.FC<{
+    translateX: Animated.Value;
+    translateY: Animated.Value;
+    scale: Animated.Value;
+    color: string;
+    size: number;
+    position: { top?: number; bottom?: number; left?: number; right?: number };
+  }> = ({ translateX, translateY, scale, color, size, position }) => (
+    <Animated.View
+      style={[
+        styles.orbContainer,
+        position,
+        {
+          transform: [
+            { translateX },
+            { translateY },
+            { scale },
+          ],
+        },
+      ]}
+    >
+      {/* Outer glow */}
+      <View
+        style={[
+          styles.orbGlow,
+          {
+            width: size * 3,
+            height: size * 3,
+            borderRadius: (size * 3) / 2,
+            backgroundColor: color + '10',
+          },
+        ]}
+      />
+      {/* Middle glow */}
+      <View
+        style={[
+          styles.orbGlow,
+          {
+            width: size * 2,
+            height: size * 2,
+            borderRadius: (size * 2) / 2,
+            backgroundColor: color + '25',
+          },
+        ]}
+      />
+      {/* Inner glow */}
+      <View
+        style={[
+          styles.orbGlow,
+          {
+            width: size * 1.4,
+            height: size * 1.4,
+            borderRadius: (size * 1.4) / 2,
+            backgroundColor: color + '40',
+          },
+        ]}
+      />
+      {/* Core orb */}
+      <View
+        style={[
+          styles.orb,
+          {
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+            backgroundColor: color,
+            shadowColor: color,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.9,
+            shadowRadius: size / 1.2,
+            elevation: 10,
+          },
+        ]}
+      />
+    </Animated.View>
+  );
 
   const renderContent = () => {
     let insights, isLoading, error;
@@ -185,76 +368,124 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
           />
         }
       >
-        {insights.map((insight) => (
-          <TouchableOpacity
+        {insights.map((insight) => {
+          const confidenceTrend = getConfidenceTrend(insight.confidence);
+          const trendColor = getTrendColor(confidenceTrend);
+          const confidencePercentage = Math.round(insight.confidence * 100);
+          
+          return (
+          <Animated.View 
             key={insight.id}
             style={[
               styles.insightCard,
               {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.9)',
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-              }
+                opacity: fadeAnim,
+                transform: [{ scale: cardScale }],
+              },
             ]}
-            onPress={() => setExpandedInsight(expandedInsight === insight.id ? null : insight.id)}
-            activeOpacity={0.7}
           >
-            <View style={styles.insightHeader}>
-              <View style={styles.insightTitleRow}>
-                <View style={[
-                  styles.insightIcon,
-                  { backgroundColor: `${getConfidenceColor(insight.confidence)}20` }
-                ]}>
-                  {insight.type === 'pattern' && <MaterialCommunityIcons name="chart-timeline-variant" size={16} color={getConfidenceColor(insight.confidence)} />}
-                  {insight.type === 'trend' && <Feather name="trending-up" size={16} color={getConfidenceColor(insight.confidence)} />}
-                  {insight.type === 'recommendation' && <Feather name="target" size={16} color={getConfidenceColor(insight.confidence)} />}
-                  {insight.type === 'anomaly' && <Feather name="alert-circle" size={16} color={getConfidenceColor(insight.confidence)} />}
-                </View>
-                <Text style={[styles.insightTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
-                  {insight.title}
-                </Text>
-              </View>
-              <Feather 
-                name={expandedInsight === insight.id ? "chevron-up" : "chevron-down"} 
-                size={20} 
-                color={isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500]} 
-              />
-            </View>
-            
-            <Text 
-              style={[
-                styles.insightDescription, 
-                { color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[600] }
-              ]}
-              numberOfLines={expandedInsight === insight.id ? undefined : 2}
+            {/* Background orbs for individual cards */}
+            <GlowingOrb
+              translateX={orb1X}
+              translateY={orb1Y}
+              scale={orb1Scale}
+              color={getConfidenceColor(insight.confidence)}
+              size={20}
+              position={{ top: -10, left: -10 }}
+            />
+            <GlowingOrb
+              translateX={orb2X}
+              translateY={orb2Y}
+              scale={orb2Scale}
+              color={trendColor}
+              size={15}
+              position={{ bottom: -8, right: -8 }}
+            />
+
+            <TouchableOpacity
+              style={styles.cardTouchable}
+              onPress={() => setExpandedInsight(expandedInsight === insight.id ? null : insight.id)}
+              activeOpacity={0.8}
             >
-              {insight.description}
-            </Text>
-            
-            <View style={styles.insightFooter}>
-              <View style={styles.confidenceContainer}>
-                <View style={[styles.confidenceDot, { backgroundColor: getConfidenceColor(insight.confidence) }]} />
-                <Text style={[styles.confidenceText, { color: isDarkMode ? NuminaColors.darkMode[500] : NuminaColors.darkMode[400] }]}>
-                  {(insight.confidence * 100).toFixed(0)}% confidence
-                </Text>
+              <View style={styles.glassContainer}>
+                <BlurView
+                  intensity={isDarkMode ? 60 : 80}
+                  tint={isDarkMode ? "dark" : "light"}
+                  style={styles.blurView}
+                >
+                  <LinearGradient
+                    colors={isDarkMode 
+                      ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)']
+                      : ['rgba(255,255,255,0.35)', 'rgba(255,255,255,0.25)']
+                    }
+                    style={styles.gradientOverlay}
+                  >
+                    <View style={styles.cardContent}>
+                    <View style={styles.insightHeader}>
+                      <View style={styles.insightTitleRow}>
+                        <View style={[
+                          styles.insightIcon,
+                          { backgroundColor: `${getConfidenceColor(insight.confidence)}20` }
+                        ]}>
+                          {insight.type === 'pattern' && <MaterialCommunityIcons name="chart-timeline-variant" size={18} color={getConfidenceColor(insight.confidence)} />}
+                          {insight.type === 'trend' && <Feather name="trending-up" size={18} color={getConfidenceColor(insight.confidence)} />}
+                          {insight.type === 'recommendation' && <Feather name="target" size={18} color={getConfidenceColor(insight.confidence)} />}
+                          {insight.type === 'anomaly' && <Feather name="alert-circle" size={18} color={getConfidenceColor(insight.confidence)} />}
+                        </View>
+                        <View style={styles.titleContainer}>
+                          <Text style={styles.insightTitle}>
+                            {insight.title}
+                          </Text>
+                          <View style={styles.confidenceDisplay}>
+                            <Text style={[styles.confidencePercentage, { color: trendColor }]}>
+                              {confidencePercentage}%
+                            </Text>
+                            {confidenceTrend !== 'neutral' && (
+                              <Feather 
+                                name={confidenceTrend === 'up' ? 'trending-up' : 'trending-down'} 
+                                size={14} 
+                                color={trendColor} 
+                              />
+                            )}
+                          </View>
+                        </View>
+                      </View>
+                      <Feather 
+                        name={expandedInsight === insight.id ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color="rgba(255, 255, 255, 0.6)" 
+                      />
+                    </View>
+                    
+                    <Text 
+                      style={styles.insightDescription}
+                      numberOfLines={expandedInsight === insight.id ? undefined : 2}
+                    >
+                      {insight.description}
+                    </Text>
+                    
+                    {insight.category && (
+                      <View style={styles.insightFooter}>
+                        <Text style={styles.categoryTag}>
+                          {insight.category}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    {insight.actionable && expandedInsight === insight.id && (
+                      <TouchableOpacity style={styles.actionButton}>
+                        <Text style={styles.actionButtonText}>Take Action</Text>
+                        <Feather name="arrow-right" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    )}
+                    </View>
+                  </LinearGradient>
+                </BlurView>
               </View>
-              {insight.category && (
-                <Text style={[styles.categoryTag, { 
-                  color: isDarkMode ? NuminaColors.darkMode[400] : NuminaColors.darkMode[500],
-                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                }]}>
-                  {insight.category}
-                </Text>
-              )}
-            </View>
-            
-            {insight.actionable && expandedInsight === insight.id && (
-              <TouchableOpacity style={[styles.actionButton, { backgroundColor: NuminaColors.green }]}>
-                <Text style={styles.actionButtonText}>Take Action</Text>
-                <Feather name="arrow-right" size={16} color="#fff" />
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          </Animated.View>
+        );
+        })}
       </ScrollView>
     );
   };
@@ -262,8 +493,8 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
   if (!isVisible) return null;
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : NuminaColors.darkMode[800] }]}>
+    <View style={styles.container}>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)' }]}>
         AI-Powered Insights
       </Text>
       
@@ -292,7 +523,7 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
       <View style={styles.contentContainer}>
         {renderContent()}
       </View>
-    </Animated.View>
+    </View>
   );
 };
 
@@ -305,6 +536,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontFamily: 'Inter_700Bold',
     marginBottom: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  orbContainer: {
+    position: 'absolute',
+    zIndex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  orb: {
+    position: 'absolute',
+    zIndex: 4,
+  },
+  orbGlow: {
+    position: 'absolute',
+    zIndex: 1,
   },
   tabContainer: {
     flexDirection: 'row',
@@ -381,78 +629,114 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   insightCard: {
-    padding: 16,
-    borderRadius: 12,
+    position: 'relative',
+    marginBottom: 16,
+    marginHorizontal: 4,
+  },
+  cardTouchable: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  glassContainer: {
+    borderRadius: 20,
+    overflow: 'hidden',
     borderWidth: 1,
-    marginBottom: 12,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  blurView: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    flex: 1,
+  },
+  gradientOverlay: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    flex: 1,
+  },
+  cardContent: {
+    padding: 20,
   },
   insightHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    alignItems: 'flex-start',
+    marginBottom: 16,
   },
   insightTitleRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
-    marginRight: 8,
+    marginRight: 12,
   },
   insightIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  titleContainer: {
+    flex: 1,
   },
   insightTitle: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
-    flex: 1,
+    marginBottom: 6,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  confidenceDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  confidencePercentage: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   insightDescription: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    lineHeight: 20,
+    lineHeight: 22,
     marginBottom: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   insightFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  confidenceContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  confidenceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  confidenceText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    marginTop: 8,
   },
   categoryTag: {
     fontSize: 12,
     fontFamily: 'Inter_500Medium',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    color: 'rgba(255, 255, 255, 0.7)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignSelf: 'flex-start',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 16,
     gap: 8,
+    backgroundColor: '#00ff88',
   },
   actionButtonText: {
     color: '#fff',

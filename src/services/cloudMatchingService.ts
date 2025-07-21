@@ -84,12 +84,12 @@ class CloudMatchingService {
         await this.cacheEvents(transformedEvents);
         return transformedEvents;
       } else {
-        console.log('Cloud events API response:', response);
+        // console.log('Cloud events API response:', response);
         const cached = await this.getCachedEvents();
         if (cached.length > 0) {
           return cached;
         }
-        console.log('No cached events found, generating mock data as fallback');
+        // console.log('No cached events found, generating mock data as fallback');
         return this.generateMockEventsWithAI(emotionalState);
       }
     } catch (error) {
@@ -205,14 +205,14 @@ class CloudMatchingService {
         await this.cacheUserMatches(compatibleUsers);
         return compatibleUsers;
       } else {
-        console.log('Compatible users API response:', response);
+        // console.log('Compatible users API response:', response);
         // Check cached matches first
         const cached = await this.getCachedUserMatches();
         if (cached.length > 0) {
           return cached;
         }
         // Fallback to mock data only if no cached data
-        console.log('No cached user matches, generating mock data as fallback');
+        // console.log('No cached user matches, generating mock data as fallback');
         return this.generateMockCompatibleUsers(emotionalState, options.interests);
       }
     } catch (error) {
@@ -397,7 +397,7 @@ class CloudMatchingService {
   // Private helper methods
   private async enhanceEventsWithAI(events: CloudEvent[], emotionalState: UserEmotionalState): Promise<CloudEvent[]> {
     if (!Array.isArray(events)) {
-      console.warn('enhanceEventsWithAI: events is not an array, returning empty array');
+      // console.warn('enhanceEventsWithAI: events is not an array, returning empty array');
       return [];
     }
     
@@ -560,7 +560,7 @@ class CloudMatchingService {
     try {
       const userId = CloudAuth.getInstance().getCurrentUserId();
       if (!userId) {
-        console.warn('No user ID found, cannot cache events');
+        // console.warn('No user ID found, cannot cache events');
         return;
       }
       

@@ -26,7 +26,9 @@ import { PageBackground } from '../components/PageBackground';
 import { SubscriptionModal } from '../components/SubscriptionModal';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ApiService from '../services/api';
+import { CustomAlert, AlertButton } from '../components/CustomAlert';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { log } from '../utils/logger';
 
 interface WalletScreenProps {
   onNavigateBack: () => void;
@@ -75,6 +77,21 @@ interface SubscriptionData {
   };
 }
 
+type UserTier = 'core' | 'pro' | 'aether';
+
+interface TierFeatures {
+  tier: UserTier;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+  price?: string;
+  features: string[];
+  limitations?: string[];
+  isCurrentTier: boolean;
+  canUpgrade: boolean;
+}
+
 export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) => {
   const { theme, isDarkMode } = useTheme();
   const { logout } = useAuth();
@@ -97,6 +114,28 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   
+  // Tier State
+  const [currentTier, setCurrentTier] = useState<UserTier>('core');
+  const [tierFeatures, setTierFeatures] = useState<TierFeatures[]>([]);
+  
+  // Custom Alert state
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title?: string;
+    message?: string;
+    buttons?: AlertButton[];
+  }>({ visible: false });
+  
+  // Helper function to show custom alert
+  const showAlert = (title?: string, message?: string, buttons?: AlertButton[]) => {
+    setAlertConfig({
+      visible: true,
+      title,
+      message,
+      buttons: buttons || [{ text: 'OK' }]
+    });
+  };
+  
   // Add Funds State
   const [showAddFunds, setShowAddFunds] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
@@ -113,7 +152,75 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
   // Load wallet data on mount
   useEffect(() => {
     loadWalletData();
+    initializeTierFeatures();
   }, []);
+
+  const initializeTierFeatures = () => {
+    const features: TierFeatures[] = [
+      {
+        tier: 'core',
+        name: 'Core',
+        description: 'The hook. Generous enough to be magical and demonstrate the app\'s core value.',
+        icon: 'heart',
+        color: '#10b981',
+        features: [
+          'Core AI Chat with standard models',
+          'Standard UBPM updates (24 hours)',
+          'Analytics Overview tab access',
+          'Teaser analytics (1 trait, 1 pattern)',
+          'Limited tool use (10/month)',
+          'Basic social discovery',
+          '7-day conversation history'
+        ],
+        limitations: [
+          'Locked advanced analytics charts',
+          'No premium AI models',
+          'Limited tool usage'
+        ],
+        isCurrentTier: currentTier === 'core',
+        canUpgrade: true
+      },
+      {
+        tier: 'pro',
+        name: 'Pro',
+        description: 'The power-up. For users who are invested and want to go deeper.',
+        icon: 'rocket',
+        color: '#6366f1',
+        price: '$9.99/month',
+        features: [
+          'Premier AI Models (GPT-4o)',
+          'Unlimited tool use (fair use)',
+          'Full advanced analytics unlock',
+          'Accelerated UBPM updates',
+          'Advanced social matching',
+          'Unlimited conversation history',
+          'Monthly credit allotment (500)'
+        ],
+        isCurrentTier: currentTier === 'pro',
+        canUpgrade: currentTier === 'core'
+      },
+      {
+        tier: 'aether',
+        name: 'Aether',
+        description: 'The ultimate edge. For power users who want predictive, real-time insights.',
+        icon: 'gem',
+        color: '#a855f7',
+        price: '$29.99/month',
+        features: [
+          'All Pro features included',
+          'Advanced psychological profiling',
+          'Real-time insights & monitoring',
+          'Predictive analytics engine',
+          'Priority access to beta features',
+          'Large credit allotment (2,500)',
+          'First access to experimental AI'
+        ],
+        isCurrentTier: currentTier === 'aether',
+        canUpgrade: currentTier !== 'aether'
+      }
+    ];
+    setTierFeatures(features);
+  };
 
   const loadWalletData = async () => {
     try {
@@ -166,6 +273,21 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
       // Handle subscription response
       if (subscriptionResponse.success && subscriptionResponse.data) {
         setSubscriptionData(subscriptionResponse.data);
+        
+        // Determine current tier based on subscription
+        const subscription = subscriptionResponse.data.numinaTrace;
+        if (subscription.hasActiveSubscription) {
+          const plan = subscription.plan?.toLowerCase() || '';
+          if (plan.includes('aether') || plan.includes('premium')) {
+            setCurrentTier('aether');
+          } else if (plan.includes('pro') || plan.includes('trace')) {
+            setCurrentTier('pro');
+          } else {
+            setCurrentTier('core');
+          }
+        } else {
+          setCurrentTier('core');
+        }
       }
     } catch (err) {
       console.error('Error loading wallet data:', err);
@@ -225,28 +347,28 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
 
   const handleAddFunds = async () => {
     if (!cardNumber.trim() || !expiry.trim() || !cvc.trim() || !amount.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
     const amountNum = parseFloat(amount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      Alert.alert('Error', 'Please enter a valid amount');
+      showAlert('Error', 'Please enter a valid amount');
       return;
     }
 
     if (cardNumber.replace(/\s/g, '').length < 12) {
-      Alert.alert('Error', 'Invalid card number');
+      showAlert('Error', 'Invalid card number');
       return;
     }
 
     if (!/^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(expiry)) {
-      Alert.alert('Error', 'Expiry must be MM/YY format');
+      showAlert('Error', 'Expiry must be MM/YY format');
       return;
     }
 
     if (cvc.length < 3) {
-      Alert.alert('Error', 'Invalid CVC');
+      showAlert('Error', 'Invalid CVC');
       return;
     }
 
@@ -593,77 +715,201 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
     </View>
   );
 
-  const renderToolsSection = () => {
-    return (
-      <View style={styles.toolsSection}>
-        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-          
+  const renderTierCard = (tierData: TierFeatures) => (
+    <View 
+      key={tierData.tier}
+      style={[
+        styles.tierContainer,
+        {
+          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+          borderColor: tierData.isCurrentTier ? tierData.color : (isDarkMode ? '#333' : '#e0e0e0'),
+          borderWidth: tierData.isCurrentTier ? 2 : 1,
+        }
+      ]}
+    >
+      <View style={styles.tierHeader}>
+        <View style={styles.tierTitleContainer}>
+          <FontAwesome5 name={tierData.icon} size={20} color={tierData.color} />
+          <Text style={[
+            styles.tierTitle, 
+            { color: isDarkMode ? '#fff' : '#000' }
+          ]}>
+            {tierData.name}
+          </Text>
+          {tierData.price && (
+            <Text style={[styles.tierPrice, { color: tierData.color }]}>
+              {tierData.price}
+            </Text>
+          )}
+        </View>
+        {tierData.isCurrentTier && (
+          <View style={[styles.currentBadge, { backgroundColor: tierData.color }]}>
+            <Text style={[styles.currentBadgeText, { color: '#fff' }]}>
+              Current
+            </Text>
+          </View>
+        )}
+      </View>
+      
+      <Text style={[styles.tierDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
+        {tierData.description}
+      </Text>
+      
+      <View style={styles.tierFeatures}>
+        <Text style={[styles.featuresTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+          What's included:
+        </Text>
+        {tierData.features.map((feature, index) => (
+          <View key={index} style={styles.featureItem}>
+            <FontAwesome5 name="check" size={14} color={tierData.color} />
+            <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+              {feature}
+            </Text>
+          </View>
+        ))}
+        
+        {tierData.limitations && tierData.limitations.length > 0 && (
+          <>
+            <Text style={[styles.limitationsTitle, { color: isDarkMode ? '#888' : '#888' }]}>
+              Limitations:
+            </Text>
+            {tierData.limitations.map((limitation, index) => (
+              <View key={index} style={styles.limitationItem}>
+                <FontAwesome5 name="times" size={14} color="#f59e0b" />
+                <Text style={[styles.limitationText, { color: isDarkMode ? '#888' : '#888' }]}>
+                  {limitation}
+                </Text>
+              </View>
+            ))}
+          </>
+        )}
+      </View>
+      
+      {tierData.canUpgrade && !tierData.isCurrentTier && (
+        <TouchableOpacity
+          style={[styles.upgradeButton, { backgroundColor: tierData.color }]}
+          onPress={() => {
+            if (tierData.tier === 'pro' || tierData.tier === 'aether') {
+              setShowSubscriptionModal(true);
+            }
+          }}
+        >
+          <Text style={[styles.upgradeButtonText, { color: '#fff' }]}>
+            Upgrade to {tierData.name}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+
+  const renderCreditSystem = () => (
+    <View style={styles.creditSystemSection}>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+        Credit System
+      </Text>
+      
+      <View style={[
+        styles.creditCard,
+        {
+          backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+          borderColor: isDarkMode ? '#333' : '#e0e0e0',
+        }
+      ]}>
+        <View style={styles.creditHeader}>
+          <FontAwesome5 name="coins" size={20} color="#f59e0b" />
+          <Text style={[styles.creditTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+            Pay-as-you-go Credits
+          </Text>
+        </View>
+        
+        <Text style={[styles.creditDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
+          Perfect for non-subscribers or to exceed your tier limits. Credits never expire.
         </Text>
         
-        {/* Investment/Support Section */}
-        <View style={[
-          styles.tierContainer,
-          {
-            backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
-            borderColor: isDarkMode ? '#FFD700' : '#FFD700',
-            borderWidth: 1,
-          }
-        ]}>
-          <View style={styles.tierHeader}>
-            <View style={styles.tierTitleContainer}>
-              <FontAwesome5 name="rocket" size={20} color="#FFD700" />
-              <Text style={[
-                styles.tierTitle, 
-                { color: isDarkMode ? '#FFD700' : '#FFD700' }
-              ]}>
-                Founding Member
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.developmentNotice}>
-            <View style={styles.developmentIcon}>
-              <FontAwesome5 name="handshake" size={24} color={isDarkMode ? '#80acff' : '#80acff'} />
-            </View>
-            <View style={styles.developmentText}>
-              <Text style={[styles.developmentTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-                You're Building the Future
-              </Text>
-              <Text style={[styles.developmentDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
-                Your credits directly fund revolutionary AI that understands human emotion. Early supporters get lifetime access to premium features. 
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.featurePreview}>
-            <Text style={[styles.featureTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-              Your Investment Unlocks:
+        <View style={styles.creditFeatures}>
+          <View style={styles.creditFeatureItem}>
+            <Text style={[styles.creditFeatureLabel, { color: isDarkMode ? '#fff' : '#000' }]}>
+              Advanced Psychological Profile
             </Text>
-            <View style={styles.featureList}>
-              <View style={styles.featureItem}>
-                <FontAwesome5 name="brain" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
-                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                  Advanced agentic behavior tied to personal trends
+            <Text style={[styles.creditFeaturePrice, { color: '#f59e0b' }]}>
+              400 credits
+            </Text>
+          </View>
+          
+          <View style={styles.creditFeatureItem}>
+            <Text style={[styles.creditFeatureLabel, { color: isDarkMode ? '#fff' : '#000' }]}>
+              Real-time Insight (1 hour)
+            </Text>
+            <Text style={[styles.creditFeaturePrice, { color: '#f59e0b' }]}>
+              100 credits
+            </Text>
+          </View>
+          
+          <View style={styles.creditFeatureItem}>
+            <Text style={[styles.creditFeatureLabel, { color: isDarkMode ? '#fff' : '#000' }]}>
+              Full Analytics Unlock (24h)
+            </Text>
+            <Text style={[styles.creditFeaturePrice, { color: '#f59e0b' }]}>
+              250 credits
+            </Text>
+          </View>
+        </View>
+        
+        <View style={styles.creditPurchaseOptions}>
+          <Text style={[styles.purchaseOptionsTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+            Credit Packages:
+          </Text>
+          <View style={styles.packageGrid}>
+            {[
+              { amount: 500, price: '$5' },
+              { amount: 1200, price: '$10' },
+              { amount: 2500, price: '$20' },
+              { amount: 5000, price: '$35' }
+            ].map((pkg) => (
+              <TouchableOpacity
+                key={pkg.amount}
+                style={[
+                  styles.packageOption,
+                  { 
+                    backgroundColor: isDarkMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(245, 158, 11, 0.05)',
+                    borderColor: '#f59e0b'
+                  }
+                ]}
+                onPress={() => {
+                  // Handle credit purchase
+                  setAmount(pkg.price.replace('$', ''));
+                  setShowAddFunds(true);
+                }}
+              >
+                <Text style={[styles.packageAmount, { color: '#f59e0b' }]}>
+                  {pkg.amount.toLocaleString()}
                 </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <FontAwesome5 name="chart-line" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
-                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                  Deep emotional analytics for self-mastery
+                <Text style={[styles.packagePrice, { color: isDarkMode ? '#fff' : '#000' }]}>
+                  {pkg.price}
                 </Text>
-              </View>
-              <View style={styles.featureItem}>
-                <FontAwesome5 name="users" size={16} color={isDarkMode ? '#80acff' : '#80acff'} />
-                <Text style={[styles.featureText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                  Enhanced social matching algorithms
-                </Text>
-              </View>
-            </View>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
       </View>
-    );
-  };
+    </View>
+  );
+
+  const renderTierSystem = () => (
+    <View style={styles.tierSystemSection}>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+        Choose Your Journey
+      </Text>
+      
+      <Text style={[styles.tierSystemDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
+        From discovery to mastery to optimization - find the perfect plan for your personal growth journey.
+      </Text>
+      
+      {tierFeatures.map(renderTierCard)}
+      
+      {renderCreditSystem()}
+    </View>
+  );
 
   return (
     <PageBackground>
@@ -801,11 +1047,8 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
               {/* Add Funds Form */}
               {showAddFunds && renderAddFundsForm()}
               
-              {/* Subscription Status Card */}
-              {renderSubscriptionCard()}
-              
-              {/* Available Tools */}
-              {renderToolsSection()}
+              {/* Tier System */}
+              {renderTierSystem()}
               
               {/* Transaction History */}
               <View style={styles.transactionSection}>
@@ -842,9 +1085,17 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           visible={showSubscriptionModal}
           onClose={() => setShowSubscriptionModal(false)}
           onSubscribe={(plan) => {
-            console.log('Subscribed to plan:', plan);
+            log.info('Subscribed to plan', { plan }, 'WalletScreen');
             loadWalletData(); // Refresh all data including subscription
           }}
+        />
+        
+        <CustomAlert
+          visible={alertConfig.visible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttons={alertConfig.buttons}
+          onDismiss={() => setAlertConfig({ visible: false })}
         />
       </SafeAreaView>
     </PageBackground>
@@ -1262,5 +1513,148 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     textAlign: 'center',
+  },
+  
+  // Tier System Styles
+  tierSystemSection: {
+    marginBottom: 20,
+    marginTop: 20,
+  },
+  tierSystemDescription: {
+    fontSize: 16,
+    fontWeight: '400',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  tierDescription: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  tierPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 'auto',
+  },
+  tierFeatures: {
+    marginTop: 16,
+  },
+  featuresTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  limitationsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  limitationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 6,
+  },
+  limitationText: {
+    fontSize: 14,
+    fontWeight: '400',
+    flex: 1,
+  },
+  upgradeButton: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  upgradeButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // Credit System Styles
+  creditSystemSection: {
+    marginTop: 32,
+    marginBottom: 20,
+  },
+  creditCard: {
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  creditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 12,
+  },
+  creditTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  creditDescription: {
+    fontSize: 14,
+    fontWeight: '400',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  creditFeatures: {
+    marginBottom: 20,
+  },
+  creditFeatureItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  creditFeatureLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  creditFeaturePrice: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  creditPurchaseOptions: {
+    marginTop: 16,
+  },
+  purchaseOptionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  packageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  packageOption: {
+    flex: 1,
+    minWidth: '22%',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  packageAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  packagePrice: {
+    fontSize: 12,
+    fontWeight: '500',
   },
 });

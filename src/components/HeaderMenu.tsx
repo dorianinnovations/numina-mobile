@@ -10,7 +10,6 @@ const { width: screenWidth } = Dimensions.get('window');
 
 const getAllMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat', requiresAuth: true },
-  { icon: <MaterialCommunityIcons name="account-group" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Insights', key: 'sentiment', requiresAuth: true },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
   { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud', requiresAuth: true },
   { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet', requiresAuth: true },

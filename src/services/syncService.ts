@@ -3,6 +3,39 @@ import ApiService, { SyncData } from './api';
 import offlineQueueService from './offlineQueue';
 import getWebSocketService from './websocketService';
 import CloudAuth from './cloudAuth';
+import { Message, Conversation } from '../types/message';
+
+interface UserProfile {
+  id: string;
+  email: string;
+  experienceLevel?: string;
+  preferences?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface EmotionData {
+  id: string;
+  emotion: string;
+  intensity: number;
+  timestamp: string;
+  context?: string;
+  [key: string]: unknown;
+}
+
+interface AnalyticsData {
+  insights?: string[];
+  patterns?: Record<string, unknown>;
+  metrics?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+interface ConflictData {
+  id: string;
+  type: string;
+  localData: unknown;
+  serverData: unknown;
+  timestamp: string;
+}
 
 /**
  * Comprehensive Sync Service
@@ -32,12 +65,12 @@ interface SyncOptions {
 interface SyncResult {
   success: boolean;
   syncedData: {
-    profile?: any;
-    emotions?: any[];
-    conversations?: any[];
-    analytics?: any;
+    profile?: UserProfile;
+    emotions?: EmotionData[];
+    conversations?: Conversation[];
+    analytics?: AnalyticsData;
   };
-  conflicts: any[];
+  conflicts: ConflictData[];
   errors: string[];
   timestamp: string;
 }
@@ -45,7 +78,7 @@ interface SyncResult {
 interface ConflictResolution {
   conflictId: string;
   resolution: 'server' | 'client' | 'merge';
-  resolvedData?: any;
+  resolvedData?: unknown;
 }
 
 class SyncService {
@@ -266,8 +299,8 @@ class SyncService {
             };
           }
           
-          const syncedData: any = {};
-          const conflicts: any[] = [];
+          const syncedData: SyncResult['syncedData'] = {};
+          const conflicts: ConflictData[] = [];
           
           // Handle both old and new sync data formats
           const syncChanges = syncData.changes || syncData.data;
@@ -331,7 +364,7 @@ class SyncService {
   /**
    * Apply profile changes
    */
-  private static async applyProfileChanges(profileData: any): Promise<void> {
+  private static async applyProfileChanges(profileData: UserProfile): Promise<void> {
     try {
       const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {
@@ -350,7 +383,7 @@ class SyncService {
   /**
    * Apply emotions changes
    */
-  private static async applyEmotionsChanges(emotionsData: any[]): Promise<void> {
+  private static async applyEmotionsChanges(emotionsData: EmotionData[]): Promise<void> {
     try {
       const currentUserId = CloudAuth.getInstance().getCurrentUserId();
       if (!currentUserId) {

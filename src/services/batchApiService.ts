@@ -1,5 +1,56 @@
 import ApiService, { BatchRequest, BatchResponse, ApiResponse } from './api';
 
+// Define proper types instead of any
+interface UserProfile {
+  id: string;
+  email: string;
+  name?: string;
+  createdAt: string;
+  settings?: Record<string, unknown>;
+}
+
+interface EmotionData {
+  emotions: Array<{
+    id: string;
+    emotion: string;
+    intensity: number;
+    timestamp: string;
+  }>;
+  summary?: {
+    dominant: string;
+    variance: number;
+  };
+}
+
+interface AnalyticsData {
+  insights: Array<{
+    type: string;
+    confidence: number;
+    message: string;
+  }>;
+  metrics?: Record<string, number>;
+}
+
+interface CloudEvent {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: string;
+  type: string;
+}
+
+interface WeeklyDigest {
+  week: string;
+  highlights: string[];
+  trends: Record<string, number>;
+  summary: string;
+}
+
+interface UserSettings {
+  theme: string;
+  notifications: boolean;
+  privacy: Record<string, boolean>;
+}
 
 interface BatchQueue {
   requests: BatchRequest[];
@@ -212,14 +263,14 @@ class BatchApiService {
     });
   }
 
-  async getCloudEvents(): Promise<any> {
+  async getCloudEvents(): Promise<CloudEvent[]> {
     return this.addToBatch({
       endpoint: '/cloud/events',
       method: 'GET'
     });
   }
 
-  async getConversationHistory(): Promise<any> {
+  async getConversationHistory(): Promise<Array<{ id: string; message: string; timestamp: string; sender: string; }>> {
     return this.addToBatch({
       endpoint: '/chat/history',
       method: 'GET'
@@ -227,10 +278,10 @@ class BatchApiService {
   }
 
   async getInitialData(): Promise<{
-    profile: any;
-    emotions: any;
-    analytics: any;
-    cloudEvents: any;
+    profile: UserProfile;
+    emotions: EmotionData;
+    analytics: AnalyticsData;
+    cloudEvents: CloudEvent[];
   }> {
     const requests: BatchRequest[] = [
       { endpoint: '/profile', method: 'GET' },

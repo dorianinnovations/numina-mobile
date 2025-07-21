@@ -78,7 +78,7 @@ export const useNuminaPersonality = (isActive: boolean = true) => {
         (websocketService as any).emit && (websocketService as any).emit('numina_senses_updated', response.data);
       }
     } catch (error) {
-      console.error('❌ Failed to trigger immediate update:', error);
+      // console.error('❌ Failed to trigger immediate update:', error);
     }
   };
 

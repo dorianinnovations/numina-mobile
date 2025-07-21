@@ -221,34 +221,22 @@ export const useLLMAnalytics = () => {
           await cacheData(cacheKeys.insights, insights);
         }
       } else {
-        // Fallback to mock data if API fails
-        const insights = generateMockInsights('general');
+        // Set error state for unsuccessful API response
         setState(prev => ({ 
           ...prev, 
-          llmInsights: insights,
-          isGeneratingInsights: false 
+          llmInsights: null,
+          isGeneratingInsights: false,
+          insightsError: 'API request was unsuccessful'
         }));
-        
-        const userId = await SecureStorageService.getCurrentUserId();
-        if (userId) {
-          const cacheKeys = getCacheKeys(userId);
-          await cacheData(cacheKeys.insights, insights);
-        }
       }
     } catch (error: any) {
-      // Use mock data on error
-      const insights = generateMockInsights('general');
+      // Set error state instead of mock data
       setState(prev => ({ 
         ...prev, 
-        llmInsights: insights,
-        isGeneratingInsights: false 
+        llmInsights: null,
+        isGeneratingInsights: false,
+        insightsError: error.message || 'Failed to generate insights'
       }));
-      
-      const userId = await SecureStorageService.getCurrentUserId();
-      if (userId) {
-        const cacheKeys = getCacheKeys(userId);
-        await cacheData(cacheKeys.insights, insights);
-      }
     }
   }, []);
 
@@ -272,34 +260,22 @@ export const useLLMAnalytics = () => {
           await cacheData(cacheKeys.weekly, insights);
         }
       } else {
-        // Fallback to mock data
-        const insights = generateMockInsights('weekly');
+        // Set error state for unsuccessful API response
         setState(prev => ({ 
           ...prev, 
-          llmWeeklyInsights: insights,
-          isGeneratingWeekly: false 
+          llmWeeklyInsights: null,
+          isGeneratingWeekly: false,
+          weeklyError: 'API request was unsuccessful'
         }));
-        
-        const userId = await SecureStorageService.getCurrentUserId();
-        if (userId) {
-          const cacheKeys = getCacheKeys(userId);
-          await cacheData(cacheKeys.weekly, insights);
-        }
       }
     } catch (error: any) {
-      // Use mock data on error
-      const insights = generateMockInsights('weekly');
+      // Set error state instead of mock data
       setState(prev => ({ 
         ...prev, 
-        llmWeeklyInsights: insights,
-        isGeneratingWeekly: false 
+        llmWeeklyInsights: null,
+        isGeneratingWeekly: false,
+        weeklyError: error.message || 'Failed to generate weekly insights'
       }));
-      
-      const userId = await SecureStorageService.getCurrentUserId();
-      if (userId) {
-        const cacheKeys = getCacheKeys(userId);
-        await cacheData(cacheKeys.weekly, insights);
-      }
     }
   }, []);
 
@@ -323,34 +299,22 @@ export const useLLMAnalytics = () => {
           await cacheData(cacheKeys.recommendations, recommendations);
         }
       } else {
-        // Fallback to mock data
-        const recommendations = generateMockInsights('recommendations');
+        // Set error state for unsuccessful API response
         setState(prev => ({ 
           ...prev, 
-          llmRecommendations: recommendations,
-          isGeneratingRecommendations: false 
+          llmRecommendations: null,
+          isGeneratingRecommendations: false,
+          recommendationsError: 'API request was unsuccessful'
         }));
-        
-        const userId = await SecureStorageService.getCurrentUserId();
-        if (userId) {
-          const cacheKeys = getCacheKeys(userId);
-          await cacheData(cacheKeys.recommendations, recommendations);
-        }
       }
     } catch (error: any) {
-      // Use mock data on error
-      const recommendations = generateMockInsights('recommendations');
+      // Set error state instead of mock data
       setState(prev => ({ 
         ...prev, 
-        llmRecommendations: recommendations,
-        isGeneratingRecommendations: false 
+        llmRecommendations: null,
+        isGeneratingRecommendations: false,
+        recommendationsError: error.message || 'Failed to generate recommendations'
       }));
-      
-      const userId = await SecureStorageService.getCurrentUserId();
-      if (userId) {
-        const cacheKeys = getCacheKeys(userId);
-        await cacheData(cacheKeys.recommendations, recommendations);
-      }
     }
   }, []);
 
@@ -368,21 +332,21 @@ export const useLLMAnalytics = () => {
           isGeneratingInsights: false 
         }));
       } else {
-        // Fallback to mock data
-        const insights = generateMockInsights('pattern');
+        // Set error state for unsuccessful API response
         setState(prev => ({ 
           ...prev, 
-          llmInsights: insights,
-          isGeneratingInsights: false 
+          llmInsights: null,
+          isGeneratingInsights: false,
+          insightsError: 'Pattern analysis API request was unsuccessful'
         }));
       }
     } catch (error: any) {
-      // Use mock data on error
-      const insights = generateMockInsights('pattern');
+      // Set error state instead of mock data
       setState(prev => ({ 
         ...prev, 
-        llmInsights: insights,
-        isGeneratingInsights: false 
+        llmInsights: null,
+        isGeneratingInsights: false,
+        insightsError: error.message || 'Failed to get pattern insights'
       }));
     }
   }, []);

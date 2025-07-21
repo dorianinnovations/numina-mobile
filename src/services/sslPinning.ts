@@ -40,7 +40,7 @@ class SSLPinningService {
       const config = this.SSL_CONFIGS[hostname];
       
       if (!config) {
-        console.warn(`⚠️ SSL pinning not configured for ${hostname}`);
+        // console.warn(`⚠️ SSL pinning not configured for ${hostname}`);
         return true; // Allow connection if no config found
       }
 
@@ -50,7 +50,7 @@ class SSLPinningService {
       // 2. Computing the public key hash
       // 3. Comparing against known good hashes
       
-      console.log(`🔒 SSL pinning validation for ${hostname}`);
+      // console.log(`🔒 SSL pinning validation for ${hostname}`);
       
       // For now, return true (would be actual validation in production)
       return true;

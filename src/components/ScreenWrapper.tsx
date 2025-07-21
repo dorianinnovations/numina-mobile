@@ -24,6 +24,7 @@ interface ScreenWrapperProps {
     isVisible?: boolean;
     isStreaming?: boolean;
     onRestoreHeader?: () => void;
+    style?: any;
   };
 }
 

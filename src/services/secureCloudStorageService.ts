@@ -57,11 +57,11 @@ interface CloudUploadResult {
  *   'file://path/to/image.jpg',
  *   'user-id',
  *   'profile',
- *   (progress) => console.log(`${progress.percentage}% uploaded`)
+ *   (progress) => // console.log(`${progress.percentage}% uploaded`)
  * );
  * 
  * if (result.success) {
- *   console.log('Image uploaded:', result.url);
+ *   // console.log('Image uploaded:', result.url);
  * } else {
  *   console.error('Upload failed:', result.error);
  * }

@@ -33,17 +33,21 @@ const FastRingLoader: React.FC<{ size?: number; color?: string; strokeWidth?: nu
   const rotationValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const startRotation = () => {
-      Animated.loop(
-        Animated.timing(rotationValue, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        })
-      ).start();
-    };
+    const animationLoop = Animated.loop(
+      Animated.timing(rotationValue, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      })
+    );
     
-    startRotation();
+    animationLoop.start();
+    
+    // Cleanup animation on unmount
+    return () => {
+      animationLoop.stop();
+      rotationValue.setValue(0);
+    };
   }, [rotationValue]);
 
   const rotation = rotationValue.interpolate({
@@ -105,7 +109,7 @@ interface ChatInputProps {
   maxAttachments?: number;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({
+export const ChatInput: React.FC<ChatInputProps> = React.memo(({
   value,
   onChangeText,
   onSend,
@@ -662,6 +666,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleInputFocus = () => {
+    // Light haptic for input focus
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     // Animation for focus (cannot use native driver due to borderWidth)
     Animated.timing(inputFocusAnim, {
       toValue: 1,
@@ -976,7 +982,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

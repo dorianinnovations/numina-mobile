@@ -152,17 +152,17 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
     {
       type: 'app',
       name: 'Numina',
-      role: 'Advanced AI Emotional Intelligence Platform',
-      bio: 'A sophisticated AI-powered platform designed to enhance emotional awareness, provide personalized wellness insights, and facilitate deeper self-understanding through intelligent analysis.',
-      icon: 'brain',
+      role: 'Your AI companion for growth',
+      bio: 'We believe everyone deserves to understand themselves better. Numina helps you decode your patterns, discover insights, and connect with what matters most.',
+      icon: 'heart',
       version: '1.0.0',
       build: '2025.01.001',
     },
     {
       type: 'creator',
-      name: 'Creator',
-      role: 'Isaiah C. - San Diego, CA',
-      bio: 'A passionate independent developer dedicated to creating thoughtful technology that enhances emotional well-being and facilitates deeper understanding between humans and AI systems.',
+      name: 'Meet the developer',
+      role: 'Developer • San Diego, CA',
+      bio: 'Curious has been my compass from a young age. I\'ve always been fascinated by the human mind and how we can use technology to understand ourselves better.',
       icon: 'user-circle',
       links: [
         { type: 'github', url: 'https://github.com/dorianinnovations', icon: 'github' },
@@ -172,30 +172,30 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
     },
     {
       type: 'vision',
-      name: 'Innovation Mission',
-      role: 'Democratizing Emotional Intelligence',
-      bio: 'Committed to making advanced emotional intelligence tools accessible to everyone, empowering individuals to cultivate resilience, self-awareness, and meaningful human connections.',
-      icon: 'eye',
+      name: 'Our Mission',
+      role: 'Making self-discovery accessible',
+      bio: 'Personal growth shouldn\'t require expensive therapy or complicated tools. We\'re building something that meets you where you are and helps you understand your patterns naturally.',
+      icon: 'compass',
     },
     {
       type: 'technology',
-      name: 'Engineering Excellence',
-      role: 'State-of-the-Art Technology',
-      bio: 'Built with modern React Native, TypeScript, advanced AI/ML models, and robust cloud infrastructure to deliver a seamless, intelligent user experience.',
-      icon: 'code',
+      name: 'How It Works',
+      role: 'AI that actually gets you',
+      bio: 'Numina learns your communication style, remembers what matters to you, and adapts its responses. It\'s like having a conversation partner who really listens.',
+      icon: 'lightbulb-on',
     },
     {
       type: 'community',
-      name: 'Open Innovation',
-      role: 'Collaborative Development',
-      bio: 'Numina embraces open-source principles, fostering a collaborative ecosystem where innovation thrives and community feedback drives continuous improvement.',
-      icon: 'users',
+      name: 'Privacy First',
+      role: 'Your data stays yours',
+      bio: 'We don\'t sell your data, period. Your conversations and insights belong to you. We\'re building this to help, not to harvest.',
+      icon: 'shield-alt',
     },
     {
       type: 'contact',
-      name: 'Connect & Collaborate',
-      role: 'Partnership & Support',
-      bio: 'Interested in collaboration, technical discussions, or providing feedback? Let\'s explore opportunities to advance emotional intelligence technology together.',
+      name: 'Get In Touch',
+      role: 'Questions? Ideas? Just want to chat?',
+      bio: 'I love hearing from users! Whether you have feedback, ideas, or just want to say hi, don\'t be a stranger.',
       icon: 'envelope',
       links: [
         { type: 'email', url: 'mailto:numinaworks@gmail.com', icon: 'envelope' },
@@ -291,26 +291,16 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
               ]}>
                 {item.role}
               </Text>
-              <Text style={[
-                styles.cardBio,
-                { color: isDarkMode ? '#bbbbbb' : '#666666' }
-              ]}>
-                {item.bio}
-              </Text>
             </View>
           </View>
 
-          {/* Only for non-Numina cards: bio and links */}
-          {!isNumina && (
-            <>
-              <Text style={[
-                styles.cardBio,
-                { color: isDarkMode ? '#bbbbbb' : '#666666' }
-              ]}>
-                {item.bio}
-              </Text>
-            </>
-          )}
+          {/* Bio text for all cards */}
+          <Text style={[
+            styles.cardBio,
+            { color: isDarkMode ? '#bbbbbb' : '#666666' }
+          ]}>
+            {item.bio}
+          </Text>
 
           {item.links && (
             <View style={styles.cardLinks}>
@@ -356,7 +346,7 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
           onMenuPress={() => {}}
           onBackPress={onNavigateBack}
           title="About"
-          subtitle="Learn more about Numina"
+          subtitle="The story behind your AI companion"
           showBackButton={true}
           showMenuButton={false}
         />
@@ -389,13 +379,13 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
                 styles.footerText,
                 { color: isDarkMode ? '#666666' : '#999999' }
               ]}>
-                Engineered with precision for advancing emotional intelligence
+                Made with care for people who want to understand themselves better
               </Text>
               <Text style={[
                 styles.copyright,
                 { color: isDarkMode ? '#444444' : '#cccccc' }
               ]}>
-                © 2025 Numina. All rights reserved.
+                © 2025 Numina • Version 1.0.0
               </Text>
             </View>
           </ScrollView>
@@ -461,18 +451,18 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   cardsContainer: {
-    gap: 28,
+    gap: 20,
     marginHorizontal: -8,
   },
   card: {
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 28,
+    padding: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 24,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -552,7 +542,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   footerText: {
-    fontSize: 8,
+    fontSize: 12,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     marginBottom: 12,
@@ -560,7 +550,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   copyright: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     textAlign: 'center',

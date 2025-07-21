@@ -26,7 +26,7 @@ interface AttachmentPickerProps {
 
 interface AttachmentOption {
   id: string;
-  icon: string;
+  icon: React.ComponentProps<typeof FontAwesome5>['name'];
   label: string;
   description: string;
   action: 'camera' | 'photo' | 'document';
@@ -48,26 +48,26 @@ export const AttachmentPicker: React.FC<AttachmentPickerProps> = ({
   const attachmentOptions: AttachmentOption[] = [
     {
       id: 'camera',
-      icon: 'camera',
+      icon: 'camera' as const,
       label: 'Take Photo',
       description: 'Capture with camera',
-      action: 'camera',
+      action: 'camera' as const,
       color: '#3b82f6',
     },
     {
       id: 'photo',
-      icon: 'image',
+      icon: 'image' as const,
       label: 'Photo Library',
       description: 'Choose from gallery',
-      action: 'photo',
+      action: 'photo' as const,
       color: '#10b981',
     },
     {
       id: 'document',
-      icon: 'file-text',
+      icon: 'file-text' as const,
       label: 'Document',
       description: 'Text files, PDFs',
-      action: 'document',
+      action: 'document' as const,
       color: '#f59e0b',
     },
   ].filter(option => {

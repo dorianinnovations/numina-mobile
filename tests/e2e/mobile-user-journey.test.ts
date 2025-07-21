@@ -544,8 +544,6 @@ describe('Mobile User Journey E2E Tests', () => {
         expect(ApiService.getEmotionHistory).toBeDefined();
         
         // Test emotional analytics API
-        expect(ApiService.getSentimentInsights).toBeDefined();
-        expect(ApiService.getAggregatedEmotionalData).toBeDefined();
         
         success = true;
       } catch (e) {

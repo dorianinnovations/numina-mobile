@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { log } from '../utils/logger';
 import CloudAuth, { AuthState, User } from '../services/cloudAuth';
 import ApiService from '../services/api';
 import { ExperienceLevelService } from '../services/experienceLevelService';
@@ -42,6 +43,7 @@ interface AuthContextType {
   getCurrentToken: () => string | null;
   
   refreshSubscription: () => Promise<void>;
+  refreshUserTier: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -70,34 +72,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
   const [isSubscriptionLoading, setIsSubscriptionLoading] = useState(false);
   
+  // Use ref to track previous auth state and prevent race conditions
+  const prevAuthStateRef = useRef<AuthState>(authState);
+  const isMountedRef = useRef(true);
+  
   const cloudAuth = CloudAuth.getInstance();
 
   useEffect(() => {
-    console.log('🔐 AUTH CONTEXT: Initializing auth subscription');
+    log.debug('Initializing auth subscription', null, 'AuthContext');
     
     const unsubscribe = cloudAuth.subscribe((newState) => {
-      console.log('🔐 AUTH CONTEXT: Cloud auth state updated:', {
-        wasAuthenticated: authState.isAuthenticated,
-        nowAuthenticated: newState.isAuthenticated,
+      const wasAuthenticated = prevAuthStateRef.current.isAuthenticated;
+      const nowAuthenticated = newState.isAuthenticated;
+      
+      log.debug('Cloud auth state updated', {
+        wasAuthenticated,
+        nowAuthenticated,
         hasUser: !!newState.user,
         hasToken: !!newState.token,
-        stateChanged: authState.isAuthenticated !== newState.isAuthenticated
-      });
-      setAuthState(newState);
-
-      if (newState.isAuthenticated && !authState.isAuthenticated) {
-        console.log('🔐 AUTH CONTEXT: User logged in, loading subscription data');
-        loadSubscriptionData();
-      }
-      
-      if (!newState.isAuthenticated && authState.isAuthenticated) {
-        console.log('🔐 AUTH CONTEXT: User logged out, clearing subscription data');
-        setSubscriptionData(null);
+        stateChanged: wasAuthenticated !== nowAuthenticated
+      }, 'AuthContext');
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setAuthState(newState);
+        
+        // Use previous state from ref to avoid race conditions
+        if (nowAuthenticated && !wasAuthenticated) {
+          log.info('User logged in, loading subscription and tier data', null, 'AuthContext');
+          loadSubscriptionData();
+          loadUserTierInfo();
+        }
+        
+        if (!nowAuthenticated && wasAuthenticated) {
+          log.info('User logged out, clearing subscription data', null, 'AuthContext');
+          setSubscriptionData(null);
+        }
+        
+        // Update the ref with current state
+        prevAuthStateRef.current = newState;
       }
     });
 
-    console.log('🔐 AUTH CONTEXT: Cloud auth ready - simple initialization, no race conditions');
-    return unsubscribe;
+    log.debug('Cloud auth ready - simple initialization, no race conditions', null, 'AuthContext');
+    
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe();
+    };
   }, []);
 
   const loadSubscriptionData = async () => {
@@ -113,6 +134,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AuthContext] Error loading subscription:', error);
     } finally {
       setIsSubscriptionLoading(false);
+    }
+  };
+
+  const loadUserTierInfo = async () => {
+    try {
+      const response = await ApiService.getUserTierInfo();
+      if (response.success && response.data) {
+        // Update the user state with tier info
+        const currentState = cloudAuth.getState();
+        if (currentState.user) {
+          const updatedUser = {
+            ...currentState.user,
+            tierInfo: {
+              tier: response.data.tier,
+              dailyUsage: response.data.dailyUsage,
+              dailyLimit: response.data.dailyLimit,
+              features: response.data.features || {}
+            }
+          };
+          // Update the auth state directly since cloudAuth owns the user state
+          cloudAuth.updateUser(updatedUser);
+        }
+      } else {
+        console.error('[AuthContext] Failed to load tier info:', response.error);
+      }
+    } catch (error) {
+      console.error('[AuthContext] Error loading tier info:', error);
     }
   };
 
@@ -188,6 +236,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await loadSubscriptionData();
   };
 
+  const refreshUserTier = async (): Promise<void> => {
+    await loadUserTierInfo();
+  };
+
   const hasActiveSubscription = subscriptionData?.numinaTrace?.hasActiveSubscription || false;
 
   const value: AuthContextType = {
@@ -209,6 +261,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     getCurrentToken,
     
     refreshSubscription,
+    refreshUserTier,
   };
 
   return (

@@ -24,31 +24,41 @@ export const safeStopAnimation = (animValue: Animated.Value | Animated.ValueXY):
 /**
  * Safely sets an animation value with error handling
  */
-export const safeSetValue = (animValue: Animated.Value | Animated.ValueXY, value: number | { x: number; y: number }): void => {
+export function safeSetValue(animValue: Animated.Value, value: number): void;
+export function safeSetValue(animValue: Animated.ValueXY, value: { x: number; y: number }): void;
+export function safeSetValue(animValue: Animated.Value | Animated.ValueXY, value: number | { x: number; y: number }): void {
   try {
     if (animValue && typeof animValue.setValue === 'function') {
-      animValue.setValue(value);
+      (animValue as any).setValue(value);
     }
   } catch (error) {
     if (__DEV__) {
       console.warn('Animation setValue error (non-critical):', error);
     }
   }
-};
+}
 
 /**
  * Safely resets an animation value to its initial state
  */
-export const safeResetAnimation = (animValue: Animated.Value | Animated.ValueXY, initialValue: number | { x: number; y: number } = 0): void => {
+export function safeResetAnimation(animValue: Animated.Value, initialValue?: number): void;
+export function safeResetAnimation(animValue: Animated.ValueXY, initialValue?: { x: number; y: number }): void;
+export function safeResetAnimation(animValue: Animated.Value | Animated.ValueXY, initialValue?: number | { x: number; y: number }): void {
   try {
     safeStopAnimation(animValue);
-    safeSetValue(animValue, initialValue);
+    if (animValue instanceof Animated.ValueXY) {
+      const defaultValue = initialValue as { x: number; y: number } | undefined || { x: 0, y: 0 };
+      safeSetValue(animValue, defaultValue);
+    } else {
+      const defaultValue = initialValue as number | undefined || 0;
+      safeSetValue(animValue as Animated.Value, defaultValue);
+    }
   } catch (error) {
     if (__DEV__) {
       console.warn('Animation reset error (non-critical):', error);
     }
   }
-};
+}
 
 /**
  * Safely executes an animation with error handling

@@ -16,15 +16,28 @@ import {
   MaterialCommunityIcons, 
   Ionicons 
 } from '@expo/vector-icons';
-import Svg, { Rect, Text as SvgText, Circle } from 'react-native-svg';
+import Svg, { Rect, Text as SvgText, Circle, Path } from 'react-native-svg';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 import { NuminaAnimations } from '../utils/animations';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
-import { useEmotionalAnalytics } from '../hooks/useEmotionalAnalytics';
+// import { useEmotionalAnalytics } from '../hooks/useEmotionalAnalytics'; // DISABLED: emotion-logging removed
 import { useComprehensiveAnalytics } from '../hooks/useComprehensiveAnalytics';
+import { useLLMAnalytics } from '../hooks/useLLMAnalytics';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { PersonalizedInsightsCard } from '../components/PersonalizedInsightsCard';
+import { LLMAnalyticsSection } from '../components/LLMAnalyticsSection';
+import ConversationStorageService from '../services/conversationStorage';
+import { CategoryAnalyticsCard } from '../components/CategoryAnalyticsCard';
+import { AIInsightDisplay } from '../components/AIInsightDisplay';
+import { NeonAnalyticsCard } from '../components/NeonAnalyticsCard';
+import { NeonProgressCard } from '../components/NeonProgressCard';
+import { NeonGlassCard } from '../components/NeonGlassCard';
+import { QuickAnalyticsModal } from '../components/QuickAnalyticsModal';
+import personalizedInsightsService, { PersonalInsight } from '../services/personalizedInsightsService';
+import categorizedAnalyticsService, { AnalyticsCategory } from '../services/categorizedAnalyticsService';
+import aiInsightEngine, { AIInsightResponse } from '../services/aiInsightEngine';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -157,7 +170,7 @@ const CustomLineChart: React.FC<{
         ))}
         
         {/* Line path */}
-        <path
+        <Path
           d={pathData}
           stroke="#3B82F6"
           strokeWidth="3"
@@ -243,7 +256,7 @@ const CustomPieChart: React.FC<{
           currentAngle = endAngle;
           
           return (
-            <path
+            <Path
               key={index}
               d={pathData}
               fill={item.color}
@@ -286,19 +299,26 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Use emotional analytics hook
-  const {
-    weeklyReport,
-    userLoggedEmotions,
-    isLoadingReport,
-    fetchWeeklyReport,
-    clearErrors,
-  } = useEmotionalAnalytics();
+  // DISABLED: Old emotional analytics hook (emotion-logging system removed from server)
+  // const {
+  //   weeklyReport,
+  //   userLoggedEmotions,
+  //   isLoadingReport,
+  //   fetchWeeklyReport,
+  //   clearErrors,
+  // } = useEmotionalAnalytics();
+
+  // Fallback data for removed emotion logging system
+  const weeklyReport: null = null;
+  const userLoggedEmotions: any[] = [];
+  const isLoadingReport: boolean = false;
+  const fetchWeeklyReport = async () => Promise.resolve();
+  const clearErrors = () => {};
   
   // Pull-to-refresh functionality
   const { refreshControl } = usePullToRefresh(async () => {
     await Promise.all([
-      fetchWeeklyReport(),
+      // fetchWeeklyReport(), // DISABLED: emotion-logging system removed
       fetchAllAnalytics()
     ]);
   });
@@ -321,8 +341,125 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
     dataQuality
   } = useComprehensiveAnalytics();
 
+  // LLM Analytics hook
+  const {
+    llmInsights,
+    llmWeeklyInsights,
+    llmRecommendations,
+    isGeneratingInsights,
+    isGeneratingWeekly,
+    isGeneratingRecommendations,
+    insightsError,
+    weeklyError,
+    recommendationsError,
+    generateInsights,
+    generateWeeklyInsights,
+    generateRecommendations
+  } = useLLMAnalytics();
+
   // Local state for chart view selection - now with 50+ metrics!
-  const [selectedChart, setSelectedChart] = useState<'overview' | 'personality' | 'behavioral' | 'temporal' | 'emotional' | 'social' | 'growth' | 'collective'>('overview');
+  const [selectedChart, setSelectedChart] = useState<'overview' | 'personality' | 'behavioral' | 'temporal' | 'emotional' | 'social' | 'growth' | 'collective' | 'insights'>('overview');
+  const [personalInsights, setPersonalInsights] = useState<PersonalInsight[]>([]);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+  const [analyticsCategories, setAnalyticsCategories] = useState<AnalyticsCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [generatingInsights, setGeneratingInsights] = useState<Set<string>>(new Set());
+  const [aiInsights, setAiInsights] = useState<Map<string, AIInsightResponse>>(new Map());
+
+  // Load personalized insights
+  const loadPersonalizedInsights = async () => {
+    try {
+      setIsLoadingInsights(true);
+      const insights = await personalizedInsightsService.generatePersonalizedInsights();
+      setPersonalInsights(insights);
+    } catch (error) {
+      console.error('Error loading personalized insights:', error);
+      setPersonalInsights([]);
+    } finally {
+      setIsLoadingInsights(false);
+    }
+  };
+
+  // Load categorized analytics
+  const loadCategorizedAnalytics = async () => {
+    try {
+      setIsLoadingCategories(true);
+      const categories = await categorizedAnalyticsService.getAllCategorizedAnalytics();
+      setAnalyticsCategories(categories);
+    } catch (error) {
+      console.error('Error loading categorized analytics:', error);
+      setAnalyticsCategories([]);
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  };
+
+  // Handle category expansion
+  const toggleCategoryExpansion = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle AI insight generation for categories
+  const generateCategoryInsight = async (categoryId: string) => {
+    setGeneratingInsights(prev => new Set(prev).add(categoryId));
+    
+    try {
+      // Find the category data
+      const category = analyticsCategories.find(cat => cat.id === categoryId);
+      if (!category) {
+        throw new Error('Category not found');
+      }
+
+      // Create user context for AI
+      const conversations = await ConversationStorageService.loadConversations();
+      const totalMessages = conversations.reduce((total: number, conv: any) => total + conv.messages.length, 0);
+      const firstChatDate = conversations.length > 0 ? new Date(conversations[0].createdAt) : new Date();
+      const daysSinceFirstChat = Math.floor((Date.now() - firstChatDate.getTime()) / (1000 * 60 * 60 * 24));
+      
+      const userContext = {
+        totalMessages,
+        daysSinceFirstChat,
+        mostActiveTimeOfDay: 'afternoon', // Could be enhanced with time analysis
+        communicationStyle: 'thoughtful' // Could be enhanced with sentiment analysis
+      };
+
+      // Generate AI insight
+      const aiInsight = await aiInsightEngine.generateCategoryInsight({
+        category,
+        userContext
+      });
+      
+      // Store the insight
+      setAiInsights(prev => new Map(prev).set(categoryId, aiInsight));
+      
+    } catch (error) {
+      console.error('Error generating category insight:', error);
+    } finally {
+      setGeneratingInsights(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(categoryId);
+        return newSet;
+      });
+    }
+  };
+
+  // Handle dismissing AI insights
+  const dismissAIInsight = (categoryId: string) => {
+    setAiInsights(prev => {
+      const newMap = new Map(prev);
+      newMap.delete(categoryId);
+      return newMap;
+    });
+  };
 
   useEffect(() => {
     // Animate content
@@ -339,7 +476,14 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
       }),
     ]).start();
 
-    clearErrors();
+    // clearErrors(); // DISABLED: emotion-logging system removed
+    loadPersonalizedInsights();
+    loadCategorizedAnalytics();
+    
+    // Auto-generate LLM insights if none exist
+    if (!llmInsights && !isGeneratingInsights) {
+      generateInsights();
+    }
   }, []);
 
   // Prepare chart data from analytics
@@ -353,10 +497,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
     }
 
     // Mood distribution bar chart
-    const topMoods = weeklyReport?.moodDistribution?.slice(0, 6) || [];
-    const moodData = {
-      labels: topMoods.map(m => m?.mood?.substring(0, 8) || 'Unknown'),
-      values: topMoods.map(m => m?.count || 0)
+    const topMoods: any[] = [];
+    const moodData: { labels: string[]; values: number[] } = {
+      labels: [],
+      values: []
     };
 
     // Weekly intensity trend
@@ -394,73 +538,56 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
 
   const { moodData, intensityData, pieData } = prepareChartData();
 
-  const renderChartSelector = () => (
-    <ScrollView 
-      horizontal 
-      showsHorizontalScrollIndicator={false}
-      style={styles.chartSelectorScroll}
-      contentContainerStyle={styles.chartSelectorContainer}
-    >
-      {[
-        { key: 'overview', label: 'Overview', icon: 'activity', color: '#3B82F6' },
-        { key: 'personality', label: 'Personality', icon: 'user', color: '#EC4899' },
-        { key: 'behavioral', label: 'Behavior', icon: 'target', color: '#10B981' },
-        { key: 'temporal', label: 'Patterns', icon: 'clock', color: '#F59E0B' },
-        { key: 'emotional', label: 'Emotions', icon: 'heart', color: '#EF4444' },
-        { key: 'social', label: 'Social', icon: 'users', color: '#8B5CF6' },
-        { key: 'growth', label: 'Growth', icon: 'trending-up', color: '#06B6D4' },
-        { key: 'collective', label: 'Community', icon: 'globe', color: '#84CC16' },
-      ].map((item) => (
-        <TouchableOpacity
-          key={item.key}
-          style={[
-            styles.chartSelectorButton,
-            {
-              backgroundColor: selectedChart === item.key 
-                ? item.color
-                : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-              borderColor: selectedChart === item.key 
-                ? item.color
-                : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-              minWidth: 100,
-              marginRight: 8,
-            },
-          ]}
-          onPress={() => {
-            NuminaAnimations.haptic.light();
-            setSelectedChart(item.key as any);
-          }}
-        >
-          <Feather 
-            name={item.icon as any} 
-            size={16} 
-            color={selectedChart === item.key 
-              ? '#fff'
-              : item.color
-            } 
-          />
-          <Text style={[
-            styles.chartSelectorText,
-            {
-              color: selectedChart === item.key 
-                ? '#fff'
-                : (isDarkMode ? '#fff' : '#1a1a1a'),
-              fontSize: 11,
-              fontWeight: selectedChart === item.key ? '700' : '500'
-            },
-          ]}>
-            {item.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
-  );
+  // NEW: Transform LLM insights data into chart format
+  const prepareLLMChartData = () => {
+    if (!llmInsights || !llmInsights.length) {
+      return {
+        confidenceData: null,
+        categoryData: null,
+        typeData: null,
+      };
+    }
+
+    // Confidence levels bar chart
+    const confidenceData = {
+      labels: llmInsights.slice(0, 6).map(insight => insight.title.substring(0, 10) + '...'),
+      values: llmInsights.slice(0, 6).map(insight => Math.round(insight.confidence * 100))
+    };
+
+    // Category distribution pie chart
+    const categoryCount = llmInsights.reduce((acc, insight) => {
+      const category = insight.category || 'Other';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const categoryData = Object.entries(categoryCount).map(([name, value], index) => ({
+      name,
+      value,
+      color: chartColors[index % chartColors.length]
+    }));
+
+    // Insight types bar chart
+    const typeCount = llmInsights.reduce((acc, insight) => {
+      acc[insight.type] = (acc[insight.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const typeData = {
+      labels: Object.keys(typeCount),
+      values: Object.values(typeCount)
+    };
+
+    return { confidenceData, categoryData, typeData };
+  };
+
+  const { confidenceData, categoryData, typeData } = prepareLLMChartData();
 
   const renderChart = () => {
     if (isLoading) {
       return (
         <View style={styles.loadingContainer}>
-          <MaterialCommunityIcons name="brain" size={48} color={isDarkMode ? '#666' : '#ccc'} />
+          <MaterialCommunityIcons name="lightbulb-on" size={48} color={isDarkMode ? '#666' : '#ccc'} />
           <Text style={[styles.loadingText, { color: isDarkMode ? '#888' : '#666' }]}>
             Loading {summary.totalDataPoints}+ metrics...
           </Text>
@@ -717,6 +844,44 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 🔄 Trend: {behavioralMetrics.emotionalProfile.intensityPattern.trend}
               </Text>
             </View>
+
+            {/* Simple Emotional Heatmap */}
+            <View style={styles.emotionalMetric}>
+              <Text style={[styles.metricTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>🔥 Emotional Intensity Heatmap</Text>
+              <View style={styles.simpleHeatmap}>
+                {[
+                  { label: 'Morning Joy', value: 0.8 },
+                  { label: 'Midday Focus', value: 0.9 },
+                  { label: 'Evening Calm', value: 0.75 },
+                  { label: 'Night Peace', value: 0.6 },
+                  { label: 'Stress Peak', value: 0.95 },
+                  { label: 'Energy Low', value: 0.4 },
+                  { label: 'Social High', value: 0.85 },
+                  { label: 'Creative Flow', value: 0.92 },
+                ].map((item, index) => {
+                  const opacity = Math.max(0.2, item.value);
+                  return (
+                    <View key={index} style={styles.heatmapCell}>
+                      <View 
+                        style={[
+                          styles.heatmapRect, 
+                          { 
+                            backgroundColor: `rgba(239, 68, 68, ${opacity})`,
+                            borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'
+                          }
+                        ]} 
+                      />
+                      <Text style={[styles.heatmapLabel, { color: isDarkMode ? '#aaa' : '#666' }]}>
+                        {item.label}
+                      </Text>
+                      <Text style={[styles.heatmapValue, { color: '#EF4444' }]}>
+                        {Math.round(item.value * 100)}%
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
           </View>
         ) : null;
 
@@ -855,14 +1020,18 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             {/* Community Insights */}
             <View style={styles.collectiveInsights}>
               <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Community Insights</Text>
-              {collectiveInsights.insights.slice(0, 3).map((insight, index) => (
+              {collectiveInsights?.insights?.slice(0, 3)?.map((insight, index) => (
                 <View key={index} style={styles.collectiveInsightItem}>
                   <View style={[styles.insightBullet, { backgroundColor: chartColors[index] }]} />
                   <Text style={[styles.collectiveInsightText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
                     {insight.title}
                   </Text>
                 </View>
-              ))}
+              )) || (
+                <Text style={[styles.collectiveInsightText, { color: isDarkMode ? '#888' : '#666', fontStyle: 'italic' }]}>
+                  No community insights available
+                </Text>
+              )}
             </View>
 
             {/* Collective Comparison */}
@@ -876,6 +1045,99 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             </View>
           </View>
         ) : null;
+
+      case 'insights':
+        return (
+          <View style={styles.chartContainer}>
+            <Text style={[styles.chartTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+              🧠 AI-Powered Insights
+            </Text>
+            
+            {llmInsights && llmInsights.length > 0 ? (
+              <>
+                {/* Confidence Levels Chart */}
+                {confidenceData && (
+                  <View style={styles.insightsSection}>
+                    <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Confidence Levels</Text>
+                    <CustomBarChart
+                      data={confidenceData}
+                      width={screenWidth - 40}
+                      height={200}
+                      isDarkMode={isDarkMode}
+                    />
+                  </View>
+                )}
+
+                {/* Category Distribution */}
+                {categoryData && categoryData.length > 0 && (
+                  <View style={styles.insightsSection}>
+                    <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Categories</Text>
+                    <CustomPieChart
+                      data={categoryData}
+                      width={screenWidth - 40}
+                      height={200}
+                      isDarkMode={isDarkMode}
+                    />
+                  </View>
+                )}
+
+                {/* Type Distribution */}
+                {typeData && (
+                  <View style={styles.insightsSection}>
+                    <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Types</Text>
+                    <CustomBarChart
+                      data={typeData}
+                      width={screenWidth - 40}
+                      height={200}
+                      isDarkMode={isDarkMode}
+                    />
+                  </View>
+                )}
+
+                {/* Key Insights Summary */}
+                <View style={styles.insightsSection}>
+                  <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Latest Insights</Text>
+                  {llmInsights.slice(0, 3).map((insight, index) => (
+                    <View key={insight.id} style={styles.keyInsightItem}>
+                      <View style={[styles.insightBullet, { backgroundColor: chartColors[index] }]} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.keyInsightText, { color: isDarkMode ? '#fff' : '#1a1a1a', fontWeight: '600' }]}>
+                          {insight.title}
+                        </Text>
+                        <Text style={[styles.keyInsightText, { color: isDarkMode ? '#ccc' : '#666', fontSize: 11 }]}>
+                          {insight.description}
+                        </Text>
+                        <Text style={[styles.keyInsightText, { color: '#3B82F6', fontSize: 10 }]}>
+                          Confidence: {Math.round(insight.confidence * 100)}%
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons name="lightbulb-outline" size={64} color={isDarkMode ? '#444' : '#ddd'} />
+                <Text style={[styles.emptyTitle, { color: isDarkMode ? '#888' : '#666' }]}>
+                  No Insights Available
+                </Text>
+                <Text style={[styles.emptySubtitle, { color: isDarkMode ? '#666' : '#999' }]}>
+                  Generate AI insights from your chat data
+                </Text>
+                <TouchableOpacity
+                  style={[styles.retryButton, { backgroundColor: '#3B82F6' }]}
+                  onPress={() => generateInsights()}
+                  disabled={isGeneratingInsights}
+                >
+                  <Feather name="zap" size={16} color="#fff" />
+                  <Text style={styles.retryButtonText}>
+                    {isGeneratingInsights ? 'Generating...' : 'Generate Insights'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        );
 
       default: // overview
         return (
@@ -966,7 +1228,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 style={[styles.ubpmTriggerButton, { backgroundColor: '#8B5CF6' }]}
                 onPress={triggerUBPMAnalysis}
               >
-                <MaterialCommunityIcons name="brain" size={16} color="#fff" />
+                <MaterialCommunityIcons name="lightbulb-on" size={16} color="#fff" />
                 <Text style={styles.ubpmTriggerText}>Trigger UBPM Analysis</Text>
               </TouchableOpacity>
             </View>
@@ -1001,13 +1263,72 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 <RefreshControl {...refreshControl} />
               }
             >
-              {/* Chart Selector */}
-              {renderChartSelector()}
+              {/* Main Navigation */}
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false} 
+                style={styles.chartSelector}
+                contentContainerStyle={{ paddingHorizontal: 16 }}
+              >
+                {[
+                  { key: 'overview', label: 'Overview', icon: 'activity', color: '#3B82F6' },
+                  { key: 'personality', label: 'Personality', icon: 'user', color: '#EC4899' },
+                  { key: 'behavioral', label: 'Behavior', icon: 'target', color: '#10B981' },
+                  { key: 'temporal', label: 'Patterns', icon: 'clock', color: '#F59E0B' },
+                  { key: 'emotional', label: 'Emotions', icon: 'heart', color: '#EF4444' },
+                  { key: 'social', label: 'Social', icon: 'users', color: '#8B5CF6' },
+                  { key: 'growth', label: 'Growth', icon: 'trending-up', color: '#06B6D4' },
+                  { key: 'collective', label: 'Community', icon: 'globe', color: '#84CC16' },
+                  { key: 'insights', label: 'AI Insights', icon: 'lightbulb-on', color: '#9333EA' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={[
+                      styles.chartSelectorButton,
+                      {
+                        backgroundColor: selectedChart === item.key 
+                          ? item.color
+                          : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                        borderColor: selectedChart === item.key 
+                          ? item.color
+                          : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                        minWidth: 100,
+                        marginRight: 8,
+                      },
+                    ]}
+                    onPress={() => {
+                      NuminaAnimations.haptic.light();
+                      setSelectedChart(item.key as any);
+                    }}
+                  >
+                    <Feather 
+                      name={item.icon as any} 
+                      size={16} 
+                      color={selectedChart === item.key 
+                        ? '#fff'
+                        : item.color
+                      } 
+                    />
+                    <Text style={[
+                      styles.chartSelectorText,
+                      {
+                        color: selectedChart === item.key 
+                          ? '#fff'
+                          : (isDarkMode ? '#fff' : '#1a1a1a'),
+                        fontSize: 11,
+                        fontWeight: selectedChart === item.key ? '700' : '500'
+                      },
+                    ]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
 
-              {/* Main Chart Area */}
+              {/* Main Content Area */}
               <Animated.View
                 style={[
-                  styles.mainChartCard,
+                  styles.mainContentCard,
                   {
                     backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
                     borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
@@ -1018,42 +1339,78 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 {renderChart()}
               </Animated.View>
 
-              {/* Insights Section */}
-              {weeklyReport?.insights && weeklyReport.insights.length > 0 && (
-                <Animated.View
-                  style={[
-                    styles.insightsCard,
-                    {
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                      opacity: fadeAnim,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                    💡 Key Insights
+              {/* Minimalist Data Cards */}
+              <View style={styles.dataCardsGrid}>
+                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)' }]}>
+                  <Text style={[styles.dataValue, { color: '#3B82F6' }]}>
+                    {behavioralMetrics ? Object.values(behavioralMetrics.personalityTraits).filter((t: any) => t.score > 0.7).length : 0}
                   </Text>
-                  {weeklyReport.insights.slice(0, 3).map((insight, index) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.insightItem,
-                        {
-                          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                          borderLeftColor: insight.trend === 'positive' ? '#22C55E' : '#F59E0B',
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.insightTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                        {insight.title}
-                      </Text>
-                      <Text style={[styles.insightDescription, { color: isDarkMode ? '#aaa' : '#666' }]}>
-                        {insight.description}
-                      </Text>
-                    </View>
-                  ))}
-                </Animated.View>
-              )}
+                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Traits</Text>
+                </View>
+                
+                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}>
+                  <Text style={[styles.dataValue, { color: '#10B981' }]}>
+                    {behavioralMetrics?.engagementMetrics.dailyEngagementScore.toFixed(1) || '0.0'}
+                  </Text>
+                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Score</Text>
+                </View>
+                
+                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.05)' }]}>
+                  <Text style={[styles.dataValue, { color: '#F59E0B' }]}>
+                    {personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).length : 0}
+                  </Text>
+                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Goals</Text>
+                </View>
+              </View>
+
+              {/* Minimalist Insights */}
+              <PersonalizedInsightsCard 
+                insights={personalInsights}
+                isLoading={isLoadingInsights}
+              />
+
+              {/* AI Insights Display */}
+              {Array.from(aiInsights.entries()).map(([categoryId, insight]) => {
+                const category = analyticsCategories.find(cat => cat.id === categoryId);
+                return (
+                  <AIInsightDisplay
+                    key={categoryId}
+                    insight={insight}
+                    categoryColor={category?.subCategories[0]?.color || '#3B82F6'}
+                    onDismiss={() => dismissAIInsight(categoryId)}
+                  />
+                );
+              })}
+
+              {/* Detailed Analytics Categories with Chevrons */}
+              {analyticsCategories.map((category) => (
+                <CategoryAnalyticsCard
+                  key={category.id}
+                  category={category}
+                  isExpanded={expandedCategories.has(category.id)}
+                  onToggleExpand={() => toggleCategoryExpansion(category.id)}
+                  onGenerateInsight={(categoryId) => generateCategoryInsight(categoryId)}
+                  isGeneratingInsight={generatingInsights.has(category.id)}
+                />
+              ))}
+
+              {/* Neon Analytics Cards */}
+              <View style={styles.sectionSpacer}>
+                <NeonAnalyticsCard
+                  title="Engagement Score"
+                  value="85%"
+                  icon="trending-up"
+                  subtitle="Deep behavioral insights"
+                  trend="up"
+                />
+              </View>
+
+              <View style={styles.sectionSpacer}>
+                <NeonProgressCard
+                  title="Progress Tracking"
+                  progress={75}
+                />
+              </View>
             </ScrollView>
           </Animated.View>
         </SafeAreaView>
@@ -1070,39 +1427,90 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 100,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingTop: 120,
+    paddingHorizontal: 20,
+    paddingBottom: 60,
   },
   
-  // Chart Selector (Updated for horizontal scroll)
-  chartSelectorScroll: {
+  // Chart Selector
+  chartSelector: {
     marginBottom: 20,
-  },
-  chartSelectorContainer: {
-    paddingHorizontal: 4,
+    marginTop: 8,
   },
   chartSelectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    gap: 8,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   chartSelectorText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
+    letterSpacing: -0.2,
+  },
+  
+  // Section Spacing
+  sectionSpacer: {
+    marginVertical: 24,
+  },
+  
+  
+  // Main Content Card
+  mainContentCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    marginBottom: 24,
+    minHeight: 300,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  
+  // Minimalist Data Cards
+  dataCardsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 12,
+  },
+  dataCard: {
+    flex: 1,
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  dataValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  dataLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   
   // Main Chart Card
   mainChartCard: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
-    marginBottom: 20,
+    padding: 24,
+    marginBottom: 24,
     minHeight: 300,
     justifyContent: 'center',
     shadowColor: '#000',
@@ -1182,28 +1590,29 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
     width: '100%',
     marginBottom: 24,
-    gap: 12,
+    gap: 8,
+    overflow: 'hidden',
   },
   statCard: {
-    width: (screenWidth - 52) / 2,
+    flex: 1,
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
+    padding: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
+    marginHorizontal: 2,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '800',
-    marginTop: 8,
-    marginBottom: 4,
+    marginTop: 4,
+    marginBottom: 2,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -1349,6 +1758,37 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   
+  // Simple Heatmap Styles
+  simpleHeatmap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  heatmapCell: {
+    width: '48%',
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  heatmapRect: {
+    width: '100%',
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  heatmapLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  heatmapValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  
   // Social View Styles
   socialMetric: {
     width: '100%',
@@ -1477,5 +1917,65 @@ const styles = StyleSheet.create({
   },
   miniChart: {
     borderRadius: 12,
+  },
+  
+  // Missing styles that are referenced in the code
+  insightsCard: {
+    padding: 24,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 20,
+    letterSpacing: -0.3,
+    lineHeight: 24,
+  },
+  insightItem: {
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    marginBottom: 8,
+  },
+  insightTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  insightDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  
+  // Categorized Analytics Section
+  categorizedAnalyticsSection: {
+    marginVertical: 16,
+  },
+
+  // Analytics Organization
+  analyticsSection: {
+    marginBottom: 32,
+  },
+  sectionHeader: {
+    fontSize: 24,
+    fontWeight: '600',
+    fontFamily: 'Nunito',
+    marginBottom: 16,
+    marginTop: 40,
+    paddingHorizontal: 4,
+    letterSpacing: -0.3,
+    lineHeight: 28,
+  },
+
+  // Neon Card Styles
+  neonCardStyle: {
+    marginVertical: 16,
   },
 });

@@ -17,7 +17,7 @@ interface ParsedContent {
   isValid: boolean;
 }
 
-export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
+export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
   content,
   isComplete = false,
   showCursor = true,
@@ -118,7 +118,7 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
       color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600],
       fontSize: 17,
       lineHeight: 26,
-      fontFamily: 'Inter_400Regular',
+      fontFamily: 'Nunito_400Regular',
       letterSpacing: -0.2,
       fontWeight: '400',
       marginBottom: 8,
@@ -132,26 +132,26 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
       fontSize: 30,
       fontWeight: 'bold',
       marginBottom: 8,
-      fontFamily: 'Inter_700Bold',
+      fontFamily: 'Nunito_700Bold',
     },
     heading2: {
       color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[700],
       fontSize: 25,
       fontWeight: 'bold',
       marginBottom: 6,
-      fontFamily: 'Inter_600SemiBold',
+      fontFamily: 'Nunito_600SemiBold',
     },
     heading3: {
       color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[700],
       fontSize: 20,
       fontWeight: '600',
       marginBottom: 4,
-      fontFamily: 'Inter_600SemiBold',
+      fontFamily: 'Nunito_600SemiBold',
     },
     strong: {
       fontWeight: 'bold',
       color: isDarkMode ? NuminaColors.chatBlue[200] : NuminaColors.chatBlue[400],
-      fontFamily: 'Inter_700Bold',
+      fontFamily: 'Nunito_700Bold',
     },
     em: {
       fontStyle: 'italic',
@@ -291,7 +291,7 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   streamingText: {
     fontSize: 16,
     lineHeight: 24,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Nunito_400Regular',
   },
   cursor: {
     fontSize: 16,

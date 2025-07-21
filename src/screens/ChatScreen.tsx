@@ -25,9 +25,12 @@ import { useAuth } from "../contexts/SimpleAuthContext";
 import { NuminaColors } from '../utils/colors';
 import { ChatInput } from '../components/chat/ChatInput';
 import { MessageBubble } from '../components/chat/MessageBubble';
+import { ToolStatusIndicator } from '../components/ToolStatusIndicator';
+import analyticsNotificationService, { AnalyticsInsight } from '../services/analyticsNotificationService';
 import ConversationStorageService, { Message, Conversation } from '../services/conversationStorage';
+import { useLocation } from '../hooks/useLocation';
+import LocationContextService from '../services/locationContextService';
 import { MessageAttachment } from '../types/message';
-import ChatService from '../services/chatService';
 import { ConversationHistory } from '../components/ConversationHistory';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
@@ -37,6 +40,9 @@ import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
+import { log } from '../utils/logger';
+import { UpgradePrompt } from '../components/UpgradePrompt';
+import { SubscriptionModal } from '../components/SubscriptionModal';
 
 import getBatchApiService from '../services/batchApiService';
 import getWebSocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
@@ -44,6 +50,8 @@ import syncService from '../services/syncService';
 import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
 import { ToolExecutionModal } from '../components/ToolExecutionModal';
 import { QuickAnalyticsModal } from '../components/QuickAnalyticsModal';
+import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 
 interface ChatScreenProps {
   onNavigateBack: () => void;
@@ -70,6 +78,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isTouchActive, setIsTouchActive] = useState(false);
   const [scrollDebounceTimeout, setScrollDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    tier: string;
+    upgradeOptions: string[];
+  } | null>(null);
 
   const websocketService = useMemo(() => getWebSocketService(), []);
   const batchApiService = useMemo(() => getBatchApiService(), []);
@@ -80,7 +94,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     isAnalyzing,
     sendAdaptiveChatMessage,
     getContextualSuggestions,
-    getAdaptivePlaceholder,
     error: aiError,
   } = useAIPersonality();
 
@@ -90,12 +103,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   } = useCloudMatching();
 
   const numinaPersonality = useNuminaPersonality(true);
-  const getAdaptivePlaceholderText = useCallback(() => {
-    if (emotionalState && aiPersonality) {
-      return getAdaptivePlaceholder();
-    }
-    return "Share your thoughts...";
-  }, [emotionalState, aiPersonality, getAdaptivePlaceholder]);
+  
+  // Location services for AI tools
+  const { location, requestLocation } = useLocation();
+  
+  // Remove getAdaptivePlaceholderText and any use of getAdaptivePlaceholder
+  // In the ChatInput component, set placeholder to 'Share your thoughts...'
   
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
@@ -109,6 +122,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [batchStats, setBatchStats] = useState(batchApiService.getStats());
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [toolExecutions, setToolExecutions] = useState<ToolExecution[]>([]);
+  const [analyticsInsights, setAnalyticsInsights] = useState<AnalyticsInsight[]>([]);
   const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
   const [isToolModalVisible, setIsToolModalVisible] = useState(false);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
@@ -118,7 +132,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationTimeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set());
+  const analyticsUnsubscribeRef = useRef<(() => void) | null>(null);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  
+  // Store WebSocket event handlers for proper cleanup
+  const wsHandlersRef = useRef<{[key: string]: (data: any) => void}>({});
+  
+  // Streaming optimization
+  const streamingUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const createManagedTimeout = useCallback((callback: () => void, delay: number) => {
     const timeoutId = setTimeout(() => {
       animationTimeoutRefs.current.delete(timeoutId);
@@ -130,7 +151,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   const restoreHeader = async () => {
     try {
-      console.log('🎯 Touch gesture triggered! Restoring header...');
+      log.debug('Touch gesture triggered! Restoring header', null, 'ChatScreen');
       
       if (scrollDebounceTimeout) {
         clearTimeout(scrollDebounceTimeout);
@@ -142,14 +163,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
-      console.log('✅ Header restored successfully');
+      log.debug('Header restored successfully', null, 'ChatScreen');
       
       createManagedTimeout(() => {
         setIsTouchActive(false);
       }, 500);
       
     } catch (error) {
-      console.log('⚠️ Haptics failed, restoring header without haptics');
+      log.warn('Haptics failed, restoring header without haptics', null, 'ChatScreen');
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
       
@@ -163,7 +184,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     if (!conversation || !conversation.messages || conversation.messages.length === 0) {
       const welcomeMessage: Message = {
         id: '1',
-        text: "Welcome to Numina! I'm here to help you explore, discover, and connect. What would you like to explore today?",
+        text: "Ask me anything to start our first chat",
         sender: 'numina',
         timestamp: new Date().toISOString(),
       };
@@ -177,6 +198,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     initializeEnhancedFeatures();
     setupToolExecutionListeners();
     setupWebSocketListeners();
+    analyticsUnsubscribeRef.current = setupAnalyticsNotifications();
 
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -188,6 +210,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       cleanup();
     };
   }, []); // Empty dependency array to run only once
+
+  // Update location context service when location data changes
+  useEffect(() => {
+    LocationContextService.getInstance().setLocationData(location);
+    if (location) {
+      log.info('Location updated for AI tools', { location: location.city || 'coordinates' }, 'ChatScreen');
+    }
+  }, [location]);
 
   // Cleanup scroll debounce timeout on unmount
   useEffect(() => {
@@ -212,7 +242,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         websocketService.joinRoom(roomId, 'general');
         await loadInitialDataBatch();
       } else {
-        console.log('🔄 WebSocket connection failed, continuing without real-time features');
+        log.warn('WebSocket connection failed, continuing without real-time features', null, 'ChatScreen');
       }
       
       // Initialize sync service
@@ -221,7 +251,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setSyncStatus(status);
       
     } catch (error) {
-      console.error('Failed to initialize enhanced features:', error);
+      log.error('Failed to initialize enhanced features', error, 'ChatScreen');
       // Continue without enhanced features if initialization fails
     }
   };
@@ -233,12 +263,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     });
 
     toolExecutionService.on('executionStarted', (execution: ToolExecution) => {
-      console.log('🔧 Tool execution started:', execution.toolName);
+      log.info('Tool execution started', { toolName: execution.toolName }, 'ChatScreen');
       setIsToolStreamVisible(true);
     });
 
     toolExecutionService.on('executionCompleted', (execution: ToolExecution) => {
-      console.log('✅ Tool execution completed:', execution.toolName);
+      log.info('Tool execution completed', { toolName: execution.toolName }, 'ChatScreen');
     });
   };
   
@@ -275,14 +305,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     // UBPM WebSocket listeners
     websocketService.addEventListener('ubpm_notification', (data: any) => {
-      console.log('🧠 UBPM notification received:', data);
+      log.info('UBPM notification received', data, 'ChatScreen');
       setUbpmInsights(prev => [data, ...prev]);
       // Show the tool stream when UBPM insights arrive
       setIsToolStreamVisible(true);
     });
 
     websocketService.addEventListener('ubpm_insight', (data: any) => {
-      console.log('🧠 UBPM insight received:', data);
+      log.info('UBPM insight received', data, 'ChatScreen');
       setUbpmInsights(prev => [data, ...prev]);
       // Show the tool stream when UBPM insights arrive
       setIsToolStreamVisible(true);
@@ -290,7 +320,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
     // Tool execution WebSocket listeners - trigger beautiful status indicators
     websocketService.addEventListener('tool_execution_start', (data: any) => {
-      console.log('🔧 WebSocket: Tool execution started:', data);
+      log.info('WebSocket: Tool execution started', data, 'ChatScreen');
       // Start tool execution in the service to trigger beautiful modal
       const executionId = toolExecutionService.startExecution(data.toolName, { 
         fromWebSocket: true,
@@ -301,7 +331,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     });
 
     websocketService.addEventListener('tool_execution_complete', (data: any) => {
-      console.log('✅ WebSocket: Tool execution completed:', data);
+      log.info('WebSocket: Tool execution completed', data, 'ChatScreen');
       // Find the execution and mark it complete
       const activeExecutions = toolExecutionService.getActiveExecutions();
       const execution = activeExecutions.find(exec => exec.toolName === data.toolName);
@@ -313,6 +343,21 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         }
       }
     });
+  };
+
+  // Setup analytics notifications
+  const setupAnalyticsNotifications = () => {
+    const unsubscribe = analyticsNotificationService.subscribe((insights: AnalyticsInsight[]) => {
+      setAnalyticsInsights(insights);
+    });
+
+    // Return cleanup function that will be called in useEffect cleanup
+    return unsubscribe;
+  };
+
+  // Handle navigation to Analytics screen
+  const handleNavigateToAnalytics = () => {
+    navigation.navigate('Analytics');
   };
 
   // Handle UBPM insight acknowledgment
@@ -327,9 +372,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   };
 
   const handleQuickAnalyticsQuery = (query: string) => {
-    console.log('🧠 Quick analytics query:', query);
+    log.info('Quick analytics query', { query }, 'ChatScreen');
     setInputText(query);
-    setTimeout(() => {
+    createManagedTimeout(() => {
       sendMessage();
     }, 100);
   };
@@ -338,15 +383,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const loadInitialDataBatch = async () => {
     try {
       const initialData = await batchApiService.getInitialData();
-      console.log('Initial data loaded:', {
+      log.info('Initial data loaded', {
         profile: !!initialData.profile,
-        emotions: initialData.emotions?.length || 0,
+        emotions: initialData.emotions?.emotions?.length || 0,
         analytics: !!initialData.analytics,
         cloudEvents: initialData.cloudEvents?.length || 0
-      });
+      }, 'ChatScreen');
       setBatchStats(batchApiService.getStats());
     } catch (error) {
-      console.error('Failed to load initial data:', error);
+      log.error('Failed to load initial data', error, 'ChatScreen');
     }
   };
   
@@ -364,6 +409,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setScrollDebounceTimeout(null);
     }
     
+    // Clear streaming update timeout
+    if (streamingUpdateTimeoutRef.current) {
+      clearTimeout(streamingUpdateTimeoutRef.current);
+      streamingUpdateTimeoutRef.current = null;
+    }
+    
     // Clear all managed animation timeouts
     animationTimeoutRefs.current.forEach(timeoutId => {
       clearTimeout(timeoutId);
@@ -376,20 +427,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       websocketService.leaveRoom(roomId);
     }
     
-    // Clean up WebSocket listeners to prevent duplicates
-    websocketService.removeEventListener('connection_status');
-    websocketService.removeEventListener('user_joined');
-    websocketService.removeEventListener('user_left');
-    websocketService.removeEventListener('user_typing');
-    websocketService.removeEventListener('user_stopped_typing');
-    websocketService.removeEventListener('ubpm_notification');
-    websocketService.removeEventListener('ubpm_insight');
-    websocketService.removeEventListener('tool_execution_start');
-    websocketService.removeEventListener('tool_execution_complete');
-    websocketService.removeEventListener('tool_execution_progress');
+    // Clean up WebSocket  to prevent duplicates
+    try {
+  
+      
+      // Call general cleanup if available
+      websocketService.disconnect?.();
+    } catch (error) {
+      log.warn('WebSocket cleanup failed', error, 'ChatScreen');
+    }
     
     // Clean up tool execution listeners
     toolExecutionService.removeAllListeners();
+    
+    // Clean up analytics notification subscription
+    if (analyticsUnsubscribeRef.current) {
+      analyticsUnsubscribeRef.current();
+      analyticsUnsubscribeRef.current = null;
+    }
     
     // Sync service cleanup
     syncService.cleanup();
@@ -409,7 +464,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       await ConversationStorageService.saveConversations(conversations);
       onConversationUpdate?.(conv);
     } catch (error) {
-      console.error('Error saving conversation:', error);
+      log.error('Error saving conversation', error, 'ChatScreen');
     }
   }, [onConversationUpdate]);
 
@@ -440,6 +495,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setInputText('');
     setIsLoading(true);
     setCurrentAIMessage('');
+
+    // Trigger analytics insights for user engagement
+    analyticsNotificationService.triggerAnalyticsUpdate('Message sent', `${messageText.length} chars`);
+    
+    // Analyze message patterns
+    if (messageText.length > 100) {
+      analyticsNotificationService.triggerBehavioralInsight('Detailed communication style', 0.85);
+    } else if (messageText.includes('?')) {
+      analyticsNotificationService.triggerBehavioralInsight('Inquiry-focused interaction', 0.75);
+    }
     
     // Clear attachments after a delay to allow UI rendering
     createManagedTimeout(() => {
@@ -447,7 +512,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }, 500); // Give UI time to render the message with attachments
     
     // Scroll to show the user's new message
-    setTimeout(() => {
+    createManagedTimeout(() => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 200);
 
@@ -456,15 +521,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       try {
         websocketService.sendMessage(roomId, messageText, 'text');
       } catch (error) {
-        console.warn('WebSocket send failed, continuing without real-time sync:', error);
+        log.warn('WebSocket send failed, continuing without real-time sync', error, 'ChatScreen');
       }
     }
     
     // Pre-detect potential tool executions
     const potentialTools = detectPotentialTools(messageText);
-    potentialTools.forEach(tool => {
-      toolExecutionService.startExecution(tool.name, tool.parameters);
-    });
+    if (potentialTools.length > 0) {
+      log.debug('Pre-detected tools', { tools: potentialTools.map(t => t.name) }, 'ChatScreen');
+      potentialTools.forEach(tool => {
+        toolExecutionService.startExecution(tool.name, tool.parameters);
+      });
+    }
 
     // Save conversation with user message
     await saveConversation(updatedConversation);
@@ -497,15 +565,14 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           // Validate partialResponse
           const safePartialResponse = partialResponse || '';
           
-          // Update search indicator with streaming content
-          // Search indicator removed
-          
           // Update current AI message for tool execution
           setCurrentAIMessage(safePartialResponse);
           
-          // Hide header during streaming and make it sticky
-          setHeaderVisible(false);
-          setHeaderPermanentlyHidden(true);
+          // Hide header during streaming and make it sticky (only once)
+          if (!headerPermanentlyHidden) {
+            setHeaderVisible(false);
+            setHeaderPermanentlyHidden(true);
+          }
           
           // Process tool executions from streaming response
           toolExecutionService.processStreamingToolResponse(safePartialResponse);
@@ -521,21 +588,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           
           // Log personality context
           if (context) {
-            console.log('🧠 CHAT: Received personality context:', context);
+            log.debug('Received personality context', context, 'ChatScreen');
           }
           
-          // Update conversation with streaming response
-          const streamingConversation = { ...currentConversation };
-          if (streamingConversation.messages && streamingConversation.messages.length > 0) {
-            streamingConversation.messages[streamingConversation.messages.length - 1] = updatedAIMessage;
-            streamingConversation.updatedAt = new Date().toISOString();
+          // Throttled state updates to reduce UI lag
+          if (currentConversation.messages && currentConversation.messages.length > 0) {
+            // Direct mutation for performance during streaming
+            currentConversation.messages[currentConversation.messages.length - 1] = updatedAIMessage;
+            currentConversation.updatedAt = new Date().toISOString();
             
-            setConversation(streamingConversation);
-            currentConversation = streamingConversation;
-            // Scroll to show streaming content
-            setTimeout(() => {
-              flatListRef.current?.scrollToEnd({ animated: true });
-            }, 50);
+            // Batch state updates every 100ms for smooth streaming
+            if (!streamingUpdateTimeoutRef.current) {
+              streamingUpdateTimeoutRef.current = setTimeout(() => {
+                setConversation({ ...currentConversation });
+                streamingUpdateTimeoutRef.current = null;
+                
+                // Scroll to show streaming content
+                createManagedTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: true });
+                }, 25);
+              }, 100);
+            }
           }
         },
         userMessage.attachments // Pass attachments for GPT-4o vision analysis
@@ -545,7 +618,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       if (adaptiveResult && typeof adaptiveResult === 'object') {
         finalResponseText = adaptiveResult.content || '';
         personalityContext = adaptiveResult.personalityContext || null;
-        console.log('🧠 CHAT: Adaptive result personality context:', personalityContext);
+        log.debug('Adaptive result personality context', personalityContext, 'ChatScreen');
       } else {
         finalResponseText = String(adaptiveResult || '');
       }
@@ -566,17 +639,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         personalityContext,
       };
       
-      console.log('🧠 CHAT: Final AI message with personality context:', {
+      log.debug('Final AI message with personality context', {
         hasPersonalityContext: !!personalityContext,
         personalityContext: personalityContext
-      });
+      }, 'ChatScreen');
       
       // Send AI response via WebSocket (graceful fallback)
       if (isConnected) {
         try {
           websocketService.sendMessage(roomId, finalResponseText, 'ai_response');
         } catch (error) {
-          console.warn('WebSocket AI response send failed, continuing without real-time sync:', error);
+          log.warn('WebSocket AI response send failed, continuing without real-time sync', error, 'ChatScreen');
         }
       }
       
@@ -597,9 +670,66 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setIsStreaming(false);
       setCurrentAIMessage('');
       
+      // Clear streaming optimization timeout
+      if (streamingUpdateTimeoutRef.current) {
+        clearTimeout(streamingUpdateTimeoutRef.current);
+        streamingUpdateTimeoutRef.current = null;
+      }
+      
       // Don't automatically restore header - let it stay hidden
     } catch (error: any) {
-      console.error('Chat error:', error);
+      log.error('Chat error', error, 'ChatScreen');
+      
+      // Handle rate limit errors (429)
+      if (error.status === 429 || error.isRateLimit || error.message?.includes('429') || error.message?.includes('Thank you for using Numina, please upgrade')) {
+        // Clean up the upgrade message - remove technical error details
+        let upgradeMessageText = error.message || 'Thank you for using Numina! Please upgrade to Pro or Aether for more chatting.';
+        
+        // If the message contains technical error info, use clean upgrade message instead
+        if (upgradeMessageText.includes('Chat API request failed') || upgradeMessageText.includes('429')) {
+          upgradeMessageText = 'Thank you for using Numina! Please upgrade to Pro or Aether for more chatting.';
+        }
+        
+        // Set rate limit info for upgrade prompt
+        setRateLimitInfo({
+          tier: error.tier || 'CORE',
+          upgradeOptions: error.upgradeOptions || ['PRO', 'AETHER']
+        });
+        
+        // Add the upgrade message as a system message
+        try {
+          const upgradeMessage: Message = {
+            ...aiMessage,
+            text: upgradeMessageText,
+            isStreaming: false,
+            isSystem: true,
+          };
+          
+          const errorConversation = { ...currentConversation };
+          if (errorConversation.messages && errorConversation.messages.length > 0) {
+            errorConversation.messages[errorConversation.messages.length - 1] = upgradeMessage;
+            errorConversation.updatedAt = new Date().toISOString();
+            
+            setConversation(errorConversation);
+            await saveConversation(errorConversation);
+          }
+          
+          // Show upgrade prompt
+          setShowUpgradePrompt(true);
+        } catch (saveError) {
+          log.error('Failed to save upgrade message', saveError, 'ChatScreen');
+        }
+        
+        setIsLoading(false);
+        setIsStreaming(false);
+        setCurrentAIMessage('');
+        
+        if (streamingUpdateTimeoutRef.current) {
+          clearTimeout(streamingUpdateTimeoutRef.current);
+          streamingUpdateTimeoutRef.current = null;
+        }
+        return;
+      }
       
       let errorText = "I'm having trouble connecting right now. Please check your internet connection and try again.";
       
@@ -629,40 +759,45 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           await saveConversation(errorConversation);
         }
       } catch (saveError) {
-        console.error('Failed to save error message:', saveError);
+        log.error('Failed to save error message', saveError, 'ChatScreen');
       }
       
       setIsLoading(false);
       setIsStreaming(false);
       setCurrentAIMessage('');
       
+      // Clear streaming optimization timeout
+      if (streamingUpdateTimeoutRef.current) {
+        clearTimeout(streamingUpdateTimeoutRef.current);
+        streamingUpdateTimeoutRef.current = null;
+      }
+      
       // Don't automatically restore header after error - let it stay hidden
     }
   };
   
-  // Detect potential tools from user message
+  // Detect potential tools from user message - STRICT detection to avoid false positives
   const detectPotentialTools = (message: string): Array<{name: string, parameters: any}> => {
     const tools = [];
     const lowerMessage = message.toLowerCase();
     
-    // Web search detection
-    if (lowerMessage.includes('search') || lowerMessage.includes('find') || lowerMessage.includes('look up')) {
+    // Web search detection - only explicit search requests
+    if (lowerMessage.includes('search for') || lowerMessage.includes('google') || 
+        lowerMessage.includes('look up online') || lowerMessage.includes('find on the web')) {
       tools.push({ name: 'web_search', parameters: { query: message } });
     }
     
-    // Music detection
-    if (lowerMessage.includes('music') || lowerMessage.includes('song') || lowerMessage.includes('playlist')) {
+    // Music detection - only explicit music requests
+    if ((lowerMessage.includes('play music') || lowerMessage.includes('music recommendation') || 
+         lowerMessage.includes('find songs') || lowerMessage.includes('spotify playlist')) && 
+         !lowerMessage.includes('what is music') && !lowerMessage.includes('how does music')) {
       tools.push({ name: 'music_recommendations', parameters: { query: message } });
     }
     
-    // Restaurant detection
-    if (lowerMessage.includes('restaurant') || lowerMessage.includes('dinner') || lowerMessage.includes('reservation')) {
-      tools.push({ name: 'reservation_booking', parameters: { query: message } });
-    }
-    
-    // Travel detection
-    if (lowerMessage.includes('travel') || lowerMessage.includes('trip') || lowerMessage.includes('vacation')) {
-      tools.push({ name: 'itinerary_generator', parameters: { query: message } });
+    // Calculator - only explicit calculations
+    if (lowerMessage.includes('calculate') || lowerMessage.includes('what is') && 
+        (lowerMessage.includes('+') || lowerMessage.includes('-') || lowerMessage.includes('*') || lowerMessage.includes('/'))) {
+      tools.push({ name: 'calculator', parameters: { query: message } });
     }
     
     return tools;
@@ -703,11 +838,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         Alert.alert('Error', result.errors.join(', '));
       }
     } catch (error) {
-      console.error('Sync failed:', error);
+      log.error('Sync failed', error, 'ChatScreen');
       Alert.alert('Error', 'Sync failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle upgrade prompt actions
+  const handleUpgrade = (tier: string) => {
+    setShowUpgradePrompt(false);
+    setShowSubscriptionModal(true);
+  };
+
+  const handleDismissUpgrade = () => {
+    setShowUpgradePrompt(false);
+    setRateLimitInfo(null);
+  };
+
+  const handleSubscriptionComplete = (plan: string) => {
+    setShowSubscriptionModal(false);
+    setRateLimitInfo(null);
+    // Optionally show success message
+    Alert.alert('Success', `Welcome to Numina ${plan}! You now have access to more features.`);
   };
   
   // Render typing indicator
@@ -753,8 +906,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     );
   };
 
-  const handleCopyMessage = (message: Message) => {
-    // Clipboard functionality needed
+  const handleCopyMessage = async (message: Message) => {
+    try {
+      await Clipboard.setStringAsync(message.text || '');
+      log.debug('Copy message', { text: message.text }, 'ChatScreen');
+    } catch (error) {
+      log.error('Failed to copy message', error, 'ChatScreen');
+    }
   };
 
   const handleShareMessage = async (message: Message) => {
@@ -763,12 +921,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         message: `From my chat with Numina: "${message.text}"`,
       });
     } catch (error) {
-      console.error('Error sharing message:', error);
+      log.error('Error sharing message', error, 'ChatScreen');
     }
   };
 
   const handleSpeakMessage = (text: string) => {
-    // Text-to-speech implementation needed
+    try {
+      if (text && text.trim()) {
+        Speech.speak(text, {
+          language: 'en-US',
+          pitch: 1.0,
+          rate: 0.9,
+        });
+        log.debug('Speak message', { text }, 'ChatScreen');
+      }
+    } catch (error) {
+      log.error('Failed to speak message', error, 'ChatScreen');
+    }
   };
 
   const handleSelectConversation = (selectedConversation: Conversation) => {
@@ -876,7 +1045,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 }}
                 onPressOut={() => {
                   // Keep touch active for a bit longer to prevent scroll interference
-                  setTimeout(() => {
+                  createManagedTimeout(() => {
                     if (!isTouchActive) {
                       setIsTouchActive(false);
                     }
@@ -904,7 +1073,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     style={styles.messagesList}
                     onContentSizeChange={() => {
                       // Scroll to end for new messages and streaming content
-                      setTimeout(() => {
+                      createManagedTimeout(() => {
                         flatListRef.current?.scrollToEnd({ animated: true });
                       }, 100);
                     }}
@@ -951,7 +1120,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     }}
                     onLayout={() => {
                       // Scroll to end when layout changes (new messages added)
-                      setTimeout(() => {
+                      createManagedTimeout(() => {
                         flatListRef.current?.scrollToEnd({ animated: true });
                       }, 100);
                     }}
@@ -982,13 +1151,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     }}
                     onSendQuickQuery={(query) => {
                       setInputText(query);
-                      setTimeout(() => {
+                      createManagedTimeout(() => {
                         sendMessage();
                       }, 100);
                     }}
                   />
                   
                   {renderTypingIndicator()}
+                  
+                  {/* Tool Status Indicator */}
+                  <ToolStatusIndicator 
+                    toolExecutions={toolExecutions} 
+                    analyticsInsights={analyticsInsights}
+                    onNavigateToAnalytics={handleNavigateToAnalytics}
+                  />
                   
                   {/* Enhanced AI-Powered Input */}
                   <ChatInput
@@ -998,7 +1174,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onVoiceStart={handleVoiceStart}
                     onVoiceEnd={handleVoiceEnd}
                     isLoading={isLoading || isAnalyzing}
-                    placeholder={getAdaptivePlaceholderText()}
+                    placeholder="Share your thoughts..."
                     voiceEnabled={true}
                     userEmotionalState={emotionalState || undefined}
                     toolExecutions={toolExecutions}
@@ -1024,6 +1200,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               visible={showQuickAnalyticsModal}
               onClose={() => setShowQuickAnalyticsModal(false)}
               onSendQuery={handleQuickAnalyticsQuery}
+            />
+
+            {/* Upgrade Prompt */}
+            {showUpgradePrompt && rateLimitInfo && (
+              <UpgradePrompt
+                tier={rateLimitInfo.tier}
+                upgradeOptions={rateLimitInfo.upgradeOptions}
+                onUpgrade={handleUpgrade}
+                onDismiss={handleDismissUpgrade}
+              />
+            )}
+
+            {/* Subscription Modal */}
+            <SubscriptionModal
+              visible={showSubscriptionModal}
+              onClose={() => setShowSubscriptionModal(false)}
+              onSubscribe={handleSubscriptionComplete}
             />
           </SafeAreaView>
         </PageBackground>

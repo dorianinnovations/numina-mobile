@@ -130,12 +130,12 @@ class UserDataSync {
   // Set up automatic sync on network reconnection
   static setupAutoSync(): void {
     // Auto-sync is now handled by AuthContext to avoid circular dependencies
-    console.log('[UserDataSync] Auto-sync setup - handled by AuthContext');
+    // console.log('[UserDataSync] Auto-sync setup - handled by AuthContext');
   }
 
   private static async triggerAutoSync(): Promise<void> {
     // Auto-sync is now handled by AuthContext to avoid circular dependencies
-    console.log('[UserDataSync] Auto-sync triggered - handled by AuthContext');
+    // console.log('[UserDataSync] Auto-sync triggered - handled by AuthContext');
   }
 }
 
