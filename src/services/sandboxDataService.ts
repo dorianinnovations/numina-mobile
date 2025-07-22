@@ -575,6 +575,54 @@ class SandboxDataService {
     }
   }
 
+  async saveInsightNode(insightNode: any): Promise<boolean> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return false;
+
+      const response = await fetch(`${this.baseURL}/sandbox/save-insight-node`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          insightNode,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.log('⚠️ Error saving insight node:', error);
+      return false;
+    }
+  }
+
+  async attachTidBitToNode(nodeId: string, tidBit: any): Promise<boolean> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return false;
+
+      const response = await fetch(`${this.baseURL}/sandbox/node/${nodeId}/attach-tidbit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tidBit,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.log('⚠️ Error attaching tid-bit to node:', error);
+      return false;
+    }
+  }
+
   // Method to generate abstract but presentable positions
   generateNodePosition(canvasWidth: number, canvasHeight: number, existingNodes: any[]): { x: number; y: number } {
     const margin = 60;

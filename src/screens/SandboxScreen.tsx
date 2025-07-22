@@ -9,6 +9,8 @@ import {
   Animated,
   Keyboard,
   Platform,
+  ScrollView,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -25,6 +27,8 @@ import { BaseWalletCard } from '../components/WalletCard';
 import { EnhancedSpinner } from '../components/EnhancedSpinner';
 import SandboxDataService from '../services/sandboxDataService';
 import CloudAuth from '../services/cloudAuth';
+import { API_BASE_URL } from '../services/api';
+import WebSocketService from '../services/websocketService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -51,6 +55,8 @@ interface SandboxNode {
   category: string;
   isLocked: boolean;
   lockTimestamp?: string;
+  isInsightNode?: boolean;
+  patternType?: 'hidden_pattern' | 'behavioral_insight' | 'emotional_pattern' | 'temporal_connection';
   deepInsights?: {
     summary: string;
     keyPatterns: string[];
@@ -67,6 +73,26 @@ interface SandboxNode {
     behavioralMetrics?: any;
     emotionalProfile?: any;
     temporalPatterns?: any;
+  };
+}
+
+interface WindowTidBit {
+  id: string;
+  content: string;
+  source: string;
+  type: 'finding' | 'evidence' | 'data_point' | 'connection';
+  relevanceScore: number;
+  attachable: boolean;
+}
+
+interface WindowQueryResponse {
+  synthesis: string;
+  tidBits: WindowTidBit[];
+  researchDirections: string[];
+  sourcesMeta: {
+    webSources: number;
+    academicSources: number;
+    totalSources: number;
   };
 }
 
@@ -141,6 +167,13 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     connectionType: string;
   }>>([]);
   const sendButtonAnim = useRef(new Animated.Value(0)).current;
+  
+  // Window Modal state
+  const [showWindowModal, setShowWindowModal] = useState(false);
+  const [windowQuery, setWindowQuery] = useState('');
+  const [windowResults, setWindowResults] = useState<WindowQueryResponse | null>(null);
+  const [isWindowLoading, setIsWindowLoading] = useState(false);
+  const [attachingTidBit, setAttachingTidBit] = useState<string | null>(null);
 
   // Node animation refs
   const nodeAnims = useRef<Map<string, {
@@ -233,6 +266,75 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       }).start();
     }
   }, [inputText]);
+
+  // WebSocket integration for real-time Insight Node delivery
+  useEffect(() => {
+    const setupInsightNodeListener = async () => {
+      try {
+        const webSocketService = WebSocketService();
+        
+        // Ensure WebSocket is connected
+        await webSocketService.connect();
+        
+        // Listen for Pattern Engine insight discoveries
+        const handleInsightNodeArrival = (data: any) => {
+          console.log('🔮 Insight Node arriving:', data);
+          
+          if (data.type === 'insight_discovery' && data.insightNode) {
+            const insightNode: SandboxNode = {
+              ...data.insightNode,
+              isInsightNode: true,
+              position: data.insightNode.position || {
+                x: Math.random() * (screenWidth - 120) + 60,
+                y: Math.random() * (screenHeight - 400) + 200,
+              }
+            };
+            
+            // Trigger the breathtaking arrival animation
+            createInsightArrivalAnimation(insightNode);
+            
+            // Add to nodes state with a small delay to ensure animation is ready
+            setTimeout(() => {
+              setNodes(prevNodes => [...prevNodes, insightNode]);
+              
+              // Save the new insight node to backend
+              SandboxDataService.saveInsightNode(insightNode).catch(error => {
+                console.warn('Failed to save insight node:', error);
+              });
+            }, 100);
+          }
+        };
+        
+        // Listen for pattern analysis events
+        const handlePatternAnalysis = (data: any) => {
+          console.log('🧠 Pattern analysis result:', data);
+          
+          if (data.type === 'pattern_triggered' && data.analysis?.shouldCreateInsightNode) {
+            // This will trigger the actual insight node creation on the backend
+            // which will then send the insight_discovery event
+            console.log('Pattern Engine triggered insight creation');
+          }
+        };
+        
+        // Register event listeners
+        webSocketService.addEventListener('insight_discovery', handleInsightNodeArrival);
+        webSocketService.addEventListener('pattern_analysis', handlePatternAnalysis);
+        webSocketService.addEventListener('pattern_triggered', handlePatternAnalysis);
+        
+        // Cleanup function
+        return () => {
+          webSocketService.removeEventListener('insight_discovery', handleInsightNodeArrival);
+          webSocketService.removeEventListener('pattern_analysis', handlePatternAnalysis);
+          webSocketService.removeEventListener('pattern_triggered', handlePatternAnalysis);
+        };
+        
+      } catch (error) {
+        console.warn('Failed to setup WebSocket insight listener:', error);
+      }
+    };
+    
+    setupInsightNodeListener();
+  }, []);
 
   const handleInputFocus = () => {
     setIsInputFocused(true);
@@ -736,6 +838,99 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     }
   };
 
+  const handleOpenWindow = () => {
+    setShowWindowModal(true);
+    setWindowQuery('');
+    setWindowResults(null);
+  };
+
+  const handleWindowQuery = async () => {
+    if (!selectedNode || !windowQuery.trim()) return;
+    
+    setIsWindowLoading(true);
+    NuminaAnimations.haptic.selection();
+    
+    try {
+      const response = await fetch(`${API_BASE_URL}/sandbox/node/${selectedNode.id}/window-query`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${CloudAuth.getInstance().getToken()}`
+        },
+        body: JSON.stringify({
+          query: windowQuery,
+          nodeContext: {
+            title: selectedNode.title,
+            content: selectedNode.content,
+            category: selectedNode.category
+          }
+        })
+      });
+      
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      
+      const data: WindowQueryResponse = await response.json();
+      setWindowResults(data);
+      
+    } catch (error) {
+      console.error('Window query failed:', error);
+      // Handle error gracefully - maybe show a toast or alert
+    } finally {
+      setIsWindowLoading(false);
+    }
+  };
+
+  const handleAttachTidBit = async (tidBit: WindowTidBit) => {
+    if (!selectedNode || attachingTidBit) return;
+    
+    setAttachingTidBit(tidBit.id);
+    NuminaAnimations.haptic.success();
+    
+    try {
+      // Update the node with the attached tid-bit
+      const updatedNode = {
+        ...selectedNode,
+        deepInsights: {
+          ...selectedNode.deepInsights,
+          dataConnections: [
+            ...(selectedNode.deepInsights?.dataConnections || []),
+            {
+              type: tidBit.type,
+              value: tidBit.content,
+              source: `Window Research: ${tidBit.source}`
+            }
+          ]
+        }
+      };
+      
+      // Update nodes state
+      setNodes(prevNodes => 
+        prevNodes.map(n => n.id === selectedNode.id ? updatedNode : n)
+      );
+      
+      // Update selected node
+      setSelectedNode(updatedNode);
+      
+      // Remove the tid-bit from available list (since it's now attached)
+      if (windowResults) {
+        setWindowResults({
+          ...windowResults,
+          tidBits: windowResults.tidBits.map(tb => 
+            tb.id === tidBit.id ? { ...tb, attachable: false } : tb
+          )
+        });
+      }
+      
+      // Save the updated node to backend
+      await SandboxDataService.attachTidBitToNode(selectedNode.id, tidBit);
+      
+    } catch (error) {
+      console.error('Failed to attach tid-bit:', error);
+    } finally {
+      setTimeout(() => setAttachingTidBit(null), 1000);
+    }
+  };
+
   const renderConnectionLines = () => {
     return nodeConnections.map((connection) => {
       const fromNode = nodes.find(n => n.id === connection.from);
@@ -775,6 +970,276 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         />
       );
     });
+  };
+
+  const renderWindowModal = () => {
+    if (!showWindowModal || !selectedNode) return null;
+
+    return (
+      <Modal
+        visible={showWindowModal}
+        animationType="slide"
+        presentationStyle="formSheet"
+        onRequestClose={() => setShowWindowModal(false)}
+      >
+        <View style={[styles.windowModalContainer, { backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff' }]}>
+          <SafeAreaView style={{ flex: 1 }}>
+            {/* Header */}
+            <View style={styles.windowModalHeader}>
+              <View style={styles.windowModalTitleContainer}>
+                <Feather name="search" size={20} color="#8B5CF6" />
+                <Text style={[styles.windowModalTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                  Research Window
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.windowModalCloseButton}
+                onPress={() => setShowWindowModal(false)}
+              >
+                <Feather name="x" size={20} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.windowModalSubheader}>
+              <Text style={[styles.windowModalSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                Exploring: {selectedNode.title}
+              </Text>
+            </View>
+
+            {/* Query Input */}
+            <View style={styles.windowQueryContainer}>
+              <TextInput
+                style={[
+                  styles.windowQueryInput,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                    color: isDarkMode ? '#fff' : '#1a1a1a',
+                    borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+                  }
+                ]}
+                placeholder="What would you like to research about this node?"
+                placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                value={windowQuery}
+                onChangeText={setWindowQuery}
+                multiline
+                autoFocus
+              />
+              <TouchableOpacity
+                style={[
+                  styles.windowQueryButton,
+                  {
+                    backgroundColor: windowQuery.trim() ? '#8B5CF6' : (isDarkMode ? '#333' : '#ddd'),
+                    opacity: windowQuery.trim() ? 1 : 0.6
+                  }
+                ]}
+                onPress={handleWindowQuery}
+                disabled={!windowQuery.trim() || isWindowLoading}
+              >
+                {isWindowLoading ? (
+                  <EnhancedSpinner size={16} color="#fff" />
+                ) : (
+                  <Feather name="search" size={16} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Results */}
+            <ScrollView style={styles.windowResultsContainer} showsVerticalScrollIndicator={false}>
+              {windowResults && (
+                <>
+                  {/* Synthesis */}
+                  <BaseWalletCard style={styles.synthesisCard}>
+                    <View style={styles.synthesisHeader}>
+                      <Feather name="brain" size={16} color="#8B5CF6" />
+                      <Text style={[styles.synthesisTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                        Research Synthesis
+                      </Text>
+                    </View>
+                    <Text style={[styles.synthesisText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                      {windowResults.synthesis}
+                    </Text>
+                    <View style={styles.sourcesMeta}>
+                      <Text style={[styles.sourcesText, { color: isDarkMode ? '#999' : '#888' }]}>
+                        {windowResults.sourcesMeta.webSources} web • {windowResults.sourcesMeta.academicSources} academic
+                      </Text>
+                    </View>
+                  </BaseWalletCard>
+
+                  {/* Tid-bits */}
+                  <View style={styles.tidBitsSection}>
+                    <Text style={[styles.tidBitsSectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                      Research Tid-bits
+                    </Text>
+                    {windowResults.tidBits.map((tidBit) => (
+                      <BaseWalletCard key={tidBit.id} style={styles.tidBitCard}>
+                        <View style={styles.tidBitHeader}>
+                          <View style={styles.tidBitMeta}>
+                            <View style={[
+                              styles.tidBitTypeIndicator,
+                              { backgroundColor: getTidBitColor(tidBit.type) }
+                            ]} />
+                            <Text style={[styles.tidBitType, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                              {tidBit.type.replace('_', ' ')}
+                            </Text>
+                          </View>
+                          <View style={styles.tidBitRelevance}>
+                            <Text style={[styles.tidBitRelevanceText, { color: isDarkMode ? '#999' : '#888' }]}>
+                              {Math.round(tidBit.relevanceScore * 100)}%
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.tidBitContent, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                          {tidBit.content}
+                        </Text>
+                        <View style={styles.tidBitFooter}>
+                          <Text style={[styles.tidBitSource, { color: isDarkMode ? '#999' : '#888' }]}>
+                            {tidBit.source}
+                          </Text>
+                          {tidBit.attachable && (
+                            <TouchableOpacity
+                              style={[
+                                styles.attachButton,
+                                {
+                                  backgroundColor: attachingTidBit === tidBit.id ? '#10B981' : '#8B5CF6',
+                                  opacity: attachingTidBit && attachingTidBit !== tidBit.id ? 0.6 : 1
+                                }
+                              ]}
+                              onPress={() => handleAttachTidBit(tidBit)}
+                              disabled={!!attachingTidBit}
+                            >
+                              {attachingTidBit === tidBit.id ? (
+                                <Feather name="check" size={14} color="#fff" />
+                              ) : (
+                                <Feather name="plus" size={14} color="#fff" />
+                              )}
+                              <Text style={styles.attachButtonText}>
+                                {attachingTidBit === tidBit.id ? 'Attached' : 'Attach'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </BaseWalletCard>
+                    ))}
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </SafeAreaView>
+        </View>
+      </Modal>
+    );
+  };
+
+  const getTidBitColor = (type: string) => {
+    switch (type) {
+      case 'finding': return '#3B82F6';
+      case 'evidence': return '#10B981';
+      case 'data_point': return '#F59E0B';
+      case 'connection': return '#EC4899';
+      default: return '#8B5CF6';
+    }
+  };
+
+  const getInsightIcon = (patternType?: string) => {
+    switch (patternType) {
+      case 'hidden_pattern': return 'eye';
+      case 'behavioral_insight': return 'trending-up';
+      case 'emotional_pattern': return 'heart';
+      case 'temporal_connection': return 'clock';
+      default: return 'zap';
+    }
+  };
+
+  const createInsightArrivalAnimation = (insightNode: SandboxNode) => {
+    const arrivalAnim = {
+      opacity: new Animated.Value(0),
+      scale: new Animated.Value(0.3),
+      translateY: new Animated.Value(-50),
+      glow: new Animated.Value(0),
+      pulse: new Animated.Value(0.5),
+    };
+
+    // Store the animation in nodeAnims for rendering
+    nodeAnims.set(insightNode.id, arrivalAnim);
+
+    // Create the breathtaking arrival sequence
+    const arrivalSequence = Animated.sequence([
+      // Phase 1: Materialization (600ms)
+      Animated.parallel([
+        Animated.timing(arrivalAnim.opacity, {
+          toValue: 0.3,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrivalAnim.glow, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(arrivalAnim.scale, {
+          toValue: 0.7,
+          tension: 60,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      
+      // Phase 2: Pause for Drama (300ms)
+      Animated.delay(300),
+      
+      // Phase 3: Coalescing (800ms)
+      Animated.parallel([
+        Animated.timing(arrivalAnim.opacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(arrivalAnim.scale, {
+          toValue: 1,
+          tension: 40,
+          friction: 6,
+          useNativeDriver: true,
+        }),
+        Animated.timing(arrivalAnim.translateY, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ]),
+      
+      // Phase 4: Final Pulse (400ms)
+      Animated.spring(arrivalAnim.pulse, {
+        toValue: 1,
+        tension: 80,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]);
+
+    // Start the animation sequence
+    arrivalSequence.start(() => {
+      // Start continuous subtle pulse after arrival
+      const continuousPulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(arrivalAnim.pulse, {
+            toValue: 0.8,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(arrivalAnim.pulse, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      continuousPulse.start();
+    });
+
+    // Haptic feedback for the arrival moment
+    NuminaAnimations.haptic.success();
+    
+    return arrivalAnim;
   };
 
   const renderNodeModal = () => {
@@ -858,6 +1323,14 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
           {/* Actions */}
           <View style={styles.nodeModalActions}>
+            <TouchableOpacity
+              style={[styles.windowButton, { backgroundColor: '#8B5CF6' }]}
+              onPress={handleOpenWindow}
+            >
+              <Feather name="search" size={16} color="#fff" />
+              <Text style={styles.windowButtonText}>Research Window</Text>
+            </TouchableOpacity>
+            
             {!selectedNode.isLocked ? (
               <TouchableOpacity
                 style={[styles.lockNodeButton, { backgroundColor: '#10B981' }]}
@@ -885,9 +1358,27 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     if (!nodeAnim) return null;
 
     const isLocked = node.isLocked;
+    const isInsight = node.isInsightNode;
     const hasConnections = nodeConnections.some(conn => 
       conn.from === node.id || conn.to === node.id
     );
+
+    const getNodeColor = () => {
+      if (isInsight) {
+        switch (node.patternType) {
+          case 'hidden_pattern': return '#8B5CF6'; // Aether purple
+          case 'behavioral_insight': return '#06B6D4'; // Cyan
+          case 'emotional_pattern': return '#EC4899'; // Pink
+          case 'temporal_connection': return '#F59E0B'; // Amber
+          default: return '#8B5CF6';
+        }
+      }
+      if (isLocked) return '#10B981';
+      if (node.personalHook) return '#EC4899';
+      return '#3B82F6';
+    };
+
+    const nodeColor = getNodeColor();
 
     return (
       <Animated.View
@@ -905,26 +1396,53 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
           }
         ]}
       >
+        {/* Insight Node Glow Effect */}
+        {isInsight && (
+          <Animated.View
+            style={[
+              styles.insightGlow,
+              {
+                opacity: nodeAnim.glow ? 
+                  Animated.multiply(nodeAnim.opacity, nodeAnim.glow) : 
+                  nodeAnim.opacity,
+                backgroundColor: nodeColor,
+                shadowColor: nodeColor,
+                transform: [
+                  { scale: nodeAnim.pulse || 1 }
+                ]
+              }
+            ]}
+          />
+        )}
+        
         <TouchableOpacity
           style={[
             styles.nodeDot,
+            isInsight && styles.insightNodeDot,
             {
-              backgroundColor: isLocked 
-                ? '#10B981' 
-                : node.personalHook 
-                  ? '#EC4899' 
-                  : '#3B82F6',
-              borderColor: isLocked 
-                ? '#10B981' 
-                : node.personalHook 
-                  ? '#EC4899' 
-                  : '#3B82F6',
-              borderWidth: hasConnections ? 3 : 2,
+              backgroundColor: nodeColor,
+              borderColor: nodeColor,
+              borderWidth: hasConnections ? 3 : (isInsight ? 3 : 2),
+              shadowColor: isInsight ? nodeColor : undefined,
+              shadowOpacity: isInsight ? 0.6 : 0,
+              shadowRadius: isInsight ? 12 : 0,
+              shadowOffset: isInsight ? { width: 0, height: 0 } : { width: 0, height: 0 },
             }
           ]}
           onPress={() => handleNodePress(node)}
         >
-          {isLocked && (
+          {/* Insight Node Icon */}
+          {isInsight && (
+            <View style={styles.insightIcon}>
+              <Feather 
+                name={getInsightIcon(node.patternType)} 
+                size={12} 
+                color="#fff" 
+              />
+            </View>
+          )}
+          
+          {isLocked && !isInsight && (
             <Feather 
               name="lock" 
               size={8} 
@@ -932,12 +1450,40 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
               style={styles.lockIcon} 
             />
           )}
-          <Text style={styles.nodeTitle}>{node.title}</Text>
+          <Text style={[styles.nodeTitle, isInsight && styles.insightNodeTitle]}>
+            {node.title}
+          </Text>
           {node.personalHook && (
             <Text style={styles.personalHook}>{node.personalHook}</Text>
           )}
-          {hasConnections && (
+          {hasConnections && !isInsight && (
             <View style={styles.connectionIndicator} />
+          )}
+          
+          {/* Insight Node Pulse Effect */}
+          {isInsight && (
+            <Animated.View
+              style={[
+                styles.insightPulse,
+                {
+                  opacity: nodeAnim.pulse ? 
+                    nodeAnim.pulse.interpolate({
+                      inputRange: [0.5, 1],
+                      outputRange: [0.3, 0.8],
+                      extrapolate: 'clamp',
+                    }) :
+                    nodeAnim.scale.interpolate({
+                      inputRange: [0.9, 1.1],
+                      outputRange: [0.3, 0.8],
+                      extrapolate: 'clamp',
+                    }),
+                  borderColor: nodeColor,
+                  transform: [
+                    { scale: nodeAnim.pulse || 1 }
+                  ]
+                }
+              ]}
+            />
           )}
         </TouchableOpacity>
       </Animated.View>
@@ -1052,6 +1598,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
             {renderUBPMModal()}
             {renderNodeModal()}
+            {renderWindowModal()}
           </Animated.View>
         </SafeAreaView>
       </PageBackground>
@@ -1383,5 +1930,232 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: '#10B981',
+  },
+
+  // Insight Node Styles
+  insightGlow: {
+    position: 'absolute',
+    top: -15,
+    left: -15,
+    right: -15,
+    bottom: -15,
+    borderRadius: 75,
+    opacity: 0.3,
+    shadowOpacity: 0.8,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  insightNodeDot: {
+    elevation: 12,
+    borderWidth: 3,
+  },
+  insightIcon: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 8,
+    padding: 2,
+  },
+  insightNodeTitle: {
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  insightPulse: {
+    position: 'absolute',
+    top: -8,
+    left: -8,
+    right: -8,
+    bottom: -8,
+    borderRadius: 68,
+    borderWidth: 2,
+    opacity: 0.6,
+  },
+  
+  // Window Button
+  windowButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 6,
+    marginBottom: 8,
+  },
+  windowButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // Window Modal
+  windowModalContainer: {
+    flex: 1,
+  },
+  windowModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  windowModalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  windowModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  windowModalCloseButton: {
+    padding: 4,
+  },
+  windowModalSubheader: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  windowModalSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  
+  // Query Input
+  windowQueryContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  windowQueryInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 15,
+    maxHeight: 100,
+    textAlignVertical: 'top',
+  },
+  windowQueryButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Results
+  windowResultsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  synthesisCard: {
+    marginBottom: 20,
+    padding: 16,
+  },
+  synthesisHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  synthesisTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  synthesisText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  sourcesMeta: {
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+  },
+  sourcesText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  
+  // Tid-bits
+  tidBitsSection: {
+    marginBottom: 20,
+  },
+  tidBitsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  tidBitCard: {
+    marginBottom: 12,
+    padding: 14,
+  },
+  tidBitHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  tidBitMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tidBitTypeIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  tidBitType: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  tidBitRelevance: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderRadius: 8,
+  },
+  tidBitRelevanceText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  tidBitContent: {
+    fontSize: 14,
+    lineHeight: 19,
+    marginBottom: 10,
+  },
+  tidBitFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tidBitSource: {
+    fontSize: 11,
+    fontWeight: '500',
+    flex: 1,
+  },
+  attachButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  attachButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
