@@ -310,7 +310,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
   } = useEmotionalAnalytics();
   
   // Pull-to-refresh functionality
-  const { refreshControl } = usePullToRefresh(async () => {
+  const { refreshControl: refreshControlProps } = usePullToRefresh(async () => {
     await Promise.all([
       fetchWeeklyReport(),
       fetchAllAnalytics()
@@ -1257,7 +1257,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               refreshControl={
-                <RefreshControl {...refreshControl} />
+                <RefreshControl {...refreshControlProps} />
               }
             >
               {/* Main Navigation */}

@@ -39,7 +39,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const { logout, isAuthenticated } = useAuth();
   
   // Pull-to-refresh functionality
-  const { refreshControl } = usePullToRefresh(async () => {
+  const { refreshControl: refreshControlProps } = usePullToRefresh(async () => {
     await loadSettings();
   });
   
@@ -656,7 +656,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           refreshControl={
-            isAuthenticated ? <RefreshControl {...refreshControl} /> : undefined
+            isAuthenticated ? <RefreshControl {...refreshControlProps} /> : undefined
           }
         >
           {settingsSections.map((section, sectionIndex) => (

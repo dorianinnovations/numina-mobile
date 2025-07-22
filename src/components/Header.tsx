@@ -46,6 +46,7 @@ interface HeaderProps {
   isRefreshing?: boolean;
   refreshAnimationSpeed?: number;
   disableAnimatedBorder?: boolean;
+  style?: any;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -69,6 +70,7 @@ export const Header: React.FC<HeaderProps> = ({
   isRefreshing = false,
   refreshAnimationSpeed = 2000,
   disableAnimatedBorder = false,
+  style,
 }) => {
   const { isDarkMode } = useTheme();
   const { isRefreshing: globalRefreshing } = useRefresh();
@@ -820,6 +822,7 @@ export const Header: React.FC<HeaderProps> = ({
           {
             opacity: visibilityAnim,
           },
+          style,
         ]}
       >
         {!isVisible && onRestoreHeader ? (

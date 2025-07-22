@@ -419,6 +419,21 @@ class ComprehensiveAnalyticsService {
       currentSession = await this.apiRequest<any>('/emotional-analytics/current-session?refresh=true');
     } catch (error) {
       console.log('Current session not available:', error);
+      // Fallback: Use alternative analytics endpoint
+      try {
+        const fallbackData = await this.apiRequest<any>('/analytics/llm', {
+          method: 'POST',
+          body: {
+            category: 'emotional',
+            timeframe: 'current',
+            includePersonalizedInsights: true
+          }
+        });
+        currentSession = fallbackData?.insights || null;
+      } catch (fallbackError) {
+        console.log('Emotional analytics fallback skipped - using offline data');
+        currentSession = null;
+      }
     }
 
     try {
@@ -467,7 +482,37 @@ class ComprehensiveAnalyticsService {
   }
 
   async getUBPMContext(): Promise<UBPMContextData> {
-    const context = await this.apiRequest<any>('/test-ubpm/context');
+    let context;
+    
+    try {
+      context = await this.apiRequest<any>('/test-ubpm/context');
+    } catch (error) {
+      console.log('UBPM context not available:', error);
+      // Fallback: Use behavioral analytics endpoint
+      try {
+        const fallbackData = await this.apiRequest<any>('/analytics/llm', {
+          method: 'POST',
+          body: {
+            category: 'behavioral',
+            includeUBPMContext: true,
+            includePersonalizedInsights: true
+          }
+        });
+        context = fallbackData?.ubpmContext || {};
+      } catch (fallbackError) {
+        console.log('UBPM behavioral analytics fallback failed:', fallbackError);
+        // Return minimal context structure
+        context = {
+          patterns: [],
+          significance: {},
+          insights: [],
+          adaptedResponse: false,
+          communicationStyle: 'balanced',
+          emotionalIntelligence: 'moderate',
+          metadata: { source: 'fallback', confidence: 0.1 }
+        };
+      }
+    }
     
     return {
       behavioralContext: {

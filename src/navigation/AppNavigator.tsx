@@ -13,6 +13,8 @@ import { AboutScreen } from "../screens/AboutScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { AnalyticsScreen } from "../screens/AnalyticsScreen";
 import { ModernAnalyticsScreen } from "../screens/ModernAnalyticsScreen";
+import { AdvancedAnalyticsScreen } from "../screens/AdvancedAnalyticsScreen";
+import { SandboxScreen } from "../screens/SandboxScreen";
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
@@ -36,6 +38,8 @@ export type RootStackParamList = {
   Chat: undefined;
   Analytics: undefined;
   ModernAnalytics: undefined;
+  AdvancedAnalytics: undefined;
+  Sandbox: undefined;
   Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -450,6 +454,32 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <ModernAnalyticsScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="AdvancedAnalytics"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <AdvancedAnalyticsScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Sandbox"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <SandboxScreen 
               onNavigateBack={() => navigation.goBack()}
             />
           )}

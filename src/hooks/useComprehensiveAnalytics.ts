@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import comprehensiveAnalyticsService, { 
   BehavioralMetrics, 
   CollectiveInsights, 
@@ -41,6 +41,11 @@ interface ComprehensiveAnalyticsState {
 }
 
 export const useComprehensiveAnalytics = () => {
+  // Request deduplication
+  const lastFetchTime = useRef<number>(0);
+  const isCurrentlyFetching = useRef<boolean>(false);
+  const FETCH_COOLDOWN = 5000; // 5 seconds between fetches
+  
   const [state, setState] = useState<ComprehensiveAnalyticsState>({
     personalGrowth: null,
     behavioralMetrics: null,
@@ -152,7 +157,17 @@ export const useComprehensiveAnalytics = () => {
     };
   }, []);
 
-  const fetchAllAnalytics = useCallback(async () => {
+  const fetchAllAnalytics = useCallback(async (forceRefresh: boolean = false) => {
+    const now = Date.now();
+    
+    // Prevent rapid successive calls
+    if (!forceRefresh && (isCurrentlyFetching.current || (now - lastFetchTime.current) < FETCH_COOLDOWN)) {
+      console.log('📊 Analytics fetch skipped - too soon since last request');
+      return;
+    }
+    
+    isCurrentlyFetching.current = true;
+    lastFetchTime.current = now;
     setState(prev => ({ ...prev, isLoading: true, error: null, errors: {} }));
     
     try {
@@ -192,6 +207,8 @@ export const useComprehensiveAnalytics = () => {
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to load analytics'
       }));
+    } finally {
+      isCurrentlyFetching.current = false;
     }
   }, [calculateSummary]);
 

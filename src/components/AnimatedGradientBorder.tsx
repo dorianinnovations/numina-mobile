@@ -312,7 +312,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
               }}
             >
               <LinearGradient
-                colors={gradientColors || selectedTheme.colors}
+                colors={((gradientColors || selectedTheme.colors) as [string, string, ...string[]])}
                 style={{
                   width: spotlightSize,
                   height: spotlightSize,

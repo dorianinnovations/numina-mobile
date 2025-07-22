@@ -11,6 +11,7 @@ const { width: screenWidth } = Dimensions.get('window');
 const getAllMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#87ebde" : "#00d4ff"} />, label: 'Chat', key: 'chat', requiresAuth: true },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#ff9ff3" : "#ec4899"} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
+  { icon: <Feather name="map" size={16} color={isDarkMode ? "#87ceeb" : "#06b6d4"} />, label: 'Sandbox', key: 'sandbox', requiresAuth: true },
   { icon: <Feather name="compass" size={16} color={isDarkMode ? "#b4a7d6" : "#a78bfa"} />, label: 'Discover', key: 'cloud', requiresAuth: true },
   { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#98fb98" : "#22c55e"} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
   { icon: <Feather name="user" size={16} color={isDarkMode ? "#ffd700" : "#f59e0b"} />, label: 'Profile', key: 'profile', requiresAuth: true },
