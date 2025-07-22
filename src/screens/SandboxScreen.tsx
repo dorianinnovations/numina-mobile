@@ -24,6 +24,7 @@ import { ChromaticCard } from '../components/ChromaticCard';
 import { BaseWalletCard } from '../components/WalletCard';
 import { EnhancedSpinner } from '../components/EnhancedSpinner';
 import SandboxDataService from '../services/sandboxDataService';
+import CloudAuth from '../services/cloudAuth';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -378,9 +379,17 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     userData: any, 
     useUBPM: boolean
   ): Promise<Omit<SandboxNode, 'position' | 'deepInsights' | 'userDataContext'>[]> => {
-    // This would integrate with AI endpoints to generate contextually relevant nodes
-    // For now, generate contextually enhanced nodes based on locked content
-    
+    try {
+      // Try to generate nodes using AI streaming endpoint
+      const aiNodes = await generateNodesFromAI(enhancedQuery, userData, useUBPM);
+      if (aiNodes && aiNodes.length > 0) {
+        return aiNodes;
+      }
+    } catch (error) {
+      console.log('⚠️ AI node generation unavailable, using contextual fallback:', error);
+    }
+
+    // Fallback to contextual generation based on locked content
     const hasPhysicsContext = lockedNodes.some(node => node.category === 'Physics');
     const hasPersonalContext = lockedNodes.some(node => node.personalHook);
     
@@ -425,6 +434,67 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     }
     
     return contextualNodes;
+  };
+
+  const generateNodesFromAI = async (
+    query: string,
+    userData: any,
+    useUBPM: boolean
+  ): Promise<Omit<SandboxNode, 'position' | 'deepInsights' | 'userDataContext'>[] | null> => {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return null;
+
+      const requestPayload = {
+        query: query,
+        selectedActions: selectedActions,
+        lockedContext: lockedNodes.map(node => ({
+          title: node.title,
+          content: node.content,
+          category: node.category,
+          personalHook: node.personalHook
+        })),
+        useUBPM: useUBPM,
+        userData: useUBPM ? {
+          ubpmData: userData.ubpmData,
+          behavioralMetrics: userData.behavioralMetrics,
+          emotionalProfile: userData.emotionalProfile
+        } : null
+      };
+
+      console.log('🚀 Sending AI node generation request:', requestPayload);
+
+      const response = await fetch(`https://server-a7od.onrender.com/sandbox/generate-nodes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestPayload)
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ AI nodes generated:', result.data);
+        
+        return result.data.nodes.map((node: any) => ({
+          id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          title: node.title,
+          content: node.content,
+          connections: [],
+          confidence: node.confidence || 0.8,
+          category: node.category || 'Discovery',
+          personalHook: node.personalHook,
+          isLocked: false
+        }));
+      } else {
+        console.log('⚠️ AI node generation failed:', response.status, response.statusText);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error in AI node generation:', error);
+      return null;
+    }
   };
 
   const generateSimpleNodes = () => {
@@ -617,7 +687,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     setSelectedNode(node);
   };
 
-  const handleLockNode = (node: SandboxNode) => {
+  const handleLockNode = async (node: SandboxNode) => {
     NuminaAnimations.haptic.success();
     
     const lockedNode = {
@@ -632,6 +702,13 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     
     setLockedNodes(prevLocked => [...prevLocked, lockedNode]);
     setSelectedNode(null);
+
+    // Save lock state to backend
+    await SandboxDataService.saveLockState(node.id, {
+      node: lockedNode,
+      context: buildContextFromLockedNodes(),
+      timestamp: lockedNode.lockTimestamp
+    });
     
     // Detect new connections with locked nodes
     setTimeout(async () => {
@@ -639,7 +716,24 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         [...nodes.filter(n => n.id !== node.id), lockedNode]
       );
       setNodeConnections(updatedConnections);
+
+      // Save updated session after connections are analyzed
+      await saveSandboxSession();
     }, 500);
+  };
+
+  const saveSandboxSession = async () => {
+    try {
+      await SandboxDataService.saveSandboxSession({
+        nodes,
+        lockedNodes,
+        connections: nodeConnections,
+        userQuery: inputText,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.log('⚠️ Failed to save sandbox session:', error);
+    }
   };
 
   const renderConnectionLines = () => {

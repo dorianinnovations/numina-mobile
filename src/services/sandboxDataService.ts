@@ -43,36 +43,50 @@ class SandboxDataService {
     }
 
     try {
-      // Gather all user data in parallel
+      // Gather all user data in parallel, including MongoDB collections
       const [
         analytics,
         profile,
         conversations,
         toolUsage,
         subscription,
-        insights
+        insights,
+        mongoData
       ] = await Promise.all([
         ComprehensiveAnalyticsService.getAllAnalytics(),
         ApiService.getUserProfile(),
         this.getConversationHistory(),
         this.getToolUsageData(),
         this.getSubscriptionData(),
-        this.getPersonalInsights()
+        this.getPersonalInsights(),
+        this.getMongoUserData() // New comprehensive MongoDB data
       ]);
 
       const userDataSnapshot: UserDataSnapshot = {
-        ubpmData: analytics.ubpmContext || {},
+        ubpmData: { 
+          ...analytics.ubpmContext, 
+          ...mongoData?.ubpmCollection // MongoDB UBPM data
+        } || {},
         behavioralMetrics: analytics.behavioralMetrics,
-        emotionalProfile: analytics.emotionalAnalytics || {},
+        emotionalProfile: { 
+          ...analytics.emotionalAnalytics, 
+          ...mongoData?.emotionalCollection // MongoDB emotional data
+        } || {},
         temporalPatterns: analytics.behavioralMetrics?.temporalPatterns || {},
         conversationHistory: conversations,
-        toolUsageData: toolUsage,
+        toolUsageData: { 
+          ...toolUsage, 
+          ...mongoData?.toolUsageCollection // MongoDB tool usage data
+        },
         subscriptionData: subscription,
-        personalInsights: insights,
+        personalInsights: { 
+          ...insights, 
+          ...mongoData?.insightsCollection // MongoDB insights data
+        },
         metadata: {
           lastUpdated: new Date().toISOString(),
-          dataCompleteness: this.calculateDataCompleteness(analytics, profile, conversations),
-          sources: ['ubpm', 'behavioral', 'emotional', 'conversations', 'tools', 'subscription']
+          dataCompleteness: this.calculateDataCompleteness(analytics, profile, conversations, mongoData),
+          sources: ['ubpm', 'behavioral', 'emotional', 'conversations', 'tools', 'subscription', 'mongodb']
         }
       };
 
@@ -107,6 +121,13 @@ class SandboxDataService {
 
   async enhanceNodeWithUserData(node: any, userData: UserDataSnapshot): Promise<NodeEnhancementData> {
     try {
+      // Try to get real UBPM enhancement from backend first
+      const ubpmEnhancement = await this.getUBPMNodeEnhancement(node, userData);
+      if (ubpmEnhancement) {
+        return ubpmEnhancement;
+      }
+
+      // Fallback to local enhancement
       const relevantData = this.findRelevantUserData(node, userData);
       const personalizedContext = this.generatePersonalizedContext(node, relevantData, userData);
       const dataConnections = this.createDataConnections(node, userData);
@@ -121,6 +142,45 @@ class SandboxDataService {
     } catch (error) {
       console.error('Error enhancing node with user data:', error);
       return this.getFallbackEnhancement(node);
+    }
+  }
+
+  private async getUBPMNodeEnhancement(node: any, userData: UserDataSnapshot): Promise<NodeEnhancementData | null> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return null;
+
+      const response = await fetch(`${this.baseURL}/sandbox/enhance-node`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          node: {
+            title: node.title,
+            content: node.content,
+            category: node.category
+          },
+          userContext: {
+            ubpmData: userData.ubpmData,
+            behavioralMetrics: userData.behavioralMetrics,
+            emotionalProfile: userData.emotionalProfile
+          }
+        })
+      });
+
+      if (response.ok) {
+        const enhancement = await response.json();
+        console.log('✅ UBPM node enhancement received:', enhancement.data);
+        return enhancement.data;
+      } else {
+        console.log('⚠️ UBPM enhancement not available, using fallback');
+        return null;
+      }
+    } catch (error) {
+      console.log('⚠️ UBPM enhancement service unavailable:', error);
+      return null;
     }
   }
 
@@ -218,8 +278,17 @@ class SandboxDataService {
   }
 
   private async findSuggestedConnections(node: any, userData: UserDataSnapshot): Promise<string[]> {
-    // This would integrate with AI endpoints for intelligent connection suggestions
-    // For now, return semantic suggestions based on user data patterns
+    try {
+      // Try AI-powered contextual search enhancement
+      const aiSuggestions = await this.getContextualSearchEnhancement(node, userData);
+      if (aiSuggestions) {
+        return aiSuggestions;
+      }
+    } catch (error) {
+      console.log('⚠️ AI contextual search unavailable, using local suggestions:', error);
+    }
+
+    // Fallback to semantic suggestions based on user data patterns
     const suggestions = [];
 
     if (userData.behavioralMetrics?.personalityTraits?.curiosity?.score > 0.7) {
@@ -231,6 +300,46 @@ class SandboxDataService {
     }
 
     return suggestions;
+  }
+
+  private async getContextualSearchEnhancement(node: any, userData: UserDataSnapshot): Promise<string[] | null> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return null;
+
+      const response = await fetch(`${this.baseURL}/sandbox/contextual-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          node: {
+            title: node.title,
+            content: node.content,
+            category: node.category
+          },
+          userContext: {
+            ubpmData: userData.ubpmData,
+            behavioralMetrics: userData.behavioralMetrics,
+            emotionalProfile: userData.emotionalProfile,
+            conversationHistory: userData.conversationHistory.slice(0, 5) // Last 5 conversations
+          }
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ AI contextual search suggestions received:', result.data);
+        return result.data.suggestions || [];
+      } else {
+        console.log('⚠️ AI contextual search failed:', response.status);
+        return null;
+      }
+    } catch (error) {
+      console.log('⚠️ AI contextual search error:', error);
+      return null;
+    }
   }
 
   private calculatePersonalityAlignment(node: any, traits: any): any {
@@ -311,7 +420,33 @@ class SandboxDataService {
     }
   }
 
-  private calculateDataCompleteness(analytics: any, profile: any, conversations: any[]): number {
+  private async getMongoUserData(): Promise<any> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return null;
+
+      const response = await fetch(`${this.baseURL}/user/mongo-data`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ MongoDB user data retrieved:', Object.keys(result.data || {}));
+        return result.data;
+      } else {
+        console.log('⚠️ MongoDB user data not available:', response.status);
+        return null;
+      }
+    } catch (error) {
+      console.log('⚠️ Error fetching MongoDB user data:', error);
+      return null;
+    }
+  }
+
+  private calculateDataCompleteness(analytics: any, profile: any, conversations: any[], mongoData?: any): number {
     let completeness = 0;
     const maxScore = 6;
 
@@ -352,6 +487,94 @@ class SandboxDataService {
     };
   }
 
+  // Backend storage for sandbox sessions
+  async saveSandboxSession(sessionData: {
+    nodes: any[];
+    lockedNodes: any[];
+    connections: any[];
+    userQuery: string;
+    timestamp: string;
+  }): Promise<boolean> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return false;
+
+      const response = await fetch(`${this.baseURL}/sandbox/save-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          sessionData,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      if (response.ok) {
+        console.log('✅ Sandbox session saved to backend');
+        return true;
+      } else {
+        console.log('⚠️ Failed to save sandbox session:', response.status);
+        return false;
+      }
+    } catch (error) {
+      console.log('⚠️ Error saving sandbox session:', error);
+      return false;
+    }
+  }
+
+  async loadSandboxSessions(limit: number = 10): Promise<any[]> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return [];
+
+      const response = await fetch(`${this.baseURL}/sandbox/sessions?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Sandbox sessions loaded:', result.data);
+        return result.data || [];
+      } else {
+        console.log('⚠️ Failed to load sandbox sessions:', response.status);
+        return [];
+      }
+    } catch (error) {
+      console.log('⚠️ Error loading sandbox sessions:', error);
+      return [];
+    }
+  }
+
+  async saveLockState(nodeId: string, lockData: any): Promise<boolean> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return false;
+
+      const response = await fetch(`${this.baseURL}/sandbox/lock-node`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nodeId,
+          lockData,
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.log('⚠️ Error saving lock state:', error);
+      return false;
+    }
+  }
+
   // Method to generate abstract but presentable positions
   generateNodePosition(canvasWidth: number, canvasHeight: number, existingNodes: any[]): { x: number; y: number } {
     const margin = 60;
@@ -386,6 +609,17 @@ class SandboxDataService {
     relevance: number;
     connectionType: string;
   }>> {
+    try {
+      // Try AI-powered connection analysis first
+      const aiConnections = await this.getAIConnectionAnalysis(nodes);
+      if (aiConnections) {
+        return aiConnections;
+      }
+    } catch (error) {
+      console.log('⚠️ AI connection analysis unavailable, using local analysis:', error);
+    }
+
+    // Fallback to local connection detection
     const connections = [];
 
     for (let i = 0; i < nodes.length; i++) {
@@ -404,6 +638,48 @@ class SandboxDataService {
     }
 
     return connections.sort((a, b) => b.relevance - a.relevance);
+  }
+
+  private async getAIConnectionAnalysis(nodes: any[]): Promise<Array<{
+    from: string;
+    to: string;
+    relevance: number;
+    connectionType: string;
+  }> | null> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) return null;
+
+      const response = await fetch(`${this.baseURL}/sandbox/analyze-connections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nodes: nodes.map(node => ({
+            id: node.id,
+            title: node.title,
+            content: node.content,
+            category: node.category,
+            personalHook: node.personalHook,
+            isLocked: node.isLocked
+          }))
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ AI connection analysis received:', result.data);
+        return result.data.connections;
+      } else {
+        console.log('⚠️ AI connection analysis failed:', response.status);
+        return null;
+      }
+    } catch (error) {
+      console.log('⚠️ AI connection analysis error:', error);
+      return null;
+    }
   }
 
   private async calculateNodeRelevance(nodeA: any, nodeB: any): Promise<number> {
