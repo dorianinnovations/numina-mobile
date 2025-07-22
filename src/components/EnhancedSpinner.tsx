@@ -28,7 +28,7 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
 
   // Base rotation animation - perfect speed for holographic
   useEffect(() => {
-    const duration = type === 'holographic' ? 700 : 800; // Perfect balance - faster than slow, slower than fast
+    const duration = type === 'holographic' ? 420 : 480; // 40% faster - maximum performance
     
     const startRotation = () => {
       Animated.loop(
@@ -42,7 +42,7 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
     
     // Dramatic delay for holographic effect - makes mind think it's processing
     if (type === 'holographic') {
-      setTimeout(startRotation, 200); // Slightly longer dramatic pause
+      setTimeout(startRotation, 120); // Maximum speed dramatic pause
     } else {
       startRotation();
     }

@@ -306,24 +306,24 @@ class EnhancedWebSocketService {
   }
 
   private handleConnectionError(error: any): void {
-    log.warn('WebSocket connection failed - app will continue in offline mode', { 
-      error: error.message,
-      type: error.type,
-      description: error.description 
-    }, 'EnhancedWebSocketService');
-
-    // Categorize errors for better user experience
+    // Categorize errors for better user experience and less spam
     if (error.message?.includes('User not found') || error.message?.includes('auth')) {
-      log.warn('🔐 User authentication issue with WebSocket server', null, 'EnhancedWebSocketService');
+      log.debug('WebSocket authentication issue - will retry when user logs in', { 
+        error: error.message 
+      }, 'EnhancedWebSocketService');
       this.scheduleAuthRetry();
     } else if (error.message?.includes('timeout')) {
-      log.warn('🔌 WebSocket connection timeout - server may be slow', null, 'EnhancedWebSocketService');
+      log.warn('WebSocket connection timeout - server may be slow', null, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     } else if (error.message?.includes('502') || error.message?.includes('503')) {
-      log.warn('🔌 WebSocket server temporarily unavailable', null, 'EnhancedWebSocketService');
+      log.warn('WebSocket server temporarily unavailable', null, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     } else {
-      log.warn('🔌 WebSocket connection failed - unknown error', { error: error.message }, 'EnhancedWebSocketService');
+      log.warn('WebSocket connection failed - app will continue in offline mode', { 
+        error: error.message,
+        type: error.type,
+        description: error.description 
+      }, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     }
 
@@ -375,12 +375,21 @@ class EnhancedWebSocketService {
       clearTimeout(this.authRetryTimer);
     }
 
-    // Wait longer for auth retries
-    this.authRetryTimer = setTimeout(() => {
+    // Check if user is actually logged in before retrying
+    this.authRetryTimer = setTimeout(async () => {
       this.authRetryTimer = null;
-      log.debug('Retrying WebSocket connection after auth failure', null, 'EnhancedWebSocketService');
-      this.initialize();
-    }, 10000);
+      
+      // Only retry if we have valid auth data
+      const authData = await this.getValidAuthData();
+      if (authData) {
+        log.debug('Retrying WebSocket connection after auth failure', null, 'EnhancedWebSocketService');
+        this.initialize();
+      } else {
+        log.debug('No valid auth data available, skipping WebSocket retry', null, 'EnhancedWebSocketService');
+        // Schedule another check in 30 seconds instead of repeatedly failing
+        this.scheduleAuthRetry();
+      }
+    }, 30000); // Increased from 10s to 30s to reduce spam
   }
 
   private attemptReconnection(): void {
@@ -475,6 +484,46 @@ class EnhancedWebSocketService {
       socketId: this.socket?.id,
       networkAvailable: this.isNetworkAvailable
     }, 'EnhancedWebSocketService');
+  }
+
+  // Method to be called when user logs in successfully
+  onUserAuthenticated(): void {
+    log.info('User authenticated, starting WebSocket connection', null, 'EnhancedWebSocketService');
+    
+    // Clear any existing auth retry timers
+    if (this.authRetryTimer) {
+      clearTimeout(this.authRetryTimer);
+      this.authRetryTimer = null;
+    }
+    
+    // Start connection if not already connected
+    if (!this.connectionStatus.isConnected && !this.connectionStatus.isConnecting) {
+      this.initialize();
+    }
+  }
+  
+  // Method to be called when user logs out
+  onUserLoggedOut(): void {
+    log.info('User logged out, stopping WebSocket connection', null, 'EnhancedWebSocketService');
+    
+    // Clear retry timers
+    if (this.authRetryTimer) {
+      clearTimeout(this.authRetryTimer);
+      this.authRetryTimer = null;
+    }
+    
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    
+    // Disconnect cleanly
+    if (this.socket) {
+      this.socket.disconnect();
+    }
+    
+    this.connectionStatus.isConnected = false;
+    this.connectionStatus.isConnecting = false;
   }
 
   cleanup(): void {

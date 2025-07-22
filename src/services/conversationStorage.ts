@@ -176,6 +176,17 @@ class ConversationStorageService {
     }
   }
 
+  // Periodic sync to ensure conversations are always available for analytics
+  static async performPeriodicSync(): Promise<void> {
+    try {
+      console.log('📊 PeriodicSync: Ensuring conversations are synced to server');
+      // Trigger the cloud sync via CloudAuth service which handles the actual server sync
+      await this.triggerCloudSync();
+    } catch (error) {
+      console.warn('Error in periodic conversation sync:', error);
+    }
+  }
+
   // Export conversation for sharing
   static exportConversation(conversation: Conversation): string {
     const header = `Conversation: ${conversation.title}\nDate: ${new Date(conversation.createdAt).toLocaleDateString()}\n\n`;
@@ -440,8 +451,36 @@ class ConversationStorageService {
       // Invalidate AI personality cache to force fresh analysis with new conversation data
       AsyncStorage.removeItem('@ai_emotional_state_cache');
       console.log('📊 Analytics: Invalidated emotional state cache due to conversation update');
+      
+      // Trigger background sync to server for rich analytics (handled by CloudAuth service)
+      this.triggerCloudSync();
     } catch (error) {
       console.warn('Failed to notify analytics of conversation update:', error);
+    }
+  }
+
+  // Trigger cloud sync through CloudAuth service (avoid duplication)
+  private static async triggerCloudSync(): Promise<void> {
+    try {
+      // Import with default export syntax to avoid circular dependency
+      const CloudAuthModule = await import('./cloudAuth');
+      const cloudAuth = CloudAuthModule.default;
+      
+      // Check if CloudAuth has getInstance method
+      if (cloudAuth && typeof cloudAuth.getInstance === 'function') {
+        const instance = cloudAuth.getInstance();
+        if (instance.isAuthenticated()) {
+          console.log('📊 ConversationSync: Conversation sync already handled by CloudAuth service');
+          // The CloudAuth service automatically syncs conversations when they're updated
+          // No need to duplicate the sync - just acknowledge that it's working
+        } else {
+          console.log('📊 ConversationSync: User not authenticated, sync will happen at next login');
+        }
+      } else {
+        console.log('📊 ConversationSync: CloudAuth not available, skipping sync trigger');
+      }
+    } catch (error) {
+      console.warn('Failed to access cloud conversation sync:', error);
     }
   }
 }

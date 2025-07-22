@@ -304,6 +304,18 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
     // Cleanup
     return () => {
       rotateAnim.stopAnimation();
+      scaleAnim.stopAnimation();
+      opacityAnim.stopAnimation();
+      circleProgress.stopAnimation();
+      circleOpacity.stopAnimation();
+      checkmarkProgress.stopAnimation();
+      checkmarkScale.stopAnimation();
+      xProgress.stopAnimation();
+      xScale.stopAnimation();
+      pulseScale.stopAnimation();
+      glowOpacity.stopAnimation();
+      particleScale.stopAnimation();
+      bounceAnim.stopAnimation();
     };
   }, [status]);
 

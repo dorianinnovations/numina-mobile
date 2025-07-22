@@ -596,17 +596,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             currentConversation.messages[currentConversation.messages.length - 1] = updatedAIMessage;
             currentConversation.updatedAt = new Date().toISOString();
             
-            // Batch state updates every 100ms for smooth streaming
+            // Ultra-fast state updates for responsive streaming (16ms = 60fps)
             if (!streamingUpdateTimeoutRef.current) {
               streamingUpdateTimeoutRef.current = setTimeout(() => {
                 setConversation({ ...currentConversation });
                 streamingUpdateTimeoutRef.current = null;
                 
-                // Scroll to show streaming content
-                createManagedTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: true });
-                }, 25);
-              }, 100);
+                // Instant scroll for streaming - no delay or animation
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }, 16);
             }
           }
         }
@@ -1059,10 +1057,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     keyExtractor={item => item?.id || Math.random().toString()}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
-                      // Scroll to end for new messages and streaming content
-                      createManagedTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
+                      // Ultra-fast scroll for streaming - no animation delay
+                      flatListRef.current?.scrollToEnd({ animated: false });
                     }}
                     onScroll={(event) => {
                       const currentScrollY = event.nativeEvent.contentOffset.y;
@@ -1106,10 +1102,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       setLastScrollY(currentScrollY);
                     }}
                     onLayout={() => {
-                      // Scroll to end when layout changes (new messages added)
-                      createManagedTimeout(() => {
-                        flatListRef.current?.scrollToEnd({ animated: true });
-                      }, 100);
+                      // Instant scroll when layout changes (new messages added)
+                      flatListRef.current?.scrollToEnd({ animated: false });
                     }}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={[
@@ -1117,6 +1111,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       // Top-down message flow
                       { justifyContent: 'flex-start' }
                     ]}
+                    // Performance optimizations for ultra-fast streaming
+                    removeClippedSubviews={true}
+                    maxToRenderPerBatch={5}
+                    updateCellsBatchingPeriod={16}
+                    initialNumToRender={10}
+                    windowSize={5}
+                    scrollEventThrottle={16}
                     extraData={conversation?.messages?.length || 0} // Force re-render on new messages
                     maintainVisibleContentPosition={{
                       minIndexForVisible: 0,

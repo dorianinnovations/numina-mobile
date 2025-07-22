@@ -22,7 +22,7 @@ import { NuminaColors } from '../utils/colors';
 import { NuminaAnimations } from '../utils/animations';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
-// import { useEmotionalAnalytics } from '../hooks/useEmotionalAnalytics'; // DISABLED: emotion-logging removed
+import { useEmotionalAnalytics } from '../hooks/useEmotionalAnalytics';
 import { useComprehensiveAnalytics } from '../hooks/useComprehensiveAnalytics';
 import { useLLMAnalytics } from '../hooks/useLLMAnalytics';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -300,26 +300,19 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // DISABLED: Old emotional analytics hook (emotion-logging system removed from server)
-  // const {
-  //   weeklyReport,
-  //   userLoggedEmotions,
-  //   isLoadingReport,
-  //   fetchWeeklyReport,
-  //   clearErrors,
-  // } = useEmotionalAnalytics();
-
-  // Fallback data for removed emotion logging system
-  const weeklyReport: null = null;
-  const userLoggedEmotions: any[] = [];
-  const isLoadingReport: boolean = false;
-  const fetchWeeklyReport = async () => Promise.resolve();
-  const clearErrors = () => {};
+  // Re-enabled emotional analytics hook
+  const {
+    weeklyReport,
+    userLoggedEmotions,
+    isLoadingReport,
+    fetchWeeklyReport,
+    clearErrors,
+  } = useEmotionalAnalytics();
   
   // Pull-to-refresh functionality
   const { refreshControl } = usePullToRefresh(async () => {
     await Promise.all([
-      // fetchWeeklyReport(), // DISABLED: emotion-logging system removed
+      fetchWeeklyReport(),
       fetchAllAnalytics()
     ]);
   });
@@ -477,9 +470,12 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
       }),
     ]).start();
 
-    // clearErrors(); // DISABLED: emotion-logging system removed
+    clearErrors();
     loadPersonalizedInsights();
     loadCategorizedAnalytics();
+    
+    // Ensure conversation data is synced to MongoDB for rich analytics
+    ConversationStorageService.performPeriodicSync();
     
     // Auto-generate LLM insights if none exist
     if (!llmInsights && !isGeneratingInsights) {

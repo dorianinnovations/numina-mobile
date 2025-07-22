@@ -57,7 +57,7 @@ export const useLLMAnalytics = () => {
     try {
       const userId = await SecureStorageService.getCurrentUserId();
       if (!userId) {
-        console.warn('No user ID found, cannot load cached LLM data');
+        console.log('No user ID found for LLM cache - user may not be logged in');
         return;
       }
       

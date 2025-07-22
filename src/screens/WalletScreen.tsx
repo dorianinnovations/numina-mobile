@@ -99,6 +99,7 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
           showMenuButton
           onBackPress={onNavigateBack}
           onMenuPress={handleMenuPress}
+          disableAnimatedBorder={true}
         />
         
         <ScrollView 

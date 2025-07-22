@@ -27,11 +27,13 @@ import ApiService from '../services/api';
 interface SettingsScreenProps {
   onNavigateBack: () => void;
   onNavigateToSignIn?: () => void;
+  onNavigateToBorderThemes?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onNavigateBack,
   onNavigateToSignIn,
+  onNavigateToBorderThemes,
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { logout, isAuthenticated } = useAuth();
@@ -171,6 +173,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             onNavigateToSignIn();
           } else {
             onNavigateBack(); // Fallback to going back
+          }
+          break;
+          
+        case 'borderThemes':
+          if (onNavigateToBorderThemes) {
+            onNavigateToBorderThemes();
           }
           break;
           
@@ -373,6 +381,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               value: isDarkMode,
               onToggle: toggleTheme,
             },
+            { 
+              icon: 'magic', 
+              title: 'Border Themes', 
+              desc: 'Customize animated border effects', 
+              type: 'navigate',
+              action: 'borderThemes'
+            },
           ]
         },
         {
@@ -428,6 +443,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           type: 'switch',
           value: isDarkMode,
           onToggle: toggleTheme,
+        },
+        { 
+          icon: 'magic', 
+          title: 'Border Themes', 
+          desc: 'Customize animated border effects', 
+          type: 'navigate',
+          action: 'borderThemes'
         },
         { 
           icon: 'palette', 

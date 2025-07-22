@@ -16,6 +16,7 @@ import { ModernAnalyticsScreen } from "../screens/ModernAnalyticsScreen";
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
+import { BorderThemeSettingsScreen } from "../screens/BorderThemeSettingsScreen";
 import { WalletScreen } from "../screens/WalletScreen";
 import { CloudScreen } from "../screens/CloudScreen";
 import { TutorialScreen } from "../screens/TutorialScreen";
@@ -38,6 +39,7 @@ export type RootStackParamList = {
   Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
+  BorderThemeSettings: undefined;
   Wallet: undefined;
   Cloud: undefined;
   Tutorial: undefined;
@@ -137,7 +139,7 @@ export const AppNavigator: React.FC = () => {
       const interval = setInterval(() => {
         Animated.timing(flipAnimation, {
           toValue: 1,
-          duration: 150,
+          duration: 90,
           useNativeDriver: true,
         }).start(() => {
           setLoadingMessageIndex(prev => (prev + 1) % loadingMessages.length);
@@ -145,11 +147,11 @@ export const AppNavigator: React.FC = () => {
           flipAnimation.setValue(-1);
           Animated.timing(flipAnimation, {
             toValue: 0,
-            duration: 150,
+            duration: 90,
             useNativeDriver: true,
           }).start();
         });
-      }, 3000);
+      }, 1800);
       return () => clearInterval(interval);
     }
   }, [loading, loadingMessages.length]);
@@ -489,6 +491,20 @@ export const AppNavigator: React.FC = () => {
             <SettingsScreen 
               onNavigateBack={() => navigation.goBack()}
               onNavigateToSignIn={() => navigation.navigate('SignIn')}
+              onNavigateToBorderThemes={() => navigation.navigate('BorderThemeSettings')}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="BorderThemeSettings"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <BorderThemeSettingsScreen 
+              navigation={navigation}
             />
           )}
         </Stack.Screen>

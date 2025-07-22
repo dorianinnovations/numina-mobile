@@ -45,6 +45,7 @@ interface HeaderProps {
   showAuthOptions?: boolean;
   isRefreshing?: boolean;
   refreshAnimationSpeed?: number;
+  disableAnimatedBorder?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -67,6 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
   showAuthOptions = true,
   isRefreshing = false,
   refreshAnimationSpeed = 2000,
+  disableAnimatedBorder = false,
 }) => {
   const { isDarkMode } = useTheme();
   const { isRefreshing: globalRefreshing } = useRefresh();
@@ -424,7 +426,195 @@ export const Header: React.FC<HeaderProps> = ({
     outputRange: [isDarkMode ? 0.2 : 0.08, 0.4],
   });
 
-  const headerContent = (
+  const headerContent = disableAnimatedBorder ? (
+    <BlurView
+      intensity={isDarkMode ? 15 : 1}
+      tint={isDarkMode ? 'dark' : 'light'}
+      style={[
+        styles.blurContainer,
+        {
+          borderWidth: 1,
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.3)',
+          backgroundColor: isDarkMode ? 'rgb(9, 9, 9)' : 'rgb(255, 255, 255)',
+          shadowColor: isDarkMode ? 'transparent' : '#000000',
+          shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
+          shadowOpacity: isDarkMode ? 0 : 0.1,
+          shadowRadius: isDarkMode ? 0 : 4,
+          elevation: isDarkMode ? 0 : 3,
+        },
+      ]}
+    >
+      <View style={styles.headerContent}>
+        <View style={styles.leftSection}>
+          <TouchableOpacity 
+            style={styles.logoContainer}
+            onPress={onTitlePress}
+            activeOpacity={onTitlePress ? 0.7 : 1}
+            disabled={!onTitlePress}
+          >
+            <Image 
+              source={numinaLogo} 
+              style={[
+                styles.logo,
+                {
+                  opacity: isDarkMode ? 1 : 0.9,
+                }
+              ]}
+              resizeMode="contain"
+              fadeDuration={0}
+            />
+            <Text style={[
+              styles.numinaText,
+              {
+                color: isDarkMode ? '#ffffff' : '#586266eb',
+              }
+            ]}>
+              {title || 'Numina'}
+            </Text>
+          </TouchableOpacity>
+          {subtitle && (
+            <Text style={[
+              styles.headerSubtitle,
+              { 
+                color: isDarkMode ? '#888888' : '#666666',
+                marginLeft: 4,
+              }
+            ]}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+        <View style={styles.rightSection}>
+
+              {showBackButton && (
+                <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+                  <Animated.View
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: backButtonShadowOpacity,
+                        shadowRadius: backButtonShadowRadius,
+                        elevation: 1,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleBackArrowPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedBackArrow
+                        color={isDarkMode ? '#87ebde' : '#00d4ff'}
+                        size={16}
+                        isPressed={backArrowPressed}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
+                </Animated.View>
+              )}
+
+              {showConversationsButton && (
+                <Animated.View style={{ transform: [{ scale: conversationsButtonScale }] }}>
+                  <Animated.View
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: conversationsButtonShadowOpacity,
+                        shadowRadius: conversationsButtonShadowRadius,
+                        elevation: 1,
+                        marginLeft: showBackButton ? 8 : 0,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleConversationsButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedConversationsIcon
+                        color={isDarkMode ? '#b4a7d6' : '#a78bfa'}
+                        size={16}
+                        isPressed={conversationsPressed}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
+                </Animated.View>
+              )}
+
+              {showQuickAnalyticsButton && (
+                <Animated.View style={{ transform: [{ scale: brainButtonScale }] }}>
+                  <Animated.View
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: brainButtonShadowOpacity,
+                        shadowRadius: brainButtonShadowRadius,
+                        elevation: 1,
+                        marginLeft: (showBackButton || showConversationsButton) ? 8 : 0,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleBrainButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <FontAwesome5
+                        name="chart-line"
+                        size={16}
+                        color={isDarkMode ? '#ff9ff3' : '#ec4899'}
+                        style={{
+                          opacity: brainPressed ? 0.7 : 1,
+                        }}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
+                </Animated.View>
+              )}
+
+              {showMenuButton && (
+                <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
+                  <Animated.View
+                    style={[
+                      styles.iconButton,
+                      {
+                        backgroundColor: 'transparent',
+                        shadowColor: '#87CEEB',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: menuButtonShadowOpacity,
+                        shadowRadius: menuButtonShadowRadius,
+                        elevation: 1,
+                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 8 : 0,
+                      }
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                      onPress={handleMenuButtonPress}
+                      activeOpacity={0.8}
+                    >
+                      <AnimatedHamburger
+                        isOpen={menuVisible}
+                        color={isDarkMode ? '#98fb98' : '#22c55e'}
+                        size={16}
+                      />
+                    </TouchableOpacity>
+                  </Animated.View>
+                </Animated.View>
+              )}
+            </View>
+        </View>
+      </BlurView>
+  ) : (
     <AnimatedGradientBorder
       isActive={isRefreshing || globalRefreshing}
       borderRadius={12}
@@ -433,14 +623,19 @@ export const Header: React.FC<HeaderProps> = ({
       style={{ flex: 1 }}
     >
       <BlurView
-        intensity={isDarkMode ? 15 : 5}
+        intensity={isDarkMode ? 15 : 1}
         tint={isDarkMode ? 'dark' : 'light'}
         style={[
           styles.blurContainer,
           {
             borderWidth: 0,
             
-            backgroundColor: isDarkMode ? 'rgb(9, 9, 9)' : 'rgba(227, 237, 255, 0.397)',
+            backgroundColor: isDarkMode ? 'rgb(9, 9, 9)' : 'rgb(255, 255, 255)',
+            shadowColor: isDarkMode ? 'transparent' : '#000000',
+            shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0 : 0.1,
+            shadowRadius: isDarkMode ? 0 : 4,
+            elevation: isDarkMode ? 0 : 3,
           },
         ]}
       >
@@ -633,21 +828,21 @@ export const Header: React.FC<HeaderProps> = ({
             activeOpacity={0.8}
             onPress={onRestoreHeader}
           >
-            <AnimatedGradientBorder
-              isActive={isRefreshing || globalRefreshing}
-              borderRadius={12}
-              borderWidth={1}
-              animationSpeed={refreshAnimationSpeed}
-              style={{ flex: 1 }}
-            >
+            {disableAnimatedBorder ? (
               <BlurView
-                intensity={isDarkMode ? 15 : 30}
+                intensity={isDarkMode ? 15 : 1}
                 tint={isDarkMode ? 'dark' : 'light'}
                 style={[
                   styles.blurContainer,
                   {
-                    borderWidth: 0,
-                    backgroundColor: isDarkMode ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.1)',
+                    borderWidth: 1,
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: isDarkMode ? 'rgba(0,0,0,0.02)' : 'rgb(255, 255, 255)',
+                    shadowColor: isDarkMode ? 'transparent' : '#000000',
+                    shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
+                    shadowOpacity: isDarkMode ? 0 : 0.1,
+                    shadowRadius: isDarkMode ? 0 : 4,
+                    elevation: isDarkMode ? 0 : 3,
                   },
                 ]}
               >
@@ -813,7 +1008,194 @@ export const Header: React.FC<HeaderProps> = ({
                     </View>
                 </View>
               </BlurView>
-            </AnimatedGradientBorder>
+            ) : (
+              <AnimatedGradientBorder
+                isActive={isRefreshing || globalRefreshing}
+                borderRadius={12}
+                borderWidth={1}
+                animationSpeed={refreshAnimationSpeed}
+                style={{ flex: 1 }}
+              >
+                <BlurView
+                  intensity={isDarkMode ? 15 : 1}
+                  tint={isDarkMode ? 'dark' : 'light'}
+                  style={[
+                    styles.blurContainer,
+                    {
+                      borderWidth: 0,
+                      backgroundColor: isDarkMode ? 'rgba(0,0,0,0.02)' : 'rgb(255, 255, 255)',
+                      shadowColor: isDarkMode ? 'transparent' : '#000000',
+                      shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
+                      shadowOpacity: isDarkMode ? 0 : 0.1,
+                      shadowRadius: isDarkMode ? 0 : 4,
+                      elevation: isDarkMode ? 0 : 3,
+                    },
+                  ]}
+                >
+                <View style={styles.headerContent}>
+                  <View style={styles.leftSection}>
+                    <TouchableOpacity 
+                      style={styles.logoContainer}
+                      onPress={onTitlePress}
+                      activeOpacity={onTitlePress ? 0.7 : 1}
+                      disabled={!onTitlePress}
+                    >
+                      <Image 
+                        source={numinaLogo} 
+                        style={[
+                          styles.logo,
+                          {
+                            opacity: isDarkMode ? 1 : 0.9,
+                          }
+                        ]}
+                        resizeMode="contain"
+                        fadeDuration={0}
+                      />
+                      <Text style={[
+                        styles.numinaText,
+                        {
+                          color: isDarkMode ? '#ffffff' : '#586266eb',
+                        }
+                      ]}>
+                        {title || 'Numina'}
+                      </Text>
+                    </TouchableOpacity>
+                    {subtitle && (
+                      <Text style={[
+                        styles.headerSubtitle,
+                        { 
+                          color: isDarkMode ? '#888888' : '#666666',
+                          marginLeft: 4,
+                        }
+                      ]}>
+                        {subtitle}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.rightSection}>
+
+                        {showBackButton && (
+                          <Animated.View style={{ transform: [{ scale: backButtonScale }] }}>
+                            <TouchableOpacity
+                                style={[
+                                  styles.iconButton,
+                                  {
+                                    backgroundColor: isDarkMode 
+                                      ? 'rgba(255, 255, 255, 0.02)' 
+                                      : 'rgba(255, 255, 255, 1)',
+                                    shadowColor: '#000000',
+                                    shadowOffset: { width: 0, height: 1 },
+                                    shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                                    shadowRadius: 1.5,
+                                    elevation: 1,
+                                  }
+                                ]}
+                                onPress={handleBackArrowPress}
+                                activeOpacity={0.8}
+                              >
+                                <AnimatedBackArrow
+                                  color={isDarkMode ? '#6ec5ff' : '#616161'}
+                                  size={16}
+                                  isPressed={backArrowPressed}
+                                />
+                              </TouchableOpacity>
+                          </Animated.View>
+                        )}
+
+                        {showConversationsButton && (
+                          <Animated.View style={{ transform: [{ scale: conversationsButtonScale }] }}>
+                            <TouchableOpacity
+                              style={[
+                                styles.iconButton,
+                                {
+                                  backgroundColor: isDarkMode 
+                                    ? 'rgba(255, 255, 255, 0.05)' 
+                                    : 'rgba(255, 255, 255, 1)',
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 1 },
+                                  shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                                  shadowRadius: 1.5,
+                                  elevation: 1,
+                                  marginLeft: showBackButton ? 12 : 0,
+                                }
+                              ]}
+                              onPress={handleConversationsButtonPress}
+                              activeOpacity={0.8}
+                            >
+                              <AnimatedConversationsIcon
+                                color={isDarkMode ? '#6ec5ff' : '#616161'}
+                                size={16}
+                                isPressed={conversationsPressed}
+                              />
+                            </TouchableOpacity>
+                          </Animated.View>
+                        )}
+
+                        {showQuickAnalyticsButton && (
+                          <Animated.View style={{ transform: [{ scale: brainButtonScale }] }}>
+                            <TouchableOpacity
+                              style={[
+                                styles.iconButton,
+                                {
+                                  backgroundColor: isDarkMode 
+                                    ? 'rgba(255, 255, 255, 0.05)' 
+                                    : 'rgba(255, 255, 255, 1)',
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 1 },
+                                  shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                                  shadowRadius: 1.5,
+                                  elevation: 1,
+                                  marginLeft: (showBackButton || showConversationsButton) ? 12 : 0,
+                                }
+                              ]}
+                              onPress={handleBrainButtonPress}
+                              activeOpacity={0.8}
+                            >
+                              <FontAwesome5
+                                name="chart-line"
+                                size={16}
+                                color={isDarkMode ? '#6ec5ff' : '#616161'}
+                                style={{
+                                  opacity: brainPressed ? 0.7 : 1,
+                                }}
+                              />
+                            </TouchableOpacity>
+                          </Animated.View>
+                        )}
+
+                        {showMenuButton && (
+                          <Animated.View style={{ transform: [{ scale: menuButtonScale }] }}>
+                            <TouchableOpacity
+                              style={[
+                                styles.iconButton,
+                                {
+                                  backgroundColor: isDarkMode 
+                                    ? 'rgba(255, 255, 255, 0.05)' 
+                                    : 'rgba(255, 255, 255, 1)',
+                                  shadowColor: '#000000',
+                                  shadowOffset: { width: 0, height: 1 },
+                                  shadowOpacity: isDarkMode ? 0.2 : 0.08,
+                                  shadowRadius: 1.5,
+                                  elevation: 1,
+                                  marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 12 : 0,
+                                }
+                              ]}
+                              onPress={handleMenuButtonPress}
+                              activeOpacity={0.8}
+                            >
+                              <AnimatedHamburger
+                                isOpen={menuVisible}
+                                color={isDarkMode ? '#6ec5ff' : '#616161'}
+                                size={16}
+                              />
+                            </TouchableOpacity>
+                          </Animated.View>
+                        )}
+                      </View>
+                  </View>
+                </BlurView>
+              </AnimatedGradientBorder>
+            )}
           </TouchableOpacity>
         ) : (
           headerContent
@@ -849,7 +1231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     zIndex: 100,
-    backgroundColor: 'rgba(10, 10, 10, 0.3)',
+    backgroundColor: 'transparent',
     borderRadius: 12,
   },
   blurContainer: {

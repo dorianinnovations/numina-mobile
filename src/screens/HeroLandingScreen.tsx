@@ -323,13 +323,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               styles.brandText,
               { 
                 color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
-                fontSize: 68,
-                fontWeight: 'bold',
-                fontFamily: 'CrimsonPro_700Bold',
-                letterSpacing: -4.5,
-                textAlign: 'center',
-                marginTop: 8,
-                marginBottom: 8,
                 opacity: brandOpacity,
                 transform: [
                   { translateY: brandY }
@@ -368,11 +361,11 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           >
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? '#87ebde' : '#00d4ff',
-                shadowOpacity: isDarkMode ? 0.6 : 0.4,
-                shadowRadius: 16,
-                shadowOffset: { width: 0, height: 8 }, // Downward shadow toward bottom button
-                elevation: 12,
+                shadowColor: isDarkMode ? '#2dd4bf' : '#0284c7',
+                shadowOpacity: isDarkMode ? 0.35 : 0.25,
+                shadowRadius: 20,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 16,
               }]}
               onPress={handleExploreButtonPress}
               activeOpacity={0.9}
@@ -385,19 +378,25 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         ? '#0f0f0f'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#1a1a1a'
+                        ? '#97e3aa33'
                         : '#e0e0e0',
-                      borderWidth: 2,
-                      shadowColor: isDarkMode ? '#000000' : '#ffffff',
-                      shadowOpacity: isDarkMode ? 0.4 : 0.8,
-                      shadowRadius: 4,
-                      shadowOffset: { width: -1, height: -1 },
+                      borderWidth: 1,
+                      shadowColor: isDarkMode ? '#000000' : '#f1f5f9',
+                      shadowOpacity: isDarkMode ? 0.3 : 0.6,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                      
                     }
                   ]}
                 >
                   <Text style={[
                     styles.primaryButtonText, 
-                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500] }
+                    { 
+                      color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                      textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: isDarkMode ? 3 : 2,
+                    }
                   ]}>
                     Explore
                   </Text>
@@ -421,10 +420,10 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
                 shadowColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
-                shadowOpacity: isDarkMode ? 0.45 : 0.3,
-                shadowRadius: 12,
-                shadowOffset: { width: 0, height: -6 }, // Upward traveling shadow
-                elevation: 8,
+                shadowOpacity: isDarkMode ? 0.3 : 0.2,
+                shadowRadius: 18,
+                shadowOffset: { width: 0, height: 6 },
+                elevation: 14,
               }]}
                 onPress={handleSignUpButtonPress}
                 activeOpacity={0.9}
@@ -437,19 +436,24 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         ? '#0f0f0f'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#1a1a1a'
+                        ? '#6f58b033'
                         : '#e0e0e0',
-                      borderWidth: 2,
-                      shadowColor: isDarkMode ? '#000000' : '#ffffff',
-                      shadowOpacity: isDarkMode ? 0.4 : 0.8,
-                      shadowRadius: 4,
-                      shadowOffset: { width: -1, height: -1 },
+                      borderWidth: 1,
+                      shadowColor: isDarkMode ? '#000000' : '#f1f5f9',
+                      shadowOpacity: isDarkMode ? 0.3 : 0.6,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
                     }
                   ]}
                 >
                   <Text style={[
                     styles.primaryButtonText, 
-                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500] }
+                    { 
+                      color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                      textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: isDarkMode ? 3 : 2,
+                    }
                   ]}>
                     Create Account
                   </Text>

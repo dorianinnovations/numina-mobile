@@ -39,8 +39,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../contexts/ThemeContext';
-import { useBorderTheme } from '../contexts/BorderThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -75,15 +74,6 @@ export interface AnimatedGradientBorderProps {
   
   /** Debug mode - logs animation state (default: false) */
   debug?: boolean;
-  
-  /** Animation direction */
-  direction?: 'clockwise' | 'counterclockwise';
-  
-  /** Animation speed (1=slow, 2=medium, 3=fast) */
-  speed?: 1 | 2 | 3;
-  
-  /** Animation variation style */
-  variation?: 'smooth' | 'pulse' | 'wave';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -99,13 +89,9 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
   backgroundColor,
   children,
   style,
-  debug = true, // TEMP: Force debug on
-  direction = 'clockwise',
-  speed = 2,
-  variation = 'smooth',
+  debug = false,
 }) => {
   const { isDarkMode, theme } = useTheme();
-  const { selectedTheme } = useBorderTheme();
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // STATE AND REFS
@@ -125,13 +111,13 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
   // Dynamic spotlight size based on container dimensions
   const spotlightSize = Math.max(120, Math.max(width, height) * 0.3);
   
-  // ⚡ ELECTRIC NEON GRADIENT: Bright Cyan → Electric Purple → Neon Green
+  // Gradient colors with intelligent defaults
   const primaryColor = gradientColors?.[0] || (isDarkMode 
-    ? 'rgba(88, 183, 255, 0.8)' // Bright Cyan - ELECTRIC!
-    : 'rgba(0, 255, 255, 0.7)'); // Keep colors bright in light mode
+    ? 'rgba(135, 235, 222, 0.8)' 
+    : 'rgba(0, 212, 255, 0.8)');
   const secondaryColor = gradientColors?.[1] || (isDarkMode 
-    ? 'rgba(138, 43, 226, 0.6)' // Electric Purple - VIBRANT!
-    : 'rgba(138, 43, 226, 0.5)'); // Keep colors bright in light mode
+    ? 'rgba(180, 200, 240, 0.6)' 
+    : 'rgba(160, 180, 255, 0.6)');
   
   // Background color with intelligent dark mode detection
   const finalBackgroundColor = backgroundColor || (
@@ -156,8 +142,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
       });
     }
     
-    // TEMP: Force always active for debugging
-    if (true && width > 0 && height > 0) {
+    if (isActive && width > 0 && height > 0) {
       // Start opacity fade-in
       Animated.timing(opacityAnim, {
         toValue: 1,
@@ -166,21 +151,12 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
         useNativeDriver: false,
       }).start();
 
-      // Calculate speed multiplier: 1=slow, 2=medium, 3=fast
-      const speedMultiplier = speed === 1 ? 1.5 : speed === 2 ? 1 : 0.6;
-      const finalDuration = animationSpeed * speedMultiplier;
-      
-      // Choose easing based on variation
-      const easing = variation === 'smooth' ? Easing.linear :
-                    variation === 'pulse' ? Easing.inOut(Easing.sin) :
-                    Easing.bezier(0.25, 0.46, 0.45, 0.94); // wave
-
       // Start perimeter traveling animation
       const travelAnimation = Animated.loop(
         Animated.timing(progress, {
           toValue: 1,
-          duration: finalDuration,
-          easing,
+          duration: animationSpeed,
+          easing: Easing.linear,
           useNativeDriver: false,
         })
       );
@@ -202,53 +178,33 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
         progress.setValue(0);
       });
     }
-  }, [isActive, animationSpeed, width, height, debug, direction, variation, speed]);
+  }, [isActive, animationSpeed, width, height, debug]);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // PERIMETER PATH CALCULATION
   // ═══════════════════════════════════════════════════════════════════════════════
   
   // Perfect perimeter traveling path - travels around the border edges
-  // Support clockwise and counterclockwise direction
-  const clockwiseX = [
-    -60,                    // Start: left of container (spotlight extends beyond)
-    width - 60,             // Top edge moving right
-    width - 60,             // Right edge moving down  
-    -60,                    // Bottom edge moving left
-    -60                     // Back to start
-  ];
-  const clockwiseY = [
-    -60,                    // Start: top of container (spotlight extends beyond)
-    -60,                    // Top edge
-    height - 60,            // Right edge moving down
-    height - 60,            // Bottom edge
-    -60                     // Back to top  
-  ];
-  
-  // Reverse for counterclockwise
-  const counterclockwiseX = [
-    -60,                    // Start: left of container
-    -60,                    // Left edge moving down
-    width - 60,             // Bottom edge moving right
-    width - 60,             // Right edge moving up
-    -60                     // Back to start
-  ];
-  const counterclockwiseY = [
-    -60,                    // Start: top of container
-    height - 60,            // Left edge moving down
-    height - 60,            // Bottom edge moving right
-    -60,                    // Right edge moving up
-    -60                     // Back to start
-  ];
-
   const translateX = progress.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: direction === 'clockwise' ? clockwiseX : counterclockwiseX,
+    outputRange: [
+      -60,                    // Start: left of container (spotlight extends beyond)
+      width - 60,             // Top edge moving right
+      width - 60,             // Right edge moving down  
+      -60,                    // Bottom edge moving left
+      -60                     // Back to start
+    ],
   });
 
   const translateY = progress.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: direction === 'clockwise' ? clockwiseY : counterclockwiseY,
+    outputRange: [
+      -60,                    // Start: top of container (spotlight extends beyond)
+      -60,                    // Top edge
+      height - 60,            // Right edge moving down
+      height - 60,            // Bottom edge
+      -60                     // Back to top
+    ],
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -298,7 +254,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
           }}
         >
           {/* 💫 The traveling spotlight that creates the border effect */}
-          {true && width > 0 && height > 0 && (
+          {isActive && width > 0 && height > 0 && (
             <Animated.View
               style={{
                 position: 'absolute',
@@ -312,7 +268,12 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
               }}
             >
               <LinearGradient
-                colors={gradientColors || selectedTheme.colors}
+                colors={gradientColors || [
+                  primaryColor,
+                  'rgba(135, 235, 222, 0.6)',
+                  'rgba(135, 235, 222, 0.3)',
+                  'transparent'
+                ]}
                 style={{
                   width: spotlightSize,
                   height: spotlightSize,

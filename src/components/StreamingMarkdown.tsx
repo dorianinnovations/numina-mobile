@@ -32,11 +32,23 @@ const StreamingMarkdownComponent: React.FC<StreamingMarkdownProps> = ({
   
   const cursorOpacity = useRef(new Animated.Value(1)).current;
 
-  // Memoize parseStreamingContent to prevent unnecessary recalculations
+  // Cached parsing to prevent expensive regex operations on every chunk
+  const parseCache = useRef<Map<string, ParsedContent>>(new Map());
+  
+  // Ultra-optimized parseStreamingContent with caching
   const parseStreamingContent = React.useCallback((text: string): ParsedContent => {
     if (!text) return { completeBlocks: '', partialBlock: '', isValid: false };
 
-    // Split by double newlines to identify potential complete blocks
+    // Check cache first for performance
+    const cached = parseCache.current.get(text);
+    if (cached) return cached;
+    
+    // Limit cache size to prevent memory leaks
+    if (parseCache.current.size > 100) {
+      parseCache.current.clear();
+    }
+
+    // Fast split by double newlines
     const blocks = text.split(/\n\n/);
     
     if (blocks.length === 1) {
@@ -50,10 +62,14 @@ const StreamingMarkdownComponent: React.FC<StreamingMarkdownProps> = ({
       const hasCompleteBold = /\*\*[^*]+\*\*/.test(singleBlock) && singleBlock.split('**').length % 2 === 1;
       
       if (hasCompleteHeading || hasCompleteList || hasCompleteCodeBlock || hasCompleteBold) {
-        return { completeBlocks: singleBlock, partialBlock: '', isValid: true };
+        const result = { completeBlocks: singleBlock, partialBlock: '', isValid: true };
+        parseCache.current.set(text, result);
+        return result;
       }
       
-      return { completeBlocks: '', partialBlock: singleBlock, isValid: false };
+      const result = { completeBlocks: '', partialBlock: singleBlock, isValid: false };
+      parseCache.current.set(text, result);
+      return result;
     }
 
     // Multiple blocks - last one might be incomplete
@@ -68,18 +84,22 @@ const StreamingMarkdownComponent: React.FC<StreamingMarkdownProps> = ({
       lastBlock.includes('\n');                   // Has newlines (likely complete paragraph)
 
     if (lastBlockComplete && completeBlocks) {
-      return { 
+      const result = { 
         completeBlocks: completeBlocks + '\n\n' + lastBlock, 
         partialBlock: '', 
         isValid: true 
       };
+      parseCache.current.set(text, result);
+      return result;
     }
 
-    return { 
+    const result = { 
       completeBlocks: completeBlocks, 
       partialBlock: lastBlock, 
       isValid: completeBlocks.length > 0 
     };
+    parseCache.current.set(text, result);
+    return result;
   }, []);
 
   // Update parsed content when input changes - memoized

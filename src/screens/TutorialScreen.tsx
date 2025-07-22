@@ -568,7 +568,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                 { 
                   color: isDarkMode ? '#ffffff' : '#000000',
                   fontFamily: 'CrimsonPro_600SemiBold',
-                  letterSpacing: -0.5,
+                  letterSpacing: 0.2,
                 }
               ]}
               speed={2}
@@ -1246,7 +1246,7 @@ const styles = StyleSheet.create({
     fontSize: 35,
     fontWeight: '600',
     fontFamily: 'CrimsonPro_600SemiBold',
-    letterSpacing: -1,
+    letterSpacing: -0.6,
     marginBottom: 24,
     textAlign: 'left',
     lineHeight: 34,
@@ -1255,7 +1255,7 @@ const styles = StyleSheet.create({
     fontSize: 45,
     fontWeight: '700',
     fontFamily: 'CrimsonPro_700Bold',
-    letterSpacing: -1.2,
+    letterSpacing: -0.8,
     lineHeight: 50,
     marginBottom: 16,
     textAlign: 'left',
