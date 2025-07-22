@@ -17,7 +17,7 @@ interface ParsedContent {
   isValid: boolean;
 }
 
-export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
+const StreamingMarkdownComponent: React.FC<StreamingMarkdownProps> = ({
   content,
   isComplete = false,
   showCursor = true,
@@ -32,8 +32,8 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
   
   const cursorOpacity = useRef(new Animated.Value(1)).current;
 
-  // Parse content into complete and partial blocks
-  const parseStreamingContent = (text: string): ParsedContent => {
+  // Memoize parseStreamingContent to prevent unnecessary recalculations
+  const parseStreamingContent = React.useCallback((text: string): ParsedContent => {
     if (!text) return { completeBlocks: '', partialBlock: '', isValid: false };
 
     // Split by double newlines to identify potential complete blocks
@@ -80,17 +80,20 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
       partialBlock: lastBlock, 
       isValid: completeBlocks.length > 0 
     };
-  };
+  }, []);
 
-  // Update parsed content when input changes
+  // Update parsed content when input changes - memoized
   useEffect(() => {
     const parsed = parseStreamingContent(content);
     setParsedContent(parsed);
-  }, [content]);
+  }, [content, parseStreamingContent]);
 
-  // Cursor blinking animation
+  // Cursor blinking animation - optimized cleanup
   useEffect(() => {
-    if (!showCursor || isComplete) return;
+    if (!showCursor || isComplete) {
+      cursorOpacity.setValue(0);
+      return;
+    }
 
     const blinkAnimation = Animated.loop(
       Animated.sequence([
@@ -109,11 +112,14 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
 
     blinkAnimation.start();
 
-    return () => blinkAnimation.stop();
+    return () => {
+      blinkAnimation.stop();
+      cursorOpacity.stopAnimation();
+    };
   }, [showCursor, isComplete, cursorOpacity]);
 
-  // Markdown styles
-  const markdownStyles = StyleSheet.create({
+  // Memoized markdown styles to prevent recreation
+  const markdownStyles = React.useMemo(() => StyleSheet.create({
     body: {
       color: isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600],
       fontSize: 17,
@@ -220,7 +226,7 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
       borderBottomWidth: 1,
       borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
     },
-  });
+  }), [isDarkMode]);
 
   return (
     <View style={styles.container}>
@@ -291,7 +297,7 @@ export const StreamingMarkdown: React.FC<StreamingMarkdownProps> = React.memo(({
       )}
     </View>
   );
-});
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -309,6 +315,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+});
+
+// Optimized memo with custom comparison
+export const StreamingMarkdown = React.memo(StreamingMarkdownComponent, (prevProps, nextProps) => {
+  // Only re-render if content, isComplete, or showCursor actually changed
+  return (
+    prevProps.content === nextProps.content &&
+    prevProps.isComplete === nextProps.isComplete &&
+    prevProps.showCursor === nextProps.showCursor &&
+    prevProps.animationSpeed === nextProps.animationSpeed
+  );
 });
 
 export default StreamingMarkdown;

@@ -19,6 +19,7 @@ import { useRefresh } from '../contexts/RefreshContext';
 import { NuminaColors } from '../utils/colors';
 import ConversationStorageService, { Conversation } from '../services/conversationStorage';
 import { AnimatedGradientBorder } from './AnimatedGradientBorder';
+import { BaseWalletCard } from './WalletCard';
 
 const { width } = Dimensions.get('window');
 
@@ -307,79 +308,75 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         ]}
         style={{ marginBottom: 8 }}
       >
-        <TouchableOpacity
+        <BaseWalletCard
+          onPress={() => {
+            onSelectConversation(item);
+            onClose();
+          }}
           style={[
-            styles.conversationItem,
+            styles.conversationCard,
             {
               backgroundColor: isActive
                 ? isDarkMode 
                   ? 'rgba(110, 197, 255, 0.13)'
                   : 'rgba(110, 197, 255, 0.18)'
-                : isDarkMode 
-                  ? 'rgba(255,255,255,0.03)' 
-                  : 'rgba(0, 0, 0, 0.02)',
-              borderWidth: 0,
+                : undefined, // Let BaseWalletCard handle default colors
             }
           ]}
-          onPress={() => {
-            onSelectConversation(item);
-            onClose();
-          }}
-          activeOpacity={0.7}
         >
-        <View style={styles.conversationContent}>
-          <View style={styles.conversationHeader}>
+          <View style={styles.conversationContent}>
+            <View style={styles.conversationHeader}>
+              <Text style={[
+                styles.conversationTitle,
+                { color: isDarkMode ? '#ffffff' : '#000000' }
+              ]}>
+                {item.title || 'Untitled Conversation'}
+              </Text>
+              <Text style={[
+                styles.conversationTime,
+                { color: isDarkMode ? '#888888' : '#666666' }
+              ]}>
+                {formatTime(item.updatedAt)}
+              </Text>
+            </View>
             <Text style={[
-              styles.conversationTitle,
-              { color: isDarkMode ? '#ffffff' : '#000000' }
+              styles.conversationPreview,
+              { color: isDarkMode ? '#bbbbbb' : '#666666' }
             ]}>
-              {item.title || 'Untitled Conversation'}
+              {getPreviewText(item)}
             </Text>
-            <Text style={[
-              styles.conversationTime,
-              { color: isDarkMode ? '#888888' : '#666666' }
-            ]}>
-              {formatTime(item.updatedAt)}
-            </Text>
-          </View>
-          <Text style={[
-            styles.conversationPreview,
-            { color: isDarkMode ? '#bbbbbb' : '#666666' }
-          ]}>
-            {getPreviewText(item)}
-          </Text>
-          <View style={styles.conversationMeta}>
-            <Text style={[
-              styles.messageCount,
-              { color: isDarkMode ? '#888888' : '#999999' }
-            ]}>
-              {item.messages.length} messages
-            </Text>
-            <View style={styles.metaRight}>
-              {isActive && (
-                <View style={[
-                  styles.activeIndicator,
-                  { backgroundColor: isDarkMode ? '#6ec5ff' : '#6ec5ff' }
-                ]} />
-              )}
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleDeleteConversation(item.id);
-                }}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons
-                  name="dots-vertical"
-                  size={20}
-                  color={isDarkMode ? '#666666' : '#999999'}
-                />
-              </TouchableOpacity>
+            <View style={styles.conversationMeta}>
+              <Text style={[
+                styles.messageCount,
+                { color: isDarkMode ? '#888888' : '#999999' }
+              ]}>
+                {item.messages.length} messages
+              </Text>
+              <View style={styles.metaRight}>
+                {isActive && (
+                  <View style={[
+                    styles.activeIndicator,
+                    { backgroundColor: isDarkMode ? '#6ec5ff' : '#6ec5ff' }
+                  ]} />
+                )}
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleDeleteConversation(item.id);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name="dots-vertical"
+                    size={20}
+                    color={isDarkMode ? '#666666' : '#999999'}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-        </TouchableOpacity>
+        </BaseWalletCard>
       </AnimatedGradientBorder>
     );
   };
@@ -727,11 +724,9 @@ const styles = StyleSheet.create({
     padding: 12,
     paddingBottom: 24,
   },
-  conversationItem: {
-    borderRadius: 10,
-    borderWidth: 0,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+  conversationCard: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     minHeight: 50, // Slimmer height
     overflow: 'hidden',
   },

@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
 import { StatusBar, View, Text, ActivityIndicator, Platform, Animated } from "react-native";
 import Svg, { Circle } from 'react-native-svg';
+import { EnhancedSpinner } from '../components/EnhancedSpinner';
 
 import { HeroLandingScreen } from "../screens/HeroLandingScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
@@ -11,6 +12,8 @@ import { SignUpScreen } from "../screens/SignUpScreen";
 import { AboutScreen } from "../screens/AboutScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { AnalyticsScreen } from "../screens/AnalyticsScreen";
+import { ModernAnalyticsScreen } from "../screens/ModernAnalyticsScreen";
+import { SentimentScreen } from "../screens/SentimentScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { WalletScreen } from "../screens/WalletScreen";
@@ -31,6 +34,8 @@ export type RootStackParamList = {
   About: undefined;
   Chat: undefined;
   Analytics: undefined;
+  ModernAnalytics: undefined;
+  Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
   Wallet: undefined;
@@ -108,6 +113,7 @@ export const AppNavigator: React.FC = () => {
   const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
   const flipAnimation = useRef(new Animated.Value(0)).current;
   const loadingMessages = [
+    "Tip: Swipe down to refresh a view",
     "Initializing neural network topology",
     "Compiling human consciousness drivers",
     "Calibrating dopamine receptors", 
@@ -435,6 +441,32 @@ export const AppNavigator: React.FC = () => {
         </Stack.Screen>
 
         <Stack.Screen
+          name="ModernAnalytics"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <ModernAnalyticsScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Sentiment"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <SentimentScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
           name="Profile"
           options={{
             ...mobileTransition,
@@ -520,9 +552,9 @@ export const AppNavigator: React.FC = () => {
         zIndex: 1000,
         pointerEvents: 'box-none', // Allow touches to pass through when appropriate
       }}>
-        <FastRingLoader 
-          size={18} 
-          color={isDarkMode ? '#6ec5ff' : '#add5fa'} 
+        <EnhancedSpinner 
+          size={24} 
+          type="holographic"
           strokeWidth={2}
         />
         <Animated.Text style={{

@@ -4,7 +4,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TierBadgeProps {
-  tier: 'CORE' | 'PRO' | 'AETHER';
+  tier?: 'CORE' | 'PRO' | 'AETHER' | 'core' | 'pro' | 'aether' | string;
   size?: 'small' | 'medium' | 'large';
 }
 
@@ -32,7 +32,9 @@ export const TierBadge: React.FC<TierBadgeProps> = ({ tier, size = 'medium' }) =
     }
   };
 
-  const config = tierConfig[tier];
+  // Normalize tier to uppercase and provide fallback
+  const normalizedTier = tier?.toString().toUpperCase() as keyof typeof tierConfig;
+  const config = tierConfig[normalizedTier] || tierConfig.CORE;
   const sizeStyles = {
     small: { fontSize: 10, padding: 4, iconSize: 8 },
     medium: { fontSize: 12, padding: 6, iconSize: 10 },

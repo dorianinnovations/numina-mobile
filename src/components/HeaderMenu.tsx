@@ -9,14 +9,14 @@ import { ThemeSelector } from './ThemeSelector';
 const { width: screenWidth } = Dimensions.get('window');
 
 const getAllMenuActions = (isDarkMode: boolean) => [
-  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Chat', key: 'chat', requiresAuth: true },
-  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
-  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Discover', key: 'cloud', requiresAuth: true },
-  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
-  { icon: <Feather name="user" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Profile', key: 'profile', requiresAuth: true },
-  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Settings', key: 'settings', requiresAuth: false },
-  { icon: <Feather name="info" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'About', key: 'about', requiresAuth: false },
-  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#fff" : NuminaColors.darkMode[600]} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#87ebde" : "#00d4ff"} />, label: 'Chat', key: 'chat', requiresAuth: true },
+  { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#ff9ff3" : "#ec4899"} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
+  { icon: <Feather name="compass" size={16} color={isDarkMode ? "#b4a7d6" : "#a78bfa"} />, label: 'Discover', key: 'cloud', requiresAuth: true },
+  { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#98fb98" : "#22c55e"} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
+  { icon: <Feather name="user" size={16} color={isDarkMode ? "#ffd700" : "#f59e0b"} />, label: 'Profile', key: 'profile', requiresAuth: true },
+  { icon: <Feather name="settings" size={16} color={isDarkMode ? "#ffa07a" : "#f97316"} />, label: 'Settings', key: 'settings', requiresAuth: false },
+  { icon: <Feather name="info" size={16} color={isDarkMode ? "#dda0dd" : "#8b5cf6"} />, label: 'About', key: 'about', requiresAuth: false },
+  { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#ff6b6b" : "#ef4444"} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
 ];
 
 const getMenuActions = (isDarkMode: boolean, showAuthOptions: boolean = true) => {
@@ -113,6 +113,21 @@ export const HeaderMenu: React.FC<HeaderMenuProps> = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
+      // Gentle ladder falling haptic sequence - each menu item gets softer haptic as it animates
+      menuActions.forEach((_, index) => {
+        setTimeout(() => {
+          // Increasingly gentle haptics as we go down the ladder
+          if (index < 3) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          } else if (index < 6) {
+            Haptics.selectionAsync(); // Even softer for middle items
+          } else {
+            // Barely perceptible for last items - like feathers falling
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        }, index * 25); // Slightly slower than animation for gentle trailing effect
+      });
+      
       // Faster staggered item animations
       const itemAnimations = itemAnims.map((anim, index) => 
         Animated.parallel([

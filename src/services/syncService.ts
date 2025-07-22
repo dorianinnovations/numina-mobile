@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService, { SyncData } from './api';
 import offlineQueueService from './offlineQueue';
-import getWebSocketService from './websocketService';
+import { getEnhancedWebSocketService } from './enhancedWebSocketService';
 import CloudAuth from './cloudAuth';
 import { Message, Conversation } from '../types/message';
 
@@ -110,7 +110,7 @@ class SyncService {
       this.startAutoSync();
       
       // Listen for WebSocket sync events
-      const websocketService = getWebSocketService();
+      const websocketService = getEnhancedWebSocketService();
       websocketService.addEventListener('sync_completed', (data) => {
         this.handleServerSyncCompleted(data);
       });

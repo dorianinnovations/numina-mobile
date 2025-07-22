@@ -1,5 +1,4 @@
 import ApiService from './api';
-import AIPersonalityService, { UserEmotionalState } from './aiPersonalityService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CloudAuth from './cloudAuth';
 
@@ -53,11 +52,9 @@ const getCacheKeys = (userId: string) => ({
 
 class CloudMatchingService {
   private static instance: CloudMatchingService;
-  private aiPersonalityService: AIPersonalityService;
   private cachedEvents: CloudEvent[] = [];
 
   constructor() {
-    this.aiPersonalityService = AIPersonalityService.getInstance();
   }
 
   static getInstance(): CloudMatchingService {
@@ -69,7 +66,8 @@ class CloudMatchingService {
 
   async getAIMatchedEvents(filterMode?: string): Promise<CloudEvent[]> {
     try {
-      const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
+      // Simplified without emotional state analysis
+      const emotionalState = null;
       
       const response = await ApiService.getCloudEvents({
         filter: filterMode,
@@ -164,7 +162,8 @@ class CloudMatchingService {
 
   async analyzeEventCompatibility(eventId: string): Promise<CompatibilityAnalysis | null> {
     try {
-      const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
+      // Simplified without emotional state analysis
+      const emotionalState = null;
       
       const response = await ApiService.analyzeEventCompatibility(eventId, emotionalState);
       
@@ -190,7 +189,8 @@ class CloudMatchingService {
     maxResults?: number;
   }): Promise<CompatibleUser[]> {
     try {
-      const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
+      // Simplified without emotional state analysis
+      const emotionalState = null;
       
       const response = await ApiService.findCompatibleUsers({
         ...options,
@@ -370,7 +370,8 @@ class CloudMatchingService {
     personalityAdaptations: any[];
   }> {
     try {
-      const emotionalState = await this.aiPersonalityService.analyzeCurrentEmotionalState();
+      // Simplified without emotional state analysis
+      const emotionalState = null;
       
       const response = await ApiService.getPersonalizedInsights({
         timeRange: '7d',
@@ -395,7 +396,7 @@ class CloudMatchingService {
   }
 
   // Private helper methods
-  private async enhanceEventsWithAI(events: CloudEvent[], emotionalState: UserEmotionalState): Promise<CloudEvent[]> {
+  private async enhanceEventsWithAI(events: CloudEvent[], emotionalState: any): Promise<CloudEvent[]> {
     if (!Array.isArray(events)) {
       // console.warn('enhanceEventsWithAI: events is not an array, returning empty array');
       return [];
@@ -414,7 +415,7 @@ class CloudMatchingService {
     }));
   }
 
-  private generateLocalCompatibilityAnalysis(event: CloudEvent, emotionalState: UserEmotionalState): CompatibilityAnalysis {
+  private generateLocalCompatibilityAnalysis(event: CloudEvent, emotionalState: any): CompatibilityAnalysis {
     let aiMatchScore = 0.5;
     let personalizedReason = '';
     let moodBoostPotential = 5;
@@ -469,7 +470,7 @@ class CloudMatchingService {
     return vibes[eventType] || 'supportive';
   }
 
-  private generateMockEventsWithAI(emotionalState?: UserEmotionalState): CloudEvent[] {
+  private generateMockEventsWithAI(emotionalState?: any): CloudEvent[] {
     const mockEvents: CloudEvent[] = [
       {
         id: '1',
@@ -526,7 +527,7 @@ class CloudMatchingService {
     return mockEvents;
   }
 
-  private generateMockCompatibleUsers(emotionalState?: UserEmotionalState, interests: string[] = []): CompatibleUser[] {
+  private generateMockCompatibleUsers(emotionalState?: any, interests: string[] = []): CompatibleUser[] {
     return [
       {
         id: 'user1',

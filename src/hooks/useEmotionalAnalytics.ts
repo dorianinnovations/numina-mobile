@@ -308,18 +308,18 @@ export const useEmotionalAnalytics = () => {
       // If online sync was successful, update sync status
       if (!result.local) {
         // console.log('🌐 Emotion successfully synced to server!', {
-          mood: emotionData.mood,
-          intensity: emotionData.intensity,
-          syncStatus: 'online',
-          userId: userId
-        });
+        //   mood: emotionData.mood,
+        //   intensity: emotionData.intensity,
+        //   syncStatus: 'online',
+        //   userId: userId
+        // });
       } else {
         // console.log('💾 Emotion saved locally (will sync when online)', {
-          mood: emotionData.mood,
-          intensity: emotionData.intensity,
-          syncStatus: 'offline',
-          userId: userId
-        });
+        //   mood: emotionData.mood,
+        //   intensity: emotionData.intensity,
+        //   syncStatus: 'offline',
+        //   userId: userId
+        // });
       }
       
       return { success: true };

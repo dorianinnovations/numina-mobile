@@ -149,20 +149,53 @@ export class OptimizedChatService {
       let buffer = '';
       let hasReceivedToolResult = false;
       let initialResponseLength = 0;
+      let isResolved = false;
+      
+      // Cleanup function to prevent memory leaks
+      const cleanup = () => {
+        if (xhr.readyState !== XMLHttpRequest.DONE) {
+          xhr.abort();
+        }
+        xhr.onreadystatechange = null;
+        xhr.onerror = null;
+        xhr.ontimeout = null;
+        xhr.onabort = null;
+      };
+      
+      const safeResolve = (value: string) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          resolve(value);
+        }
+      };
+      
+      const safeReject = (error: Error) => {
+        if (!isResolved) {
+          isResolved = true;
+          cleanup();
+          reject(error);
+        }
+      };
       
       xhr.open('POST', CHAT_API_CONFIG.PRODUCTION_URL, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.setRequestHeader('Accept', 'text/event-stream');
       xhr.setRequestHeader('Cache-Control', 'no-cache');
+      xhr.timeout = 30000; // 30 second timeout
       
       xhr.onreadystatechange = () => {
+        if (isResolved) return;
+        
         if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
           const chunk = xhr.responseText.substring(buffer.length);
           buffer = xhr.responseText;
           
           if (chunk) {
             this.processStreamChunk(chunk, (content) => {
+              if (isResolved) return;
+              
               if (content.includes('🔧 **') && !hasReceivedToolResult) {
                 hasReceivedToolResult = true;
                 initialResponseLength = fullContent.length;
@@ -183,16 +216,17 @@ export class OptimizedChatService {
           
           if (xhr.readyState === XMLHttpRequest.DONE) {
             if (xhr.status === 200) {
-              resolve(fullContent);
+              safeResolve(fullContent);
             } else {
-              reject(new Error(`Stream error: ${xhr.status}`));
+              safeReject(new Error(`Stream error: ${xhr.status}`));
             }
           }
         }
       };
       
-      xhr.onerror = () => reject(new Error('Network error'));
-      xhr.ontimeout = () => reject(new Error('Request timeout'));
+      xhr.onerror = () => safeReject(new Error('Network error'));
+      xhr.ontimeout = () => safeReject(new Error('Request timeout'));
+      xhr.onabort = () => safeReject(new Error('Request aborted'));
       
       const payload: any = {
         message: message.trim(),
@@ -207,7 +241,11 @@ export class OptimizedChatService {
         payload.attachments = attachments;
       }
       
-      xhr.send(JSON.stringify(payload));
+      try {
+        xhr.send(JSON.stringify(payload));
+      } catch (error) {
+        safeReject(new Error(`Send failed: ${error}`));
+      }
     });
   }
 

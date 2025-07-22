@@ -21,6 +21,7 @@ import { PageBackground } from '../components/PageBackground';
 import { StarField } from '../components/StarField';
 import { ShootingStars } from '../components/ShootingStars';
 import { LiquidProgress } from '../components/LiquidProgress';
+import { SimpleStreamingText } from '../components/SimpleStreamingText';
 import { NuminaColors } from '../utils/colors';
 
 const { width } = Dimensions.get('window');
@@ -97,10 +98,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
 }) => {
   const { theme, isDarkMode } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
-  const [displayedTitle, setDisplayedTitle] = useState('');
-  const [displayedDescription, setDisplayedDescription] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [hasStreamed, setHasStreamed] = useState<Set<number>>(new Set());
   
   // Core animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -149,37 +146,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   // Flag to track if animations have been initialized to prevent re-initialization
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Optimized streaming text function with cleanup
-  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const streamingRef = useRef(false);
-  
-  const streamText = (text: string, setter: (text: string) => void) => {
-    return new Promise<void>((resolve) => {
-      let index = 0;
-      streamingRef.current = true;
-      setter('');
-      
-      const stream = () => {
-        if (!streamingRef.current) {
-          resolve();
-          return;
-        }
-        
-        if (index < text.length) {
-          // Show fewer characters to reduce load
-          const charsToShow = Math.min(3, text.length - index);
-          setter(text.slice(0, index + charsToShow));
-          index += charsToShow;
-          streamTimeoutRef.current = setTimeout(stream, 12); // Slower to reduce load
-        } else {
-          streamingRef.current = false;
-          resolve();
-        }
-      };
-      
-      stream();
-    });
-  };
 
   // Initialize animations function
   const initializeAnimations = () => {
@@ -256,47 +222,13 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   useEffect(() => {
     if (!isInitialized) {
       initializeAnimations();
-      
-      // Start streaming immediately for the first step
-      const initialStep = tutorialSteps[0];
-      const streamInitialContent = async () => {
-        setIsStreaming(true);
-        await streamText(initialStep.title, setDisplayedTitle);
-        await streamText(initialStep.description, setDisplayedDescription);
-        setIsStreaming(false);
-        setIsInitialized(true); // Set initialized after streaming completes
-      };
-      
-      // Start streaming without delay for first render
-      streamInitialContent();
+      setIsInitialized(true);
     }
-    
-    return () => {
-      // Cleanup streaming timeout and stop streaming to prevent memory leaks
-      streamingRef.current = false;
-      if (streamTimeoutRef.current) {
-        clearTimeout(streamTimeoutRef.current);
-      }
-    };
   }, [isInitialized]);
 
   useEffect(() => {
-    const step = tutorialSteps[currentStep];
-    
-    // Always stream content when step changes, except skip initial load if already handled
-    if (!(currentStep === 0 && !isInitialized)) {
-      const streamNewContent = async () => {
-        setIsStreaming(true);
-        await streamText(step.title, setDisplayedTitle);
-        await streamText(step.description, setDisplayedDescription);
-        setIsStreaming(false);
-      };
-      
-      streamNewContent();
-    }
     
     if (currentStep > 0) {
-      
       Animated.sequence([
         Animated.timing(iconScale, {
           toValue: 0.85,
@@ -377,14 +309,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
       }
       
     }
-    
-    return () => {
-      // Stop streaming when component unmounts or step changes
-      streamingRef.current = false;
-      if (streamTimeoutRef.current) {
-        clearTimeout(streamTimeoutRef.current);
-      }
-    };
   }, [currentStep]);
   
   
@@ -637,35 +561,34 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
 
 
             {/* Step Title */}
-            <Text style={[
-              styles.creativeTitle,
-              { 
-                color: isDarkMode ? '#ffffff' : '#000000',
-                fontFamily: 'CrimsonPro_600SemiBold',
-                letterSpacing: -0.5,
-              }
-            ]}>
-              {displayedTitle}
-              {isStreaming && displayedTitle.length < step.title.length && (
-                <Text style={{ opacity: 0.8, color: isDarkMode ? '#add5fa' : '#3b82f6' }}>_</Text>
-              )}
-            </Text>
+            <SimpleStreamingText
+              text={step.title}
+              style={[
+                styles.creativeTitle,
+                { 
+                  color: isDarkMode ? '#ffffff' : '#000000',
+                  fontFamily: 'CrimsonPro_600SemiBold',
+                  letterSpacing: -0.5,
+                }
+              ]}
+              speed={2}
+            />
 
-            {/* Description */}
-            <Text style={[
-              styles.creativeDescription,
-              { 
-                color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                fontFamily: 'Nunito_400Regular',
-                fontSize: 16,
-                letterSpacing: -0.1,
-              }
-            ]}>
-              {displayedDescription}
-              {isStreaming && displayedDescription.length < step.description.length && (
-                <Text style={{ opacity: 0.8, color: isDarkMode ? '#add5fa' : '#3b82f6' }}>_</Text>
-              )}
-            </Text>
+            {/* Step Description */}
+            <SimpleStreamingText
+              text={step.description}
+              style={[
+                styles.creativeDescription,
+                { 
+                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
+                  fontFamily: 'Nunito_400Regular',
+                  fontSize: 20,
+                  letterSpacing: -0.1,
+                  marginTop: 12,
+                }
+              ]}
+              speed={2}
+            />
 
 
           </Animated.View>
@@ -676,7 +599,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               styles.iconContainer,
               {
                 position: 'absolute',
-                top: 120,
+                top: 160,
                 right: 24,
                 zIndex: 10,
                 opacity: cardOpacity,
@@ -1121,7 +1044,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   stepTitle: {
-    fontSize: 28,
+    fontSize: 35,
     fontWeight: '700',
     marginBottom: 16,
     textAlign: 'center',
@@ -1129,8 +1052,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Nunito_700Bold',
   },
   stepDescription: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 28,
     textAlign: 'center',
     marginBottom: 24,
     fontWeight: '400',
@@ -1151,7 +1074,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   featureText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '500',
     flex: 1,
     fontFamily: 'Nunito_500Medium',
@@ -1179,7 +1102,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '500',
     letterSpacing: -0.5,
     fontFamily: 'Nunito_500Medium',
@@ -1194,7 +1117,7 @@ const styles = StyleSheet.create({
     flex: 0.4,
   },
   secondaryButtonText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
   },
@@ -1203,7 +1126,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   skipText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '400',
     textAlign: 'center',
     fontFamily: 'Nunito_400Regular',
@@ -1231,7 +1154,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginTop: 160,
+    marginTop: 200,
     paddingHorizontal: 40,
   },
   glowingChevron: {
@@ -1244,7 +1167,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   finishButtonText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '600',
     letterSpacing: -0.3,
     fontFamily: 'Nunito_600SemiBold',
@@ -1284,7 +1207,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 10,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '500',
     letterSpacing: -0.3,
     fontFamily: 'Nunito_500Medium',
@@ -1303,7 +1226,7 @@ const styles = StyleSheet.create({
     left: 0,
   },
   stepNumber: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
   },
@@ -1313,14 +1236,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   stepTotal: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
   },
   
   // Creative Content
   contextualHeading: {
-    fontSize: 28,
+    fontSize: 35,
     fontWeight: '600',
     fontFamily: 'CrimsonPro_600SemiBold',
     letterSpacing: -1,
@@ -1329,11 +1252,11 @@ const styles = StyleSheet.create({
     lineHeight: 34,
   },
   creativeTitle: {
-    fontSize: 36,
+    fontSize: 45,
     fontWeight: '700',
     fontFamily: 'CrimsonPro_700Bold',
     letterSpacing: -1.2,
-    lineHeight: 38,
+    lineHeight: 50,
     marginBottom: 16,
     textAlign: 'left',
     position: 'absolute',
@@ -1342,8 +1265,8 @@ const styles = StyleSheet.create({
     right: 0,
   },
   creativeDescription: {
-    fontSize: 17,
-    lineHeight: 20,
+    fontSize: 21,
+    lineHeight: 28,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     textAlign: 'left',
@@ -1351,7 +1274,7 @@ const styles = StyleSheet.create({
     top: 220,
     left: 0,
     right: 0,
-    height: 120,
+    minHeight: 120,
   },
   
   // Creative Buttons
@@ -1370,7 +1293,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   navButtonText: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
   },

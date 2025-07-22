@@ -35,6 +35,7 @@ import { NeonAnalyticsCard } from '../components/NeonAnalyticsCard';
 import { NeonProgressCard } from '../components/NeonProgressCard';
 import { NeonGlassCard } from '../components/NeonGlassCard';
 import { QuickAnalyticsModal } from '../components/QuickAnalyticsModal';
+import { MetricCard, PersonalityTraitCard, BehavioralMetricCard, ProgressCard } from '../components/AnalyticsCard';
 import personalizedInsightsService, { PersonalInsight } from '../services/personalizedInsightsService';
 import categorizedAnalyticsService, { AnalyticsCategory } from '../services/categorizedAnalyticsService';
 import aiInsightEngine, { AIInsightResponse } from '../services/aiInsightEngine';
@@ -1339,28 +1340,35 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 {renderChart()}
               </Animated.View>
 
-              {/* Minimalist Data Cards */}
+              {/* Analytics Data Cards */}
               <View style={styles.dataCardsGrid}>
-                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(59,130,246,0.1)' : 'rgba(59,130,246,0.05)' }]}>
-                  <Text style={[styles.dataValue, { color: '#3B82F6' }]}>
-                    {behavioralMetrics ? Object.values(behavioralMetrics.personalityTraits).filter((t: any) => t.score > 0.7).length : 0}
-                  </Text>
-                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Traits</Text>
-                </View>
+                <MetricCard
+                  title="Strong Traits"
+                  value={behavioralMetrics ? Object.values(behavioralMetrics.personalityTraits).filter((t: any) => t.score > 0.7).length : 0}
+                  subtitle="High-scoring personality traits"
+                  icon="user"
+                  trend="stable"
+                  style={{ flex: 1, marginRight: 6 }}
+                />
                 
-                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.05)' }]}>
-                  <Text style={[styles.dataValue, { color: '#10B981' }]}>
-                    {behavioralMetrics?.engagementMetrics.dailyEngagementScore.toFixed(1) || '0.0'}
-                  </Text>
-                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Score</Text>
-                </View>
+                <MetricCard
+                  title="Engagement"
+                  value={behavioralMetrics?.engagementMetrics.dailyEngagementScore || 0}
+                  unit="/10"
+                  subtitle="Daily engagement score"
+                  icon="target"
+                  trend="up"
+                  style={{ flex: 1, marginHorizontal: 3 }}
+                />
                 
-                <View style={[styles.dataCard, { backgroundColor: isDarkMode ? 'rgba(245,158,11,0.1)' : 'rgba(245,158,11,0.05)' }]}>
-                  <Text style={[styles.dataValue, { color: '#F59E0B' }]}>
-                    {personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).length : 0}
-                  </Text>
-                  <Text style={[styles.dataLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>Goals</Text>
-                </View>
+                <ProgressCard
+                  title="Milestones"
+                  progress={personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.filter(m => m.achieved).length : 0}
+                  total={personalGrowth?.milestones && Array.isArray(personalGrowth.milestones) ? personalGrowth.milestones.length : 10}
+                  subtitle="Goals achieved"
+                  progressColor="#F59E0B"
+                  style={{ flex: 1, marginLeft: 6 }}
+                />
               </View>
 
               {/* Minimalist Insights */}
@@ -1394,23 +1402,86 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 />
               ))}
 
-              {/* Neon Analytics Cards */}
-              <View style={styles.sectionSpacer}>
-                <NeonAnalyticsCard
-                  title="Engagement Score"
-                  value="85%"
-                  icon="trending-up"
-                  subtitle="Deep behavioral insights"
-                  trend="up"
-                />
-              </View>
+              {/* Personality Traits Section */}
+              {behavioralMetrics && behavioralMetrics.personalityTraits && (
+                <View style={styles.sectionSpacer}>
+                  <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                    🧠 Personality Insights
+                  </Text>
+                  <View style={styles.personalityTraitsGrid}>
+                    {Object.entries(behavioralMetrics.personalityTraits)
+                      .filter(([_, trait]: [string, any]) => trait.score > 0.5)
+                      .slice(0, 6)
+                      .map(([name, trait]: [string, any]) => (
+                      <PersonalityTraitCard
+                        key={name}
+                        trait={{
+                          name,
+                          score: trait.score,
+                          confidence: trait.confidence
+                        }}
+                        style={{ flex: 1, minWidth: '45%' }}
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
 
-              <View style={styles.sectionSpacer}>
-                <NeonProgressCard
-                  title="Progress Tracking"
-                  progress={75}
-                />
-              </View>
+              {/* Behavioral Metrics Section */}
+              {behavioralMetrics && (
+                <View style={styles.sectionSpacer}>
+                  <BehavioralMetricCard
+                    title="Communication Style"
+                    description="Your preferred interaction patterns"
+                    metrics={[
+                      { label: 'Tone', value: behavioralMetrics.communicationStyle.preferredTone, color: '#3B82F6' },
+                      { label: 'Length', value: behavioralMetrics.communicationStyle.responseLength, color: '#10B981' },
+                      { label: 'Complexity', value: behavioralMetrics.communicationStyle.complexity, color: '#F59E0B' }
+                    ]}
+                  />
+                  
+                  <BehavioralMetricCard
+                    title="Temporal Patterns"
+                    description="Your activity and engagement patterns"
+                    metrics={[
+                      { 
+                        label: 'Peak Hours', 
+                        value: behavioralMetrics.temporalPatterns.mostActiveHours.length > 0 
+                          ? `${behavioralMetrics.temporalPatterns.mostActiveHours[0]}:00-${behavioralMetrics.temporalPatterns.mostActiveHours[behavioralMetrics.temporalPatterns.mostActiveHours.length-1]}:00`
+                          : 'Not detected',
+                        color: '#8B5CF6' 
+                      },
+                      { label: 'Session Duration', value: `${behavioralMetrics.temporalPatterns.sessionDuration.average}min`, color: '#EC4899' },
+                      { label: 'Frequency', value: behavioralMetrics.temporalPatterns.interactionFrequency, color: '#06B6D4' }
+                    ]}
+                  />
+                </View>
+              )}
+
+              {/* Emotional & Social Analytics */}
+              {behavioralMetrics && (
+                <View style={styles.sectionSpacer}>
+                  <View style={styles.dataCardsGrid}>
+                    <ProgressCard
+                      title="Emotional Stability"
+                      progress={behavioralMetrics.emotionalProfile.emotionalStability * 100}
+                      subtitle={`${behavioralMetrics.emotionalProfile.baselineEmotion} baseline`}
+                      progressColor="#10B981"
+                      style={{ flex: 1, marginRight: 6 }}
+                    />
+                    
+                    <MetricCard
+                      title="Social Support"
+                      value={(behavioralMetrics.socialPatterns.supportGiving * 10)}
+                      unit="/10"
+                      subtitle="Support giving score"
+                      icon="heart"
+                      confidence={0.8}
+                      style={{ flex: 1, marginLeft: 6 }}
+                    />
+                  </View>
+                </View>
+              )}
             </ScrollView>
           </Animated.View>
         </SafeAreaView>
@@ -1479,30 +1550,12 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   
-  // Minimalist Data Cards
+  // Analytics Data Cards
   dataCardsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
-    gap: 12,
-  },
-  dataCard: {
-    flex: 1,
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  dataValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  dataLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
+    gap: 6,
   },
   
   // Main Chart Card
@@ -1977,5 +2030,13 @@ const styles = StyleSheet.create({
   // Neon Card Styles
   neonCardStyle: {
     marginVertical: 16,
+  },
+
+  // Personality Traits Grid
+  personalityTraitsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    justifyContent: 'space-between',
   },
 });

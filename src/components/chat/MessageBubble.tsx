@@ -78,7 +78,7 @@ const BotMessageContent: React.FC<{
   );
 };
 
-export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
+const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
   message,
   index,
   onLongPress,
@@ -491,6 +491,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({
       </TouchableOpacity>
       </Animated.View>
     </FadeInDown>
+  );
+};
+
+// Optimized memo with deep comparison for message content
+export const MessageBubble = React.memo(MessageBubbleComponent, (prevProps, nextProps) => {
+  // Only re-render if message content, streaming status, or index actually changed
+  const prevMsg = prevProps.message;
+  const nextMsg = nextProps.message;
+  
+  return (
+    prevMsg.id === nextMsg.id &&
+    prevMsg.text === nextMsg.text &&
+    prevMsg.isStreaming === nextMsg.isStreaming &&
+    prevMsg.timestamp === nextMsg.timestamp &&
+    prevProps.index === nextProps.index &&
+    // Compare attachment lengths instead of deep comparison for performance
+    (prevMsg.attachments?.length || 0) === (nextMsg.attachments?.length || 0)
   );
 });
 

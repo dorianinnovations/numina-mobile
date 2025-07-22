@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Header } from './Header';
+import { SignOutModal } from './SignOutModal';
 import { useAuth } from "../contexts/SimpleAuthContext";
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -46,6 +47,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   onBackPress,
   headerProps,
 }) => {
+  const [showSignOutModal, setShowSignOutModal] = useState(false);
   const navigation = useNavigation<ScreenWrapperNavigationProp>();
   const { logout, isAuthenticated } = useAuth();
 
@@ -71,8 +73,8 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         }
         break;
       case 'analytics':
-        if (currentRoute !== 'Analytics') {
-          navigation.push('Analytics');
+        if (currentRoute !== 'ModernAnalytics') {
+          navigation.push('ModernAnalytics');
         }
         break;
       case 'cloud':
@@ -106,26 +108,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         }
         break;
       case 'signout':
-        Alert.alert(
-          'Sign Out',
-          'Are you sure you want to sign out?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            { 
-              text: 'Sign Out', 
-              style: 'destructive',
-              onPress: async () => {
-                try {
-                  await logout();
-                  // The AppNavigator will automatically redirect to Hero screen
-                  // when isAuthenticated becomes false
-                } catch (error) {
-                  console.error('Logout error:', error);
-                }
-              }
-            }
-          ]
-        );
+        setShowSignOutModal(true);
         break;
       default:
         break;
@@ -140,6 +123,22 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
     } else {
       navigation.navigate('Chat');
     }
+  };
+
+  const handleSignOutConfirm = async () => {
+    try {
+      await logout();
+      setShowSignOutModal(false);
+      // The AppNavigator will automatically redirect to Hero screen
+      // when isAuthenticated becomes false
+    } catch (error) {
+      console.error('Logout error:', error);
+      setShowSignOutModal(false);
+    }
+  };
+
+  const handleSignOutCancel = () => {
+    setShowSignOutModal(false);
   };
 
   return (
@@ -164,6 +163,12 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         />
       )}
       {children}
+      
+      <SignOutModal
+        visible={showSignOutModal}
+        onConfirm={handleSignOutConfirm}
+        onCancel={handleSignOutCancel}
+      />
     </View>
   );
 };

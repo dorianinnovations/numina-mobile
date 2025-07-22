@@ -36,7 +36,6 @@ import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { Header } from '../components/Header';
 import { RootStackParamList } from '../navigation/AppNavigator';
-import { useAIPersonality } from '../hooks/useAIPersonality';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
@@ -45,6 +44,7 @@ import { UpgradePrompt } from '../components/UpgradePrompt';
 import { SubscriptionModal } from '../components/SubscriptionModal';
 
 import getBatchApiService from '../services/batchApiService';
+import ApiService from '../services/api';
 import getWebSocketService, { ChatMessage as WSChatMessage, UserPresence } from '../services/websocketService';
 import syncService from '../services/syncService';
 import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
@@ -85,17 +85,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     upgradeOptions: string[];
   } | null>(null);
 
-  const websocketService = useMemo(() => getWebSocketService(), []);
+  const websocketService = useMemo(() => {
+    const { getEnhancedWebSocketService } = require('../services/enhancedWebSocketService');
+    return getEnhancedWebSocketService();
+  }, []);
   const batchApiService = useMemo(() => getBatchApiService(), []);
 
-  const {
-    emotionalState,
-    aiPersonality,
-    isAnalyzing,
-    sendAdaptiveChatMessage,
-    getContextualSuggestions,
-    error: aiError,
-  } = useAIPersonality();
 
   const {
     getPersonalizedRecommendations,
@@ -554,14 +549,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setConversation(currentConversation);
 
     try {
-      // Use AI Personality Service for adaptive chat if available
+      // Use standard chat service
       let finalResponseText = '';
-      let personalityContext = null;
       
-      // Use adaptive chat for full features (personality, tools, UBPM)
-      const adaptiveResult = await sendAdaptiveChatMessage(
-        userMessage.text,
-        (partialResponse: string, context?: any) => {
+      // Create chat message for API
+      const chatMessage: any = {
+        prompt: userMessage.text,
+        stream: true,
+        files: userMessage.attachments?.map(attachment => ({
+          url: attachment.url,
+          type: attachment.type,
+          name: attachment.name
+        }))
+      };
+      
+      // Send streaming chat message
+      finalResponseText = await ApiService.sendChatMessageStreaming(
+        chatMessage,
+        (partialResponse: string) => {
           // Validate partialResponse
           const safePartialResponse = partialResponse || '';
           
@@ -583,13 +588,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             ...aiMessage,
             text: safePartialResponse,
             isStreaming: true,
-            personalityContext: context,
           };
-          
-          // Log personality context
-          if (context) {
-            log.debug('Received personality context', context, 'ChatScreen');
-          }
           
           // Throttled state updates to reduce UI lag
           if (currentConversation.messages && currentConversation.messages.length > 0) {
@@ -610,18 +609,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               }, 100);
             }
           }
-        },
-        userMessage.attachments // Pass attachments for GPT-4o vision analysis
+        }
       );
-      
-      // Handle the response properly - it's an object with content and personalityContext
-      if (adaptiveResult && typeof adaptiveResult === 'object') {
-        finalResponseText = adaptiveResult.content || '';
-        personalityContext = adaptiveResult.personalityContext || null;
-        log.debug('Adaptive result personality context', personalityContext, 'ChatScreen');
-      } else {
-        finalResponseText = String(adaptiveResult || '');
-      }
       
       // Update search indicator with final response to extract tool results
       // Search indicator removed
@@ -636,12 +625,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         ...aiMessage,
         text: finalResponseText,
         isStreaming: false,
-        personalityContext,
       };
       
-      log.debug('Final AI message with personality context', {
-        hasPersonalityContext: !!personalityContext,
-        personalityContext: personalityContext
+      log.debug('Final AI message generated', {
+        responseLength: finalResponseText.length
       }, 'ChatScreen');
       
       // Send AI response via WebSocket (graceful fallback)
@@ -1173,10 +1160,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     onSend={sendMessage}
                     onVoiceStart={handleVoiceStart}
                     onVoiceEnd={handleVoiceEnd}
-                    isLoading={isLoading || isAnalyzing}
+                    isLoading={isLoading}
                     placeholder="Share your thoughts..."
                     voiceEnabled={true}
-                    userEmotionalState={emotionalState || undefined}
                     toolExecutions={toolExecutions}
                     onToggleToolModal={() => setIsToolModalVisible(true)}
                     attachments={attachments}

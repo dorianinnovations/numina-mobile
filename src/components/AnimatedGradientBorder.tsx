@@ -76,10 +76,10 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
     };
   }, [isActive, animationSpeed, width, height]);
 
-  // Define default colors based on theme
+  // Define default colors based on theme - much more lavender purple
   const defaultGradientColors = isDarkMode
-    ? ['#75d6ff98', 'rgba(153, 224, 255, 0.478)', 'rgba(0, 150, 255, 0)']
-    : ['rgba(96, 165, 250, 1)', 'rgba(59, 130, 246, 0.5)', 'rgba(30, 58, 138, 0)'];
+    ? ['#87ebde', 'rgba(135, 235, 222, 0.4)', 'rgba(180, 200, 240, 0.7)', 'rgba(180, 200, 240, 0)']
+    : ['#00d4ff', 'rgba(0, 212, 255, 0.4)', 'rgba(160, 180, 255, 0.7)', 'rgba(160, 180, 255, 0)'];
   
   let finalGradientColors: readonly [string, string, ...string[]];
   const mergedColors = gradientColors || defaultGradientColors;

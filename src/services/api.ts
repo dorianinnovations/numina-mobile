@@ -85,21 +85,7 @@ interface EmotionData {
   userId: string;
 }
 
-interface PersonalityContext {
-  communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
-  emotionalTone: 'supportive' | 'celebratory' | 'analytical' | 'calming';
-  adaptedResponse: boolean;
-  userMoodDetected?: string;
-  responsePersonalization?: string;
-}
 
-interface UserEmotionalState {
-  mood: string;
-  intensity: number;
-  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
-  recentInteractions: string[];
-  patterns: string[];
-}
 
 interface CloudEvent {
   id: string;
@@ -216,7 +202,6 @@ interface AppConfig {
 
 class ApiService {
   private static baseURL = API_BASE_URL;
-  private static pendingEmotionalAnalysis: Promise<ApiResponse<UserEmotionalState>> | null = null;
 
   private static async validateNetworkState(): Promise<boolean> {
     try {
@@ -781,89 +766,16 @@ class ApiService {
     }
   }
 
-  // AI Personality & Adaptive Chat Features
-  static async analyzeUserEmotionalState(options: {
-    recentEmotions?: any[];
-    conversationHistory?: any[];
-    timeContext?: string;
-  } = {}): Promise<ApiResponse<UserEmotionalState>> {
-    // Request deduplication - return pending analysis if already in progress
-    if (this.pendingEmotionalAnalysis) {
-      log.debug('Returning pending emotional analysis to prevent duplicate requests', null, 'ApiService');
-      return this.pendingEmotionalAnalysis;
-    }
 
-    // Add aggressive timeout for emotional state analysis
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      log.warn('Emotional state analysis timeout after 8 seconds - failing fast for mobile UX', null, 'ApiService');
-      controller.abort();
-    }, 8000); // 8 second timeout specifically for emotional analysis
-
-    // Create and store the pending analysis promise
-    this.pendingEmotionalAnalysis = (async () => {
-      try {
-        const response = await this.apiRequest('/ai/emotional-state', {
-          method: 'POST',
-          body: JSON.stringify({
-            recentEmotions: options.recentEmotions || [],
-            conversationHistory: options.conversationHistory || [],
-            timeContext: options.timeContext || new Date().toISOString(),
-            model: 'openai/gpt-4o-mini',
-            maxTokens: 500, // Reduced from 800 to 500 for faster response
-            temperature: 0.3
-          }),
-          signal: controller.signal, // Add abort signal
-        });
-        
-        clearTimeout(timeoutId);
-        return response;
-      } catch (error) {
-        clearTimeout(timeoutId);
-        if (error instanceof Error && error.name === 'AbortError') {
-          log.warn('Emotional state analysis timed out - falling back to default state', null, 'ApiService');
-          return {
-            success: false,
-            error: 'Analysis timeout - using cached state'
-          } as ApiResponse<UserEmotionalState>;
-        }
-        
-        log.error('Emotional state analysis failed', error, 'ApiService');
-        throw error;
-      } finally {
-        // Always clear pending analysis when complete (success or failure)
-        this.pendingEmotionalAnalysis = null;
-        clearTimeout(timeoutId); // Ensure timeout is cleared
-      }
-    })();
-
-    return this.pendingEmotionalAnalysis;
-  }
-
-  static async getPersonalityRecommendations(emotionalState: UserEmotionalState): Promise<ApiResponse<{
-    communicationStyle: string;
-    suggestedPrompts: string[];
-    contextualHints: string[];
-  }>> {
-    return this.apiRequest('/ai/personality-recommendations', {
-      method: 'POST',
-      body: JSON.stringify({
-        emotionalState,
-        model: 'openai/gpt-4o-mini',
-        maxTokens: 1000,
-        temperature: 0.4
-      }),
-    });
-  }
 
   static async sendAdaptiveChatMessage(
     message: ChatMessage & {
       message?: string;
-      emotionalContext?: UserEmotionalState;
+      emotionalContext?: any;
       personalityStyle?: string;
     },
-    onChunk: (chunk: string, context?: PersonalityContext) => void
-  ): Promise<{ content: string; personalityContext: PersonalityContext }> {
+    onChunk: (chunk: string, context?: any) => void
+  ): Promise<{ content: string; personalityContext: any }> {
     const token = CloudAuth.getInstance().getToken();
     const chatUrl = `${this.baseURL}/ai/adaptive-chat`;
 
@@ -881,7 +793,7 @@ class ApiService {
     }
 
     // Create personality context from the personalityStyle that was already determined
-    const defaultPersonalityContext: PersonalityContext = {
+    const defaultPersonalityContext: any = {
       communicationStyle: (message.personalityStyle as 'supportive' | 'direct' | 'collaborative' | 'encouraging') || 'supportive',
       emotionalTone: message.emotionalContext?.mood === 'happy' || message.emotionalContext?.mood === 'excited' ? 'celebratory' : 
                     message.emotionalContext?.mood === 'anxious' || message.emotionalContext?.mood === 'stressed' ? 'calming' :
@@ -906,7 +818,7 @@ class ApiService {
       const xhr = new XMLHttpRequest();
       let lastProcessedIndex = 0;
       let fullContent = '';
-      let personalityContext: PersonalityContext | null = defaultPersonalityContext;
+      let personalityContext: any = defaultPersonalityContext;
       let chunkCounter = 0;
       
       xhr.open('POST', chatUrl, true);
@@ -1089,17 +1001,6 @@ class ApiService {
     });
   }
 
-  static async submitPersonalityFeedback(feedback: {
-    messageId: string;
-    feedbackType: 'helpful' | 'not_helpful' | 'love_it';
-    personalityStyle: string;
-    userEmotionalState: UserEmotionalState;
-  }): Promise<ApiResponse<any>> {
-    return this.apiRequest('/ai/personality-feedback', {
-      method: 'POST',
-      body: JSON.stringify(feedback),
-    });
-  }
 
   static async generateWeeklyDigest(): Promise<ApiResponse<any>> {
     return this.apiRequest('/analytics/llm/weekly-digest', {
@@ -1139,7 +1040,7 @@ class ApiService {
   // Cloud Events & Social Matching
   static async getCloudEvents(options: {
     filter?: string;
-    userEmotionalState?: UserEmotionalState;
+    userEmotionalState?: any;
     includeMatching?: boolean;
   } = {}): Promise<ApiResponse<CloudEvent[]>> {
     try {
@@ -1188,7 +1089,7 @@ class ApiService {
     }
   }
 
-  static async analyzeEventCompatibility(eventId: string, userEmotionalState: UserEmotionalState): Promise<ApiResponse<{
+  static async analyzeEventCompatibility(eventId: string, userEmotionalState: any): Promise<ApiResponse<{
     aiMatchScore: number;
     emotionalCompatibility: 'high' | 'medium' | 'low';
     personalizedReason: string;
@@ -1211,7 +1112,7 @@ class ApiService {
 
   static async findCompatibleUsers(options: {
     eventId?: string;
-    emotionalState: UserEmotionalState;
+    emotionalState: any;
     interests: string[];
     maxResults?: number;
   }): Promise<ApiResponse<{
@@ -1266,7 +1167,7 @@ class ApiService {
   // Real-time Insights & Pattern Analysis
   static async getPersonalizedInsights(options: {
     timeRange?: string;
-    emotionalState?: UserEmotionalState;
+    emotionalState?: any;
     includeCloudRecommendations?: boolean;
   } = {}): Promise<ApiResponse<{
     insights: any[];
@@ -2387,8 +2288,6 @@ export type {
   SyncData,
   OfflineQueueItem,
   AppConfig,
-  PersonalityContext,
-  UserEmotionalState,
   CloudEvent,
   CompatibilityAnalysis
 };

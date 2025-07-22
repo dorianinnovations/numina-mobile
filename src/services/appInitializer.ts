@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 // Import all enhanced services
 import ApiService from './api';
 import getWebSocketService from './websocketService';
+import { getEnhancedWebSocketService } from './enhancedWebSocketService';
 import syncService from './syncService';
 import appConfigService from './appConfigService';
 import { getBatchApiService } from './batchApiService';
@@ -113,7 +114,7 @@ class AppInitializer {
         if (endpoints.websocket) {
           // Use production WebSocket URL - no localhost fallbacks in production
           const wsUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL || endpoints.websocket;
-          getWebSocketService().updateServerUrl(wsUrl);
+          getEnhancedWebSocketService().updateConfig({ serverUrl: wsUrl });
         }
       } catch (error) {
         this.initializationStatus.appConfig = 'failed';
@@ -147,7 +148,7 @@ class AppInitializer {
       try {
         const token = await SecureStorageService.getToken();
         if (token) {
-          const connected = await getWebSocketService().initialize();
+          const connected = await getEnhancedWebSocketService().initialize();
           if (connected) {
             this.initializationStatus.websocket = 'success';
             // console.log('✅ WebSocket connected successfully');
@@ -273,7 +274,7 @@ class AppInitializer {
         syncService.triggerSync({ includeOfflineQueue: true });
         
         // Reconnect WebSocket if needed
-        const websocketService = getWebSocketService();
+        const websocketService = getEnhancedWebSocketService();
         if (!websocketService.isConnected()) {
           websocketService.initialize();
         }
@@ -301,7 +302,7 @@ class AppInitializer {
     try {
       // console.log('🔌 Initializing WebSocket after authentication...');
       
-      const connected = await getWebSocketService().initialize();
+      const connected = await getEnhancedWebSocketService().initialize();
       
       if (connected) {
         this.initializationStatus.websocket = 'success';
@@ -379,7 +380,7 @@ class AppInitializer {
     // console.log('🧹 Cleaning up app services...');
     
     try {
-      getWebSocketService().disconnect();
+      getEnhancedWebSocketService().cleanup();
       syncService.cleanup();
       const batchApiService = getBatchApiService();
       batchApiService.clearBatch();
@@ -429,7 +430,7 @@ class AppInitializer {
     // Reinitialize failed services
     if (this.initializationStatus.websocket === 'failed') {
       try {
-        const connected = await getWebSocketService().initialize();
+        const connected = await getEnhancedWebSocketService().initialize();
         if (connected) {
           this.initializationStatus.websocket = 'success';
         }

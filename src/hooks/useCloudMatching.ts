@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import CloudMatchingService, { CloudEvent, CompatibilityAnalysis, CompatibleUser } from '../services/cloudMatchingService';
-import { UserEmotionalState } from '../services/aiPersonalityService';
 
 interface UseCloudMatchingReturn {
   // State
@@ -25,7 +24,7 @@ interface UseCloudMatchingReturn {
   retryLoad: () => Promise<void>;
 }
 
-export const useCloudMatching = (userEmotionalState?: UserEmotionalState): UseCloudMatchingReturn => {
+export const useCloudMatching = (userEmotionalState?: any): UseCloudMatchingReturn => {
   const [events, setEvents] = useState<CloudEvent[]>([]);
   const [compatibilityAnalysis, setCompatibilityAnalysis] = useState<{ [eventId: string]: CompatibilityAnalysis }>({});
   const [compatibleUsers, setCompatibleUsers] = useState<CompatibleUser[]>([]);

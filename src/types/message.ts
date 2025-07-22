@@ -21,18 +21,10 @@ export interface Message {
   timestamp: string;
   mood?: string;
   isStreaming?: boolean;
-  personalityContext?: PersonalityContext;
   attachments?: MessageAttachment[];
   hasFileContext?: boolean; // Indicates if AI response considers uploaded files
 }
 
-export interface PersonalityContext {
-  mood: string;
-  intensity: number;
-  timeOfDay: 'morning' | 'afternoon' | 'evening' | 'night';
-  recentInteractions: string[];
-  patterns: string[];
-}
 
 export interface FileUploadOptions {
   maxSizeBytes: number;

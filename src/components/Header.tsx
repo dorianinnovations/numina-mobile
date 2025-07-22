@@ -507,7 +507,7 @@ export const Header: React.FC<HeaderProps> = ({
                       activeOpacity={0.8}
                     >
                       <AnimatedBackArrow
-                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        color={isDarkMode ? '#87ebde' : '#00d4ff'}
                         size={16}
                         isPressed={backArrowPressed}
                       />
@@ -538,7 +538,7 @@ export const Header: React.FC<HeaderProps> = ({
                       activeOpacity={0.8}
                     >
                       <AnimatedConversationsIcon
-                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        color={isDarkMode ? '#b4a7d6' : '#a78bfa'}
                         size={16}
                         isPressed={conversationsPressed}
                       />
@@ -571,7 +571,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <FontAwesome5
                         name="chart-line"
                         size={16}
-                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        color={isDarkMode ? '#ff9ff3' : '#ec4899'}
                         style={{
                           opacity: brainPressed ? 0.7 : 1,
                         }}
@@ -604,7 +604,7 @@ export const Header: React.FC<HeaderProps> = ({
                     >
                       <AnimatedHamburger
                         isOpen={menuVisible}
-                        color={isDarkMode ? '#6ec5ff' : '#616161'}
+                        color={isDarkMode ? '#98fb98' : '#22c55e'}
                         size={16}
                       />
                     </TouchableOpacity>

@@ -368,11 +368,11 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           >
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? '#add5fa' : '#000',
-                shadowOpacity: isDarkMode ? 0.3 : 0.15,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 6,
+                shadowColor: isDarkMode ? '#87ebde' : '#00d4ff',
+                shadowOpacity: isDarkMode ? 0.6 : 0.4,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 8 }, // Downward shadow toward bottom button
+                elevation: 12,
               }]}
               onPress={handleExploreButtonPress}
               activeOpacity={0.9}
@@ -382,18 +382,22 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     styles.primaryButton,
                     {
                       backgroundColor: isDarkMode 
-                        ? '#9fb9ff'
+                        ? '#0f0f0f'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#333333'
-                        : 'rgba(255, 255, 255, 0.7)',
-                      borderWidth: 1,
+                        ? '#1a1a1a'
+                        : '#e0e0e0',
+                      borderWidth: 2,
+                      shadowColor: isDarkMode ? '#000000' : '#ffffff',
+                      shadowOpacity: isDarkMode ? 0.4 : 0.8,
+                      shadowRadius: 4,
+                      shadowOffset: { width: -1, height: -1 },
                     }
                   ]}
                 >
                   <Text style={[
                     styles.primaryButtonText, 
-                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500] }
                   ]}>
                     Explore
                   </Text>
@@ -416,11 +420,11 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           >
             <TouchableOpacity
               style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? '#add5fa' : '#000',
-                shadowOpacity: isDarkMode ? 0.25 : 0.12,
-                shadowRadius: 6,
-                shadowOffset: { width: 0, height: 3 },
-                elevation: 5,
+                shadowColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
+                shadowOpacity: isDarkMode ? 0.45 : 0.3,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: -6 }, // Upward traveling shadow
+                elevation: 8,
               }]}
                 onPress={handleSignUpButtonPress}
                 activeOpacity={0.9}
@@ -430,18 +434,22 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                     styles.primaryButton,
                     {
                       backgroundColor: isDarkMode 
-                        ? '#9fb9ff'
+                        ? '#0f0f0f'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#333333'
-                        : 'rgba(255, 255, 255, 0.7)',
-                      borderWidth: 1,
+                        ? '#1a1a1a'
+                        : '#e0e0e0',
+                      borderWidth: 2,
+                      shadowColor: isDarkMode ? '#000000' : '#ffffff',
+                      shadowOpacity: isDarkMode ? 0.4 : 0.8,
+                      shadowRadius: 4,
+                      shadowOffset: { width: -1, height: -1 },
                     }
                   ]}
                 >
                   <Text style={[
                     styles.primaryButtonText, 
-                    { color: isDarkMode ? NuminaColors.darkMode[600] : NuminaColors.darkMode[500] }
+                    { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500] }
                   ]}>
                     Create Account
                   </Text>
