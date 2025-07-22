@@ -68,6 +68,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   const signUpButtonPressScale = useRef(new Animated.Value(1)).current;
   const signInButtonPressScale = useRef(new Animated.Value(1)).current;
 
+
   useEffect(() => {
     // IMMEDIATE VISIBILITY FIX: Set all elements visible first, then animate
     fadeAnim.setValue(1);
@@ -267,6 +268,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     outputRange: ['0deg', '360deg'],
   });
 
+
   return (
     <PageBackground>
       <SafeAreaView style={styles.container}>
@@ -383,7 +385,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         ? '#9fb9ff'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#343333'
+                        ? '#333333'
                         : 'rgba(255, 255, 255, 0.7)',
                       borderWidth: 1,
                     }
@@ -420,18 +422,18 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 shadowOffset: { width: 0, height: 3 },
                 elevation: 5,
               }]}
-              onPress={handleSignUpButtonPress}
-              activeOpacity={0.9}
-            >
+                onPress={handleSignUpButtonPress}
+                activeOpacity={0.9}
+              >
                 <View
                   style={[
                     styles.primaryButton,
                     {
                       backgroundColor: isDarkMode 
-                        ? '#add5fa'
+                        ? '#9fb9ff'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#343333'
+                        ? '#333333'
                         : 'rgba(255, 255, 255, 0.7)',
                       borderWidth: 1,
                     }
