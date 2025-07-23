@@ -331,6 +331,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             clearErrorOnChange();
                           }}
                           autoCapitalize="none"
+                          autoCorrect={false}
+                          spellCheck={false}
                           keyboardType="email-address"
                           keyboardAppearance={isDarkMode ? 'dark' : 'light'} // iOS only
                           returnKeyType="next"
@@ -348,13 +350,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 0,
-                                duration: 100,
+                                duration: 150,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                               Animated.timing(cardTranslateYAnim, {
-                                toValue: -0.10 * height,
-                                duration: 500,
-                                easing: Easing.out(Easing.cubic),
+                                toValue: -0.08 * height,
+                                duration: 400,
+                                easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -370,13 +373,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 1,
-                                duration: 100,
+                                duration: 200,
+                                easing: Easing.in(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                               Animated.timing(cardTranslateYAnim, {
                                 toValue: 0,
-                                duration: 500,
-                                easing: Easing.out(Easing.cubic),
+                                duration: 350,
+                                easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -406,6 +410,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             clearErrorOnChange();
                           }}
                           secureTextEntry
+                          autoCorrect={false}
+                          spellCheck={false}
                           keyboardAppearance={isDarkMode ? 'dark' : 'light'} // iOS only
                           returnKeyType="done"
                           editable={!loading}
@@ -425,13 +431,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 0,
-                                duration: 100,
+                                duration: 150,
+                                easing: Easing.out(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                               Animated.timing(cardTranslateYAnim, {
-                                toValue: -0.10 * height,
-                                duration: 500,
-                                easing: Easing.out(Easing.cubic),
+                                toValue: -0.08 * height,
+                                duration: 400,
+                                easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -447,13 +454,14 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               }),
                               Animated.timing(headerOpacityAnim, {
                                 toValue: 1,
-                                duration: 100,
+                                duration: 200,
+                                easing: Easing.in(Easing.cubic),
                                 useNativeDriver: true,
                               }),
                               Animated.timing(cardTranslateYAnim, {
                                 toValue: 0,
-                                duration: 500,
-                                easing: Easing.out(Easing.cubic),
+                                duration: 350,
+                                easing: Easing.bezier(0.25, 0.46, 0.45, 0.94),
                                 useNativeDriver: true,
                               }),
                             ]).start();
@@ -646,13 +654,13 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   input: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 0,
     borderRadius: 12,
     fontSize: 16,
     fontWeight: '400',
-    height: 48,
+    height: 42,
     fontFamily: 'Nunito_400Regular',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

@@ -1001,6 +1001,15 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     generateNodes(true);
   };
 
+  // Cleanup effect for chain of thought
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const processGeneratedNodes = async (generatedNodes: any[]) => {
     try {
       // Get comprehensive user data for enhancement

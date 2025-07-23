@@ -15,6 +15,7 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
   Modal,
+  Easing,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -380,6 +381,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             value={email}
                             onChangeText={setEmail}
                             autoCapitalize="none"
+                            autoCorrect={false}
+                            spellCheck={false}
                             keyboardType="email-address"
                             keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                             returnKeyType="next"
@@ -398,7 +401,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 0,
-                                    duration: 100,
+                                    duration: 150,
+                                    easing: Easing.out(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -414,7 +418,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 100,
+                                    duration: 200,
+                                    easing: Easing.in(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -441,6 +446,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry
+                            autoCorrect={false}
+                            spellCheck={false}
                             keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                             returnKeyType="next"
                             editable={!loading}
@@ -458,7 +465,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 0,
-                                    duration: 100,
+                                    duration: 150,
+                                    easing: Easing.out(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -474,7 +482,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 100,
+                                    duration: 200,
+                                    easing: Easing.in(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -501,6 +510,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             value={confirmPassword}
                             onChangeText={setConfirmPassword}
                             secureTextEntry
+                            autoCorrect={false}
+                            spellCheck={false}
                             keyboardAppearance={isDarkMode ? 'dark' : 'light'}
                             returnKeyType="done"
                             editable={!loading}
@@ -521,7 +532,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 0,
-                                    duration: 100,
+                                    duration: 150,
+                                    easing: Easing.out(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -537,7 +549,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                   }),
                                   Animated.timing(headerOpacityAnim, {
                                     toValue: 1,
-                                    duration: 100,
+                                    duration: 200,
+                                    easing: Easing.in(Easing.cubic),
                                     useNativeDriver: true,
                                   }),
                                 ]).start();
@@ -931,13 +944,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   input: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderWidth: 0,
     borderRadius: 12,
     fontSize: 16,
     fontWeight: '400',
-    height: 48,
+    height: 42,
     fontFamily: 'Nunito_400Regular',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
