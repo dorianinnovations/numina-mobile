@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Dimensions,
   Animated,
   Keyboard,
@@ -141,6 +142,74 @@ const SANDBOX_ACTIONS: SandboxAction[] = [
   }
 ];
 
+const GHOST_TYPING_EXAMPLES = [
+  "explore my relationships with creativity",
+  "find patterns in my decision making",
+  "think about my career growth trajectory", 
+  "connect my emotions to daily routines",
+  "write about overcoming recent challenges",
+  "imagine my ideal work environment",
+  "analyze my communication patterns",
+  "discover hidden productivity habits",
+  "explore what motivates me most",
+  "find connections between my goals",
+  "think through my learning preferences",
+  "write about meaningful relationships",
+  "connect my values to actions",
+  "imagine breakthrough moments",
+  "analyze my stress responses",
+  "understand my perfectionist tendencies",
+  "explore creative blocks and breakthroughs",
+  "think about work-life boundaries",
+  "connect past experiences to present choices",
+  "write about moments of clarity",
+  "analyze my leadership style evolution",
+  "discover what drains my energy",
+  "imagine my future self's perspective",
+  "find patterns in my social interactions",
+  "explore financial mindset and habits",
+  "think about legacy and impact",
+  "connect childhood influences to adult behaviors",
+  "write about overcoming fear and doubt",
+  "analyze seasonal mood changes",
+  "discover my authentic voice and expression"
+];
+
+// Common typo patterns for realistic human typing
+const TYPO_PATTERNS: Record<string, string[]> = {
+  // Adjacent key typos (QWERTY layout)
+  'e': ['w', 'r'],
+  'r': ['e', 't'],
+  't': ['r', 'y'],
+  'y': ['t', 'u'],
+  'u': ['y', 'i'],
+  'i': ['u', 'o'],
+  'o': ['i', 'p'],
+  'a': ['s', 'q'],
+  's': ['a', 'd'],
+  'd': ['s', 'f'],
+  'f': ['d', 'g'],
+  'g': ['f', 'h'],
+  'h': ['g', 'j'],
+  'j': ['h', 'k'],
+  'k': ['j', 'l'],
+  'l': ['k'],
+  'z': ['x'],
+  'x': ['z', 'c'],
+  'c': ['x', 'v'],
+  'v': ['c', 'b'],
+  'b': ['v', 'n'],
+  'n': ['b', 'm'],
+  'm': ['n'],
+};
+
+// Initialize random starting index (never starts on the same one)
+const getRandomStartIndex = () => {
+  const timestamp = Date.now();
+  const randomSeed = Math.sin(timestamp) * 10000;
+  return Math.floor((randomSeed - Math.floor(randomSeed)) * GHOST_TYPING_EXAMPLES.length);
+};
+
 export const SandboxScreen: React.FC<SandboxScreenProps> = ({ 
   onNavigateBack 
 }) => {
@@ -148,7 +217,9 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const cursorAnim = useRef(new Animated.Value(1)).current;
   const pillsAnim = useRef(new Animated.Value(0)).current;
+  const inputContainerAnim = useRef(new Animated.Value(0)).current; // For centering input
   const contentOffsetAnim = useRef(new Animated.Value(0)).current;
+  const buttonContentAnim = useRef(new Animated.Value(1)).current; // For button content transitions
   const textInputRef = useRef<TextInput>(null);
 
   const [inputText, setInputText] = useState('');
@@ -156,6 +227,13 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const [selectedActions, setSelectedActions] = useState<string[]>([]);
   const [showUBPMModal, setShowUBPMModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Ghost typing effect state
+  const [ghostText, setGhostText] = useState('');
+  const [currentExampleIndex, setCurrentExampleIndex] = useState(() => getRandomStartIndex());
+  const [isTyping, setIsTyping] = useState(false);
+  const [isBackspacing, setIsBackspacing] = useState(false);
+  const [isCorrectingTypo, setIsCorrectingTypo] = useState(false);
   const [nodes, setNodes] = useState<SandboxNode[]>([]);
   const [showNodes, setShowNodes] = useState(false);
   const [selectedNode, setSelectedNode] = useState<SandboxNode | null>(null);
@@ -167,6 +245,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     connectionType: string;
   }>>([]);
   const sendButtonAnim = useRef(new Animated.Value(0)).current;
+  const sendButtonScaleAnim = useRef(new Animated.Value(1)).current;
   
   // Window Modal state
   const [showWindowModal, setShowWindowModal] = useState(false);
@@ -174,12 +253,33 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const [windowResults, setWindowResults] = useState<WindowQueryResponse | null>(null);
   const [isWindowLoading, setIsWindowLoading] = useState(false);
   const [attachingTidBit, setAttachingTidBit] = useState<string | null>(null);
+  
+  // Node Modal size state
+  const [nodeModalSize, setNodeModalSize] = useState<'standard' | 'xl' | 'fullscreen'>('standard');
+
+  // Pill animation state management
+  const pillAnimations = useRef<Map<string, {
+    scale: Animated.Value;
+  }>>(new Map()).current;
+  
+  // Initialize pill animations for each action
+  useEffect(() => {
+    SANDBOX_ACTIONS.forEach(action => {
+      if (!pillAnimations.has(action.id)) {
+        pillAnimations.set(action.id, {
+          scale: new Animated.Value(1),
+        });
+      }
+    });
+  }, []);
 
   // Node animation refs
   const nodeAnims = useRef<Map<string, {
     opacity: Animated.Value;
     scale: Animated.Value;
     translateY: Animated.Value;
+    glow?: Animated.Value;
+    pulse?: Animated.Value;
   }>>(new Map()).current;
 
   useEffect(() => {
@@ -190,24 +290,56 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       useNativeDriver: true,
     }).start();
 
-    // Cursor blinking animation
+    // VS Code terminal-style cursor blinking with consistent timing
+    let cursorAnimationRef: any;
+    
     const blinkCursor = () => {
-      Animated.sequence([
+      let blinkOnDuration, blinkOffDuration;
+      
+      if (isCorrectingTypo) {
+        // Fast pulsing during typo correction
+        blinkOnDuration = 30;
+        blinkOffDuration = 30;
+      } else if (isTyping) {
+        // Steady fast blink during typing - like VS Code when active
+        blinkOnDuration = 80;
+        blinkOffDuration = 80;
+      } else if (isBackspacing) {
+        // Quick blink during deletion
+        blinkOnDuration = 50;
+        blinkOffDuration = 50;
+      } else {
+        // VS Code terminal default: 530ms visible, 530ms hidden (1.06s cycle)
+        blinkOnDuration = 530;
+        blinkOffDuration = 530;
+      }
+      
+      cursorAnimationRef = Animated.sequence([
         Animated.timing(cursorAnim, {
           toValue: 0,
-          duration: 500,
+          duration: blinkOffDuration,
           useNativeDriver: true,
         }),
         Animated.timing(cursorAnim, {
           toValue: 1,
-          duration: 500,
+          duration: blinkOnDuration,
           useNativeDriver: true,
         }),
-      ]).start(() => blinkCursor());
+      ]);
+      
+      cursorAnimationRef.start(() => blinkCursor());
     };
     
     blinkCursor();
 
+    return () => {
+      if (cursorAnimationRef) {
+        cursorAnimationRef.stop();
+      }
+    };
+  }, [isTyping, isBackspacing, isCorrectingTypo]);
+
+  useEffect(() => {
     // Keyboard listeners
     const keyboardWillShowListener = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -240,32 +372,88 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   }, []);
 
   useEffect(() => {
-    // Animate pills when input is focused
+    // Simple, fast opacity animation for pills
     Animated.timing(pillsAnim, {
       toValue: isInputFocused ? 1 : 0,
-      duration: 300,
+      duration: 150, // Nearly instant
+      useNativeDriver: true,
+    }).start();
+
+    // Keep the centered input positioning
+    Animated.timing(inputContainerAnim, {
+      toValue: isInputFocused ? -40 : 0,
+      duration: 200,
       useNativeDriver: true,
     }).start();
   }, [isInputFocused]);
 
   useEffect(() => {
-    // Animate send button when user types
-    if (inputText.trim()) {
+    // Animate send button when user types or selects actions
+    const shouldShowButton = inputText.trim().length > 0 || selectedActions.length > 0;
+    
+    if (shouldShowButton) {
       setTimeout(() => {
         Animated.timing(sendButtonAnim, {
           toValue: 1,
-          duration: 1200,
+          duration: 400, // Faster animation for better responsiveness
           useNativeDriver: true,
         }).start();
-      }, 100);
+      }, 50);
     } else {
       Animated.timing(sendButtonAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 200, // Quick fade out
         useNativeDriver: true,
       }).start();
     }
-  }, [inputText]);
+
+    // Subtle input container adjustment as text grows to maintain visual balance
+    if (isInputFocused) {
+      const textLength = inputText.length;
+      const adjustmentOffset = Math.min(textLength * 0.3, 15); // Max 15px adjustment
+      
+      Animated.timing(inputContainerAnim, {
+        toValue: -40 + adjustmentOffset, // Gradually move back toward center as text grows
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [inputText, selectedActions, isInputFocused]);
+
+  // Animate button content changes when actions change
+  useEffect(() => {
+    // Quick fade out and in for smooth content transitions
+    Animated.sequence([
+      Animated.timing(buttonContentAnim, {
+        toValue: 0.7,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonContentAnim, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [selectedActions]);
+
+  // Keyboard event listeners for better UX
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setIsInputFocused(true);
+    });
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      if (inputText.length === 0 && selectedActions.length === 0) {
+        setIsInputFocused(false);
+      }
+    });
+
+    return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
+    };
+  }, [inputText, selectedActions]);
 
   // WebSocket integration for real-time Insight Node delivery
   useEffect(() => {
@@ -274,7 +462,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         const webSocketService = WebSocketService();
         
         // Ensure WebSocket is connected
-        await webSocketService.connect();
+        await webSocketService.initialize();
         
         // Listen for Pattern Engine insight discoveries
         const handleInsightNodeArrival = (data: any) => {
@@ -336,6 +524,169 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     setupInsightNodeListener();
   }, []);
 
+  // Advanced ghost typing effect with human-like variations and typos
+  useEffect(() => {
+    if (isInputFocused || inputText.length > 0 || isProcessing) {
+      setGhostText('');
+      setIsTyping(false);
+      setIsBackspacing(false);
+      setIsCorrectingTypo(false);
+      return;
+    }
+
+    let typingTimeoutId: NodeJS.Timeout;
+    let isActive = true;
+
+    const shouldMakeTypo = () => Math.random() < 0.015; // 1.5% chance of typo (very subtle)
+    const getTypoFor = (char: string) => {
+      const typos = TYPO_PATTERNS[char.toLowerCase()];
+      return typos ? typos[Math.floor(Math.random() * typos.length)] : char;
+    };
+
+    const startGhostTyping = () => {
+      if (!isActive) return;
+      
+      const currentExample = GHOST_TYPING_EXAMPLES[currentExampleIndex];
+      let charIndex = 0;
+      let targetText = currentExample;
+      let hasTypo = false;
+      let typoPosition = -1;
+      
+      setIsTyping(true);
+      setIsBackspacing(false);
+      setIsCorrectingTypo(false);
+
+      const typeChar = () => {
+        if (!isActive) return;
+        
+        if (charIndex < targetText.length) {
+          const currentChar = targetText[charIndex];
+          let charToType = currentChar;
+          
+          // Randomly introduce typos (but not on spaces or at the very beginning)
+          if (!hasTypo && charIndex > 2 && currentChar !== ' ' && shouldMakeTypo()) {
+            charToType = getTypoFor(currentChar);
+            hasTypo = true;
+            typoPosition = charIndex;
+          }
+          
+          const newText = targetText.substring(0, charIndex) + charToType;
+          setGhostText(newText);
+          charIndex++;
+          
+          // If we made a typo, pause and then correct it (VS Code style)
+          if (hasTypo && charIndex === typoPosition + 1) {
+            const pauseBeforeCorrection = 150 + Math.random() * 100; // 150-250ms pause (like a programmer noticing)
+            typingTimeoutId = setTimeout(() => {
+              startTypoCorrection(typoPosition, currentChar);
+            }, pauseBeforeCorrection);
+            return;
+          }
+          
+          // VS Code terminal-style consistent typing speed with subtle variations
+          let typingSpeed;
+          if (currentChar === ' ') {
+            typingSpeed = 85 + Math.random() * 15; // Spaces (85-100ms) - more consistent
+          } else if (charIndex === 1 || targetText[charIndex - 2] === ' ') {
+            typingSpeed = 75 + Math.random() * 20; // Word start (75-95ms) - slight pause for word boundary
+          } else {
+            typingSpeed = 65 + Math.random() * 10; // Normal speed (65-75ms) - very consistent like terminal
+          }
+          
+          typingTimeoutId = setTimeout(typeChar, typingSpeed);
+        } else {
+          // Optimized pause before backspacing
+          const completePause = 1200 + Math.random() * 800; // 1.2-2s pause (faster)
+          typingTimeoutId = setTimeout(startBackspacing, completePause);
+        }
+      };
+
+      const startTypoCorrection = (typoPos: number, correctChar: string) => {
+        if (!isActive) return;
+        
+        setIsCorrectingTypo(true);
+        setIsTyping(false);
+        
+        // Backspace the typo
+        const correctionText = targetText.substring(0, typoPos);
+        setGhostText(correctionText);
+        
+        // Brief pause before typing correct character
+        typingTimeoutId = setTimeout(() => {
+          if (!isActive) return;
+          
+          const correctedText = correctionText + correctChar;
+          setGhostText(correctedText);
+          charIndex = typoPos + 1;
+          hasTypo = false;
+          typoPosition = -1;
+          
+          setIsCorrectingTypo(false);
+          setIsTyping(true);
+          
+          // Continue typing after correction (VS Code style - quick resume)
+          const resumeSpeed = 60 + Math.random() * 15; // 60-75ms - consistent resume speed
+          typingTimeoutId = setTimeout(typeChar, resumeSpeed);
+        }, 50 + Math.random() * 30); // 50-80ms pause (quick correction like VS Code)
+      };
+
+      const startBackspacing = () => {
+        if (!isActive) return;
+        
+        setIsTyping(false);
+        setIsBackspacing(true);
+        let currentLength = targetText.length;
+
+        const backspaceChar = () => {
+          if (!isActive) return;
+          
+          if (currentLength > 0) {
+            currentLength--;
+            const newText = targetText.substring(0, currentLength);
+            setGhostText(newText);
+            
+            // VS Code terminal-style backspacing - consistent and smooth
+            let backspaceSpeed;
+            if (currentLength > 0 && targetText[currentLength] === ' ') {
+              backspaceSpeed = 25 + Math.random() * 5; // Spaces (25-30ms) - consistent fast
+            } else if (currentLength > 0 && targetText[currentLength - 1] === ' ') {
+              backspaceSpeed = 35 + Math.random() * 10; // Word boundaries (35-45ms) - slight pause
+            } else {
+              backspaceSpeed = 28 + Math.random() * 4; // Normal speed (28-32ms) - very consistent like terminal
+            }
+            
+            typingTimeoutId = setTimeout(backspaceChar, backspaceSpeed);
+          } else {
+            setIsBackspacing(false);
+            setGhostText(''); // Ensure clean state
+            // Move to next example and pause before starting
+            setCurrentExampleIndex((prev) => (prev + 1) % GHOST_TYPING_EXAMPLES.length);
+            typingTimeoutId = setTimeout(startGhostTyping, 600 + Math.random() * 400); // 0.6-1s pause (faster)
+          }
+        };
+
+        backspaceChar();
+      };
+
+      typeChar();
+    };
+
+    // Optimized initial delay
+    const initialDelay = 500 + Math.random() * 400; // 0.5-0.9s (faster start)
+    typingTimeoutId = setTimeout(startGhostTyping, initialDelay);
+
+    return () => {
+      isActive = false;
+      if (typingTimeoutId) {
+        clearTimeout(typingTimeoutId);
+      }
+      setGhostText('');
+      setIsTyping(false);
+      setIsBackspacing(false);
+      setIsCorrectingTypo(false);
+    };
+  }, [isInputFocused, inputText, isProcessing, currentExampleIndex]);
+
   const handleInputFocus = () => {
     setIsInputFocused(true);
     NuminaAnimations.haptic.light();
@@ -347,13 +698,155 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     }
   };
 
+  const handleDismissKeyboard = () => {
+    Keyboard.dismiss();
+    textInputRef.current?.blur();
+  };
+
+  // Get dynamic send button icon based on selected actions
+  const getSendButtonIcon = () => {
+    if (selectedActions.length === 0) {
+      return 'send'; // Default send icon
+    }
+    
+    if (selectedActions.length === 1) {
+      const selectedAction = SANDBOX_ACTIONS.find(action => action.id === selectedActions[0]);
+      return selectedAction?.icon || 'send';
+    }
+    
+    // Multiple actions - use a plus icon
+    return 'plus'; // Indicates multiple actions
+  };
+
+  // Get dynamic send button color based on selected actions
+  const getSendButtonColor = () => {
+    if (selectedActions.length === 0) {
+      return '#1a1a1a'; // Default dark color
+    }
+    
+    if (selectedActions.length === 1) {
+      const selectedAction = SANDBOX_ACTIONS.find(action => action.id === selectedActions[0]);
+      return selectedAction?.color || '#1a1a1a';
+    }
+    
+    // Multiple actions - use a gradient-like color
+    return '#8B5CF6'; // Purple for multi-action
+  };
+
+  // Render multi-action send button content
+  const renderSendButtonContent = () => {
+    if (selectedActions.length === 0) {
+      return <Feather name="send" size={17} color="#1a1a1a" />;
+    }
+    
+    if (selectedActions.length === 1) {
+      const selectedAction = SANDBOX_ACTIONS.find(action => action.id === selectedActions[0]);
+      return (
+        <Feather 
+          name={selectedAction?.icon || 'send'} 
+          size={17} 
+          color={selectedAction?.color || '#1a1a1a'} 
+        />
+      );
+    }
+    
+    if (selectedActions.length === 2) {
+      // Show both icons side by side for exactly 2 actions
+      const action1 = SANDBOX_ACTIONS.find(action => action.id === selectedActions[0]);
+      const action2 = SANDBOX_ACTIONS.find(action => action.id === selectedActions[1]);
+      
+      return (
+        <View style={styles.dualIconContainer}>
+          <Feather 
+            name={action1?.icon || 'help-circle'} 
+            size={12} 
+            color={action1?.color || '#1a1a1a'} 
+          />
+          <Feather 
+            name={action2?.icon || 'help-circle'} 
+            size={12} 
+            color={action2?.color || '#1a1a1a'} 
+          />
+        </View>
+      );
+    }
+    
+    // 3+ actions: show first two icons + plus with number
+    const action1 = SANDBOX_ACTIONS.find(action => action.id === selectedActions[0]);
+    const action2 = SANDBOX_ACTIONS.find(action => action.id === selectedActions[1]);
+    
+    return (
+      <View style={styles.multiActionContainer}>
+        <View style={styles.firstTwoIcons}>
+          <Feather 
+            name={action1?.icon || 'help-circle'} 
+            size={10} 
+            color={action1?.color || '#1a1a1a'} 
+          />
+          <Feather 
+            name={action2?.icon || 'help-circle'} 
+            size={10} 
+            color={action2?.color || '#1a1a1a'} 
+          />
+        </View>
+        <View style={styles.plusIndicator}>
+          <Feather name="plus" size={8} color="#8B5CF6" />
+          <Text style={styles.actionCount}>{selectedActions.length - 2}</Text>
+        </View>
+      </View>
+    );
+  };
+
   const handleActionSelect = (actionId: string) => {
     NuminaAnimations.haptic.medium();
     
-    if (selectedActions.includes(actionId)) {
-      setSelectedActions(prev => prev.filter(id => id !== actionId));
-    } else {
+    const animations = pillAnimations.get(actionId);
+    if (!animations) return;
+
+    const isSelecting = !selectedActions.includes(actionId);
+    
+    // Trigger send button jiggly bounce for cohesive feeling
+    Animated.sequence([
+      Animated.timing(sendButtonScaleAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sendButtonScaleAnim, {
+        toValue: 1,
+        tension: 400,
+        friction: 6,
+        useNativeDriver: true,
+      })
+    ]).start();
+    
+    if (isSelecting) {
+      // Simple satisfying selection animation
+      Animated.sequence([
+        Animated.timing(animations.scale, {
+          toValue: 0.95,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.spring(animations.scale, {
+          toValue: 1.02,
+          tension: 400,
+          friction: 6,
+          useNativeDriver: true,
+        })
+      ]).start();
+      
       setSelectedActions(prev => [...prev, actionId]);
+    } else {
+      // Simple deselection
+      Animated.spring(animations.scale, {
+        toValue: 1,
+        tension: 300,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+      
+      setSelectedActions(prev => prev.filter(id => id !== actionId));
     }
   };
 
@@ -375,7 +868,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     const contextParts = lockedNodes.map(node => {
       const insights = node.deepInsights ? 
         ` Insights: ${node.deepInsights.personalizedContext}` : '';
-      const connections = node.deepInsights?.dataConnections.length > 0 ? 
+      const connections = node.deepInsights?.dataConnections && node.deepInsights.dataConnections.length > 0 ? 
         ` Connected to: ${node.deepInsights.dataConnections.map(c => c.type).join(', ')}` : '';
       
       return `[${node.title}] ${node.content}${insights}${connections}`;
@@ -681,13 +1174,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       style={[
         styles.pillsContainer,
         {
-          opacity: pillsAnim,
-          transform: [{
-            translateY: pillsAnim.interpolate({
-              inputRange: [0, 1],
-              outputRange: [20, 0],
-            })
-          }]
+          opacity: pillsAnim, // Simple opacity transition only
         }
       ]}
     >
@@ -695,41 +1182,55 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         How should I help?
       </Text>
       <View style={styles.pillsGrid}>
-        {SANDBOX_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.id}
-            style={[
-              styles.actionPill,
-              {
-                backgroundColor: selectedActions.includes(action.id)
-                  ? action.color
-                  : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
-                borderColor: selectedActions.includes(action.id)
-                  ? action.color
-                  : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-              }
-            ]}
-            onPress={() => handleActionSelect(action.id)}
-          >
-            <Feather 
-              name={action.icon as any} 
-              size={14} 
-              color={selectedActions.includes(action.id) ? '#fff' : action.color} 
-            />
-            <Text
-              style={[
-                styles.pillText,
-                {
-                  color: selectedActions.includes(action.id)
-                    ? '#fff'
-                    : (isDarkMode ? '#fff' : '#1a1a1a'),
-                }
-              ]}
+        {SANDBOX_ACTIONS.map((action) => {
+          const animations = pillAnimations.get(action.id);
+          const isSelected = selectedActions.includes(action.id);
+          
+          return (
+            <Animated.View
+              key={action.id}
+              style={{
+                transform: [
+                  { scale: animations?.scale || 1 }
+                ],
+              }}
             >
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <TouchableOpacity
+                style={[
+                  styles.actionPill,
+                  {
+                    backgroundColor: isSelected
+                      ? action.color
+                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                    borderColor: isSelected
+                      ? action.color
+                      : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                  }
+                ]}
+                onPress={() => handleActionSelect(action.id)}
+              >
+                
+                <Feather 
+                  name={action.icon as any} 
+                  size={14} 
+                  color={isSelected ? '#fff' : action.color} 
+                />
+                <Text
+                  style={[
+                    styles.pillText,
+                    {
+                      color: isSelected
+                        ? '#fff'
+                        : (isDarkMode ? '#fff' : '#1a1a1a'),
+                    }
+                  ]}
+                >
+                  {action.label}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
       </View>
     </Animated.View>
   );
@@ -737,13 +1238,11 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const renderUBPMModal = () => (
     showUBPMModal && (
       <View style={styles.modalOverlay}>
-        <BaseWalletCard style={[
-          styles.ubpmModal,
-          {
-            backgroundColor: isDarkMode ? 'rgba(10,10,10,0.98)' : 'rgba(255,255,255,0.98)',
-            borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-          }
-        ]}>
+        <BaseWalletCard style={{
+          ...styles.ubpmModal,
+          backgroundColor: isDarkMode ? 'rgba(10,10,10,0.98)' : 'rgba(255,255,255,0.98)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+        }}>
           <Text style={[styles.modalTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
             Use your UBPM for this sandbox?
           </Text>
@@ -777,7 +1276,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   const renderProcessingState = () => (
     <View style={styles.processingContainer}>
-      <EnhancedSpinner type="holographic" size="large" />
+      <EnhancedSpinner type="holographic" size={24} />
       <Text style={[styles.processingText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
         Weaving connections through your consciousness...
       </Text>
@@ -905,11 +1404,31 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       
       // Update nodes state
       setNodes(prevNodes => 
-        prevNodes.map(n => n.id === selectedNode.id ? updatedNode : n)
+        prevNodes.map(n => n.id === selectedNode.id ? {
+          ...updatedNode,
+          deepInsights: {
+            ...updatedNode.deepInsights,
+            summary: updatedNode.deepInsights?.summary || '',
+            keyPatterns: updatedNode.deepInsights?.keyPatterns || [],
+            personalizedContext: updatedNode.deepInsights?.personalizedContext || '',
+            dataConnections: updatedNode.deepInsights?.dataConnections || [],
+            relevanceScore: updatedNode.deepInsights?.relevanceScore || 0,
+          }
+        } as SandboxNode : n)
       );
       
       // Update selected node
-      setSelectedNode(updatedNode);
+      setSelectedNode({
+        ...updatedNode,
+        deepInsights: {
+          ...updatedNode.deepInsights,
+          summary: updatedNode.deepInsights?.summary || '',
+          keyPatterns: updatedNode.deepInsights?.keyPatterns || [],
+          personalizedContext: updatedNode.deepInsights?.personalizedContext || '',
+          dataConnections: updatedNode.deepInsights?.dataConnections || [],
+          relevanceScore: updatedNode.deepInsights?.relevanceScore || 0,
+        }
+      } as SandboxNode);
       
       // Remove the tid-bit from available list (since it's now attached)
       if (windowResults) {
@@ -1019,6 +1538,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                 ]}
                 placeholder="What would you like to research about this node?"
                 placeholderTextColor={isDarkMode ? '#666' : '#999'}
+                selectionColor={isDarkMode ? '#f5f5f5' : '#007AFF'}
                 value={windowQuery}
                 onChangeText={setWindowQuery}
                 multiline
@@ -1050,7 +1570,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                   {/* Synthesis */}
                   <BaseWalletCard style={styles.synthesisCard}>
                     <View style={styles.synthesisHeader}>
-                      <Feather name="brain" size={16} color="#8B5CF6" />
+                      <Feather name="zap" size={16} color="#8B5CF6" />
                       <Text style={[styles.synthesisTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
                         Research Synthesis
                       </Text>
@@ -1245,109 +1765,144 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const renderNodeModal = () => {
     if (!selectedNode) return null;
 
+    const isXL = (selectedNode.deepInsights?.dataConnections && selectedNode.deepInsights.dataConnections.length > 3) || 
+                  (selectedNode.deepInsights?.keyPatterns && selectedNode.deepInsights.keyPatterns.length > 2);
+
     return (
       <View style={styles.modalOverlay}>
-        <BaseWalletCard style={[
-          styles.nodeModal,
-          {
-            backgroundColor: isDarkMode ? 'rgba(10,10,10,0.95)' : 'rgba(255,255,255,0.95)',
-            borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-          }
-        ]}>
-          {/* Header */}
+        <BaseWalletCard style={{
+          ...(isXL ? styles.xlNodeModal : styles.nodeModal),
+          backgroundColor: isDarkMode ? 'rgba(10,10,10,0.95)' : 'rgba(255,255,255,0.95)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
+        }}>
+          {/* Header with size controls */}
           <View style={styles.nodeModalHeader}>
             <View style={styles.nodeModalTitleContainer}>
               <View style={[
                 styles.nodeModalColorIndicator,
                 {
-                  backgroundColor: selectedNode.isLocked
-                    ? '#10B981'
-                    : selectedNode.personalHook
-                      ? '#EC4899'
-                      : '#3B82F6'
+                  backgroundColor: selectedNode.isInsightNode
+                    ? '#8B5CF6'
+                    : selectedNode.isLocked
+                      ? '#10B981'
+                      : selectedNode.personalHook
+                        ? '#EC4899'
+                        : '#3B82F6'
                 }
               ]} />
               <Text style={[styles.nodeModalTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
                 {selectedNode.title}
               </Text>
-              {selectedNode.isLocked && (
-                <Feather name="lock" size={16} color="#10B981" />
-              )}
-            </View>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setSelectedNode(null)}
-            >
-              <Feather name="x" size={20} color={isDarkMode ? '#fff' : '#1a1a1a'} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Content */}
-          <Text style={[styles.nodeModalContent, { color: isDarkMode ? '#ccc' : '#666' }]}>
-            {selectedNode.content}
-          </Text>
-
-          {selectedNode.personalHook && (
-            <View style={styles.personalHookContainer}>
-              <Text style={styles.personalHookText}>{selectedNode.personalHook}</Text>
-            </View>
-          )}
-
-          {/* Deep Insights */}
-          {selectedNode.deepInsights && (
-            <View style={styles.insightsSection}>
-              <Text style={[styles.insightsSectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                Deep Insights
-              </Text>
-              <Text style={[styles.insightsText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                {selectedNode.deepInsights.personalizedContext}
-              </Text>
-              
-              {selectedNode.deepInsights.dataConnections.length > 0 && (
-                <View style={styles.dataConnectionsContainer}>
-                  <Text style={[styles.dataConnectionsTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                    Your Data Connections
-                  </Text>
-                  {selectedNode.deepInsights.dataConnections.slice(0, 2).map((connection, index) => (
-                    <View key={index} style={styles.dataConnection}>
-                      <View style={[styles.dataConnectionDot, { backgroundColor: connection.type === 'personality' ? '#8B5CF6' : '#06B6D4' }]} />
-                      <Text style={[styles.dataConnectionText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                        {connection.type}: {connection.source}
-                      </Text>
-                    </View>
-                  ))}
+              {selectedNode.isInsightNode && (
+                <View style={styles.smallInsightBadge}>
+                  <Feather name={getInsightIcon(selectedNode.patternType)} size={12} color="#8B5CF6" />
                 </View>
               )}
             </View>
-          )}
-
-          {/* Actions */}
-          <View style={styles.nodeModalActions}>
-            <TouchableOpacity
-              style={[styles.windowButton, { backgroundColor: '#8B5CF6' }]}
-              onPress={handleOpenWindow}
-            >
-              <Feather name="search" size={16} color="#fff" />
-              <Text style={styles.windowButtonText}>Research Window</Text>
-            </TouchableOpacity>
-            
-            {!selectedNode.isLocked ? (
+            <View style={styles.modalHeaderActions}>
+              {!isXL && (
+                <TouchableOpacity
+                  style={styles.modalSizeButton}
+                  onPress={() => setNodeModalSize('xl')}
+                >
+                  <Feather name="maximize-2" size={16} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                </TouchableOpacity>
+              )}
+              {isXL && (
+                <>
+                  <TouchableOpacity
+                    style={styles.modalSizeButton}
+                    onPress={() => setNodeModalSize('fullscreen')}
+                  >
+                    <Feather name="maximize" size={16} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalSizeButton}
+                    onPress={() => setNodeModalSize('standard')}
+                  >
+                    <Feather name="minimize-2" size={16} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                  </TouchableOpacity>
+                </>
+              )}
               <TouchableOpacity
-                style={[styles.lockNodeButton, { backgroundColor: '#10B981' }]}
-                onPress={() => handleLockNode(selectedNode)}
+                style={styles.closeButton}
+                onPress={() => setSelectedNode(null)}
               >
-                <Feather name="lock" size={16} color="#fff" />
-                <Text style={styles.lockNodeButtonText}>Lock Node</Text>
+                <Feather name="x" size={20} color={isDarkMode ? '#fff' : '#1a1a1a'} />
               </TouchableOpacity>
-            ) : (
-              <View style={styles.lockedIndicator}>
-                <Feather name="check-circle" size={16} color="#10B981" />
-                <Text style={[styles.lockedText, { color: '#10B981' }]}>
-                  Locked at {new Date(selectedNode.lockTimestamp!).toLocaleTimeString()}
+            </View>
+          </View>
+
+          <ScrollView style={isXL ? styles.xlModalContent : undefined} showsVerticalScrollIndicator={false}>
+            {/* Content */}
+            <Text style={[styles.nodeModalContent, { color: isDarkMode ? '#ccc' : '#666' }]}>
+              {selectedNode.content}
+            </Text>
+
+            {selectedNode.personalHook && (
+              <View style={styles.personalHookContainer}>
+                <Text style={[styles.personalHookText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  {selectedNode.personalHook}
                 </Text>
               </View>
             )}
-          </View>
+
+            {/* Deep Insights */}
+            {selectedNode.deepInsights && (
+              <View style={styles.insightsSection}>
+                <Text style={[styles.insightsSectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                  Deep Insights
+                </Text>
+                <Text style={[styles.insightsText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  {selectedNode.deepInsights.personalizedContext}
+                </Text>
+                
+                {selectedNode.deepInsights.dataConnections.length > 0 && (
+                  <View style={styles.dataConnectionsContainer}>
+                    <Text style={[styles.dataConnectionsTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                      Your Data Connections
+                    </Text>
+                    {selectedNode.deepInsights.dataConnections.slice(0, isXL ? 5 : 2).map((connection, index) => (
+                      <View key={index} style={styles.dataConnection}>
+                        <View style={[styles.dataConnectionDot, { backgroundColor: connection.type === 'personality' ? '#8B5CF6' : '#06B6D4' }]} />
+                        <Text style={[styles.dataConnectionText, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                          {connection.type}: {connection.source}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Actions */}
+            <View style={styles.nodeModalActions}>
+              <TouchableOpacity
+                style={[styles.windowButton, { backgroundColor: '#8B5CF6' }]}
+                onPress={handleOpenWindow}
+              >
+                <Feather name="search" size={16} color="#fff" />
+                <Text style={styles.windowButtonText}>Research Window</Text>
+              </TouchableOpacity>
+              
+              {!selectedNode.isLocked ? (
+                <TouchableOpacity
+                  style={[styles.lockNodeButton, { backgroundColor: '#10B981' }]}
+                  onPress={() => handleLockNode(selectedNode)}
+                >
+                  <Feather name="lock" size={16} color="#fff" />
+                  <Text style={styles.lockNodeButtonText}>Lock Node</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.lockedIndicator}>
+                  <Feather name="check-circle" size={16} color="#10B981" />
+                  <Text style={[styles.lockedText, { color: '#10B981' }]}>
+                    Locked at {new Date(selectedNode.lockTimestamp!).toLocaleTimeString()}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </BaseWalletCard>
       </View>
     );
@@ -1366,16 +1921,16 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     const getNodeColor = () => {
       if (isInsight) {
         switch (node.patternType) {
-          case 'hidden_pattern': return '#8B5CF6'; // Aether purple
-          case 'behavioral_insight': return '#06B6D4'; // Cyan
-          case 'emotional_pattern': return '#EC4899'; // Pink
-          case 'temporal_connection': return '#F59E0B'; // Amber
-          default: return '#8B5CF6';
+          case 'hidden_pattern': return '#C4B5FD'; // Pastel purple
+          case 'behavioral_insight': return '#A7F3D0'; // Pastel mint
+          case 'emotional_pattern': return '#FBCFE8'; // Pastel pink
+          case 'temporal_connection': return '#FDE68A'; // Pastel yellow
+          default: return '#C4B5FD';
         }
       }
-      if (isLocked) return '#10B981';
-      if (node.personalHook) return '#EC4899';
-      return '#3B82F6';
+      if (isLocked) return '#A7F3D0'; // Pastel green
+      if (node.personalHook) return '#FBCFE8'; // Pastel pink
+      return '#BFDBFE'; // Pastel blue
     };
 
     const nodeColor = getNodeColor();
@@ -1386,8 +1941,8 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         style={[
           styles.node,
           {
-            left: node.position.x - 60,
-            top: node.position.y - 30,
+            left: node.position.x - 40,
+            top: node.position.y - 20,
             opacity: nodeAnim.opacity,
             transform: [
               { scale: nodeAnim.scale },
@@ -1421,12 +1976,12 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
             isInsight && styles.insightNodeDot,
             {
               backgroundColor: nodeColor,
-              borderColor: nodeColor,
-              borderWidth: hasConnections ? 3 : (isInsight ? 3 : 2),
-              shadowColor: isInsight ? nodeColor : undefined,
-              shadowOpacity: isInsight ? 0.6 : 0,
-              shadowRadius: isInsight ? 12 : 0,
-              shadowOffset: isInsight ? { width: 0, height: 0 } : { width: 0, height: 0 },
+              borderColor: isInsight ? '#8B5CF6' : (hasConnections ? '#666' : '#ccc'),
+              borderWidth: hasConnections ? 2 : (isInsight ? 2 : 1),
+              shadowColor: isInsight ? '#8B5CF6' : nodeColor,
+              shadowOpacity: isInsight ? 0.4 : 0.2,
+              shadowRadius: isInsight ? 6 : 3,
+              shadowOffset: { width: 0, height: 1 },
             }
           ]}
           onPress={() => handleNodePress(node)}
@@ -1436,8 +1991,8 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
             <View style={styles.insightIcon}>
               <Feather 
                 name={getInsightIcon(node.patternType)} 
-                size={12} 
-                color="#fff" 
+                size={8} 
+                color="#8B5CF6" 
               />
             </View>
           )}
@@ -1449,12 +2004,6 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
               color="#fff" 
               style={styles.lockIcon} 
             />
-          )}
-          <Text style={[styles.nodeTitle, isInsight && styles.insightNodeTitle]}>
-            {node.title}
-          </Text>
-          {node.personalHook && (
-            <Text style={styles.personalHook}>{node.personalHook}</Text>
           )}
           {hasConnections && !isInsight && (
             <View style={styles.connectionIndicator} />
@@ -1486,6 +2035,18 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
             />
           )}
         </TouchableOpacity>
+        
+        {/* Node Text Below Gumball */}
+        <View style={styles.nodeTextContainer}>
+          <Text style={[styles.nodeTitle, isInsight && styles.insightNodeTitle, { color: isDarkMode ? '#fff' : '#333' }]} numberOfLines={2} ellipsizeMode="tail">
+            {node.title}
+          </Text>
+          {node.personalHook && (
+            <Text style={[styles.personalHook, { color: isDarkMode ? '#ccc' : '#666' }]} numberOfLines={1} ellipsizeMode="tail">
+              {node.personalHook}
+            </Text>
+          )}
+        </View>
       </Animated.View>
     );
   };
@@ -1501,19 +2062,19 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         style: {
           top: Platform.OS === 'ios' ? 50 : 15, // Reduced top positioning
         },
-        disableAnimatedBorder: false,
       }}
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
-          <Animated.View
-            style={[
-              styles.content,
-              {
-                opacity: fadeAnim,
-              },
-            ]}
-          >
+          <TouchableWithoutFeedback onPress={handleDismissKeyboard}>
+            <Animated.View
+              style={[
+                styles.content,
+                {
+                  opacity: fadeAnim,
+                },
+              ]}
+            >
             {!isProcessing && !showNodes && (
               <>
                 {/* Minimal Input Area */}
@@ -1521,7 +2082,10 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                   style={[
                     styles.inputContainer,
                     {
-                      transform: [{ translateY: contentOffsetAnim }],
+                      transform: [
+                        { translateY: contentOffsetAnim },
+                        { translateY: inputContainerAnim }, // Center the input when focused
+                      ],
                     }
                   ]}
                 >
@@ -1534,10 +2098,12 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                           {
                             color: isDarkMode ? '#fff' : '#1a1a1a',
                             flex: 1,
+                            textAlign: inputText.length === 0 ? 'center' : 'left', // Dynamic alignment
                           }
                         ]}
                         placeholder=""
                         placeholderTextColor="transparent"
+                        selectionColor={isDarkMode ? '#f5f5f5' : '#007AFF'}
                         value={inputText}
                         onChangeText={setInputText}
                         onFocus={handleInputFocus}
@@ -1552,10 +2118,13 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                           {
                             opacity: sendButtonAnim,
                             transform: [{
-                              scale: sendButtonAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0.8, 1],
-                              })
+                              scale: Animated.multiply(
+                                sendButtonAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0.8, 1],
+                                }),
+                                sendButtonScaleAnim
+                              )
                             }]
                           }
                         ]}
@@ -1564,24 +2133,61 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                           style={[
                             styles.sendButtonTouchable,
                             {
-                              backgroundColor: '#fff',
-                              shadowColor: isDarkMode ? '#87CEEB' : '#87CEEB',
+                              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.95)' : '#fff',
+                              borderColor: getSendButtonColor(),
+                              borderWidth: selectedActions.length > 0 ? 1.5 : 0,
+                              shadowColor: selectedActions.length > 0 ? getSendButtonColor() : (isDarkMode ? '#87CEEB' : '#87CEEB'),
                               shadowOffset: { width: 0, height: 0 },
-                              shadowOpacity: isDarkMode ? 0.6 : 0.4,
-                              shadowRadius: isDarkMode ? 8 : 6,
-                              elevation: isDarkMode ? 8 : 6,
+                              shadowOpacity: selectedActions.length > 0 ? 0.4 : (isDarkMode ? 0.6 : 0.4),
+                              shadowRadius: selectedActions.length > 0 ? 6 : (isDarkMode ? 8 : 6),
+                              elevation: selectedActions.length > 0 ? 6 : (isDarkMode ? 8 : 6),
                             }
                           ]}
                           onPress={handleSubmit}
                         >
-                          <Feather name="send" size={16} color="#1a1a1a" />
+                          <Animated.View
+                            style={{
+                              opacity: buttonContentAnim,
+                              transform: [{
+                                scale: buttonContentAnim.interpolate({
+                                  inputRange: [0.7, 1],
+                                  outputRange: [0.9, 1],
+                                })
+                              }]
+                            }}
+                          >
+                            {renderSendButtonContent()}
+                          </Animated.View>
                         </TouchableOpacity>
                       </Animated.View>
                     </View>
-                    {!isInputFocused && inputText.length === 0 && renderCursor()}
+                    {/* Ghost Text and Cursor */}
+                    {!isInputFocused && inputText.length === 0 && ghostText && (
+                      <View style={styles.ghostTextContainer}>
+                        <Text 
+                          key={`ghost-${currentExampleIndex}-${ghostText.length}`}
+                          style={[styles.ghostText, { color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }]}
+                          numberOfLines={2}
+                          ellipsizeMode="tail"
+                        >
+                          {ghostText}
+                        </Text>
+                        <Animated.Text
+                          style={[
+                            styles.ghostCursor,
+                            {
+                              color: isDarkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)',
+                              opacity: cursorAnim,
+                            }
+                          ]}
+                        >
+                          |
+                        </Animated.Text>
+                      </View>
+                    )}
                   </View>
                   
-                  {isInputFocused && renderActionPills()}
+                  {renderActionPills()}
                   
                 </Animated.View>
               </>
@@ -1599,7 +2205,8 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
             {renderUBPMModal()}
             {renderNodeModal()}
             {renderWindowModal()}
-          </Animated.View>
+            </Animated.View>
+          </TouchableWithoutFeedback>
         </SafeAreaView>
       </PageBackground>
     </ScreenWrapper>
@@ -1635,10 +2242,9 @@ const styles = StyleSheet.create({
   mainInput: {
     fontSize: 24,
     fontWeight: '300',
-    textAlign: 'center',
-    minHeight: 60,
+    minHeight: 70,
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 20,
   },
   cursor: {
     position: 'absolute',
@@ -1646,6 +2252,35 @@ const styles = StyleSheet.create({
     fontWeight: '300',
     alignSelf: 'center',
     top: 16,
+  },
+
+  // Ghost Typing Effect
+  ghostTextContainer: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    top: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none',
+    minHeight: 32,
+  },
+  ghostText: {
+    fontSize: 20,
+    fontWeight: '300',
+    fontFamily: 'Nunito-Light',
+    textAlign: 'center',
+    lineHeight: 26,
+    flexShrink: 1,
+    letterSpacing: 0.2, // Subtle letter spacing for VS Code terminal feel
+  },
+  ghostCursor: {
+    fontSize: 20,
+    fontWeight: '300',
+    marginLeft: 1,
+    lineHeight: 26,
+    flexShrink: 0,
   },
 
   // Action Pills
@@ -1672,6 +2307,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
+    overflow: 'hidden',
+    position: 'relative',
   },
   pillText: {
     fontSize: 13,
@@ -1680,16 +2317,45 @@ const styles = StyleSheet.create({
 
   // Inline Send Button
   inlineSendButton: {
-    marginLeft: 12,
+    marginLeft: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sendButtonTouchable: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 32,
+    borderRadius: 16, // Less circular, more rounded rectangle
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 4, // Better positioning for thumb reach
+  },
+  dualIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2, // Small gap between dual icons
+  },
+  multiActionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2, // Small gap between first two icons and plus indicator
+  },
+  firstTwoIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1, // Tight spacing between first two icons
+  },
+  plusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1, // Tight spacing for + and number
+  },
+  actionCount: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginTop: -0.5, // Slight vertical adjustment for better alignment
   },
 
   // UBPM Modal
@@ -1763,28 +2429,41 @@ const styles = StyleSheet.create({
   node: {
     position: 'absolute',
     alignItems: 'center',
+    width: 30,
   },
   nodeDot: {
-    width: 120,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 60,
-    borderWidth: 2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  nodeTextContainer: {
+    position: 'absolute',
+    top: 28,
+    alignItems: 'center',
+    width: 28,
+    left: -2,
   },
   nodeTitle: {
-    color: '#fff',
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 10,
+    marginBottom: 2,
+    fontFamily: 'Nunito-SemiBold',
   },
   personalHook: {
-    color: '#fff',
-    fontSize: 10,
+    fontSize: 7,
     fontWeight: '400',
-    marginTop: 2,
-    opacity: 0.8,
+    opacity: 0.9,
+    textAlign: 'center',
+    fontFamily: 'Nunito-Regular',
   },
 
   // Connection Lines
@@ -1959,6 +2638,7 @@ const styles = StyleSheet.create({
   },
   insightNodeTitle: {
     fontWeight: '700',
+    fontFamily: 'Nunito-Bold',
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -2157,5 +2837,190 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '600',
+  },
+
+  // XL Node Modal
+  xlNodeModal: {
+    padding: 28,
+    borderRadius: 24,
+    borderWidth: 1,
+    width: '95%',
+    maxWidth: 600,
+    maxHeight: '85%',
+  },
+  xlModalContent: {
+    maxHeight: 500,
+  },
+
+  // Modal Header Actions
+  modalHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalSizeButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+
+  // Insight Badges
+  insightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  insightBadgeText: {
+    color: '#8B5CF6',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+  },
+  smallInsightBadge: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderRadius: 8,
+    padding: 4,
+  },
+
+  // Fullscreen Modal
+  fullscreenModal: {
+    flex: 1,
+  },
+  fullscreenModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  fullscreenModalTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  fullscreenModalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Nunito-Bold',
+    flex: 1,
+  },
+  fullscreenModalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  fullscreenModalContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+
+  // Fullscreen Content Sections
+  fullscreenContentSection: {
+    marginVertical: 20,
+  },
+  fullscreenSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Nunito-Bold',
+    marginBottom: 12,
+  },
+  fullscreenNodeContent: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontFamily: 'Nunito-Regular',
+  },
+  fullscreenPersonalHook: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontFamily: 'Nunito-Medium',
+    fontStyle: 'italic',
+  },
+  fullscreenInsightsText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontFamily: 'Nunito-Regular',
+    marginBottom: 16,
+  },
+
+  // Fullscreen Data Connections
+  fullscreenDataConnections: {
+    marginTop: 16,
+  },
+  fullscreenDataConnectionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+    marginBottom: 12,
+  },
+  fullscreenDataConnectionCard: {
+    marginBottom: 12,
+    padding: 16,
+  },
+  fullscreenDataConnectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  fullscreenDataConnectionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  fullscreenDataConnectionType: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+    textTransform: 'capitalize',
+  },
+  fullscreenDataConnectionText: {
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: 'Nunito-Regular',
+  },
+
+  // Fullscreen Actions
+  fullscreenActions: {
+    flexDirection: 'row',
+    gap: 16,
+    paddingVertical: 24,
+    flexWrap: 'wrap',
+  },
+  fullscreenActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    gap: 8,
+    flex: 1,
+    minWidth: 160,
+    justifyContent: 'center',
+  },
+  fullscreenActionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+  },
+  fullscreenLockedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    flex: 1,
+    minWidth: 160,
+  },
+  fullscreenLockedText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
   },
 });
