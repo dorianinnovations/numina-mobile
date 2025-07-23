@@ -199,7 +199,7 @@ class ComprehensiveAnalyticsService {
   private async canMakeRequest(): Promise<boolean> {
     const netInfo = await NetInfo.fetch();
     const token = CloudAuth.getInstance().getToken();
-    console.log('🔐 Auth check:', { connected: netInfo.isConnected, hasToken: !!token });
+    // Reduced auth check logging
     return (netInfo.isConnected ?? false) && !!token;
   }
 
@@ -209,7 +209,7 @@ class ComprehensiveAnalyticsService {
     }
 
     const url = `${this.baseURL}${endpoint}`;
-    console.log('📡 API Request:', { url, method: options.method || 'GET' });
+    // console.log('📡 API Request:', { url, method: options.method || 'GET' });
 
     const response = await fetch(url, {
       ...options,
@@ -219,7 +219,7 @@ class ComprehensiveAnalyticsService {
       },
     });
 
-    console.log('📡 API Response:', { url, status: response.status, ok: response.ok });
+    // console.log('📡 API Response:', { url, status: response.status, ok: response.ok });
 
     if (!response.ok) {
       const errorText = await response.text();

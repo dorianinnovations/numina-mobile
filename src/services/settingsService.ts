@@ -15,6 +15,13 @@ export interface UserSettings {
   fontSize: 'small' | 'medium' | 'large';
   themeColor: string;
   
+  // Border Effects
+  borderEffectsEnabled: boolean;
+  borderBrightness: number; // 0-100 percentage
+  borderSpeed: 1 | 2 | 3; // Animation speed
+  borderDirection: 'clockwise' | 'counterclockwise'; // Animation direction
+  borderVariation: 'smooth' | 'pulse' | 'wave'; // Animation style
+  
   // Notifications
   pushNotifications: boolean;
   dailyCheckins: boolean;
@@ -50,6 +57,11 @@ class SettingsService {
     themeMode: 'system',
     fontSize: 'medium',
     themeColor: '#6ec5ff',
+    borderEffectsEnabled: true,
+    borderBrightness: 80,
+    borderSpeed: 2,
+    borderDirection: 'clockwise',
+    borderVariation: 'smooth',
     pushNotifications: true,
     dailyCheckins: false,
     weeklyReports: true,

@@ -450,7 +450,7 @@ class ConversationStorageService {
     try {
       // Invalidate AI personality cache to force fresh analysis with new conversation data
       AsyncStorage.removeItem('@ai_emotional_state_cache');
-      console.log('📊 Analytics: Invalidated emotional state cache due to conversation update');
+      // console.log('📊 Analytics: Invalidated emotional state cache due to conversation update');
       
       // Trigger background sync to server for rich analytics (handled by CloudAuth service)
       this.triggerCloudSync();
@@ -470,7 +470,7 @@ class ConversationStorageService {
       if (cloudAuth && typeof cloudAuth.getInstance === 'function') {
         const instance = cloudAuth.getInstance();
         if (instance.isAuthenticated()) {
-          console.log('📊 ConversationSync: Conversation sync already handled by CloudAuth service');
+          // console.log('📊 ConversationSync: Conversation sync already handled by CloudAuth service');
           // The CloudAuth service automatically syncs conversations when they're updated
           // No need to duplicate the sync - just acknowledge that it's working
         } else {

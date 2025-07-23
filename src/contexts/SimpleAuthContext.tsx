@@ -166,13 +166,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (credentials: { email: string; password: string }): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
-    console.log('[AuthContext] Login attempt for:', credentials.email, 'setting loading=true');
+    // console.log('[AuthContext] Login attempt for:', credentials.email, 'setting loading=true');
     
     try {
       const result = await cloudAuth.login(credentials.email, credentials.password);
       
       if (result.success) {
-        console.log('[AuthContext] Login successful');
+        // console.log('[AuthContext] Login successful');
       } else {
         console.error('[AuthContext] Login failed:', result.error);
       }
@@ -182,7 +182,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('[AuthContext] Login error:', error);
       return { success: false, error: `Login failed: ${error}` };
     } finally {
-      console.log('[AuthContext] Login complete, setting loading=false');
+      // console.log('[AuthContext] Login complete, setting loading=false');
       setLoading(false);
     }
   };

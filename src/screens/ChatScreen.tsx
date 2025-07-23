@@ -37,7 +37,6 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import { Header } from '../components/Header';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useCloudMatching } from '../hooks/useCloudMatching';
-import { useNuminaPersonality } from '../hooks/useNuminaPersonality';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 import { log } from '../utils/logger';
 import { UpgradePrompt } from '../components/UpgradePrompt';
@@ -97,7 +96,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     error: cloudError,
   } = useCloudMatching();
 
-  const numinaPersonality = useNuminaPersonality(true);
   
   // Location services for AI tools
   const { location, requestLocation } = useLocation();

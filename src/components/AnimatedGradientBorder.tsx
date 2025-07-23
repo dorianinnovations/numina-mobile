@@ -30,7 +30,7 @@
  * @license MIT
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   ViewStyle, 
   View, 
@@ -41,6 +41,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBorderTheme } from '../contexts/BorderThemeContext';
+import { useBorderSettings } from '../contexts/BorderSettingsContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -84,13 +85,19 @@ export interface AnimatedGradientBorderProps {
   
   /** Animation variation style */
   variation?: 'smooth' | 'pulse' | 'wave';
+  
+  /** Enable/disable border effects (uses settings if not provided) */
+  effectsEnabled?: boolean;
+  
+  /** Brightness level 0-100 (uses settings if not provided) */
+  brightness?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
+const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = ({
   isActive,
   borderRadius = 12,
   borderWidth = 1,
@@ -99,13 +106,56 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
   backgroundColor,
   children,
   style,
-  debug = true, // TEMP: Force debug on
+  debug = false,
   direction = 'clockwise',
   speed = 2,
   variation = 'smooth',
+  effectsEnabled,
+  brightness,
 }) => {
   const { isDarkMode, theme } = useTheme();
   const { selectedTheme } = useBorderTheme();
+  const { 
+    effectsEnabled: settingsEffectsEnabled, 
+    brightness: settingsBrightness, 
+    speed: settingsSpeed,
+    direction: settingsDirection,
+    variation: settingsVariation,
+    loading: settingsLoading 
+  } = useBorderSettings();
+  
+  // Use props or fall back to settings, but always respect global effectsEnabled setting
+  // If effects are globally disabled, override any explicit enabling
+  const globalEffectsDisabled = !settingsLoading && !settingsEffectsEnabled;
+  
+  const finalEffectsEnabled = globalEffectsDisabled ? false : 
+    (effectsEnabled !== undefined ? effectsEnabled : settingsEffectsEnabled);
+  const finalBrightness = brightness !== undefined ? brightness : settingsBrightness;
+  const finalSpeed = speed !== undefined ? speed : settingsSpeed;
+  const finalDirection = direction !== undefined ? direction : settingsDirection;
+  const finalVariation = variation !== undefined ? variation : settingsVariation;
+  
+  if (debug) {
+    console.log('🔍 AnimatedGradientBorder Settings:', {
+      effectsEnabled,
+      brightness,
+      speed,
+      direction, 
+      variation,
+      settingsEffectsEnabled,
+      settingsBrightness,
+      settingsSpeed,
+      settingsDirection,
+      settingsVariation,
+      settingsLoading,
+      globalEffectsDisabled,
+      finalEffectsEnabled,
+      finalBrightness,
+      finalSpeed,
+      finalDirection,
+      finalVariation,
+    });
+  }
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // STATE AND REFS
@@ -114,156 +164,220 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
 
-  // Animation values
+  // Animation values - use refs to prevent recreation on re-renders
   const progress = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  
+  // Animation cleanup refs
+  const travelAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const opacityAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // CALCULATED VALUES
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  // Dynamic spotlight size based on container dimensions
-  const spotlightSize = Math.max(120, Math.max(width, height) * 0.3);
+  // Memoize expensive calculations
+  const spotlightSize = useMemo(() => 
+    Math.max(120, Math.max(width, height) * 0.3),
+    [width, height]
+  );
   
-  // ⚡ ELECTRIC NEON GRADIENT: Bright Cyan → Electric Purple → Neon Green
-  const primaryColor = gradientColors?.[0] || (isDarkMode 
-    ? 'rgba(88, 183, 255, 0.8)' // Bright Cyan - ELECTRIC!
-    : 'rgba(0, 255, 255, 0.7)'); // Keep colors bright in light mode
-  const secondaryColor = gradientColors?.[1] || (isDarkMode 
-    ? 'rgba(138, 43, 226, 0.6)' // Electric Purple - VIBRANT!
-    : 'rgba(138, 43, 226, 0.5)'); // Keep colors bright in light mode
+  const brightnessMultiplier = useMemo(() => 
+    Math.max(0.1, Math.min(1.0, finalBrightness / 100)),
+    [finalBrightness]
+  );
   
-  // Background color with intelligent dark mode detection
-  const finalBackgroundColor = backgroundColor || (
-    isDarkMode ? 'rgb(9, 9, 9)' : theme.colors.background
+  const adjustedOpacity = useMemo(() => {
+    const baseOpacity = isDarkMode ? 0.8 : 0.7;
+    return baseOpacity * brightnessMultiplier;
+  }, [isDarkMode, brightnessMultiplier]);
+  
+  const computedGradientColors = useMemo(() => {
+    const primary = gradientColors?.[0] || (isDarkMode 
+      ? `rgba(88, 183, 255, ${adjustedOpacity})` // Bright Cyan - ELECTRIC!
+      : `rgba(0, 255, 255, ${adjustedOpacity})`); // Keep colors bright in light mode
+    const secondary = gradientColors?.[1] || (isDarkMode 
+      ? `rgba(138, 43, 226, ${adjustedOpacity * 0.75})` // Electric Purple - VIBRANT!
+      : `rgba(138, 43, 226, ${adjustedOpacity * 0.75})`); // Keep colors bright in light mode
+    return [primary, secondary];
+  }, [gradientColors, isDarkMode, adjustedOpacity]);
+  
+  const finalBackgroundColor = useMemo(() => 
+    backgroundColor || (isDarkMode ? 'rgb(9, 9, 9)' : theme.colors.background),
+    [backgroundColor, isDarkMode, theme.colors.background]
   );
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // ANIMATION SYSTEM
   // ═══════════════════════════════════════════════════════════════════════════════
   
+  // Memoize animation configuration to prevent recalculation
+  const animationConfig = useMemo(() => {
+    const speedMultiplier = finalSpeed === 1 ? 1.5 : finalSpeed === 2 ? 1 : 0.6;
+    const finalDuration = animationSpeed * speedMultiplier;
+    const easing = finalVariation === 'smooth' ? Easing.linear :
+                  finalVariation === 'pulse' ? Easing.inOut(Easing.sin) :
+                  Easing.bezier(0.25, 0.46, 0.45, 0.94); // wave
+    return { finalDuration, easing };
+  }, [animationSpeed, finalSpeed, finalVariation]);
+
   useEffect(() => {
     if (debug) {
-      console.log('🔍 AnimatedGradientBorder Debug:', {
-        isActive,
-        width,
-        height,
-        spotlightSize,
-        finalBackgroundColor,
-        isDarkMode,
-        translateXRange: [-60, width - 60],
-        translateYRange: [-60, height - 60],
-      });
+      // console.log('🔍 AnimatedGradientBorder Debug:', {
+      //   isActive,
+      //   width,
+      //   height,
+      //   spotlightSize,
+      //   finalBackgroundColor,
+      //   isDarkMode,
+      //   translateXRange: [-60, width - 60],
+      //   translateYRange: [-60, height - 60],
+      // });
     }
     
-    // TEMP: Force always active for debugging
-    if (true && width > 0 && height > 0) {
+    // Check if component is active and effects are not disabled
+    if (isActive && finalEffectsEnabled && width > 0 && height > 0) {
+      // Cleanup function to stop all animations
+      const cleanup = () => {
+        if (travelAnimationRef.current) {
+          travelAnimationRef.current.stop();
+          travelAnimationRef.current = null;
+        }
+        if (opacityAnimationRef.current) {
+          opacityAnimationRef.current.stop();
+          opacityAnimationRef.current = null;
+        }
+        progress.stopAnimation();
+      };
+
       // Start opacity fade-in
-      Animated.timing(opacityAnim, {
+      opacityAnimationRef.current = Animated.timing(opacityAnim, {
         toValue: 1,
         duration: 300,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: false,
-      }).start();
+      });
+      opacityAnimationRef.current.start();
 
-      // Calculate speed multiplier: 1=slow, 2=medium, 3=fast
-      const speedMultiplier = speed === 1 ? 1.5 : speed === 2 ? 1 : 0.6;
-      const finalDuration = animationSpeed * speedMultiplier;
-      
-      // Choose easing based on variation
-      const easing = variation === 'smooth' ? Easing.linear :
-                    variation === 'pulse' ? Easing.inOut(Easing.sin) :
-                    Easing.bezier(0.25, 0.46, 0.45, 0.94); // wave
-
-      // Start perimeter traveling animation
-      const travelAnimation = Animated.loop(
+      // Start perimeter traveling animation using memoized config
+      travelAnimationRef.current = Animated.loop(
         Animated.timing(progress, {
           toValue: 1,
-          duration: finalDuration,
-          easing,
+          duration: animationConfig.finalDuration,
+          easing: animationConfig.easing,
           useNativeDriver: false,
         })
       );
       
-      travelAnimation.start();
+      travelAnimationRef.current.start();
 
-      return () => {
-        travelAnimation.stop();
-      };
+      return cleanup;
     } else {
       // Stop animations when not active
+      if (travelAnimationRef.current) {
+        travelAnimationRef.current.stop();
+        travelAnimationRef.current = null;
+      }
+      if (opacityAnimationRef.current) {
+        opacityAnimationRef.current.stop();
+      }
+      
       progress.stopAnimation();
-      Animated.timing(opacityAnim, {
+      opacityAnimationRef.current = Animated.timing(opacityAnim, {
         toValue: 0,
         duration: 200,
         easing: Easing.in(Easing.cubic),
         useNativeDriver: false,
-      }).start(() => {
+      });
+      opacityAnimationRef.current.start(() => {
         progress.setValue(0);
       });
     }
-  }, [isActive, animationSpeed, width, height, debug, direction, variation, speed]);
+  }, [finalEffectsEnabled, width, height, animationConfig, debug]);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // PERIMETER PATH CALCULATION
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  // Perfect perimeter traveling path - travels around the border edges
-  // Support clockwise and counterclockwise direction
-  const clockwiseX = [
-    -60,                    // Start: left of container (spotlight extends beyond)
-    width - 60,             // Top edge moving right
-    width - 60,             // Right edge moving down  
-    -60,                    // Bottom edge moving left
-    -60                     // Back to start
-  ];
-  const clockwiseY = [
-    -60,                    // Start: top of container (spotlight extends beyond)
-    -60,                    // Top edge
-    height - 60,            // Right edge moving down
-    height - 60,            // Bottom edge
-    -60                     // Back to top  
-  ];
-  
-  // Reverse for counterclockwise
-  const counterclockwiseX = [
-    -60,                    // Start: left of container
-    -60,                    // Left edge moving down
-    width - 60,             // Bottom edge moving right
-    width - 60,             // Right edge moving up
-    -60                     // Back to start
-  ];
-  const counterclockwiseY = [
-    -60,                    // Start: top of container
-    height - 60,            // Left edge moving down
-    height - 60,            // Bottom edge moving right
-    -60,                    // Right edge moving up
-    -60                     // Back to start
-  ];
+  // Memoize perimeter path calculations
+  const pathCoordinates = useMemo(() => {
+    const clockwiseX = [
+      -60,                    // Start: left of container (spotlight extends beyond)
+      width - 60,             // Top edge moving right
+      width - 60,             // Right edge moving down  
+      -60,                    // Bottom edge moving left
+      -60                     // Back to start
+    ];
+    const clockwiseY = [
+      -60,                    // Start: top of container (spotlight extends beyond)
+      -60,                    // Top edge
+      height - 60,            // Right edge moving down
+      height - 60,            // Bottom edge
+      -60                     // Back to top  
+    ];
+    
+    // Reverse for counterclockwise
+    const counterclockwiseX = [
+      -60,                    // Start: left of container
+      -60,                    // Left edge moving down
+      width - 60,             // Bottom edge moving right
+      width - 60,             // Right edge moving up
+      -60                     // Back to start
+    ];
+    const counterclockwiseY = [
+      -60,                    // Start: top of container
+      height - 60,            // Left edge moving down
+      height - 60,            // Bottom edge moving right
+      -60,                    // Right edge moving up
+      -60                     // Back to start
+    ];
+
+    return {
+      xRange: finalDirection === 'clockwise' ? clockwiseX : counterclockwiseX,
+      yRange: finalDirection === 'clockwise' ? clockwiseY : counterclockwiseY,
+    };
+  }, [width, height, finalDirection]);
 
   const translateX = progress.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: direction === 'clockwise' ? clockwiseX : counterclockwiseX,
+    outputRange: pathCoordinates.xRange,
   });
 
   const translateY = progress.interpolate({
     inputRange: [0, 0.25, 0.5, 0.75, 1],
-    outputRange: direction === 'clockwise' ? clockwiseY : counterclockwiseY,
+    outputRange: pathCoordinates.yRange,
   });
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // LAYOUT HANDLER
   // ═══════════════════════════════════════════════════════════════════════════════
   
-  const onLayout = (event: any) => {
+  // Memoize layout handler to prevent unnecessary re-renders
+  const onLayout = useCallback((event: any) => {
     const { width: newWidth, height: newHeight } = event.nativeEvent.layout;
     setWidth(newWidth);
     setHeight(newHeight);
     
     if (debug) {
-      console.log('📐 Layout updated:', { width: newWidth, height: newHeight });
+      // console.log('📐 Layout updated:', { width: newWidth, height: newHeight });
     }
-  };
+  }, [debug]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (travelAnimationRef.current) {
+        travelAnimationRef.current.stop();
+        travelAnimationRef.current = null;
+      }
+      if (opacityAnimationRef.current) {
+        opacityAnimationRef.current.stop();
+        opacityAnimationRef.current = null;
+      }
+      progress.stopAnimation();
+      opacityAnim.stopAnimation();
+    };
+  }, []);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // RENDER
@@ -298,7 +412,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
           }}
         >
           {/* 💫 The traveling spotlight that creates the border effect */}
-          {true && width > 0 && height > 0 && (
+          {isActive && finalEffectsEnabled && width > 0 && height > 0 && (
             <Animated.View
               style={{
                 position: 'absolute',
@@ -312,7 +426,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
               }}
             >
               <LinearGradient
-                colors={((gradientColors || selectedTheme.colors) as [string, string, ...string[]])}
+                colors={((computedGradientColors || selectedTheme.colors) as [string, string, ...string[]])}
                 style={{
                   width: spotlightSize,
                   height: spotlightSize,
@@ -354,6 +468,27 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
     </View>
   );
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MEMOIZED EXPORT FOR PERFORMANCE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const AnimatedGradientBorder = React.memo(AnimatedGradientBorderComponent, (prevProps, nextProps) => {
+  // Custom comparison function to prevent unnecessary re-renders
+  return (
+    prevProps.isActive === nextProps.isActive &&
+    prevProps.borderRadius === nextProps.borderRadius &&
+    prevProps.borderWidth === nextProps.borderWidth &&
+    prevProps.animationSpeed === nextProps.animationSpeed &&
+    prevProps.direction === nextProps.direction &&
+    prevProps.speed === nextProps.speed &&
+    prevProps.variation === nextProps.variation &&
+    prevProps.effectsEnabled === nextProps.effectsEnabled &&
+    prevProps.brightness === nextProps.brightness &&
+    prevProps.backgroundColor === nextProps.backgroundColor &&
+    JSON.stringify(prevProps.gradientColors) === JSON.stringify(nextProps.gradientColors)
+  );
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // BACKWARD COMPATIBILITY & EXPORTS

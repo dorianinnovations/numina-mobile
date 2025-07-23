@@ -264,23 +264,23 @@ export const AppNavigator: React.FC = () => {
         key="main-navigation" // Prevent complete re-initialization
       ref={(ref) => {
         navigationRef.current = ref;
-        log.debug('Navigation container ref set', { ready: !!ref }, 'AppNavigator');
-        if (ref) {
-          const currentRoute = ref.getCurrentRoute()?.name;
-          console.log('🏗️ NAVIGATION CONTAINER: Initial route after ref set:', currentRoute);
-        }
+        // log.debug('Navigation container ref set', { ready: !!ref }, 'AppNavigator');
+        // if (ref) {
+        //   const currentRoute = ref.getCurrentRoute()?.name;
+        //   console.log('🏗️ NAVIGATION CONTAINER: Initial route after ref set:', currentRoute);
+        // }
       }}
       onReady={() => {
-        console.log('🏗️ NAVIGATION CONTAINER: onReady called');
+        // console.log('🏗️ NAVIGATION CONTAINER: onReady called');
         if (navigationRef.current) {
           const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-          console.log('🏗️ NAVIGATION CONTAINER: Current route on ready:', currentRoute);
+          // console.log('🏗️ NAVIGATION CONTAINER: Current route on ready:', currentRoute);
         }
       }}
       onStateChange={(state) => {
         if (navigationRef.current) {
           const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-          console.log('🏗️ NAVIGATION CONTAINER: State changed, current route:', currentRoute);
+          // console.log('🏗️ NAVIGATION CONTAINER: State changed, current route:', currentRoute);
         }
       }}
 
@@ -300,7 +300,7 @@ export const AppNavigator: React.FC = () => {
           },
         }}
       >
-        {(() => { console.log('🏗️ STACK NAVIGATOR: Rendering with initialRouteName: Hero'); return null; })()}
+        {(() => { /* console.log('🏗️ STACK NAVIGATOR: Rendering with initialRouteName: Hero'); */ return null; })()}
         <Stack.Screen
           name="Hero"
           options={{
@@ -308,12 +308,12 @@ export const AppNavigator: React.FC = () => {
           }}
         >
           {({ navigation }) => {
-            console.log('🏠 HERO STACK SCREEN: Rendering HeroLandingScreen');
+            // console.log('🏠 HERO STACK SCREEN: Rendering HeroLandingScreen');
             return (
               <HeroLandingScreen
                 onNavigateToTutorial={() => navigation.navigate("Tutorial")}
                 onNavigateToSignIn={() => {
-                  console.log('➡️ NAVIGATING TO SIGNIN from Hero');
+                  // console.log('➡️ NAVIGATING TO SIGNIN from Hero');
                   navigation.navigate("SignIn");
                 }}
                 onNavigateToSignUp={() => navigation.navigate("SignUp")}
@@ -346,18 +346,18 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <SignInScreen
               onNavigateBack={() => {
-                console.log('🔙 SIGNIN: Back button pressed - calling navigation.goBack()');
+                // console.log('🔙 SIGNIN: Back button pressed - calling navigation.goBack()');
                 navigation.goBack();
               }}
               onSignInSuccess={() => {
-                console.log('✅ SIGNIN: Login success callback - letting auth state handle navigation');
+                // console.log('✅ SIGNIN: Login success callback - letting auth state handle navigation');
               }}
               onNavigateToSignUp={() => {
-                console.log('📝 SIGNIN: Navigate to SignUp');
+                // console.log('📝 SIGNIN: Navigate to SignUp');
                 navigation.navigate("SignUp");
               }}
               onNavigateToHero={() => {
-                console.log('🏠 SIGNIN: Navigate to Hero');
+                // console.log('🏠 SIGNIN: Navigate to Hero');
                 navigation.navigate("Hero");
               }}
             />
@@ -374,7 +374,7 @@ export const AppNavigator: React.FC = () => {
             <SignUpScreen
               onNavigateBack={() => navigation.goBack()}
               onSignUpSuccess={() => {
-                console.log('✅ SIGNUP SUCCESS - MANDATORY experience level selection required');
+                // console.log('✅ SIGNUP SUCCESS - MANDATORY experience level selection required');
                 // Immediate navigation to prevent auth routing from interfering
                 navigation.reset({
                   index: 0,

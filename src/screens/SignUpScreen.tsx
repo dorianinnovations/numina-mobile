@@ -367,8 +367,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                                shadowColor: isDarkMode ? '#000000' : '#000000',
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
+                                shadowRadius: isDarkMode ? 12 : 8,
+                                elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
                             placeholder="Email"
@@ -424,8 +428,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                                shadowColor: isDarkMode ? '#000000' : '#000000',
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
+                                shadowRadius: isDarkMode ? 12 : 8,
+                                elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
                             placeholder="Password"
@@ -480,8 +488,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               styles.input,
                               { 
                                 color: isDarkMode ? '#ffffff' : '#000000',
-                                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0, 0, 0, 0.02)',
-                                borderColor: isDarkMode ? '#181818' : 'rgba(0, 0, 0, 0.05)',
+                                backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
+                                shadowColor: isDarkMode ? '#000000' : '#000000',
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
+                                shadowRadius: isDarkMode ? 12 : 8,
+                                elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
                             placeholder="Confirm Password"
@@ -919,14 +931,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   input: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderWidth: 0,
+    borderRadius: 12,
     fontSize: 16,
     fontWeight: '400',
-    height: 42,
+    height: 48,
     fontFamily: 'Nunito_400Regular',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryButton: {
     width: '100%',

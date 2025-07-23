@@ -122,7 +122,7 @@ class SyncService {
         }
       });
       
-      console.log('Sync service initialized');
+      // console.log('Sync service initialized');
     } catch (error) {
       console.error('Failed to initialize sync service:', error);
     }

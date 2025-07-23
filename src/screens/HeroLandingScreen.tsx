@@ -360,32 +360,49 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             ]}
           >
             <TouchableOpacity
-              style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? '#2dd4bf' : '#0284c7',
-                shadowOpacity: isDarkMode ? 0.35 : 0.25,
-                shadowRadius: 20,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 16,
-              }]}
+              style={[
+                styles.primaryButtonContainer,
+                isDarkMode ? {
+                  width: '88%',
+                  shadowColor: '#a5b4fc', // indigo pastel as base
+                  shadowOpacity: 0.55,
+                  shadowRadius: 32,
+                  shadowOffset: { width: 0, height: 6 },
+                  borderColor: '#9ca3af',
+                  borderWidth: 1,
+                  // For a more rainbow effect, you can add a background gradient or use a custom shadow library for multi-color
+                } : {},
+                !isDarkMode ? {
+                  shadowColor: '#e0e7ef',
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 8,
+                } : {},
+              ]}
               onPress={handleExploreButtonPress}
               activeOpacity={0.9}
             >
                 <View
                   style={[
                     styles.primaryButton,
+                    isDarkMode
+                      ? {
+                          backgroundColor: '#18181b',
+                          borderColor: '#9ca3af',
+                          borderWidth: 1,
+                          height: 44,
+                          paddingHorizontal: 16,
+                        }
+                      : {},
                     {
-                      backgroundColor: isDarkMode 
-                        ? '#0f0f0f'
-                        : '#ffffff',
-                      borderColor: isDarkMode 
-                        ? '#97e3aa33'
-                        : '#e0e0e0',
+                      backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+                      borderColor: isDarkMode ? '#44474a' : '#e0e0e0', // fallback for borderColor
                       borderWidth: 1,
                       shadowColor: isDarkMode ? '#000000' : '#f1f5f9',
                       shadowOpacity: isDarkMode ? 0.3 : 0.6,
                       shadowRadius: 6,
                       shadowOffset: { width: 0, height: 2 },
-                      
                     }
                   ]}
                 >
@@ -418,25 +435,47 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             ]}
           >
             <TouchableOpacity
-              style={[styles.primaryButtonContainer, {
-                shadowColor: isDarkMode ? '#8b5cf6' : '#7c3aed',
-                shadowOpacity: isDarkMode ? 0.3 : 0.2,
-                shadowRadius: 18,
-                shadowOffset: { width: 0, height: 6 },
-                elevation: 14,
-              }]}
+              style={[
+                styles.primaryButtonContainer,
+                isDarkMode ? {
+                  width: '88%',
+                  shadowColor: '#a5b4fc', // indigo pastel as base
+                  shadowOpacity: 0.55,
+                  shadowRadius: 32,
+                  shadowOffset: { width: 0, height: 6 },
+                  borderColor: '#9ca3af',
+                  borderWidth: 1,
+                  // For a more rainbow effect, you can add a background gradient or use a custom shadow library for multi-color
+                } : {},
+                !isDarkMode ? {
+                  shadowColor: '#e0e7ef',
+                  shadowOpacity: 0.12,
+                  shadowRadius: 10,
+                  shadowOffset: { width: 0, height: 2 },
+                  elevation: 8,
+                } : {},
+              ]}
                 onPress={handleSignUpButtonPress}
                 activeOpacity={0.9}
               >
                 <View
                   style={[
                     styles.primaryButton,
+                    isDarkMode
+                      ? {
+                          backgroundColor: '#18181b',
+                          borderColor: '#9ca3af',
+                          borderWidth: 1,
+                          height: 44,
+                          paddingHorizontal: 16,
+                        }
+                      : {},
                     {
                       backgroundColor: isDarkMode 
                         ? '#0f0f0f'
                         : '#ffffff',
                       borderColor: isDarkMode 
-                        ? '#6f58b033'
+                        ? '#44474a'
                         : '#e0e0e0',
                       borderWidth: 1,
                       shadowColor: isDarkMode ? '#000000' : '#f1f5f9',

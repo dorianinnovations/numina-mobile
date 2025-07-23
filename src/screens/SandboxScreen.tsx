@@ -30,6 +30,10 @@ import SandboxDataService from '../services/sandboxDataService';
 import CloudAuth from '../services/cloudAuth';
 import { API_BASE_URL } from '../services/api';
 import WebSocketService from '../services/websocketService';
+import { StreamingMarkdown } from '../components/StreamingMarkdown';
+import { SandboxModalManager } from '../components/SandboxModalManager';
+import { ChainOfThoughtProgress } from '../components/ChainOfThoughtProgress';
+import ChainOfThoughtService from '../services/chainOfThoughtService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -228,6 +232,12 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const [showUBPMModal, setShowUBPMModal] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Chain of Thought state
+  const [showChainOfThought, setShowChainOfThought] = useState(false);
+  const [cotCurrentStep, setCotCurrentStep] = useState('');
+  const [cotSteps, setCotSteps] = useState<Array<{id: string; title: string; status: string; message?: string}>>([]);
+  const [cotStreamingMessage, setCotStreamingMessage] = useState('');
+  
   // Ghost typing effect state
   const [ghostText, setGhostText] = useState('');
   const [currentExampleIndex, setCurrentExampleIndex] = useState(() => getRandomStartIndex());
@@ -246,6 +256,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   }>>([]);
   const sendButtonAnim = useRef(new Animated.Value(0)).current;
   const sendButtonScaleAnim = useRef(new Animated.Value(1)).current;
+  const headerOpacityAnim = useRef(new Animated.Value(1)).current; // For header hiding
   
   // Window Modal state
   const [showWindowModal, setShowWindowModal] = useState(false);
@@ -526,7 +537,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   // Advanced ghost typing effect with human-like variations and typos
   useEffect(() => {
-    if (isInputFocused || inputText.length > 0 || isProcessing) {
+    if (isInputFocused || inputText.length > 0 || isProcessing || showChainOfThought) {
       setGhostText('');
       setIsTyping(false);
       setIsBackspacing(false);
@@ -685,22 +696,46 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       setIsBackspacing(false);
       setIsCorrectingTypo(false);
     };
-  }, [isInputFocused, inputText, isProcessing, currentExampleIndex]);
+  }, [isInputFocused, inputText, isProcessing, showChainOfThought, currentExampleIndex]);
 
   const handleInputFocus = () => {
     setIsInputFocused(true);
     NuminaAnimations.haptic.light();
+    
+    // Hide header when input is focused
+    Animated.timing(headerOpacityAnim, {
+      toValue: 0,
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleInputBlur = () => {
     if (inputText.length === 0 && selectedActions.length === 0) {
       setIsInputFocused(false);
+      
+      // Show header when input loses focus
+      Animated.timing(headerOpacityAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
   const handleDismissKeyboard = () => {
     Keyboard.dismiss();
     textInputRef.current?.blur();
+    
+    // Also restore header when keyboard is dismissed
+    if (inputText.length === 0 && selectedActions.length === 0) {
+      setIsInputFocused(false);
+      Animated.timing(headerOpacityAnim, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   // Get dynamic send button icon based on selected actions
@@ -879,12 +914,176 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   const handleUBPMConfirm = (useUBPM: boolean) => {
     setShowUBPMModal(false);
-    setIsProcessing(true);
+    startChainOfThoughtProcess(useUBPM);
+  };
+
+  const startChainOfThoughtProcess = async (useUBPM: boolean) => {
+    try {
+      // Initialize chain of thought state
+      setShowChainOfThought(true);
+      setIsProcessing(true);
+      setCotCurrentStep('');
+      setCotSteps([]);
+      setCotStreamingMessage('');
+
+      // Build enhanced query with locked context
+      const lockedContext = buildContextFromLockedNodes();
+      const enhancedQuery = lockedContext + inputText + ' ' + selectedActions.join(' ');
+
+      // Start chain of thought process
+      await ChainOfThoughtService.startChainOfThought(
+        enhancedQuery,
+        {
+          actions: selectedActions,
+          useUBPM,
+          includeUserData: true,
+          generateConnections: true
+        },
+        handleChainOfThoughtUpdate,
+        handleChainOfThoughtComplete,
+        handleChainOfThoughtError
+      );
+    } catch (error) {
+      console.error('Failed to start chain of thought:', error);
+      handleChainOfThoughtError(error);
+    }
+  };
+
+  // Throttle chain of thought updates to avoid excessive re-renders
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+  
+  const handleChainOfThoughtUpdate = (response: any) => {
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastUpdateRef.current;
     
-    // Simulate backend processing
-    setTimeout(() => {
-      generateNodes(useUBPM);
-    }, 1200);
+    // Immediate update for step changes, throttled for streaming messages
+    const isStepChange = response.currentStep !== cotCurrentStep;
+    
+    if (isStepChange || timeSinceLastUpdate > 200) {
+      // Update immediately for step changes or every 200ms
+      setCotCurrentStep(response.currentStep);
+      setCotSteps(response.steps);
+      setCotStreamingMessage(response.streamingMessage || '');
+      lastUpdateRef.current = now;
+    } else {
+      // Throttle rapid updates
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      
+      updateTimeoutRef.current = setTimeout(() => {
+        setCotCurrentStep(response.currentStep);
+        setCotSteps(response.steps);
+        setCotStreamingMessage(response.streamingMessage || '');
+        lastUpdateRef.current = Date.now();
+      }, 200 - timeSinceLastUpdate);
+    }
+  };
+
+  const handleChainOfThoughtComplete = (finalData: any) => {
+    setShowChainOfThought(false);
+    
+    // Process the generated nodes
+    if (finalData.nodes && finalData.nodes.length > 0) {
+      processGeneratedNodes(finalData.nodes);
+    } else {
+      // Fallback to existing generation method
+      generateNodes(true);
+    }
+  };
+
+  const handleChainOfThoughtError = (error: any) => {
+    console.error('Chain of thought error:', error);
+    setShowChainOfThought(false);
+    
+    // Fallback to existing method
+    generateNodes(true);
+  };
+
+  const processGeneratedNodes = async (generatedNodes: any[]) => {
+    try {
+      // Get comprehensive user data for enhancement
+      const userData = await SandboxDataService.getComprehensiveUserData();
+      
+      // Transform and enhance the nodes
+      const enhancedNodes: SandboxNode[] = await Promise.all(
+        generatedNodes.map(async (node, index) => {
+          const position = SandboxDataService.generateNodePosition(
+            screenWidth, 
+            screenHeight * 0.6, 
+            [...nodes, ...lockedNodes]
+          );
+
+          const enhancement = await SandboxDataService.enhanceNodeWithUserData(node, userData);
+
+          return {
+            id: node.id || `node_${Date.now()}_${index}`,
+            title: node.title,
+            content: node.content,
+            position,
+            connections: [],
+            personalHook: node.personalHook,
+            confidence: node.confidence || 0.85,
+            category: node.category || 'insight',
+            isLocked: false,
+            patternType: node.patternType || 'behavioral_insight',
+            deepInsights: node.deepInsights || {
+              summary: enhancement.personalizedContext,
+              keyPatterns: ['ai_generated', 'contextual_insight'],
+              personalizedContext: enhancement.personalizedContext,
+              dataConnections: enhancement.dataConnections,
+              relevanceScore: 0.8 + Math.random() * 0.2
+            },
+            userDataContext: {
+              ubpmData: userData.ubpmData,
+              behavioralMetrics: userData.behavioralMetrics,
+              emotionalProfile: userData.emotionalProfile,
+              temporalPatterns: userData.temporalPatterns
+            },
+            mediaAssets: node.mediaAssets || []
+          };
+        })
+      );
+
+      // Add animations for each new node
+      enhancedNodes.forEach(node => {
+        if (!nodeAnims.has(node.id)) {
+          nodeAnims.set(node.id, {
+            opacity: new Animated.Value(0),
+            scale: new Animated.Value(0.1),
+            translateY: new Animated.Value(20),
+          });
+        }
+      });
+
+      // Add new nodes to existing ones
+      const allNodes = [...nodes, ...enhancedNodes];
+      setNodes(allNodes);
+      
+      // Create connections
+      const connections = await SandboxDataService.detectNodeConnections([...allNodes, ...lockedNodes]);
+      setNodeConnections(connections);
+      
+      setIsProcessing(false);
+      setShowNodes(true);
+      
+      // Animate nodes in
+      setTimeout(() => {
+        animateNodesIn(enhancedNodes);
+      }, 100);
+      
+      // Reset input
+      setInputText('');
+      setSelectedActions([]);
+      setIsInputFocused(false);
+      
+    } catch (error) {
+      console.error('Error processing generated nodes:', error);
+      setIsProcessing(false);
+      // Fallback to existing method
+      generateNodes(true);
+    }
   };
 
   const generateNodes = async (useUBPM: boolean) => {
@@ -1765,17 +1964,156 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const renderNodeModal = () => {
     if (!selectedNode) return null;
 
-    const isXL = (selectedNode.deepInsights?.dataConnections && selectedNode.deepInsights.dataConnections.length > 3) || 
-                  (selectedNode.deepInsights?.keyPatterns && selectedNode.deepInsights.keyPatterns.length > 2);
+    // Determine if this should be fullscreen based on content length or explicit setting
+    const shouldBeFullscreen = nodeModalSize === 'fullscreen' || 
+      (selectedNode.content && selectedNode.content.length > 1000) ||
+      (selectedNode.deepInsights?.dataConnections && selectedNode.deepInsights.dataConnections.length > 5);
+
+    const shouldBeXL = nodeModalSize === 'xl' || 
+      (!shouldBeFullscreen && ((selectedNode.deepInsights?.dataConnections && selectedNode.deepInsights.dataConnections.length > 3) || 
+      (selectedNode.deepInsights?.keyPatterns && selectedNode.deepInsights.keyPatterns.length > 2)));
+
+    // Format content as markdown with proper structure
+    const formatNodeContent = (node: any) => {
+      let markdownContent = `# ${node.title}\n\n`;
+      
+      if (node.category) {
+        markdownContent += `**Category:** ${node.category}\n\n`;
+      }
+      
+      markdownContent += `${node.content}\n\n`;
+      
+      if (node.personalHook) {
+        markdownContent += `## Personal Connection\n\n> ${node.personalHook}\n\n`;
+      }
+      
+      if (node.deepInsights) {
+        markdownContent += `## Deep Insights\n\n${node.deepInsights.personalizedContext}\n\n`;
+        
+        if (node.deepInsights.dataConnections && node.deepInsights.dataConnections.length > 0) {
+          markdownContent += `### Your Data Connections\n\n`;
+          node.deepInsights.dataConnections.forEach((connection: any) => {
+            markdownContent += `- **${connection.type}**: ${connection.source} *(${Math.round(connection.relevanceScore * 100)}% relevance)*\n`;
+          });
+          markdownContent += `\n`;
+        }
+        
+        if (node.deepInsights.keyPatterns && node.deepInsights.keyPatterns.length > 0) {
+          markdownContent += `### Key Patterns\n\n`;
+          node.deepInsights.keyPatterns.forEach((pattern: string) => {
+            markdownContent += `- ${pattern}\n`;
+          });
+          markdownContent += `\n`;
+        }
+      }
+      
+      return markdownContent;
+    };
+
+    if (shouldBeFullscreen) {
+      return (
+        <Modal
+          visible={true}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setSelectedNode(null)}
+        >
+          <View style={[styles.fullscreenModalContainer, { backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff' }]}>
+            <SafeAreaView style={{ flex: 1 }}>
+              {/* Fullscreen Header */}
+              <View style={[styles.fullscreenModalHeader, { borderBottomColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+                <View style={styles.fullscreenModalTitleContainer}>
+                  <View style={[
+                    styles.nodeModalColorIndicator,
+                    {
+                      backgroundColor: selectedNode.isInsightNode
+                        ? '#8B5CF6'
+                        : selectedNode.isLocked
+                          ? '#10B981'
+                          : selectedNode.personalHook
+                            ? '#EC4899'
+                            : '#3B82F6'
+                    }
+                  ]} />
+                  <Text style={[styles.fullscreenModalTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
+                    {selectedNode.title}
+                  </Text>
+                  {selectedNode.isInsightNode && (
+                    <View style={styles.smallInsightBadge}>
+                      <Feather name={getInsightIcon(selectedNode.patternType)} size={14} color="#8B5CF6" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.fullscreenModalActions}>
+                  <TouchableOpacity
+                    style={styles.modalSizeButton}
+                    onPress={() => setNodeModalSize('xl')}
+                  >
+                    <Feather name="minimize" size={18} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setSelectedNode(null)}
+                  >
+                    <Feather name="x" size={22} color={isDarkMode ? '#fff' : '#1a1a1a'} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Fullscreen Content with Streaming Markdown */}
+              <ScrollView 
+                style={styles.fullscreenModalContent}
+                showsVerticalScrollIndicator={true}
+                contentContainerStyle={{ paddingBottom: 100 }}
+              >
+                <StreamingMarkdown 
+                  content={formatNodeContent(selectedNode)}
+                  isComplete={true}
+                  showCursor={false}
+                />
+              </ScrollView>
+
+              {/* Fullscreen Actions */}
+              <View style={[styles.fullscreenModalFooter, { borderTopColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
+                <TouchableOpacity
+                  style={[styles.fullscreenActionButton, { backgroundColor: '#8B5CF6' }]}
+                  onPress={handleOpenWindow}
+                >
+                  <Feather name="search" size={18} color="#fff" />
+                  <Text style={styles.fullscreenActionText}>Research Window</Text>
+                </TouchableOpacity>
+                
+                {!selectedNode.isLocked ? (
+                  <TouchableOpacity
+                    style={[styles.fullscreenActionButton, { backgroundColor: '#10B981' }]}
+                    onPress={() => handleLockNode(selectedNode)}
+                  >
+                    <Feather name="lock" size={18} color="#fff" />
+                    <Text style={styles.fullscreenActionText}>Lock Node</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={styles.fullscreenLockedIndicator}>
+                    <Feather name="check-circle" size={18} color="#10B981" />
+                    <Text style={[styles.fullscreenLockedText, { color: '#10B981' }]}>
+                      Locked at {new Date(selectedNode.lockTimestamp!).toLocaleTimeString()}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </SafeAreaView>
+          </View>
+        </Modal>
+      );
+    }
 
     return (
       <View style={styles.modalOverlay}>
         <BaseWalletCard style={{
-          ...(isXL ? styles.xlNodeModal : styles.nodeModal),
+          ...(shouldBeXL ? styles.xlNodeModal : styles.nodeModal),
           backgroundColor: isDarkMode ? 'rgba(10,10,10,0.95)' : 'rgba(255,255,255,0.95)',
           borderColor: isDarkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
         }}>
-          {/* Header with size controls */}
+          {/* Header with dynamic size controls */}
           <View style={styles.nodeModalHeader}>
             <View style={styles.nodeModalTitleContainer}>
               <View style={[
@@ -1800,7 +2138,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
               )}
             </View>
             <View style={styles.modalHeaderActions}>
-              {!isXL && (
+              {!shouldBeXL && (
                 <TouchableOpacity
                   style={styles.modalSizeButton}
                   onPress={() => setNodeModalSize('xl')}
@@ -1808,7 +2146,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                   <Feather name="maximize-2" size={16} color={isDarkMode ? '#fff' : '#1a1a1a'} />
                 </TouchableOpacity>
               )}
-              {isXL && (
+              {shouldBeXL && (
                 <>
                   <TouchableOpacity
                     style={styles.modalSizeButton}
@@ -1833,76 +2171,46 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
             </View>
           </View>
 
-          <ScrollView style={isXL ? styles.xlModalContent : undefined} showsVerticalScrollIndicator={false}>
-            {/* Content */}
-            <Text style={[styles.nodeModalContent, { color: isDarkMode ? '#ccc' : '#666' }]}>
-              {selectedNode.content}
-            </Text>
-
-            {selectedNode.personalHook && (
-              <View style={styles.personalHookContainer}>
-                <Text style={[styles.personalHookText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                  {selectedNode.personalHook}
-                </Text>
-              </View>
-            )}
-
-            {/* Deep Insights */}
-            {selectedNode.deepInsights && (
-              <View style={styles.insightsSection}>
-                <Text style={[styles.insightsSectionTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                  Deep Insights
-                </Text>
-                <Text style={[styles.insightsText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                  {selectedNode.deepInsights.personalizedContext}
-                </Text>
-                
-                {selectedNode.deepInsights.dataConnections.length > 0 && (
-                  <View style={styles.dataConnectionsContainer}>
-                    <Text style={[styles.dataConnectionsTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-                      Your Data Connections
-                    </Text>
-                    {selectedNode.deepInsights.dataConnections.slice(0, isXL ? 5 : 2).map((connection, index) => (
-                      <View key={index} style={styles.dataConnection}>
-                        <View style={[styles.dataConnectionDot, { backgroundColor: connection.type === 'personality' ? '#8B5CF6' : '#06B6D4' }]} />
-                        <Text style={[styles.dataConnectionText, { color: isDarkMode ? '#ccc' : '#666' }]}>
-                          {connection.type}: {connection.source}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Actions */}
-            <View style={styles.nodeModalActions}>
-              <TouchableOpacity
-                style={[styles.windowButton, { backgroundColor: '#8B5CF6' }]}
-                onPress={handleOpenWindow}
-              >
-                <Feather name="search" size={16} color="#fff" />
-                <Text style={styles.windowButtonText}>Research Window</Text>
-              </TouchableOpacity>
-              
-              {!selectedNode.isLocked ? (
-                <TouchableOpacity
-                  style={[styles.lockNodeButton, { backgroundColor: '#10B981' }]}
-                  onPress={() => handleLockNode(selectedNode)}
-                >
-                  <Feather name="lock" size={16} color="#fff" />
-                  <Text style={styles.lockNodeButtonText}>Lock Node</Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.lockedIndicator}>
-                  <Feather name="check-circle" size={16} color="#10B981" />
-                  <Text style={[styles.lockedText, { color: '#10B981' }]}>
-                    Locked at {new Date(selectedNode.lockTimestamp!).toLocaleTimeString()}
-                  </Text>
-                </View>
-              )}
-            </View>
+          {/* Scrollable Content with Markdown */}
+          <ScrollView 
+            style={shouldBeXL ? styles.xlModalContent : styles.standardModalContent} 
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={{ paddingBottom: 20 }}
+          >
+            <StreamingMarkdown 
+              content={formatNodeContent(selectedNode)}
+              isComplete={true}
+              showCursor={false}
+            />
           </ScrollView>
+
+          {/* Actions */}
+          <View style={styles.nodeModalActions}>
+            <TouchableOpacity
+              style={[styles.windowButton, { backgroundColor: '#8B5CF6' }]}
+              onPress={handleOpenWindow}
+            >
+              <Feather name="search" size={16} color="#fff" />
+              <Text style={styles.windowButtonText}>Research Window</Text>
+            </TouchableOpacity>
+            
+            {!selectedNode.isLocked ? (
+              <TouchableOpacity
+                style={[styles.lockNodeButton, { backgroundColor: '#10B981' }]}
+                onPress={() => handleLockNode(selectedNode)}
+              >
+                <Feather name="lock" size={16} color="#fff" />
+                <Text style={styles.lockNodeButtonText}>Lock Node</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.lockedIndicator}>
+                <Feather name="check-circle" size={16} color="#10B981" />
+                <Text style={[styles.lockedText, { color: '#10B981' }]}>
+                  Locked at {new Date(selectedNode.lockTimestamp!).toLocaleTimeString()}
+                </Text>
+              </View>
+            )}
+          </View>
         </BaseWalletCard>
       </View>
     );
@@ -2061,6 +2369,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       headerProps={{
         style: {
           top: Platform.OS === 'ios' ? 50 : 15, // Reduced top positioning
+          opacity: headerOpacityAnim, // Header hiding animation
         },
       }}
     >
@@ -2193,7 +2502,19 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
               </>
             )}
 
-            {isProcessing && renderProcessingState()}
+            {showChainOfThought && (
+              <View style={styles.chainOfThoughtContainer}>
+                <ChainOfThoughtProgress
+                  visible={showChainOfThought}
+                  currentStep={cotCurrentStep}
+                  steps={cotSteps}
+                  streamingMessage={cotStreamingMessage}
+                  onComplete={() => setShowChainOfThought(false)}
+                />
+              </View>
+            )}
+
+            {isProcessing && !showChainOfThought && renderProcessingState()}
 
             {showNodes && (
               <View style={styles.nodesCanvas}>
@@ -3022,5 +3343,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Nunito-SemiBold',
+  },
+
+  // New Modal Styles
+  fullscreenModalContainer: {
+    flex: 1,
+  },
+  standardModalContent: {
+    maxHeight: 300,
+  },
+  fullscreenModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    gap: 16,
+  },
+  fullscreenActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  fullscreenActionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'Nunito-SemiBold',
+  },
+  fullscreenLockedIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    gap: 8,
+    flex: 1,
+    justifyContent: 'center',
+  },
+
+  // Chain of Thought container
+  chainOfThoughtContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
 });

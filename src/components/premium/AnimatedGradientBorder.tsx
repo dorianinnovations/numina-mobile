@@ -130,16 +130,16 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
   
   useEffect(() => {
     if (debug) {
-      console.log('🔍 AnimatedGradientBorder Debug:', {
-        isActive,
-        width,
-        height,
-        spotlightSize,
-        finalBackgroundColor,
-        isDarkMode,
-        translateXRange: [-60, width - 60],
-        translateYRange: [-60, height - 60],
-      });
+      // console.log('🔍 AnimatedGradientBorder Debug:', {
+      //   isActive,
+      //   width,
+      //   height,
+      //   spotlightSize,
+      //   finalBackgroundColor,
+      //   isDarkMode,
+      //   translateXRange: [-60, width - 60],
+      //   translateYRange: [-60, height - 60],
+      // });
     }
     
     if (isActive && width > 0 && height > 0) {
@@ -217,7 +217,7 @@ export const AnimatedGradientBorder: React.FC<AnimatedGradientBorderProps> = ({
     setHeight(newHeight);
     
     if (debug) {
-      console.log('📐 Layout updated:', { width: newWidth, height: newHeight });
+      // console.log('📐 Layout updated:', { width: newWidth, height: newHeight });
     }
   };
 

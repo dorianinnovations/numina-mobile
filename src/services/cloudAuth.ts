@@ -71,7 +71,7 @@ class CloudAuth {
   // Login with email/password
   async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      console.log('🔐 CLOUD AUTH: Attempting login for:', email);
+      // console.log('🔐 CLOUD AUTH: Attempting login for:', email);
       
       const response = await fetch(`${ENV.API_BASE_URL}/login`, {
         method: 'POST',
@@ -80,7 +80,7 @@ class CloudAuth {
       });
 
       const data = await response.json();
-      console.log('🔐 CLOUD AUTH: Server response:', data);
+      // console.log('🔐 CLOUD AUTH: Server response:', data);
 
       // Handle both success formats: "success" status or success boolean
       const isSuccess = data.status === 'success' || data.success === true;
@@ -93,7 +93,7 @@ class CloudAuth {
         };
         
         this.notifyListeners();
-        console.log('🔐 CLOUD AUTH: Login successful for user:', data.data.user.id);
+        // console.log('🔐 CLOUD AUTH: Login successful for user:', data.data.user.id);
         
         // Sync conversations after successful login
         this.syncConversationsOnLogin().catch(error => {
@@ -249,7 +249,7 @@ class CloudAuth {
         return;
       }
 
-      console.log('🔄 SYNC: Starting conversation sync...');
+      // console.log('🔄 SYNC: Starting conversation sync...');
       
       // Import conversation storage dynamically to avoid circular imports
       const { default: ConversationStorageService } = await import('./conversationStorage');
@@ -262,11 +262,11 @@ class CloudAuth {
         return;
       }
 
-      console.log(`🔄 SYNC: Syncing ${conversations.length} conversations to server`);
+      // console.log(`🔄 SYNC: Syncing ${conversations.length} conversations to server`);
 
       // Call sync endpoint
-      console.log('🔄 SYNC: Making request to:', `${ENV.API_BASE_URL}/conversation/sync-conversations`);
-      console.log('🔄 SYNC: Auth token present:', !!this.getToken());
+      // console.log('🔄 SYNC: Making request to:', `${ENV.API_BASE_URL}/conversation/sync-conversations`);
+      // console.log('🔄 SYNC: Auth token present:', !!this.getToken());
       
       const response = await fetch(`${ENV.API_BASE_URL}/conversation/sync-conversations`, {
         method: 'POST',
@@ -280,8 +280,8 @@ class CloudAuth {
         })
       });
 
-      console.log('🔄 SYNC: Response status:', response.status);
-      console.log('🔄 SYNC: Response headers:', Object.fromEntries(response.headers.entries()));
+      // console.log('🔄 SYNC: Response status:', response.status);
+      // console.log('🔄 SYNC: Response headers:', Object.fromEntries(response.headers.entries()));
 
       // Check if response is actually JSON before parsing
       const contentType = response.headers.get('content-type');
@@ -294,7 +294,7 @@ class CloudAuth {
       const result = await response.json();
       
       if (result.success) {
-        console.log(`🔄 SYNC: Success! ${result.syncedMessages} messages synced, ${result.skippedMessages} skipped`);
+        // console.log(`🔄 SYNC: Success! ${result.syncedMessages} messages synced, ${result.skippedMessages} skipped`);
       } else {
         console.error('🔄 SYNC: Server sync failed:', result.error);
       }

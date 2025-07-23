@@ -297,7 +297,6 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
         isActive={shouldAnimate}
         borderRadius={12}
         borderWidth={2}
-        animationSpeed={2000}
         gradientColors={[
           'rgba(173, 216, 255, 0.3)',  // Super light blue - transparent
           'rgba(173, 216, 255, 0.6)',  // Light blue - building

@@ -10,6 +10,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/SimpleAuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { BorderThemeProvider } from './contexts/BorderThemeContext';
+import { BorderSettingsProvider } from './contexts/BorderSettingsContext';
 import { FontProvider } from './components/FontProvider';
 import { NuminaColors } from './utils/colors';
 import AppInitializer from './services/appInitializer';
@@ -96,14 +97,16 @@ const SimpleApp: React.FC = () => {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
           <BorderThemeProvider>
-            <RefreshProvider>
-              <FontProvider>
-                <AuthProvider>
-                <AppContent />
-                <StatusBar style="auto" />
-                </AuthProvider>
-              </FontProvider>
-            </RefreshProvider>
+            <BorderSettingsProvider>
+              <RefreshProvider>
+                <FontProvider>
+                  <AuthProvider>
+                  <AppContent />
+                  <StatusBar style="auto" />
+                  </AuthProvider>
+                </FontProvider>
+              </RefreshProvider>
+            </BorderSettingsProvider>
           </BorderThemeProvider>
         </ThemeProvider>
       </GestureHandlerRootView>

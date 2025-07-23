@@ -35,6 +35,7 @@ class SandboxDataService {
   private userDataCache: UserDataSnapshot | null = null;
   private cacheTimestamp: number = 0;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private readonly baseURL = 'https://server-a7od.onrender.com';
 
   async getComprehensiveUserData(): Promise<UserDataSnapshot> {
     // Check cache first
@@ -323,7 +324,7 @@ class SandboxDataService {
             ubpmData: userData.ubpmData,
             behavioralMetrics: userData.behavioralMetrics,
             emotionalProfile: userData.emotionalProfile,
-            conversationHistory: userData.conversationHistory.slice(0, 5) // Last 5 conversations
+            conversationHistory: (userData.conversationHistory || []).slice(0, 5) // Last 5 conversations
           }
         })
       });

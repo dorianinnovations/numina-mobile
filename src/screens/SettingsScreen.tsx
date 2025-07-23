@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
@@ -22,6 +23,7 @@ import { Header } from '../components/Header';
 import SettingsService, { UserSettings } from '../services/settingsService';
 import { NuminaAnimations } from '../utils/animations';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import { useBorderSettings } from '../contexts/BorderSettingsContext';
 import ApiService from '../services/api';
 
 interface SettingsScreenProps {
@@ -37,6 +39,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { logout, isAuthenticated } = useAuth();
+  const { updateBorderSetting, effectsEnabled, brightness, speed, direction, variation } = useBorderSettings();
   
   // Pull-to-refresh functionality
   const { refreshControl: refreshControlProps } = usePullToRefresh(async () => {
@@ -383,8 +386,25 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             },
             { 
               icon: 'magic', 
+              title: 'Border Effects', 
+              desc: 'Enable/disable animated border effects', 
+              type: 'switch',
+              value: true, // Default enabled for unauthenticated users
+              onToggle: (value: boolean) => {
+                // For unauthenticated users, just show an info message
+                if (!value) {
+                  Alert.alert(
+                    'Border Effects Disabled',
+                    'Border effects have been temporarily disabled. Sign in to save your preferences.',
+                    [{ text: 'OK' }]
+                  );
+                }
+              }
+            },
+            { 
+              icon: 'palette', 
               title: 'Border Themes', 
-              desc: 'Customize animated border effects', 
+              desc: 'Customize border colors and styles', 
               type: 'navigate',
               action: 'borderThemes'
             },
@@ -446,8 +466,64 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         },
         { 
           icon: 'magic', 
+          title: 'Border Effects', 
+          desc: 'Enable/disable animated border effects', 
+          type: 'switch',
+          value: effectsEnabled,
+          onToggle: (value: boolean) => updateBorderSetting('effectsEnabled', value)
+        },
+        ...(effectsEnabled ? [
+          { 
+            icon: 'sun', 
+            title: 'Border Brightness', 
+            desc: `Adjust brightness level (${brightness}%)`, 
+            type: 'slider',
+            value: brightness,
+            onValueChange: (value: number) => updateBorderSetting('brightness', value)
+          },
+          { 
+            icon: 'tachometer-alt', 
+            title: 'Border Speed', 
+            desc: `Animation speed (${speed === 1 ? 'Slow' : speed === 2 ? 'Medium' : 'Fast'})`, 
+            type: 'segmented',
+            value: speed,
+            options: [
+              { label: 'Slow', value: 1 },
+              { label: 'Med', value: 2 },
+              { label: 'Fast', value: 3 }
+            ],
+            onValueChange: (value: number) => updateBorderSetting('speed', value)
+          },
+          { 
+            icon: 'arrows-spin', 
+            title: 'Border Direction', 
+            desc: `Animation direction (${direction === 'clockwise' ? 'Clockwise' : 'Counter-clockwise'})`, 
+            type: 'segmented',
+            value: direction,
+            options: [
+              { label: 'CW', value: 'clockwise' },
+              { label: 'CCW', value: 'counterclockwise' }
+            ],
+            onValueChange: (value: string) => updateBorderSetting('direction', value)
+          },
+          { 
+            icon: 'wave-square', 
+            title: 'Border Style', 
+            desc: `Animation variation (${variation.charAt(0).toUpperCase() + variation.slice(1)})`, 
+            type: 'segmented',
+            value: variation,
+            options: [
+              { label: 'Smooth', value: 'smooth' },
+              { label: 'Pulse', value: 'pulse' },
+              { label: 'Wave', value: 'wave' }
+            ],
+            onValueChange: (value: string) => updateBorderSetting('variation', value)
+          }
+        ] : []),
+        { 
+          icon: 'palette', 
           title: 'Border Themes', 
-          desc: 'Customize animated border effects', 
+          desc: 'Customize border colors and styles', 
           type: 'navigate',
           action: 'borderThemes'
         },
@@ -575,6 +651,154 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       }
     };
 
+    const handleSliderChange = (value: number) => {
+      if (item.onValueChange) {
+        item.onValueChange(Math.round(value));
+      }
+    };
+
+    const handleSegmentedChange = (value: any) => {
+      if (item.onValueChange) {
+        item.onValueChange(value);
+      }
+    };
+
+    if (item.type === 'segmented') {
+      return (
+        <View
+          key={index}
+          style={[
+            styles.settingItem,
+            styles.sliderItem,
+            {
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+              borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+            }
+          ]}
+        >
+          <View style={[
+            styles.settingIcon,
+            {
+              backgroundColor: isDarkMode ? 'rgba(110, 197, 255, 0.1)' : 'rgba(110, 197, 255, 0.15)',
+            }
+          ]}>
+            <FontAwesome5 
+              name={item.icon as any} 
+              size={16} 
+              color={isDarkMode ? '#ffffff' : '#6ec5ff'} 
+            />
+          </View>
+          <View style={styles.settingText}>
+            <Text style={[
+              styles.settingTitle,
+              { color: isDarkMode ? '#ffffff' : '#000000' }
+            ]}>
+              {item.title}
+            </Text>
+            <Text style={[
+              styles.settingDesc,
+              { color: isDarkMode ? '#888888' : '#666666' }
+            ]}>
+              {item.desc}
+            </Text>
+            <View style={styles.segmentedControl}>
+              {item.options?.map((option: any, optionIndex: number) => (
+                <TouchableOpacity
+                  key={optionIndex}
+                  style={[
+                    styles.segmentedOption,
+                    {
+                      backgroundColor: item.value === option.value 
+                        ? (isDarkMode ? '#6ec5ff' : '#6ec5ff')
+                        : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                    }
+                  ]}
+                  onPress={() => {
+                    handleSegmentedChange(option.value);
+                    NuminaAnimations.haptic.light();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.segmentedText,
+                    {
+                      color: item.value === option.value 
+                        ? '#ffffff' 
+                        : (isDarkMode ? '#ffffff' : '#000000'),
+                      fontWeight: item.value === option.value ? '600' : '400',
+                    }
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      );
+    }
+
+    if (item.type === 'slider') {
+      return (
+        <View
+          key={index}
+          style={[
+            styles.settingItem,
+            styles.sliderItem,
+            {
+              backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0, 0, 0, 0.02)',
+              borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
+            }
+          ]}
+        >
+          <View style={[
+            styles.settingIcon,
+            {
+              backgroundColor: isDarkMode ? 'rgba(110, 197, 255, 0.1)' : 'rgba(110, 197, 255, 0.15)',
+            }
+          ]}>
+            <FontAwesome5 
+              name={item.icon as any} 
+              size={16} 
+              color={isDarkMode ? '#ffffff' : '#6ec5ff'} 
+            />
+          </View>
+          <View style={styles.settingText}>
+            <Text style={[
+              styles.settingTitle,
+              { color: isDarkMode ? '#ffffff' : '#000000' }
+            ]}>
+              {item.title}
+            </Text>
+            <Text style={[
+              styles.settingDesc,
+              { color: isDarkMode ? '#888888' : '#666666' }
+            ]}>
+              {item.desc}
+            </Text>
+            <Slider
+              style={styles.slider}
+              minimumValue={10}
+              maximumValue={100}
+              value={item.value}
+              onValueChange={handleSliderChange}
+              onSlidingComplete={(value) => {
+                handleSliderChange(value);
+                NuminaAnimations.haptic.light();
+              }}
+              minimumTrackTintColor={isDarkMode ? '#6ec5ff' : '#6ec5ff'}
+              maximumTrackTintColor={isDarkMode ? '#333333' : '#cccccc'}
+              thumbStyle={{
+                backgroundColor: '#6ec5ff',
+                width: 20,
+                height: 20,
+              }}
+            />
+          </View>
+        </View>
+      );
+    }
+
     return (
       <TouchableOpacity
         key={index}
@@ -585,9 +809,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             borderColor: isDarkMode ? '#23272b' : 'rgba(0, 0, 0, 0.05)',
           }
         ]}
-        activeOpacity={item.type === 'switch' ? 1 : 0.7}
+        activeOpacity={item.type === 'switch' || item.type === 'slider' ? 1 : 0.7}
         onPress={item.type === 'navigate' ? () => handleNavigate(item.action) : undefined}
-        disabled={item.type === 'switch'}
+        disabled={item.type === 'switch' || item.type === 'slider'}
       >
         <View style={[
           styles.settingIcon,
@@ -848,6 +1072,12 @@ const styles = StyleSheet.create({
     padding: 16,
     height: 38 * 1.8, 
   },
+  sliderItem: {
+    height: 'auto',
+    minHeight: 38 * 2.2,
+    alignItems: 'flex-start',
+    paddingVertical: 20,
+  },
   settingIcon: {
     width: 32,
     height: 32,
@@ -923,5 +1153,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+    marginTop: 12,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    marginTop: 12,
+    borderRadius: 8,
+    overflow: 'hidden',
+    gap: 1,
+  },
+  segmentedOption: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 6,
+  },
+  segmentedText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
   },
 });

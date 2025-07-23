@@ -326,7 +326,7 @@ class ApiService {
               !endpoint.includes('/ai/personality-recommendations') &&
               !endpoint.includes('/ai/emotional-state') &&
               !endpoint.includes('/cloud/events') &&
-              !endpoint.includes('/numina-personality/start-rapid-updates')) {
+              false) {
             CloudAuth.getInstance().logout();
             throw new Error('Authentication expired');
           }
@@ -1357,36 +1357,6 @@ class ApiService {
     };
   }
 
-  // ========== NUMINA PERSONALITY METHODS ==========
-  
-  // Get Numina's current emotional state
-  static async getNuminaCurrentState(): Promise<ApiResponse<any>> {
-    return this.apiRequest('/numina-personality/current-state');
-  }
-
-  // Start continuous Numina updates (8 second intervals)
-  static async startNuminaUpdates(interval: number = 8000): Promise<ApiResponse<any>> {
-    return this.apiRequest('/numina-personality/continuous-updates', {
-      method: 'POST',
-      body: JSON.stringify({ interval }),
-    });
-  }
-
-  // Start rapid Numina updates (5 second intervals for active chat)
-  static async startRapidNuminaUpdates(): Promise<ApiResponse<any>> {
-    return this.apiRequest('/numina-personality/start-rapid-updates', {
-      method: 'POST',
-      body: JSON.stringify({}),
-    });
-  }
-
-  // React to user interaction
-  static async numinaReactToInteraction(userMessage: string, userEmotion?: string, context?: string): Promise<ApiResponse<any>> {
-    return this.apiRequest('/numina-personality/react-to-interaction', {
-      method: 'POST',
-      body: JSON.stringify({ userMessage, userEmotion, context }),
-    });
-  }
 
   // ========== WALLET & CREDIT POOL METHODS ==========
 
