@@ -3,6 +3,7 @@ import { log } from '../utils/logger';
 import CloudAuth, { AuthState, User } from '../services/cloudAuth';
 import ApiService from '../services/api';
 import { ExperienceLevelService } from '../services/experienceLevelService';
+import { FEATURE_FLAGS } from '../config/environment';
 
 /**
  * Simplified Authentication Context
@@ -44,6 +45,10 @@ interface AuthContextType {
   
   refreshSubscription: () => Promise<void>;
   refreshUserTier: () => Promise<void>;
+
+  // Dev features
+  toggleDevAuthBypass?: () => void;
+  isDevMode: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -79,32 +84,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const cloudAuth = CloudAuth.getInstance();
 
   useEffect(() => {
-    log.debug('Initializing auth subscription', null, 'AuthContext');
+    // log.debug('Initializing auth subscription', null, 'AuthContext');
     
     const unsubscribe = cloudAuth.subscribe((newState) => {
       const wasAuthenticated = prevAuthStateRef.current.isAuthenticated;
       const nowAuthenticated = newState.isAuthenticated;
       
-      log.debug('Cloud auth state updated', {
-        wasAuthenticated,
-        nowAuthenticated,
-        hasUser: !!newState.user,
-        hasToken: !!newState.token,
-        stateChanged: wasAuthenticated !== nowAuthenticated
-      }, 'AuthContext');
+      // log.debug('Cloud auth state updated', {
+      //   wasAuthenticated,
+      //   nowAuthenticated,
+      //   hasUser: !!newState.user,
+      //   hasToken: !!newState.token,
+      //   stateChanged: wasAuthenticated !== nowAuthenticated
+      // }, 'AuthContext');
       // Only update state if component is still mounted
       if (isMountedRef.current) {
         setAuthState(newState);
         
         // Use previous state from ref to avoid race conditions
         if (nowAuthenticated && !wasAuthenticated) {
-          log.info('User logged in, loading subscription and tier data', null, 'AuthContext');
+          // log.info('User logged in, loading subscription and tier data', null, 'AuthContext');
           loadSubscriptionData();
           loadUserTierInfo();
         }
         
         if (!nowAuthenticated && wasAuthenticated) {
-          log.info('User logged out, clearing subscription data', null, 'AuthContext');
+          // log.info('User logged out, clearing subscription data', null, 'AuthContext');
           setSubscriptionData(null);
         }
         
@@ -113,7 +118,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     });
 
-    log.debug('Cloud auth ready - simple initialization, no race conditions', null, 'AuthContext');
+    // log.debug('Cloud auth ready - simple initialization, no race conditions', null, 'AuthContext');
     
     return () => {
       isMountedRef.current = false;
@@ -128,10 +133,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.success && response.data) {
         setSubscriptionData(response.data);
       } else {
-        console.error('[AuthContext] Failed to load subscription:', response.error);
+        // console.error('[AuthContext] Failed to load subscription:', response.error);
       }
     } catch (error) {
-      console.error('[AuthContext] Error loading subscription:', error);
+      // console.error('[AuthContext] Error loading subscription:', error);
     } finally {
       setIsSubscriptionLoading(false);
     }
@@ -157,39 +162,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           cloudAuth.updateUser(updatedUser);
         }
       } else {
-        console.error('[AuthContext] Failed to load tier info:', response.error);
+        // console.error('[AuthContext] Failed to load tier info:', response.error);
       }
     } catch (error) {
-      console.error('[AuthContext] Error loading tier info:', error);
+      // console.error('[AuthContext] Error loading tier info:', error);
     }
   };
 
   const login = async (credentials: { email: string; password: string }): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
-    // console.log('[AuthContext] Login attempt for:', credentials.email, 'setting loading=true');
     
     try {
       const result = await cloudAuth.login(credentials.email, credentials.password);
       
       if (result.success) {
-        // console.log('[AuthContext] Login successful');
       } else {
-        console.error('[AuthContext] Login failed:', result.error);
+        // console.error('[AuthContext] Login failed:', result.error);
       }
       
       return result;
     } catch (error) {
-      console.error('[AuthContext] Login error:', error);
+      // console.error('[AuthContext] Login error:', error);
       return { success: false, error: `Login failed: ${error}` };
     } finally {
-      // console.log('[AuthContext] Login complete, setting loading=false');
       setLoading(false);
     }
   };
 
   const signUp = async (credentials: { email: string; password: string; confirmPassword: string }): Promise<{ success: boolean; error?: string }> => {
     setLoading(true);
-    console.log('[AuthContext] Sign up attempt for:', credentials.email);
     
     if (credentials.password !== credentials.confirmPassword) {
       setLoading(false);
@@ -200,18 +201,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await cloudAuth.signup(credentials.email, credentials.password);
       
       if (result.success) {
-        console.log('[AuthContext] Sign up successful');
         
         // MANDATORY: Clear any existing experience level for new users
         await ExperienceLevelService.clearExperienceLevel();
-        console.log('🔄 AUTH CONTEXT: Experience level cleared for new user - three-tier system now mandatory');
+        // console.log('🔄 AUTH CONTEXT: Experience level cleared for new user - three-tier system now mandatory');
       } else {
-        console.error('[AuthContext] Sign up failed:', result.error);
+        // console.error('[AuthContext] Sign up failed:', result.error);
       }
       
       return result;
     } catch (error) {
-      console.error('[AuthContext] Sign up error:', error);
+      // console.error('[AuthContext] Sign up error:', error);
       return { success: false, error: `Sign up failed: ${error}` };
     } finally {
       setLoading(false);
@@ -219,9 +219,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = (): void => {
-    console.log('[AuthContext] Logout initiated');
     cloudAuth.logout();
-    console.log('🔐 AUTH CONTEXT: Cloud logout completed');
+    // console.log('🔐 AUTH CONTEXT: Cloud logout completed');
   };
 
   const getCurrentUserId = (): string | null => {
@@ -238,6 +237,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUserTier = async (): Promise<void> => {
     await loadUserTierInfo();
+  };
+
+  const toggleDevAuthBypass = (): void => {
+    if (FEATURE_FLAGS.DEV_AUTH_BYPASS) {
+      cloudAuth.toggleDevAuthBypass();
+    } else {
+      // console.warn('🔧 DEV AUTH BYPASS: Not enabled in environment config');
+    }
   };
 
   const hasActiveSubscription = subscriptionData?.numinaTrace?.hasActiveSubscription || false;
@@ -262,11 +269,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     refreshSubscription,
     refreshUserTier,
+
+    // Dev features
+    toggleDevAuthBypass: FEATURE_FLAGS.DEV_AUTH_BYPASS ? toggleDevAuthBypass : undefined,
+    isDevMode: FEATURE_FLAGS.DEV_AUTH_BYPASS,
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {React.Children.toArray(children)}
     </AuthContext.Provider>
   );
 };

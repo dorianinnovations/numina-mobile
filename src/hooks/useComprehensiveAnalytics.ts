@@ -162,7 +162,6 @@ export const useComprehensiveAnalytics = () => {
     
     // Prevent rapid successive calls
     if (!forceRefresh && (isCurrentlyFetching.current || (now - lastFetchTime.current) < FETCH_COOLDOWN)) {
-      console.log('📊 Analytics fetch skipped - too soon since last request');
       return;
     }
     
@@ -194,11 +193,6 @@ export const useComprehensiveAnalytics = () => {
         summary
       }));
       
-      console.log('📊 Comprehensive Analytics loaded:', {
-        dataPoints: summary.totalDataPoints,
-        completeness: summary.completenessScore,
-        insights: summary.keyInsights
-      });
       
     } catch (error) {
       console.error('Failed to fetch comprehensive analytics:', error);
@@ -301,7 +295,6 @@ export const useComprehensiveAnalytics = () => {
       await comprehensiveAnalyticsService.triggerUBPMAnalysis();
       // Refresh UBPM data after triggering analysis
       await fetchUBPMContext();
-      console.log('🧠 UBPM analysis triggered and data refreshed');
     } catch (error) {
       console.error('Failed to trigger UBPM analysis:', error);
     }

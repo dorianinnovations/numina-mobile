@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { View, Animated, StyleSheet, Easing } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import LottieView from 'lottie-react-native';
 
 interface AnimatedAuthStatusProps {
   status: 'loading' | 'success' | 'error' | 'idle';
@@ -412,21 +413,18 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
               styles.iconContainer,
               {
                 transform: [{ scale: checkmarkScale }],
+                opacity: checkmarkProgress,
               },
             ]}
           >
-            <Animated.View
-              style={[
-                styles.checkmark,
-                {
-                  width: size * 0.25,
-                  height: size * 0.5,
-                  borderRightWidth: strokeWidth,
-                  borderBottomWidth: strokeWidth,
-                  borderColor: currentColor,
-                  opacity: checkmarkProgress,
-                },
-              ]}
+            <LottieView
+              source={require('../../assets/greencheckmark.json')}
+              autoPlay
+              loop={false}
+              style={{
+                width: size * 0.6,
+                height: size * 0.6,
+              }}
             />
           </Animated.View>
         )}

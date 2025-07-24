@@ -4,6 +4,14 @@ import { CHAT_API_CONFIG } from './api';
 import ToolExecutionService from './toolExecutionService';
 import { log } from '../utils/logger';
 
+// Tool pattern interface for proper typing (shared with api.ts)
+interface ToolPattern {
+  regex: RegExp;
+  tool: string;
+  action: string;
+  isCompletion?: boolean;
+}
+
 /**
  * Optimized Chat Service - High Performance Version
  * Bypasses unnecessary validation and processing for better performance
@@ -199,7 +207,6 @@ export class OptimizedChatService {
               if (content.includes('🔧 **') && !hasReceivedToolResult) {
                 hasReceivedToolResult = true;
                 initialResponseLength = fullContent.length;
-                log.debug('Tool result detected, tracking for deduplication', undefined, 'TOOL_TRACKING');
               }
               
               const shouldUpdate = this.shouldUpdateUI(content, fullContent.length);
@@ -334,7 +341,6 @@ export class OptimizedChatService {
     );
 
     if (isUBPMQuery) {
-      log.debug('UBPM Query Detected', undefined, 'UBPM');
       
       // Use higher temperature for more creative UBPM analysis
       return await this.sendOptimizedMessage(query, onStreamingUpdate, {
@@ -357,7 +363,6 @@ export class OptimizedChatService {
       
       return response.length > 0;
     } catch (error) {
-      console.error('Connection Test Failed:', error);
       return false;
     }
   }
@@ -369,17 +374,7 @@ export class OptimizedChatService {
     if (content.includes('🔍') || content.includes('🎵') || content.includes('📰') || content.includes('🌐') || 
         content.toLowerCase().includes('search') || content.toLowerCase().includes('found') || 
         content.toLowerCase().includes('results') || content.toLowerCase().includes('web')) {
-      console.log('🔧 OptimizedChat: Checking content for tool patterns:', content.substring(0, 200));
-      
-      // Debug: Log any 🌐 patterns we find
-      if (content.includes('🌐')) {
-        console.log('🔧 OptimizedChat: Found 🌐 in content:', content.substring(0, 300));
-      }
-      
-      // Debug: Check for any search completion indicators
-      if (content.toLowerCase().includes('found') && content.toLowerCase().includes('result')) {
-        console.log('🔧 OptimizedChat: Found potential search completion:', content.substring(0, 300));
-      }
+      // Tool pattern detection logic continues below
     }
     
     const toolExecutionService = ToolExecutionService.getInstance();
@@ -527,7 +522,6 @@ export class OptimizedChatService {
     
     for (const pattern of toolPatterns) {
       if (pattern.regex.test(content)) {
-        console.log(`🔧 OptimizedChat: Detected ${pattern.tool} execution from server response:`, content.substring(0, 100));
         
         const activeExecutions = toolExecutionService.getCurrentExecutions();
         const existingExecution = activeExecutions.find(exec => 
@@ -535,18 +529,16 @@ export class OptimizedChatService {
         );
         
         // Handle completion patterns differently
-        if ((pattern as any).isCompletion && existingExecution) {
-          console.log(`🔧 OptimizedChat: Completing ${pattern.tool} execution (${existingExecution.id})`);
+        if (pattern.isCompletion && existingExecution) {
           toolExecutionService.completeExecution(existingExecution.id, { 
             success: true,
             serverResponse: content.trim()
           });
-        } else if (!existingExecution && !(pattern as any).isCompletion) {
+        } else if (!existingExecution && !pattern.isCompletion) {
           const executionId = toolExecutionService.startExecution(pattern.tool, { 
             detectedFromServer: true,
             serverMessage: content.trim()
           });
-          console.log(`🔧 OptimizedChat: Started tracking ${pattern.tool} execution (${executionId})`);
           
           // Update progress to show it's executing
           setTimeout(() => {
@@ -569,7 +561,6 @@ export class OptimizedChatService {
           
         } else {
           // Update existing execution
-          console.log(`🔧 OptimizedChat: Updating existing ${pattern.tool} execution`);
           toolExecutionService.updateProgress(existingExecution.id, 75, { 
             serverUpdate: content.trim()
           });
@@ -584,3 +575,4 @@ export class OptimizedChatService {
 
 // Lazy instantiation for better app startup performance
 export const getOptimizedChatService = () => OptimizedChatService.getInstance();
+export default getOptimizedChatService;

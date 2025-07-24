@@ -96,9 +96,20 @@ export const EnhancedNodeModal: React.FC<EnhancedNodeModalProps> = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['summary']));
 
   useEffect(() => {
+    console.log('🎯 EnhancedNodeModal: Effect triggered', {
+      visible,
+      hasNodeData: !!nodeData,
+      nodeDataId: nodeData?.id,
+      nodeDataTitle: nodeData?.title,
+      nodeDataContent: nodeData?.content?.substring(0, 100) + '...',
+      fullNodeData: nodeData
+    });
+    
     if (visible && nodeData) {
+      console.log('✅ EnhancedNodeModal: Opening modal with node data');
       handleOpen();
     } else {
+      console.log('❌ EnhancedNodeModal: Closing modal - visible:', visible, 'hasNodeData:', !!nodeData);
       handleClose();
     }
   }, [visible, nodeData]);
@@ -208,7 +219,7 @@ export const EnhancedNodeModal: React.FC<EnhancedNodeModalProps> = ({
               {streamingContent ? (
                 <StreamingMarkdown 
                   content={nodeData.content}
-                  speed={25}
+                  animationSpeed={25}
                   style={[
                     styles.contentText,
                     { color: isDarkMode ? '#E5E7EB' : '#374151' }
@@ -504,7 +515,18 @@ export const EnhancedNodeModal: React.FC<EnhancedNodeModalProps> = ({
     }
   };
 
-  if (!visible || !nodeData) return null;
+  if (!visible || !nodeData) {
+    console.log('🚫 EnhancedNodeModal: Not rendering - visible:', visible, 'hasNodeData:', !!nodeData);
+    return null;
+  }
+  
+  console.log('🎨 EnhancedNodeModal: Rendering modal with data:', {
+    id: nodeData.id,
+    title: nodeData.title,
+    hasContent: !!nodeData.content,
+    contentLength: nodeData.content?.length,
+    category: nodeData.category
+  });
 
   return (
     <Modal

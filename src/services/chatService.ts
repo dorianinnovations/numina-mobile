@@ -25,14 +25,11 @@ export class ChatService {
     attachments?: any[]
   ): Promise<string> {
     try {
-      console.log('User Message:', message);
       if (attachments && attachments.length > 0) {
-        console.log('Attachments:', attachments.length, 'files');
       }
       
       // Always use optimized service with UBPM detection
       const result = await optimizedChatService.sendUBPMQuery(message, onStreamingUpdate, attachments);
-      console.log('Bot Message:', result);
       return result;
       
     } catch (error: any) {

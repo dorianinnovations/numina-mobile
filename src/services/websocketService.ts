@@ -18,6 +18,8 @@ interface ConnectionStatus {
   lastConnected?: Date;
   reconnectAttempts: number;
   userId?: string;
+  lastWarningTime?: number;
+  backoffDelay: number;
 }
 
 interface RoomInfo {
@@ -83,7 +85,7 @@ class WebSocketService {
       wsUrl = wsUrl.slice(0, -4);
     }
     
-    wsUrl = wsUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    // Keep HTTP/HTTPS - Socket.io handles protocol switching internally
     
     log.info('WebSocket will connect to', { wsUrl }, 'WebSocketService');
     
@@ -97,7 +99,8 @@ class WebSocketService {
     this.connectionStatus = {
       isConnected: false,
       isConnecting: false,
-      reconnectAttempts: 0
+      reconnectAttempts: 0,
+      backoffDelay: 5000
     };
 
     this.eventHandlers = new Map();
@@ -112,7 +115,6 @@ class WebSocketService {
 
       const token = CloudAuth.getInstance().getToken();
       if (!token) {
-        console.warn('No auth token found for WebSocket connection');
         return false;
       }
       
@@ -129,14 +131,21 @@ class WebSocketService {
         reconnection: false,
         forceNew: true,
         upgrade: true,
-        rememberUpgrade: false
+        rememberUpgrade: false,
+        withCredentials: true,
+        autoConnect: true
       });
 
       this.setupEventHandlers();
 
       return new Promise((resolve) => {
         const timeout = setTimeout(() => {
-          console.warn('WebSocket connection timeout');
+          // Only log timeout warning every 30 seconds to reduce spam
+          const now = Date.now();
+          if (!this.connectionStatus.lastWarningTime || (now - this.connectionStatus.lastWarningTime) > 30000) {
+            // console.warn('WebSocket connection timeout');
+            this.connectionStatus.lastWarningTime = now;
+          }
           this.connectionStatus.isConnecting = false;
           resolve(false);
         }, this.config.timeout);
@@ -144,33 +153,17 @@ class WebSocketService {
         this.socket?.once('connect', () => {
           clearTimeout(timeout);
           this.connectionStatus.lastConnected = new Date();
-          console.log('WebSocket connected successfully');
           resolve(true);
         });
 
         this.socket?.once('connect_error', (error) => {
           clearTimeout(timeout);
-          console.log('🔌 WebSocket connection failed - operating in offline mode');
-          
-          if (error.message?.includes('User not found')) {
-            console.warn('🔐 User not found on WebSocket server, continuing without WebSocket');
-          } else if (error.message?.includes('timeout')) {
-            console.warn('🔌 WebSocket connection timeout - server may be slow');
-          } else if (error.message?.includes('502')) {
-            console.warn('🔌 WebSocket server unavailable (502) - app will work without real-time features');
-          } else if (error.message?.includes('bad response code')) {
-            console.warn('🔌 WebSocket server configuration issue - continuing without WebSocket');
-          } else {
-            console.warn('🔌 WebSocket error:', error.message);
-          }
-          
           this.connectionStatus.isConnecting = false;
           resolve(false);
         });
       });
 
     } catch (error) {
-      console.error('WebSocket initialization error:', error);
       this.connectionStatus.isConnecting = false;
       return false;
     }
@@ -181,7 +174,6 @@ class WebSocketService {
 
     // Connection events
     this.socket.on('connect', () => {
-      console.log('WebSocket connected via event handler');
       this.connectionStatus.isConnected = true;
       this.connectionStatus.isConnecting = false;
       this.connectionStatus.reconnectAttempts = 0;
@@ -189,30 +181,25 @@ class WebSocketService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('🔌 WebSocket disconnected - operating in offline mode');
       this.connectionStatus.isConnected = false;
       this.emitToHandlers('connection_status', { connected: false, reason });
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('WebSocket reconnected after', attemptNumber, 'attempts');
       this.connectionStatus.reconnectAttempts = 0;
       this.emitToHandlers('reconnected', { attemptNumber });
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log('WebSocket reconnection attempt:', attemptNumber);
       this.connectionStatus.reconnectAttempts = attemptNumber;
       this.emitToHandlers('reconnect_attempt', { attemptNumber });
     });
 
     this.socket.on('reconnect_error', (error) => {
-      console.error('WebSocket reconnection error:', error);
       this.emitToHandlers('reconnect_error', { error });
     });
 
     this.socket.on('reconnect_failed', () => {
-      console.error('WebSocket reconnection failed');
       this.emitToHandlers('reconnect_failed', {});
     });
 
@@ -310,23 +297,19 @@ class WebSocketService {
 
     // UBPM Events - User Behavior Profile Model insights
     this.socket.on('ubpm_notification', (data: any) => {
-      this.debug('🧠 UBPM notification received:', data);
       this.emitToHandlers('ubpm_notification', data);
     });
 
     this.socket.on('ubpm_insight', (data: any) => {
-      this.debug('🧠 UBPM insight received:', data);
       this.emitToHandlers('ubpm_insight', data);
     });
 
     // Tool execution events for beautiful status indicators
     this.socket.on('tool_execution_start', (data: any) => {
-      this.debug('🔧 Tool execution started:', data);
       this.emitToHandlers('tool_execution_start', data);
     });
 
     this.socket.on('tool_execution_complete', (data: any) => {
-      this.debug('✅ Tool execution completed:', data);
       this.emitToHandlers('tool_execution_complete', data);
     });
   }
@@ -341,7 +324,6 @@ class WebSocketService {
         try {
           handler(data);
         } catch (error) {
-          console.error(`Error in event handler for ${event}:`, error);
         }
       });
     }
@@ -581,9 +563,7 @@ class WebSocketService {
    * Debug logging helper
    */
   private debug(message: string, data?: any): void {
-    if (__DEV__) {
-      console.log(message, data || '');
-    }
+    // Debug logging disabled
   }
 
   /**
@@ -597,19 +577,7 @@ class WebSocketService {
    * Test WebSocket connection - for debugging
    */
   testConnection(): void {
-    console.log('🧪 WebSocket Connection Test:');
-    console.log('🔌 Server URL:', this.config.serverUrl);
-    console.log('🔗 Is Connected:', this.connectionStatus.isConnected);
-    console.log('🔄 Is Connecting:', this.connectionStatus.isConnecting);
-    console.log('🕐 Last Connected:', this.connectionStatus.lastConnected);
-    console.log('🔁 Reconnect Attempts:', this.connectionStatus.reconnectAttempts);
-    console.log('👥 Current Rooms:', Array.from(this.currentRooms));
-    
-    if (this.socket) {
-        log.debug('Socket status', { connected: this.socket.connected, id: this.socket.id || 'No ID' }, 'WebSocketService');
-    } else {
-      log.warn('No Socket Instance', null, 'WebSocketService');
-    }
+    // Connection test results available via getConnectionStatus()
   }
 
   /**
@@ -641,7 +609,8 @@ class WebSocketService {
     this.connectionStatus = {
       isConnected: false,
       isConnecting: false,
-      reconnectAttempts: 0
+      reconnectAttempts: 0,
+      backoffDelay: 5000
     };
     
     // Properly disconnect socket

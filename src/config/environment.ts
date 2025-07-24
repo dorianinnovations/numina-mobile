@@ -8,16 +8,13 @@ interface EnvironmentConfig {
   SSL_PINNING_ENABLED: boolean;
   BIOMETRIC_AUTH_ENABLED: boolean;
   WALLET_FEATURES_ENABLED: boolean;
+  DEV_AUTH_BYPASS: boolean;
 }
 
 const isDev = __DEV__;
 const releaseChannel = Constants.expoConfig?.updates?.requestHeaders?.['expo-channel-name'] || 'development';
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
-  console.log('🔧 Environment detection:', { isDev, releaseChannel, __DEV__ });
-  
-  console.log('📱 Using PRODUCTION server (mobile app via tunnel)');
-  console.log('📡 API_BASE_URL: https://server-a7od.onrender.com');
   return {
     API_BASE_URL: 'https://server-a7od.onrender.com',
     STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
@@ -26,6 +23,7 @@ const getEnvironmentConfig = (): EnvironmentConfig => {
     SSL_PINNING_ENABLED: false,
     BIOMETRIC_AUTH_ENABLED: false,
     WALLET_FEATURES_ENABLED: true,
+    DEV_AUTH_BYPASS: false, // TEMP DISABLED - isDev && process.env.EXPO_PUBLIC_DEV_AUTH_BYPASS === 'true',
   };
 };
 
@@ -59,6 +57,7 @@ export const FEATURE_FLAGS = {
   SSL_PINNING: ENV.SSL_PINNING_ENABLED,
   CRASH_REPORTING: ENV.ENVIRONMENT === 'production',
   ANALYTICS: ENV.ENVIRONMENT !== 'development',
+  DEV_AUTH_BYPASS: false, // TEMP DISABLED - ENV.DEV_AUTH_BYPASS,
 };
 
 export default ENV;

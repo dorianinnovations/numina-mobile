@@ -42,3 +42,8 @@ dist/
 
 # Local Netlify folder
 .netlify
+
+# Documentation files (local development only)
+*.md
+!README.md
+!CLAUDE.md

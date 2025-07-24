@@ -1,4 +1,5 @@
-import { __DEV__ } from 'react-native';
+// Use proper __DEV__ detection for React Native
+const __DEV__ = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
 
 export enum LogLevel {
   DEBUG = 0,
@@ -63,7 +64,9 @@ class Logger {
     };
     
     this.addToHistory(entry);
-    console.log(this.formatMessage(LogLevel.DEBUG, message, context), data);
+    if (__DEV__) {
+      console.log(this.formatMessage(LogLevel.DEBUG, message, context), data);
+    }
   }
 
   info(message: string, data?: any, context?: string): void {
@@ -78,7 +81,9 @@ class Logger {
     };
     
     this.addToHistory(entry);
-    console.info(this.formatMessage(LogLevel.INFO, message, context), data);
+    if (__DEV__) {
+      console.info(this.formatMessage(LogLevel.INFO, message, context), data);
+    }
   }
 
   warn(message: string, data?: any, context?: string): void {

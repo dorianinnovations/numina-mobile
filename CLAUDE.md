@@ -49,14 +49,13 @@ eas build --profile production    # Production build
 ### Component Architecture (Current Implementation)
 ```
 src/
-├── screens/               # Navigation endpoints (17 screens)
+├── screens/               # Navigation endpoints (15 screens)
 │   ├── HeroLandingScreen.tsx     # App entry point
 │   ├── SignInScreen.tsx          # Authentication
 │   ├── SignUpScreen.tsx          # User registration
 │   ├── ChatScreen.tsx            # Main chat interface
 │   ├── TutorialScreen.tsx        # Feature tutorial
-│   ├── AnalyticsScreen.tsx       # Emotional analytics
-│   ├── ModernAnalyticsScreen.tsx # Modern analytics view
+│   ├── AnalyticsScreen.tsx       # Enhanced analytics with real-time charts
 │   ├── CloudScreen.tsx           # Social features
 │   ├── WalletScreen.tsx          # Credits/subscription
 │   ├── LegacyWalletScreen.tsx    # Legacy wallet view

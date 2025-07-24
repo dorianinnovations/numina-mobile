@@ -26,9 +26,9 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
     Array.from({ length: 8 }, () => new Animated.Value(0))
   ).current;
 
-  // Base rotation animation - perfect speed for holographic
+  // Base rotation animation - much faster spin speed
   useEffect(() => {
-    const duration = type === 'holographic' ? 420 : 480; // 40% faster - maximum performance
+    const duration = type === 'holographic' ? 300 : 400; // Much faster spin speed
     
     const startRotation = () => {
       Animated.loop(
@@ -40,12 +40,8 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
       ).start();
     };
     
-    // Dramatic delay for holographic effect - makes mind think it's processing
-    if (type === 'holographic') {
-      setTimeout(startRotation, 120); // Maximum speed dramatic pause
-    } else {
-      startRotation();
-    }
+    // Start immediately for responsive feel
+    startRotation();
   }, [type]);
 
   // Success morphing animation
@@ -143,7 +139,7 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
           ]}>
             <Svg width={size} height={size}>
               {/* Loading ring */}
-              <G opacity={ringOpacity}>
+              <G opacity={ringOpacity as any}>
                 <Circle
                   cx={size / 2}
                   cy={size / 2}
@@ -158,7 +154,7 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
               </G>
               
               {/* Success checkmark */}
-              <G opacity={checkmarkOpacity}>
+              <G opacity={checkmarkOpacity as any}>
                 <Path
                   d={`M ${size * 0.3} ${size * 0.5} L ${size * 0.45} ${size * 0.65} L ${size * 0.7} ${size * 0.35}`}
                   stroke={successColor}

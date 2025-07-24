@@ -73,8 +73,8 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         }
         break;
       case 'analytics':
-        if (currentRoute !== 'AdvancedAnalytics') {
-          navigation.push('AdvancedAnalytics');
+        if (currentRoute !== 'Analytics') {
+          navigation.push('Analytics');
         }
         break;
       case 'sandbox':

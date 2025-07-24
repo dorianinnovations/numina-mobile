@@ -51,11 +51,11 @@ interface CloudScreenProps {
 }
 
 const FILTER_CATEGORIES = [
-  { id: 'all', label: 'All', icon: 'apps' },
-  { id: 'ai-matched', label: 'For You', icon: 'sparkles' },
-  { id: 'nearby', label: 'Nearby', icon: 'location-outline' },
-  { id: 'today', label: 'Today', icon: 'calendar-outline' },
-  { id: 'joined', label: 'Joined', icon: 'checkmark-circle' },
+  { id: 'ai-matched', label: 'Explore', icon: 'compass-outline' },
+  { id: 'today', label: 'Events', icon: 'calendar-outline' },
+  { id: 'all', label: 'Home', icon: 'home-outline' },
+  { id: 'nearby', label: 'Map', icon: 'map-outline' },
+  { id: 'joined', label: 'Me', icon: 'person-outline' },
 ];
 
 const EVENT_TYPES = [
@@ -83,7 +83,7 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     console.log('Refreshing events...');
   });
   
-  const [activeFilter, setActiveFilter] = useState('ai-matched');
+  const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
@@ -153,6 +153,8 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
 
     // Category filter
     switch (activeFilter) {
+      case 'all':
+        return true;
       case 'ai-matched':
         return event.aiMatchScore && event.aiMatchScore > 0.7;
       case 'nearby':
@@ -219,124 +221,137 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
     return EVENT_TYPES.find(t => t.id === type) || EVENT_TYPES[0];
   };
 
-  const renderEventCard = ({ item, index }: { item: Event; index: number }) => {
+  const renderTallPostCard = ({ item, index, data }: { item: Event; index: number; data: Event[] }) => {
     const typeInfo = getTypeInfo(item.type);
+    const isFirst = index === 0;
+    const isLast = index === data.length - 1;
     
     return (
-      <Animated.View 
-        style={[
-          styles.eventCard,
-          {
-            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-            transform: [{ translateY: slideAnim }],
-            opacity: fadeAnim,
-          }
-        ]}
-      >
-        {/* Event Type Badge */}
-        <View style={[styles.typeBadge, { backgroundColor: `${typeInfo.color}20` }]}>
-          <Ionicons name={typeInfo.icon as any} size={16} color={typeInfo.color} />
-          <Text style={[styles.typeText, { color: typeInfo.color }]}>
-            {typeInfo.label}
-          </Text>
-        </View>
-
-        {/* AI Match Score */}
-        {item.aiMatchScore && item.aiMatchScore > 0.7 && (
-          <View style={styles.aiMatchBadge}>
-            <FontAwesome5 name="magic" size={12} color={NuminaColors.purple} />
-            <Text style={[styles.aiMatchText, { color: NuminaColors.purple }]}>
-              {Math.round(item.aiMatchScore * 100)}% match
-            </Text>
-          </View>
-        )}
-
-        {/* Event Content */}
-        <View style={styles.eventContent}>
-          <Text style={[
-            styles.eventTitle, 
-            { color: isDarkMode ? '#fff' : '#1a1a1a' }
-          ]}>
-            {item.title}
-          </Text>
+      <View style={[
+        styles.tallPostCard,
+        {
+          backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.98)',
+          borderTopLeftRadius: isFirst ? 20 : 0,
+          borderTopRightRadius: isFirst ? 20 : 0,
+          borderBottomLeftRadius: isLast ? 20 : 0,
+          borderBottomRightRadius: isLast ? 20 : 0,
+          marginHorizontal: 16,
+          marginTop: isFirst ? 8 : 0,
+          marginBottom: isLast ? 8 : 4,
+        }
+      ]}>
+        {/* Photo Area - Tall Instagram Style */}
+        <View style={[
+          styles.photoArea,
+          { backgroundColor: `${typeInfo.color}15` }
+        ]}>
+          {/* Gradient Overlay */}
+          <View style={styles.photoGradient} />
           
-          <Text style={[
-            styles.eventDescription,
-            { color: isDarkMode ? '#bbb' : '#666' }
-          ]}>
-            {item.description}
-          </Text>
-
-          {/* Event Meta */}
-          <View style={styles.eventMeta}>
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
-              <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
-                {item.date} • {item.time}
-              </Text>
-            </View>
-            
-            <View style={styles.metaItem}>
-              <Ionicons name="people-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
-              <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
-                {item.participants}/{item.maxParticipants}
-              </Text>
-            </View>
-
-            {item.location && (
-              <View style={styles.metaItem}>
-                <Ionicons name="location-outline" size={14} color={isDarkMode ? '#888' : '#999'} />
-                <Text style={[styles.metaText, { color: isDarkMode ? '#888' : '#999' }]}>
-                  {item.location}
-                </Text>
-              </View>
-            )}
-          </View>
-
-          {/* Join Button */}
-          <TouchableOpacity
-            style={[
-              styles.joinButton,
-              {
-                backgroundColor: item.isJoined 
-                  ? `${NuminaColors.green}20` 
-                  : `${typeInfo.color}20`,
-                borderColor: item.isJoined ? NuminaColors.green : typeInfo.color,
-              }
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              // Handle join/leave logic
-            }}
-          >
-            <Ionicons 
-              name={item.isJoined ? "checkmark-circle" : "add-circle-outline"} 
-              size={18} 
-              color={item.isJoined ? NuminaColors.green : typeInfo.color} 
-            />
-            <Text style={[
-              styles.joinButtonText,
-              { color: item.isJoined ? NuminaColors.green : typeInfo.color }
-            ]}>
-              {item.isJoined ? 'Joined' : 'Join Event'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Personalized Reason */}
-          {item.personalizedReason && (
-            <View style={styles.personalizedSection}>
-              <FontAwesome5 name="lightbulb" size={12} color={NuminaColors.yellow} />
-              <Text style={[
-                styles.personalizedText,
-                { color: isDarkMode ? '#ddd' : '#555' }
-              ]}>
-                {item.personalizedReason}
+          {/* AI Match Badge - Top Right */}
+          {item.aiMatchScore && item.aiMatchScore > 0.7 && (
+            <View style={styles.topRightBadge}>
+              <FontAwesome5 name="magic" size={10} color={NuminaColors.purple} />
+              <Text style={styles.matchPercentText}>
+                {Math.round(item.aiMatchScore * 100)}%
               </Text>
             </View>
           )}
+          
+          {/* Category Icon - Top Left */}
+          <View style={[styles.categoryIcon, { backgroundColor: `${typeInfo.color}30` }]}>
+            <Ionicons name={typeInfo.icon as any} size={20} color={typeInfo.color} />
+          </View>
+          
+          {/* Content Overlay */}
+          <View style={styles.photoContent}>
+            <Text style={styles.tallPostTitle}>
+              {item.title}
+            </Text>
+            <Text style={styles.tallPostDescription}>
+              {item.description}
+            </Text>
+            
+            {/* Meta Row */}
+            <View style={styles.tallPostMeta}>
+              <View style={styles.metaChip}>
+                <Ionicons name="calendar-outline" size={12} color="#fff" />
+                <Text style={styles.metaChipText}>{item.date}</Text>
+              </View>
+              <View style={styles.metaChip}>
+                <Ionicons name="people-outline" size={12} color="#fff" />
+                <Text style={styles.metaChipText}>{item.participants}/{item.maxParticipants}</Text>
+              </View>
+              {item.location && (
+                <View style={styles.metaChip}>
+                  <Ionicons name="location-outline" size={12} color="#fff" />
+                  <Text style={styles.metaChipText}>{item.location}</Text>
+                </View>
+              )}
+            </View>
+          </View>
         </View>
-      </Animated.View>
+        
+        {/* Action Bar - Tiny Icons */}
+        <View style={styles.actionBar}>
+          <View style={styles.leftActions}>
+            <TouchableOpacity style={styles.tinyActionButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+              <Ionicons name="heart-outline" size={18} color={NuminaColors.red} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tinyActionButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+              <Ionicons name="chatbubble-outline" size={18} color={NuminaColors.blue} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tinyActionButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+              <Ionicons name="paper-plane-outline" size={18} color={NuminaColors.green} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.rightActions}>
+            <TouchableOpacity 
+              style={[
+                styles.joinActionButton,
+                {
+                  backgroundColor: item.isJoined 
+                    ? `${NuminaColors.green}20` 
+                    : `${typeInfo.color}20`,
+                }
+              ]}
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)}
+            >
+              <Ionicons 
+                name={item.isJoined ? "checkmark-circle" : "add-circle-outline"} 
+                size={16} 
+                color={item.isJoined ? NuminaColors.green : typeInfo.color} 
+              />
+              <Text style={[
+                styles.joinActionText,
+                { color: item.isJoined ? NuminaColors.green : typeInfo.color }
+              ]}>
+                {item.isJoined ? 'Joined' : 'Join'}
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.tinyActionButton} onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
+              <Ionicons name="bookmark-outline" size={18} color={NuminaColors.yellow} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        {/* Personalized Insight */}
+        {item.personalizedReason && (
+          <View style={styles.insightRow}>
+            <FontAwesome5 name="lightbulb" size={10} color={NuminaColors.yellow} />
+            <Text style={[
+              styles.insightText,
+              { color: isDarkMode ? '#999' : '#666' }
+            ]}>
+              {item.personalizedReason}
+            </Text>
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -389,474 +404,317 @@ export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
   };
 
   return (
-    <ScreenWrapper
-      showHeader={true}
-      showBackButton={true}
-      showMenuButton={true}
-      title="Discover"
-      subtitle="Find your tribe"
-    >
+    <View style={styles.container}>
       <PageBackground>
-        <SafeAreaView style={styles.container}>
-          <StatusBar 
-            barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
-            backgroundColor="transparent"
-            translucent={true}
+        <StatusBar 
+          barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
+          backgroundColor="transparent"
+          translucent={true}
+        />
+        
+        {/* Compact Fixed Header */}
+        <View style={[
+          styles.compactHeader,
+          {
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+          }
+        ]}>
+          <Text style={[
+            styles.headerTitle,
+            { color: isDarkMode ? '#fff' : '#1a1a1a' }
+          ]}>Home</Text>
+          
+          {/* Mini Search */}
+          <TouchableOpacity style={[
+            styles.miniSearch,
+            {
+              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+            }
+          ]}>
+            <Ionicons name="search" size={16} color={isDarkMode ? '#888' : '#999'} />
+          </TouchableOpacity>
+        </View>
+
+        <SafeAreaView style={styles.feedContainer}>
+
+          {/* Instagram-Style Feed */}
+          <FlatList
+            data={filteredEvents}
+            renderItem={({ item, index }) => renderTallPostCard({ item, index, data: filteredEvents })}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.feedList}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl {...refreshControl} />
+            }
+            snapToInterval={undefined}
+            decelerationRate="fast"
           />
-
-          {/* Search Header */}
-          <Animated.View 
-            style={[
-              styles.searchHeader,
-              {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                opacity: fadeAnim,
-                transform: [{ translateY: slideAnim }],
-              }
-            ]}
-          >
-            {/* Search Bar */}
-            <View style={[
-              styles.searchBar,
-              {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)',
-              }
-            ]}>
-              <Ionicons name="search" size={20} color={isDarkMode ? '#888' : '#999'} />
-              <TextInput
-                style={[
-                  styles.searchInput,
-                  { color: isDarkMode ? '#fff' : '#333' }
-                ]}
-                placeholder="Search events..."
-                placeholderTextColor={isDarkMode ? '#666' : '#999'}
-                keyboardAppearance={isDarkMode ? 'dark' : 'light'}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Ionicons name="close-circle" size={20} color={isDarkMode ? '#888' : '#999'} />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            
-            {/* Filter Toggle */}
+        </SafeAreaView>
+        
+        {/* Bottom Nav Pills */}
+        <View style={[
+          styles.bottomNavPills,
+          {
+            backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            borderTopColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
+          }
+        ]}>
+          {FILTER_CATEGORIES.slice(0, 5).map(filter => (
             <TouchableOpacity
+              key={filter.id}
               style={[
-                styles.filterToggle,
+                styles.navPill,
                 {
-                  backgroundColor: showFilters 
-                    ? `${NuminaColors.purple}20` 
-                    : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.03)'),
+                  backgroundColor: activeFilter === filter.id
+                    ? `${NuminaColors.purple}20`
+                    : 'transparent',
                 }
               ]}
-              onPress={toggleFilters}
+              onPress={() => handleFilterPress(filter.id)}
             >
               <Ionicons 
-                name="options" 
+                name={filter.icon as any} 
                 size={20} 
-                color={showFilters ? NuminaColors.purple : (isDarkMode ? '#888' : '#999')} 
+                color={activeFilter === filter.id ? NuminaColors.purple : (isDarkMode ? '#666' : '#999')} 
               />
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Quick Filters */}
-          <Animated.View 
-            style={[
-              styles.quickFilters,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-            ]}
-          >
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filtersContent}
-            >
-              {FILTER_CATEGORIES.map(filter => (
-                <TouchableOpacity
-                  key={filter.id}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: activeFilter === filter.id
-                        ? `${NuminaColors.purple}20`
-                        : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'),
-                      borderColor: activeFilter === filter.id
-                        ? NuminaColors.purple
-                        : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                    }
-                  ]}
-                  onPress={() => handleFilterPress(filter.id)}
-                >
-                  <Ionicons 
-                    name={filter.icon as any} 
-                    size={16} 
-                    color={activeFilter === filter.id ? NuminaColors.purple : (isDarkMode ? '#888' : '#999')} 
-                  />
-                  <Text style={[
-                    styles.filterText,
-                    { 
-                      color: activeFilter === filter.id 
-                        ? NuminaColors.purple 
-                        : (isDarkMode ? '#888' : '#999') 
-                    }
-                  ]}>
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animated.View>
-
-
-          {/* Advanced Filters Panel */}
-          <Animated.View 
-            style={[
-              styles.advancedFilters,
-              {
-                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.95)',
-                borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)',
-                transform: [{ translateY: filterSlideAnim }],
-              }
-            ]}
-          >
-            <Text style={[
-              styles.filtersTitle,
-              { color: isDarkMode ? '#fff' : '#333' }
-            ]}>
-              Event Types
-            </Text>
-            <View style={styles.typeFilters}>
-              {EVENT_TYPES.map(type => (
-                <TouchableOpacity
-                  key={type.id}
-                  style={[
-                    styles.typeChip,
-                    {
-                      backgroundColor: selectedTypes.includes(type.id)
-                        ? `${type.color}20`
-                        : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'),
-                      borderColor: selectedTypes.includes(type.id)
-                        ? type.color
-                        : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
-                    }
-                  ]}
-                  onPress={() => handleTypeToggle(type.id)}
-                >
-                  <Ionicons 
-                    name={type.icon as any} 
-                    size={14} 
-                    color={selectedTypes.includes(type.id) ? type.color : (isDarkMode ? '#888' : '#999')} 
-                  />
-                  <Text style={[
-                    styles.typeChipText,
-                    { 
-                      color: selectedTypes.includes(type.id) 
-                        ? type.color 
-                        : (isDarkMode ? '#888' : '#999') 
-                    }
-                  ]}>
-                    {type.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Animated.View>
-
-          {/* Events List */}
-          <Animated.View 
-            style={[
-              styles.eventsContainer,
-              { opacity: fadeAnim }
-            ]}
-          >
-            {/* Removed spinner - border animation shows loading state */}
-            <FlatList
-                data={filteredEvents}
-                renderItem={renderEventCard}
-                keyExtractor={item => item.id}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.eventsList,
-                  { paddingBottom: showFilters ? 140 : 100 }
-                ]}
-                ListEmptyComponent={renderEmptyState}
-                refreshControl={
-                  <RefreshControl {...refreshControl} />
+              <Text style={[
+                styles.navPillText,
+                { 
+                  color: activeFilter === filter.id 
+                    ? NuminaColors.purple 
+                    : (isDarkMode ? '#666' : '#999') 
                 }
-                onScroll={() => {
-                  if (showFilters) {
-                    setShowFilters(false);
-                    Animated.timing(filterSlideAnim, {
-                      toValue: -100,
-                      duration: 300,
-                      useNativeDriver: true,
-                    }).start();
-                  }
-                }}
-              />
-          </Animated.View>
-          
-          {/* Floating POST Button */}
-          <TouchableOpacity
-            style={[
-              styles.floatingPostButton,
-              {
-                backgroundColor: NuminaColors.purple,
-                shadowColor: NuminaColors.purple,
-              }
-            ]}
-            onPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              // Navigate to create event screen
-              console.log('Create new event');
-            }}
-          >
-            <Ionicons 
-              name="pencil" 
-              size={24} 
-              color="#fff" 
-            />
-          </TouchableOpacity>
-        </SafeAreaView>
+              ]}>
+                {filter.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </PageBackground>
-    </ScreenWrapper>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginTop: 100,
   },
-  searchHeader: {
+  compactHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginTop: 240,
-    marginHorizontal: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    zIndex: 100,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Inter_700Bold',
+  },
+  miniSearch: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedContainer: {
+    flex: 1,
+    paddingTop: 100,
+  },
+  feedList: {
+    paddingBottom: 120,
+    paddingHorizontal: 0,
+  },
+  tallPostCard: {
+    overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
   },
-  searchBar: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 10,
+  photoArea: {
+    height: 480,
+    position: 'relative',
+    justifyContent: 'flex-end',
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter_400Regular',
-  },
-  floatingPostButton: {
+  photoGradient: {
     position: 'absolute',
-    bottom: 30,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 8,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    zIndex: 100,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  filterToggle: {
-    padding: 14,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickFilters: {
-    marginTop: 16,
-  },
-  filtersContent: {
-    paddingHorizontal: 20,
-    gap: 12,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 8,
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-  advancedFilters: {
+  topRightBadge: {
     position: 'absolute',
-    top: 160,
-    left: 16,
+    top: 16,
     right: 16,
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    zIndex: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-  },
-  filtersTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-    marginBottom: 12,
-  },
-  typeFilters: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  typeChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
-  },
-  typeChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-  },
-  eventsContainer: {
-    flex: 1,
-    marginTop: 12,
-  },
-  eventsList: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-  },
-  eventCard: {
-    marginBottom: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-  },
-  typeBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
+    backgroundColor: 'rgba(138, 43, 226, 0.9)',
     borderRadius: 12,
     gap: 4,
-    zIndex: 1,
   },
-  typeText: {
-    fontSize: 12,
+  matchPercentText: {
+    fontSize: 10,
     fontWeight: '600',
+    color: '#fff',
     fontFamily: 'Inter_600SemiBold',
   },
-  aiMatchBadge: {
+  categoryIcon: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    flexDirection: 'row',
+    top: 16,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: 'rgba(138, 43, 226, 0.1)',
-    borderRadius: 12,
-    gap: 4,
-    zIndex: 1,
   },
-  aiMatchText: {
-    fontSize: 11,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  eventContent: {
+  photoContent: {
     padding: 20,
-    paddingTop: 52,
+    paddingTop: 40,
   },
-  eventTitle: {
-    fontSize: 18,
+  tallPostTitle: {
+    fontSize: 22,
     fontWeight: '700',
+    color: '#fff',
     fontFamily: 'Inter_700Bold',
-    marginBottom: 12,
-    lineHeight: 24,
+    marginBottom: 8,
+    lineHeight: 28,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  eventDescription: {
+  tallPostDescription: {
     fontSize: 14,
+    color: 'rgba(255,255,255,0.9)',
     fontFamily: 'Inter_400Regular',
     lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 16,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  eventMeta: {
-    gap: 10,
-    marginBottom: 20,
-  },
-  metaItem: {
+  tallPostMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-  },
-  joinButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    borderWidth: 1,
     gap: 8,
-    marginBottom: 12,
+    flexWrap: 'wrap',
   },
-  joinButtonText: {
-    fontSize: 14,
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
+    gap: 4,
+  },
+  metaChipText: {
+    fontSize: 11,
+    color: '#fff',
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  leftActions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
+  },
+  tinyActionButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  joinActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+  },
+  joinActionText: {
+    fontSize: 12,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
   },
-  personalizedSection: {
+  insightRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    gap: 10,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 8,
   },
-  personalizedText: {
+  insightText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 11,
     fontStyle: 'italic',
     fontFamily: 'Inter_400Regular',
-    lineHeight: 16,
+    lineHeight: 14,
+  },
+  bottomNavPills: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  navPill: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 16,
+    gap: 4,
+  },
+  navPillText: {
+    fontSize: 10,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    textAlign: 'center',
   },
   emptyState: {
     flex: 1,
@@ -875,16 +733,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
   },
 });

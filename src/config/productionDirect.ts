@@ -9,8 +9,8 @@ export const PRODUCTION_DIRECT_CONFIG = {
   // Always use production server
   API_BASE_URL: 'https://server-a7od.onrender.com/api',
   
-  // Production WebSocket
-  WS_URL: 'wss://server-a7od.onrender.com',
+  // Production WebSocket (Socket.io handles protocol switching)
+  WS_URL: 'https://server-a7od.onrender.com',
   
   // Production mode always
   IS_PRODUCTION: true,
@@ -34,7 +34,6 @@ export const PRODUCTION_DIRECT_CONFIG = {
 
 // Override environment detection
 export const getConfig = () => {
-  console.log('🚀 PRODUCTION-DIRECT: Using production for everything');
   return PRODUCTION_DIRECT_CONFIG;
 };
 

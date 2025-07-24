@@ -113,7 +113,6 @@ export class DataAuditService {
     totalItems: number;
     estimatedSize: string;
   }> {
-    console.log('🔍 DATA AUDIT: Starting comprehensive audit...');
 
     try {
       const allKeys = await AsyncStorage.getAllKeys();
@@ -152,7 +151,6 @@ export class DataAuditService {
       const totalItems = asyncStorage.length + secureStore.length + conversations.length + emotions.length;
       const estimatedSize = this.calculateEstimatedSize(asyncStorage, conversations, emotions);
 
-      console.log('🔍 DATA AUDIT: Audit completed');
       return {
         asyncStorage,
         secureStore,

@@ -551,7 +551,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           title: 'Push Notifications', 
           desc: 'Receive wellness reminders', 
           type: 'switch', 
-          value: settings.pushNotifications,
+          value: settings?.pushNotifications ?? false,
           onToggle: (value: boolean) => handleSettingToggle('pushNotifications', value)
         },
         { 
@@ -559,7 +559,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           title: 'Daily Check-ins', 
           desc: 'Remind me to log my mood', 
           type: 'switch', 
-          value: settings.dailyCheckins,
+          value: settings?.dailyCheckins ?? false,
           onToggle: (value: boolean) => handleSettingToggle('dailyCheckins', value)
         },
         { 
@@ -567,7 +567,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           title: 'Weekly Reports', 
           desc: 'Get weekly wellness summaries', 
           type: 'switch', 
-          value: settings.weeklyReports,
+          value: settings?.weeklyReports ?? false,
           onToggle: (value: boolean) => handleSettingToggle('weeklyReports', value)
         },
       ]
@@ -587,7 +587,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           title: 'App Lock', 
           desc: 'Secure app with biometrics', 
           type: 'switch', 
-          value: settings.appLock,
+          value: settings?.appLock ?? false,
           onToggle: (value: boolean) => handleSettingToggle('appLock', value)
         },
         { 
@@ -595,7 +595,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           title: 'Analytics Sharing', 
           desc: 'Share anonymous usage data', 
           type: 'switch', 
-          value: settings.analyticsSharing,
+          value: settings?.analyticsSharing ?? false,
           onToggle: (value: boolean) => handleSettingToggle('analyticsSharing', value)
         },
       ]
@@ -788,11 +788,6 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               }}
               minimumTrackTintColor={isDarkMode ? '#6ec5ff' : '#6ec5ff'}
               maximumTrackTintColor={isDarkMode ? '#333333' : '#cccccc'}
-              thumbStyle={{
-                backgroundColor: '#6ec5ff',
-                width: 20,
-                height: 20,
-              }}
             />
           </View>
         </View>

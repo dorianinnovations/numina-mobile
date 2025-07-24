@@ -420,7 +420,7 @@ export const PersonalizedInsightsCard: React.FC<PersonalizedInsightsCardProps> =
         </View>
 
         <View style={styles.insightsContainer}>
-          {insights.map(renderInsightCard)}
+          {insights.map((insight) => renderInsightCard(insight))}
         </View>
       </View>
     </Animated.View>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+// NOTE: Known moderate vulnerability in markdown-it dependency (DoS via resource consumption)
+// Risk mitigated as we only process trusted AI responses, not user-generated content
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 

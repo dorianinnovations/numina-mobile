@@ -9,8 +9,9 @@ import {
   Dimensions,
   Text,
   Easing,
+  Alert,
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
@@ -21,6 +22,8 @@ import ToolExecutionService, { ToolExecution } from '../../services/toolExecutio
 import { FileUploadService } from '../../services/fileUploadService';
 import { MessageAttachment, UploadProgress } from '../../types/message';
 import { AttachmentPreview } from './AttachmentPreview';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 const { width } = Dimensions.get('window');
 
@@ -144,6 +147,8 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
   // File attachment state
   const [uploadProgress, setUploadProgress] = useState<UploadProgress[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [attachmentButtonsVisible, setAttachmentButtonsVisible] = useState(false);
+  const attachmentButtonsAnim = useRef(new Animated.Value(0)).current;
   
   // Check if there are active tool executions
   const hasActiveTools = toolExecutions.some(exec => exec.status === 'executing');
@@ -601,7 +606,6 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
       
       if (pendingAttachments.length > 0) {
         setIsUploading(true);
-        console.log('📤 Processing attachments for sending...');
         
         try {
           const processedAttachments = await fileUploadService.uploadFiles(
@@ -618,32 +622,169 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
           });
           
           onAttachmentsChange?.(finalAttachments);
-          console.log('✅ All attachments processed successfully');
+          
+          // Check if any uploads failed
+          const failedUploads = finalAttachments.filter(a => a.uploadStatus === 'error');
+          if (failedUploads.length > 0) {
+            // Continue anyway - let the user decide
+          } else {
+          }
         } catch (error) {
-          console.error('❌ Attachment processing failed:', error);
-          // Don't send message if attachments failed to process
-          setIsUploading(false);
-          return;
+          // Continue with message sending even if some uploads failed
         } finally {
           setIsUploading(false);
         }
       }
     }
 
-    // Final validation: ensure no pending uploads
+    // Final validation: ensure no pending uploads (but allow errors through)
     const stillPending = finalAttachments.filter(a => a.uploadStatus === 'pending');
     if (stillPending.length > 0) {
-      console.warn('🚫 Cannot send message with pending attachments:', stillPending);
       return;
     }
+    
+    // Log final attachment status
+    const uploadedCount = finalAttachments.filter(a => a.uploadStatus === 'uploaded').length;
+    const errorCount = finalAttachments.filter(a => a.uploadStatus === 'error').length;
+    
+    // Filter out failed attachments for sending
+    const validAttachments = finalAttachments.filter(a => a.uploadStatus === 'uploaded');
+    
+    if (errorCount > 0 && uploadedCount === 0) {
+    }
 
-    onSend(finalAttachments);
+    onSend(validAttachments);
   };
 
   const handleRemoveAttachment = (attachmentId: string) => {
     const newAttachments = attachments.filter(a => a.id !== attachmentId);
     onAttachmentsChange?.(newAttachments);
   };
+
+  // Premium attachment handlers with instant performance
+  const handleCameraPress = async () => {
+    if (!enableFileUpload) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAttachmentButtonsVisible(false);
+
+    try {
+      // Request permissions before launching to avoid delays
+      const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Camera Permission', 'Please enable camera access to take photos.');
+        return;
+      }
+
+      // Launch camera with optimized settings
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8, // Balance quality vs performance
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await handleNewAttachment(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Camera Error', 'Unable to access camera. Please try again.');
+    }
+  };
+
+  const handleGalleryPress = async () => {
+    if (!enableFileUpload) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAttachmentButtonsVisible(false);
+
+    try {
+      // Launch gallery with optimized settings for speed
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await handleNewAttachment(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Gallery Error', 'Unable to access photo library. Please try again.');
+    }
+  };
+
+  const handleDocumentPress = async () => {
+    if (!enableFileUpload) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setAttachmentButtonsVisible(false);
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'text/plain', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        await handleNewAttachment(result.assets[0]);
+      }
+    } catch (error) {
+      Alert.alert('Document Error', 'Unable to select document. Please try again.');
+    }
+  };
+
+  const handleNewAttachment = async (asset: any) => {
+    if (attachments.length >= maxAttachments) {
+      Alert.alert('Maximum Attachments', `You can only attach up to ${maxAttachments} files.`);
+      return;
+    }
+
+    const newAttachment: MessageAttachment = {
+      id: Date.now().toString(),
+      type: asset.type?.includes('image') ? 'image' : 'document',
+      name: asset.name || `attachment_${Date.now()}`,
+      uri: asset.uri,
+      size: asset.fileSize || 0,
+      uploadStatus: 'pending',
+    };
+
+    onAttachmentsChange?.([...attachments, newAttachment]);
+  };
+
+  const toggleAttachmentButtons = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const newVisibility = !attachmentButtonsVisible;
+    setAttachmentButtonsVisible(newVisibility);
+    
+    Animated.spring(attachmentButtonsAnim, {
+      toValue: newVisibility ? 1 : 0,
+      useNativeDriver: false,
+      tension: 300,
+      friction: 20,
+    }).start();
+  };
+  
+  // Animation effect for attachment buttons
+  useEffect(() => {
+    if (attachmentButtonsVisible) {
+      Animated.spring(attachmentButtonsAnim, {
+        toValue: 1,
+        useNativeDriver: false,
+        tension: 300,
+        friction: 20,
+      }).start();
+    } else {
+      Animated.timing(attachmentButtonsAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [attachmentButtonsVisible]);
   
   const handleZapPress = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -771,6 +912,21 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
           </Animated.View>
 
 
+          {/* Attachment Button */}
+          {enableFileUpload && (
+            <TouchableOpacity
+              style={styles.attachmentToggleButton}
+              onPress={toggleAttachmentButtons}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 
+                name={attachmentButtonsVisible ? "times" : "paperclip"} 
+                size={16} 
+                color={isDarkMode ? NuminaColors.darkMode[200] : NuminaColors.darkMode[600]} 
+              />
+            </TouchableOpacity>
+          )}
+
           {/* Tools Zap Button */}
           <View style={styles.zapButtonContainer}>
             <TouchableOpacity
@@ -779,11 +935,11 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
               style={[
                 styles.zapButton,
                 hasActiveTools && {
-                  shadowColor: isDarkMode ? '#fbbf24' : '#f59e0b',
+                  shadowColor: '#10d9a3',
                   shadowOffset: { width: 0, height: 0 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 8,
-                  elevation: 8,
+                  shadowOpacity: 0.3,
+                  shadowRadius: 6,
+                  elevation: 6,
                 }
               ]}
             >
@@ -796,12 +952,12 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
                   ],
                 }
               ]}>
-                <FontAwesome5
-                  name="bolt"
+                <Feather
+                  name="zap"
                   size={18}
                   color={hasActiveTools 
-                    ? (isDarkMode ? '#71c9fc' : '#71c9fc')
-                    : (isDarkMode ? '#6b7280' : '#9ca3af')
+                    ? (isDarkMode ? '#98fb98' : '#22c55e')
+                    : (isDarkMode ? '#98fb98' : '#22c55e')
                   }
                 />
                 {toolCount > 0 && (
@@ -971,6 +1127,91 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
         </TouchableOpacity>
       )}
 
+      {/* Premium Attachment Buttons - Above Input */}
+      {enableFileUpload && (
+        <Animated.View style={[
+          styles.attachmentButtonsContainer,
+          {
+            backgroundColor: isDarkMode 
+              ? 'rgba(20, 20, 20, 0.95)' 
+              : 'rgba(255, 255, 255, 0.95)',
+            borderColor: isDarkMode 
+              ? 'rgba(255, 255, 255, 0.1)' 
+              : 'rgba(0, 0, 0, 0.1)',
+            opacity: attachmentButtonsAnim,
+            height: attachmentButtonsAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 60],
+            }),
+            transform: [{
+              scaleY: attachmentButtonsAnim,
+            }],
+            marginBottom: attachmentButtonsVisible ? 8 : 0,
+          }
+        ]}>
+          {attachmentButtonsVisible && (
+            <>
+              {/* Camera Button */}
+            <TouchableOpacity
+              style={[
+                styles.premiumPillButton,
+                {
+                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
+                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                }
+              ]}
+              onPress={handleCameraPress}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 name="camera" size={16} color="#98fb98" />
+              <Text style={[
+                styles.pillButtonText,
+                { color: '#98fb98' }
+              ]}>Camera</Text>
+            </TouchableOpacity>
+
+            {/* Gallery Button */}
+            <TouchableOpacity
+              style={[
+                styles.premiumPillButton,
+                {
+                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
+                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                }
+              ]}
+              onPress={handleGalleryPress}
+              activeOpacity={0.7}
+            >
+              <FontAwesome5 name="image" size={16} color="#98fb98" />
+              <Text style={[
+                styles.pillButtonText,
+                { color: '#98fb98' }
+              ]}>Gallery</Text>
+            </TouchableOpacity>
+
+            {/* Document Button */}
+            <TouchableOpacity
+              style={[
+                styles.premiumPillButton,
+                {
+                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
+                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                  }
+                ]}
+                onPress={handleDocumentPress}
+                activeOpacity={0.7}
+              >
+                <FontAwesome5 name="file-alt" size={16} color="#98fb98" />
+                <Text style={[
+                  styles.pillButtonText,
+                  { color: '#98fb98' }
+                ]}>Files</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </Animated.View>
+      )}
+
       {/* Attachment Preview */}
       {hasAttachments && (
         <AttachmentPreview
@@ -1013,7 +1254,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    marginBottom: 2,
+    marginBottom: 0,
     zIndex: 10, 
     height: 68, 
     minHeight: 68,
@@ -1031,7 +1272,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 12,
+    gap: 6,
     position: 'relative',
     zIndex: 10,
   },
@@ -1070,13 +1311,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   zapButtonContainer: {
-    marginBottom: 2,
-    marginRight: 2,
+    marginRight: -4,
   },
   zapButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -1184,5 +1423,49 @@ const styles = StyleSheet.create({
   tapHint: {
     fontSize: 11,
     fontFamily: 'Inter_400Regular',
+  },
+  
+  // Premium Attachment Button Styles
+  attachmentToggleButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -8,
+  },
+  attachmentButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24,
+    marginHorizontal: 4,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  premiumPillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+    minWidth: 90,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  pillButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

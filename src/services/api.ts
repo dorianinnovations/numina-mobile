@@ -6,6 +6,22 @@ import { log } from '../utils/logger';
 
 import ENV, { SECURITY_HEADERS, validateEnvironment } from '../config/environment';
 
+// Enhanced Error types with proper typing
+interface RateLimitError extends Error {
+  status: number;
+  tier?: string;
+  upgradeOptions?: any;
+  isRateLimit: boolean;
+}
+
+// Tool pattern interface for proper typing
+interface ToolPattern {
+  regex: RegExp;
+  tool: string;
+  action: string;
+  isCompletion?: boolean;
+}
+
 let environmentValidated = false;
 
 const ensureEnvironmentValid = () => {
@@ -66,6 +82,8 @@ interface ChatMessage {
   n_predict?: number;
   stop?: string[];
   files?: FileAttachment[];
+  attachments?: FileAttachment[];
+  adaptiveFeatures?: any;
 }
 
 interface FileAttachment {
@@ -229,7 +247,7 @@ class ApiService {
     log.error('API Error', errorInfo, 'API');
     
     if (__DEV__) {
-      log.debug('Detailed Error Info', { context, endpoint, error }, 'API');
+      // log.debug('Detailed Error Info', { context, endpoint, error }, 'API');
     }
   }
 
@@ -239,7 +257,6 @@ class ApiService {
     
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
-      console.warn('🚨 API: Server returned non-JSON response:', text.substring(0, 200));
       
       // Try to extract error message from HTML if it's an error page
       if (text.includes('<title>') && text.includes('Error')) {
@@ -254,7 +271,6 @@ class ApiService {
     try {
       return await response.json();
     } catch (error) {
-      console.error('🚨 API: JSON parse error:', error);
       throw new Error('Invalid JSON response from server');
     }
   }
@@ -268,7 +284,6 @@ class ApiService {
     
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     
-    log.debug('Making request', { url: `${this.baseURL}${endpoint}`, baseURL: this.baseURL }, 'API');
     
     const isNetworkAvailable = await this.validateNetworkState();
     if (!isNetworkAvailable) {
@@ -286,7 +301,6 @@ class ApiService {
             token = CloudAuth.getInstance().getToken();
           }
         } catch (error) {
-          console.warn('Could not get token for API request:', endpoint);
         }
         
         const defaultHeaders: Record<string, string> = {
@@ -380,11 +394,6 @@ class ApiService {
                 await OfflineQueueService.enqueueRequest(endpoint, options, priority);
               } catch (queueError) {
                 this.logError('Offline Queue Enqueue', queueError, endpoint);
-                console.error('Failed to enqueue request for offline processing:', {
-                  endpoint,
-                  error: queueError,
-                  priority
-                });
               }
             }
           }
@@ -408,11 +417,6 @@ class ApiService {
               await OfflineQueueService.enqueueRequest(endpoint, options, priority);
             } catch (queueError) {
               this.logError('Offline Queue Enqueue', queueError, endpoint);
-              console.error('Failed to enqueue request for offline processing:', {
-                endpoint,
-                error: queueError,
-                priority
-              });
             }
           }
           
@@ -601,10 +605,8 @@ class ApiService {
     };
     aiInsights: string;
   }>> {
-    console.log(`🔍 API: Requesting growth summary for timeframe: ${timeframe}`);
     try {
       const response = await this.apiRequest(`/personal-insights/growth-summary?timeframe=${timeframe}`);
-      console.log('✅ API: Growth summary response:', response);
       return response;
     } catch (error: any) {
       // Return proper error without mock data fallback
@@ -645,7 +647,6 @@ class ApiService {
                 const data = line.substring(6).trim();
                 
                 if (data === '[DONE]') {
-                  console.log('🏁 Growth insights streaming completed');
                   resolve({ content: finalContent, complete: true });
                   return;
                 }
@@ -658,7 +659,6 @@ class ApiService {
                     finalContent = parsed.data;
                   }
                 } catch (e) {
-                  console.warn('Error parsing growth insights chunk:', e);
                 }
               }
             }
@@ -698,10 +698,8 @@ class ApiService {
       celebratedAt?: string;
     }>;
   }>> {
-    console.log('🔍 API: Requesting milestones...');
     try {
       const response = await this.apiRequest('/personal-insights/milestones');
-      console.log('✅ API: Milestones response:', response);
       return response;
     } catch (error: any) {
       // Return proper error without mock data fallback
@@ -784,12 +782,10 @@ class ApiService {
     const hasAttachments = message.attachments && message.attachments.length > 0;
     
     if (!messageText.trim() && !hasAttachments) {
-      console.error('🔄 ADAPTIVE_CHAT: Empty message detected with no attachments, rejecting request');
       throw new Error('Cannot send empty message without attachments to adaptive chat');
     }
     
     if (!messageText.trim() && hasAttachments) {
-      console.log('🖼️ ADAPTIVE_CHAT: Image-only message detected for GPT-4o vision');
     }
 
     // Create personality context from the personalityStyle that was already determined
@@ -803,16 +799,6 @@ class ApiService {
       responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`,
     };
 
-    console.log('Chat Request Started');
-    console.log('🔄 ADAPTIVE_CHAT: Message payload:', {
-      message: messageText,
-      hasEmotionalContext: !!message.emotionalContext,
-      personalityStyle: message.personalityStyle,
-      stream: message.stream,
-      messageLength: messageText.length,
-      endpoint: chatUrl
-    });
-    console.log('🧠 ADAPTIVE_CHAT: Using personality context:', defaultPersonalityContext);
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -853,7 +839,6 @@ class ApiService {
                         chunkCounter++;
                         
                         // Log content chunks to understand server response
-                        console.log(`🔄 ADAPTIVE_CHAT: Chunk ${chunkCounter}:`, newContent.substring(0, 100), '...');
                         
                         // Detect tool execution patterns from server response
                         this.detectAndTriggerToolExecution(newContent);
@@ -863,20 +848,14 @@ class ApiService {
                       }
                       if (parsed && parsed.personalityContext) {
                         personalityContext = parsed.personalityContext;
-                        console.log('🧠 PERSONALITY: Found context in stream:', personalityContext);
                       }
                     } catch (parseError) {
-                      console.error('🔄 ADAPTIVE_CHAT: JSON parse failed', { 
-                        error: (parseError as Error).message, 
-                        content: content.substring(0, 200) 
-                      });
                       // For non-JSON content (like plain text streaming), add directly
                       if (content && content.length > 0) {
                         const newContent = content;
                         fullContent += newContent;
                         chunkCounter++;
                         
-                        console.log(`🔄 ADAPTIVE_CHAT: Raw chunk ${chunkCounter}:`, newContent.substring(0, 100), '...');
                         
                         // Detect tool execution patterns from server response
                         this.detectAndTriggerToolExecution(newContent);
@@ -885,7 +864,6 @@ class ApiService {
                       }
                     }
                   } else if (content === '[DONE]') {
-                    console.log('Chat Stream Complete');
                     // DON'T close connection here - wait for onload to handle completion
                   }
                 }
@@ -893,41 +871,31 @@ class ApiService {
             }
           }
         } catch (error) {
-          console.error('🔄 CHAT: Stream error:', error);
         }
       };
       
       xhr.onerror = () => {
-        console.error('🔄 ADAPTIVE_CHAT: Network error');
         reject(new Error('Network error during adaptive chat'));
       };
       
       xhr.ontimeout = () => {
-        console.error('🔄 ADAPTIVE_CHAT: Request timeout');
         reject(new Error('Adaptive chat request timed out'));
       };
 
       xhr.onload = () => {
         try {
-          console.log('🔄 ADAPTIVE_CHAT: Request completed with status:', xhr.status);
-          console.log('🔄 ADAPTIVE_CHAT: Response headers:', xhr.getAllResponseHeaders());
           
           if (xhr.status >= 200 && xhr.status < 300) {
             // Check for streaming content first
             if (fullContent) {
-              console.log('Chat Response Complete:', fullContent.length, 'chars');
               resolve({
                 content: fullContent,
                 personalityContext: personalityContext || defaultPersonalityContext
               });
             } else {
-              console.log('🔄 ADAPTIVE_CHAT: No streaming content received');
-              console.log('🔄 ADAPTIVE_CHAT: Raw response:', xhr.responseText);
-              console.log('🔄 ADAPTIVE_CHAT: Full response length:', xhr.responseText.length);
               // Handle JSON response format
               try {
                 const jsonResponse = JSON.parse(xhr.responseText);
-                console.log('🔄 ADAPTIVE_CHAT: Parsed JSON response:', jsonResponse);
                 
                 if (jsonResponse.success && jsonResponse.data && jsonResponse.data.response) {
                   resolve({
@@ -941,36 +909,39 @@ class ApiService {
                     }
                   });
                 } else {
-                  console.error('🔄 CHAT: Server returned [DONE] with no content - tools not executing');
                   reject(new Error('Invalid response format from adaptive chat service'));
                 }
               } catch (parseError) {
-                console.error('🔄 CHAT: Failed to parse server response');
                 reject(new Error('Failed to parse adaptive chat response'));
               }
             }
           } else if (xhr.status === 429) {
-            console.error('🔄 CHAT: Rate limit reached (429)', xhr.status);
             try {
               const errorResponse = JSON.parse(xhr.responseText);
-              const rateLimitError = new Error(errorResponse.message || 'Rate limit exceeded');
-              (rateLimitError as any).status = 429;
-              (rateLimitError as any).tier = errorResponse.tier;
-              (rateLimitError as any).upgradeOptions = errorResponse.upgradeOptions;
-              (rateLimitError as any).isRateLimit = true;
+              const rateLimitError: RateLimitError = Object.assign(
+                new Error(errorResponse.message || 'Rate limit exceeded'),
+                {
+                  status: 429,
+                  tier: errorResponse.tier,
+                  upgradeOptions: errorResponse.upgradeOptions,
+                  isRateLimit: true
+                }
+              );
               reject(rateLimitError);
             } catch (parseError) {
-              const rateLimitError = new Error('Rate limit exceeded');
-              (rateLimitError as any).status = 429;
-              (rateLimitError as any).isRateLimit = true;
+              const rateLimitError: RateLimitError = Object.assign(
+                new Error('Rate limit exceeded'),
+                {
+                  status: 429,
+                  isRateLimit: true
+                }
+              );
               reject(rateLimitError);
             }
           } else {
-            console.error('🔄 CHAT: HTTP error', xhr.status);
             reject(new Error(`Adaptive chat request failed: ${xhr.status}`));
           }
         } catch (error) {
-          console.error('🔄 CHAT: Unexpected error', error);
           reject(error);
         }
       };
@@ -987,15 +958,6 @@ class ApiService {
         userContext: locationContext
       };
       
-      console.log('🔄 ADAPTIVE_CHAT: Sending payload:', requestPayload);
-      
-      console.log('🔄 CHAT: Sending message:', message.message?.substring(0, 50));
-      console.log('🔄 CHAT: Request payload:', { 
-        hasMessage: !!message.message, 
-        messageLength: message.message?.length,
-        hasPrompt: !!requestPayload.prompt,
-        adaptiveFeatures: requestPayload.adaptiveFeatures 
-      });
       
       xhr.send(JSON.stringify(requestPayload));
     });
@@ -1624,7 +1586,6 @@ class ApiService {
       const response = await this.getSubscriptionStatus();
       return response.success && response.data?.numinaTrace?.hasActiveSubscription === true;
     } catch (error) {
-      console.error('Error checking subscription status:', error);
       return false;
     }
   }
@@ -1696,7 +1657,7 @@ class ApiService {
   }
 
   // Pre-compiled regex patterns for performance
-  private static toolPatterns = [
+  private static toolPatterns: ToolPattern[] = [
       // Music & Entertainment - Match server's exact patterns
       { 
         regex: /🎵\s*(Finding music recommendations|Getting music recommendations)/i, 
@@ -1883,13 +1844,13 @@ class ApiService {
         );
         
         // Handle completion patterns differently
-        if ((pattern as any).isCompletion && existingExecution) {
+        if (pattern.isCompletion && existingExecution) {
           log.info('Completing tool execution', { tool: pattern.tool, executionId: existingExecution.id }, 'ApiService');
           toolExecutionService.completeExecution(existingExecution.id, { 
             success: true,
             serverResponse: content.trim()
           });
-        } else if (!existingExecution && !(pattern as any).isCompletion) {
+        } else if (!existingExecution && !pattern.isCompletion) {
           // Start new tool execution tracking
           const executionId = toolExecutionService.startExecution(pattern.tool, { 
             detectedFromServer: true,
@@ -1918,7 +1879,6 @@ class ApiService {
           
         } else {
           // Update existing execution
-          console.log(`🔧 API: Updating existing ${pattern.tool} execution`);
           toolExecutionService.updateProgress(existingExecution.id, 75, { 
             serverUpdate: content.trim()
           });
@@ -1946,10 +1906,8 @@ class ApiService {
       });
 
       if (response.success && response.data) {
-        console.log('✅ Secure image upload successful:', response.data);
         return response;
       } else {
-        console.error('❌ Secure image upload failed:', response.error);
         return {
           success: false,
           error: response.error || 'Secure image upload failed'
@@ -1976,10 +1934,8 @@ class ApiService {
       });
 
       if (response.success && response.data) {
-        console.log('✅ Secure profile image upload successful:', response.data);
         return response;
       } else {
-        console.error('❌ Secure profile image upload failed:', response.error);
         return {
           success: false,
           error: response.error || 'Profile image upload failed'
@@ -2003,10 +1959,8 @@ class ApiService {
       });
 
       if (response.success) {
-        console.log('✅ Secure image deletion successful');
         return response;
       } else {
-        console.error('❌ Secure image deletion failed:', response.error);
         return {
           success: false,
           error: response.error || 'Image deletion failed'
@@ -2038,10 +1992,8 @@ class ApiService {
       });
 
       if (response.success && response.data) {
-        console.log('✅ Secure image URL generated');
         return response;
       } else {
-        console.error('❌ Secure image URL generation failed:', response.error);
         return {
           success: false,
           error: response.error || 'Failed to generate image URL'
@@ -2069,7 +2021,9 @@ class ApiService {
         };
       }
 
-      const response = await fetch(`${this.baseURL}/upload`, {
+      const uploadUrl = `${this.baseURL}/upload`;
+
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -2079,10 +2033,19 @@ class ApiService {
       });
 
       if (!response.ok) {
-        const errorData = await this.parseJsonSafely(response).catch(() => ({ message: 'Upload failed' }));
+        const errorText = await response.text().catch(() => 'Unknown error');
+        const errorData = await this.parseJsonSafely(response).catch(() => ({ message: errorText }));
+        
+        throw new Error(JSON.stringify({
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          errorText: errorText.substring(0, 500)
+        }));
+        
         return {
           success: false,
-          error: errorData.message || `Upload failed with status ${response.status}`
+          error: errorData.message || errorText || `Upload failed with status ${response.status}`
         };
       }
 

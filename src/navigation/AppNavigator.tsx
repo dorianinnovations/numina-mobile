@@ -3,7 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator, TransitionPresets } from "@react-navigation/stack";
 import { StatusBar, View, Text, ActivityIndicator, Platform, Animated } from "react-native";
 import Svg, { Circle } from 'react-native-svg';
-import { EnhancedSpinner } from '../components/EnhancedSpinner';
+import LottieView from 'lottie-react-native';
 
 import { HeroLandingScreen } from "../screens/HeroLandingScreen";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
@@ -12,8 +12,6 @@ import { SignUpScreen } from "../screens/SignUpScreen";
 import { AboutScreen } from "../screens/AboutScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { AnalyticsScreen } from "../screens/AnalyticsScreen";
-import { ModernAnalyticsScreen } from "../screens/ModernAnalyticsScreen";
-import { AdvancedAnalyticsScreen } from "../screens/AdvancedAnalyticsScreen";
 import { SandboxScreen } from "../screens/SandboxScreen";
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
@@ -37,8 +35,6 @@ export type RootStackParamList = {
   About: undefined;
   Chat: undefined;
   Analytics: undefined;
-  ModernAnalytics: undefined;
-  AdvancedAnalytics: undefined;
   Sandbox: undefined;
   Sentiment: undefined;
   Profile: undefined;
@@ -52,57 +48,22 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 const mobileTransition = TransitionPresets.SlideFromRightIOS;
-const FastRingLoader: React.FC<{ size?: number; color?: string; strokeWidth?: number }> = ({ 
-  size = 18, 
-  color = '#6ec5ff', 
-  strokeWidth = 2 
+const LottieLoader: React.FC<{ size?: number; isDarkMode?: boolean }> = ({ 
+  size = 80,
+  isDarkMode = false
 }) => {
-  const rotationValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const startRotation = () => {
-      Animated.loop(
-        Animated.timing(rotationValue, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        })
-      ).start();
-    };
-    
-    startRotation();
-  }, [rotationValue]);
-
-  const rotation = rotationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference * 0.8;
-  const strokeDashoffset = circumference * 0.2;
-
   return (
-    <Animated.View style={{ 
-      transform: [{ rotate: rotation }],
-      width: size,
-      height: size,
-    }}>
-      <Svg width={size} height={size}>
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          fill="transparent"
-        />
-      </Svg>
-    </Animated.View>
+    <View style={{ width: size, height: size }}>
+      <LottieView
+        source={require('../../assets/Loading.json')}
+        autoPlay
+        loop
+        style={{
+          width: size,
+          height: size,
+        }}
+      />
+    </View>
   );
 };
 
@@ -114,7 +75,6 @@ export const AppNavigator: React.FC = () => {
   // Prevent navigation resets during component re-renders
   const hasInitialized = useRef(false);
   
-  log.debug('Component rendering', { isAuthenticated, loading, hasInitialized: hasInitialized.current }, 'AppNavigator');
   
   const [loadingMessageIndex, setLoadingMessageIndex] = React.useState(0);
   const flipAnimation = useRef(new Animated.Value(0)).current;
@@ -256,7 +216,7 @@ export const AppNavigator: React.FC = () => {
 
   // CRITICAL FIX: Don't unmount NavigationContainer during loading to prevent navigation reset
 
-  log.debug('About to render NavigationContainer', null, 'AppNavigator');
+  // log.debug('About to render NavigationContainer', null, 'AppNavigator');
   
   return (
     <View style={{ flex: 1 }}>
@@ -271,16 +231,13 @@ export const AppNavigator: React.FC = () => {
         // }
       }}
       onReady={() => {
-        // console.log('🏗️ NAVIGATION CONTAINER: onReady called');
         if (navigationRef.current) {
           const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-          // console.log('🏗️ NAVIGATION CONTAINER: Current route on ready:', currentRoute);
         }
       }}
       onStateChange={(state) => {
         if (navigationRef.current) {
           const currentRoute = navigationRef.current.getCurrentRoute()?.name;
-          // console.log('🏗️ NAVIGATION CONTAINER: State changed, current route:', currentRoute);
         }
       }}
 
@@ -300,7 +257,6 @@ export const AppNavigator: React.FC = () => {
           },
         }}
       >
-        {(() => { /* console.log('🏗️ STACK NAVIGATOR: Rendering with initialRouteName: Hero'); */ return null; })()}
         <Stack.Screen
           name="Hero"
           options={{
@@ -308,12 +264,10 @@ export const AppNavigator: React.FC = () => {
           }}
         >
           {({ navigation }) => {
-            // console.log('🏠 HERO STACK SCREEN: Rendering HeroLandingScreen');
             return (
               <HeroLandingScreen
                 onNavigateToTutorial={() => navigation.navigate("Tutorial")}
                 onNavigateToSignIn={() => {
-                  // console.log('➡️ NAVIGATING TO SIGNIN from Hero');
                   navigation.navigate("SignIn");
                 }}
                 onNavigateToSignUp={() => navigation.navigate("SignUp")}
@@ -346,18 +300,14 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <SignInScreen
               onNavigateBack={() => {
-                // console.log('🔙 SIGNIN: Back button pressed - calling navigation.goBack()');
                 navigation.goBack();
               }}
               onSignInSuccess={() => {
-                // console.log('✅ SIGNIN: Login success callback - letting auth state handle navigation');
               }}
               onNavigateToSignUp={() => {
-                // console.log('📝 SIGNIN: Navigate to SignUp');
                 navigation.navigate("SignUp");
               }}
               onNavigateToHero={() => {
-                // console.log('🏠 SIGNIN: Navigate to Hero');
                 navigation.navigate("Hero");
               }}
             />
@@ -374,7 +324,6 @@ export const AppNavigator: React.FC = () => {
             <SignUpScreen
               onNavigateBack={() => navigation.goBack()}
               onSignUpSuccess={() => {
-                // console.log('✅ SIGNUP SUCCESS - MANDATORY experience level selection required');
                 // Immediate navigation to prevent auth routing from interfering
                 navigation.reset({
                   index: 0,
@@ -446,31 +395,6 @@ export const AppNavigator: React.FC = () => {
           )}
         </Stack.Screen>
 
-        <Stack.Screen
-          name="ModernAnalytics"
-          options={{
-            ...mobileTransition,
-          }}
-        >
-          {({ navigation }) => (
-            <ModernAnalyticsScreen 
-              onNavigateBack={() => navigation.goBack()}
-            />
-          )}
-        </Stack.Screen>
-
-        <Stack.Screen
-          name="AdvancedAnalytics"
-          options={{
-            ...mobileTransition,
-          }}
-        >
-          {({ navigation }) => (
-            <AdvancedAnalyticsScreen 
-              onNavigateBack={() => navigation.goBack()}
-            />
-          )}
-        </Stack.Screen>
 
         <Stack.Screen
           name="Sandbox"
@@ -598,11 +522,7 @@ export const AppNavigator: React.FC = () => {
         zIndex: 1000,
         pointerEvents: 'box-none', // Allow touches to pass through when appropriate
       }}>
-        <EnhancedSpinner 
-          size={24} 
-          type="holographic"
-          strokeWidth={2}
-        />
+        <LottieLoader size={80} isDarkMode={isDarkMode} />
         <Animated.Text style={{
           marginTop: 16,
           fontSize: 11,

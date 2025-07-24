@@ -100,12 +100,10 @@ class RealTimeSyncService extends SimpleEventEmitter {
     const configUrl = process.env.EXPO_PUBLIC_WEBSOCKET_CONFIG_URL;
     
     if (envUrl) {
-      console.log('🔌 WebSocket: Using environment URL:', envUrl);
       return envUrl;
     }
     
     if (configUrl) {
-      console.log('🔌 WebSocket: Using config URL:', configUrl);
       return configUrl;
     }
     
@@ -116,16 +114,15 @@ class RealTimeSyncService extends SimpleEventEmitter {
     let fallbackUrl: string;
     
     if (isProduction) {
-      fallbackUrl = 'wss://server-a7od.onrender.com';
+      fallbackUrl = 'https://server-a7od.onrender.com';
     } else if (isDevelopment) {
       // Don't use localhost in mobile app - use the same server
-      fallbackUrl = 'wss://server-a7od.onrender.com';
+      fallbackUrl = 'https://server-a7od.onrender.com';
     } else {
       // Staging or other environments  
-      fallbackUrl = 'wss://server-a7od.onrender.com';
+      fallbackUrl = 'https://server-a7od.onrender.com';
     }
     
-    console.log('🔌 WebSocket RealTimeSync: Using fallback URL:', fallbackUrl);
     return fallbackUrl;
   }
 
@@ -167,13 +164,11 @@ class RealTimeSyncService extends SimpleEventEmitter {
       // Enhanced WebSocket connection with proper error handling
   private connect() {
     if (this.isConnected) {
-      console.log('🔌 WebSocket: Already connected, skipping connection attempt');
       return;
     }
 
     try {
       const wsUrl = this.getWebSocketUrl();
-      console.log('🔌 WebSocket: Attempting connection to:', wsUrl);
       
       // Validate URL before attempting connection
       if (!wsUrl || wsUrl.trim() === '') {
@@ -184,7 +179,6 @@ class RealTimeSyncService extends SimpleEventEmitter {
       this.websocket = new WebSocket(wsUrl);
 
       this.websocket.onopen = () => {
-        console.log('🔌 WebSocket: Connection established successfully');
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -198,7 +192,6 @@ class RealTimeSyncService extends SimpleEventEmitter {
       };
 
       this.websocket.onclose = (event) => {
-        console.log('🔌 WebSocket: Connection closed:', event.code, event.reason);
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');

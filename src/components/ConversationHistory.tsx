@@ -16,9 +16,9 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useRefresh } from '../contexts/RefreshContext';
+import { useBorderSettings } from '../contexts/BorderSettingsContext';
 import { NuminaColors } from '../utils/colors';
 import ConversationStorageService, { Conversation } from '../services/conversationStorage';
-import { AnimatedGradientBorder } from './AnimatedGradientBorder';
 import { BaseWalletCard } from './WalletCard';
 
 const { width } = Dimensions.get('window');
@@ -40,6 +40,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
 }) => {
   const { isDarkMode } = useTheme();
   const { isRefreshing: globalRefreshing, setIsRefreshing } = useRefresh();
+  const { effectsEnabled } = useBorderSettings();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -48,6 +49,9 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   const [refreshing, setRefreshing] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
   
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -58,6 +62,13 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   const clearContainerOpacity = useRef(new Animated.Value(0)).current;
   const trashScale = useRef(new Animated.Value(1)).current;
   const checkOpacity = useRef(new Animated.Value(0)).current;
+  
+  // Animation values for delete modal
+  const deleteOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const deleteContainerScale = useRef(new Animated.Value(0.3)).current;
+  const deleteContainerOpacity = useRef(new Animated.Value(0)).current;
+  const deleteTrashScale = useRef(new Animated.Value(1)).current;
+  const deleteCheckOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
@@ -135,7 +146,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   };
 
   const showClearAllModal = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setShowClearModal(true);
     Animated.parallel([
       Animated.timing(clearOverlayOpacity, {
@@ -233,32 +244,107 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     showClearAllModal();
   };
 
+  const showDeleteConversationModal = (conversationId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setConversationToDelete(conversationId);
+    setShowDeleteModal(true);
+    Animated.parallel([
+      Animated.timing(deleteOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(deleteContainerScale, {
+        toValue: 1,
+        tension: 100,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(deleteContainerOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideDeleteModal = () => {
+    Animated.parallel([
+      Animated.timing(deleteOverlayOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(deleteContainerScale, {
+        toValue: 0.3,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(deleteContainerOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setShowDeleteModal(false);
+      setIsDeleting(false);
+      setConversationToDelete(null);
+      // Reset animation values
+      deleteTrashScale.setValue(1);
+      deleteCheckOpacity.setValue(0);
+    });
+  };
+
+  const confirmDeleteConversation = async () => {
+    if (!conversationToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Animate trash can
+      Animated.sequence([
+        Animated.timing(deleteTrashScale, {
+          toValue: 1.2,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(deleteTrashScale, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Delete conversation
+      await ConversationStorageService.deleteConversation(conversationToDelete);
+      setConversations(prev => prev.filter(c => c.id !== conversationToDelete));
+      
+      // Show success animation
+      setTimeout(() => {
+        Animated.timing(deleteCheckOpacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start();
+      }, 400);
+
+      // Wait a moment then close modal
+      setTimeout(() => {
+        if (conversationToDelete === currentConversationId) {
+          onClose();
+        }
+        hideDeleteModal();
+      }, 1500);
+
+    } catch (error) {
+      console.error('Failed to delete conversation:', error);
+      Alert.alert('Error', 'Failed to delete conversation. Please try again.');
+      setIsDeleting(false);
+    }
+  };
+
   const handleDeleteConversation = (conversationId: string) => {
-    Alert.alert(
-      'Delete Conversation',
-      'Are you sure you want to delete this conversation?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await ConversationStorageService.deleteConversation(conversationId);
-              setConversations(prev => prev.filter(c => c.id !== conversationId));
-              if (conversationId === currentConversationId) {
-                onClose();
-              }
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete conversation');
-            }
-          },
-        },
-      ],
-    );
+    showDeleteConversationModal(conversationId);
   };
 
   const formatTime = (timestamp: string) => {
@@ -289,26 +375,13 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
   const renderConversation = ({ item, index }: { item: Conversation, index: number }) => {
     const isActive = item.id === currentConversationId;
     const isFirstItem = index === 0;
-    const shouldAnimate = refreshing && isFirstItem;
+    const shouldAnimate = effectsEnabled && refreshing && isFirstItem;
     
     
     return (
-      <AnimatedGradientBorder
-        isActive={shouldAnimate}
-        borderRadius={12}
-        borderWidth={2}
-        gradientColors={[
-          'rgba(173, 216, 255, 0.3)',  // Super light blue - transparent
-          'rgba(173, 216, 255, 0.6)',  // Light blue - building
-          'rgba(173, 216, 255, 0.9)',  // Light blue - stronger
-          'rgba(186, 164, 255, 0.9)',  // Light purple - peak
-          'rgba(186, 164, 255, 0.6)',  // Light purple - fading
-          'rgba(173, 216, 255, 0.3)',  // Back to light blue
-        ]}
-        style={{ marginBottom: 8 }}
-      >
-        <BaseWalletCard
+      <BaseWalletCard
           onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             onSelectConversation(item);
             onClose();
           }}
@@ -317,9 +390,16 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             {
               backgroundColor: isActive
                 ? isDarkMode 
-                  ? 'rgba(110, 197, 255, 0.13)'
-                  : 'rgba(110, 197, 255, 0.18)'
-                : undefined, // Let BaseWalletCard handle default colors
+                  ? 'rgba(110, 231, 183, 0.15)'
+                  : 'rgba(110, 231, 183, 0.20)'
+                : isDarkMode
+                  ? 'rgba(17, 17, 17, 0.95)'
+                  : 'rgba(248, 250, 252, 0.95)',
+              shadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.2)',
+              shadowOffset: { width: -2, height: -2 },
+              shadowOpacity: 1,
+              shadowRadius: 6,
+              marginBottom: 4,
             }
           ]}
         >
@@ -355,13 +435,14 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 {isActive && (
                   <View style={[
                     styles.activeIndicator,
-                    { backgroundColor: isDarkMode ? '#6ec5ff' : '#6ec5ff' }
+                    { backgroundColor: isDarkMode ? '#6ee7b7' : '#10b981' }
                   ]} />
                 )}
                 <TouchableOpacity
                   style={styles.deleteButton}
                   onPress={(e) => {
                     e.stopPropagation();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                     handleDeleteConversation(item.id);
                   }}
                   activeOpacity={0.7}
@@ -376,7 +457,6 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
             </View>
           </View>
         </BaseWalletCard>
-      </AnimatedGradientBorder>
     );
   };
 
@@ -396,7 +476,10 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
       >
         <TouchableOpacity 
           style={StyleSheet.absoluteFillObject} 
-          onPress={allowInteraction ? onClose : undefined}
+          onPress={allowInteraction ? () => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onClose();
+          } : undefined}
           activeOpacity={1}
           disabled={!allowInteraction}
         />
@@ -431,11 +514,14 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               style={[
                 styles.newChatButton,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(110, 197, 255, 0.1)' : 'rgba(110, 197, 255, 0.15)',
-                  borderColor: isDarkMode ? 'rgba(110, 197, 255, 0.3)' : 'rgba(110, 197, 255, 0.4)',
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.05)' 
+                    : 'rgba(255, 255, 255, 1)',
+                  shadowOpacity: isDarkMode ? 0.2 : 0.08,
                 }
               ]}
               onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 if (onStartNewChat) {
                   onStartNewChat();
                 }
@@ -446,7 +532,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <FontAwesome5 
                 name="plus" 
                 size={16} 
-                color={isDarkMode ? '#6ec5ff' : '#4a90e2'} 
+                color={isDarkMode ? '#6ec5ff' : '#616161'} 
               />
             </TouchableOpacity>
             {conversations.length > 0 && (
@@ -454,16 +540,22 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 style={[
                   styles.clearAllButton,
                   {
-                    backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDarkMode 
+                      ? 'rgba(255, 255, 255, 0.05)' 
+                      : 'rgba(255, 255, 255, 1)',
+                    shadowOpacity: isDarkMode ? 0.2 : 0.08,
                   }
                 ]}
-                onPress={handleClearAll}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                  handleClearAll();
+                }}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons 
                   name="trash-can-outline" 
-                  size={18} 
-                  color={isDarkMode ? '#ff6b6b' : '#dc3545'} 
+                  size={16} 
+                  color={isDarkMode ? '#6ec5ff' : '#616161'} 
                 />
               </TouchableOpacity>
             )}
@@ -471,17 +563,23 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               style={[
                 styles.closeButton,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0, 0, 0, 0.05)',
+                  backgroundColor: isDarkMode 
+                    ? 'rgba(255, 255, 255, 0.05)' 
+                    : 'rgba(255, 255, 255, 1)',
+                  shadowOpacity: isDarkMode ? 0.2 : 0.08,
                 }
               ]}
-              onPress={allowInteraction ? onClose : undefined}
+              onPress={allowInteraction ? () => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onClose();
+              } : undefined}
               activeOpacity={0.7}
               disabled={!allowInteraction}
             >
               <FontAwesome5 
                 name="times" 
-                size={18} 
-                color={isDarkMode ? '#ffffff' : '#666666'} 
+                size={16} 
+                color={isDarkMode ? '#6ec5ff' : '#616161'} 
               />
             </TouchableOpacity>
           </View>
@@ -546,20 +644,30 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <>
                 <FontAwesome5 
                   name="exclamation-triangle" 
-                  size={48} 
+                  size={15} 
                   color={isDarkMode ? '#ff6b6b' : '#e53e3e'} 
                 />
                 
                 <Text style={[
                   styles.modalTitle,
-                  { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                  { 
+                    color: isDarkMode ? '#ffffff' : '#1f2937',
+                    textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                  }
                 ]}>
                   Clear All Conversations?
                 </Text>
                 
                 <Text style={[
                   styles.modalMessage,
-                  { color: isDarkMode ? '#a0aec0' : '#718096' }
+                  { 
+                    color: isDarkMode ? '#d1d5db' : '#6b7280',
+                    textShadowColor: isDarkMode ? 'rgba(209, 213, 219, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                    textShadowOffset: { width: 0, height: 0.5 },
+                    textShadowRadius: 1,
+                  }
                 ]}>
                   This action cannot be undone. All conversation history will be permanently deleted.
                 </Text>
@@ -574,14 +682,19 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                       }
                     ]}
                     onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                       hideClearModal();
                     }}
                     activeOpacity={0.8}
                   >
                     <Text style={[
                       styles.modalButtonText,
-                      { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                      { 
+                        color: isDarkMode ? '#ffffff' : '#374151',
+                        textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(55, 65, 81, 0.1)',
+                        textShadowOffset: { width: 0, height: 0.5 },
+                        textShadowRadius: 1,
+                      }
                     ]}>
                       Cancel
                     </Text>
@@ -600,7 +713,12 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                   >
                     <Text style={[
                       styles.modalButtonText,
-                      { color: '#ffffff' }
+                      { 
+                        color: '#ffffff',
+                        textShadowColor: 'rgba(255, 255, 255, 0.2)',
+                        textShadowOffset: { width: 0, height: 0.5 },
+                        textShadowRadius: 1,
+                      }
                     ]}>
                       Clear All
                     </Text>
@@ -616,7 +734,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 >
                   <FontAwesome5 
                     name="trash-alt" 
-                    size={48} 
+                    size={15} 
                     color={isDarkMode ? '#dc2626' : '#e53e3e'} 
                   />
                 </Animated.View>
@@ -630,23 +748,197 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 >
                   <FontAwesome5 
                     name="check-circle" 
-                    size={48} 
+                    size={15} 
                     color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
                   />
                 </Animated.View>
                 
                 <Text style={[
                   styles.modalTitle,
-                  { color: isDarkMode ? '#ffffff' : '#4a5568' }
+                  { 
+                    color: isDarkMode ? '#ffffff' : '#1f2937',
+                    textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                  }
                 ]}>
                   Conversations Cleared
                 </Text>
                 
                 <Text style={[
                   styles.modalMessage,
-                  { color: isDarkMode ? '#a0aec0' : '#718096' }
+                  { 
+                    color: isDarkMode ? '#d1d5db' : '#6b7280',
+                    textShadowColor: isDarkMode ? 'rgba(209, 213, 219, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                    textShadowOffset: { width: 0, height: 0.5 },
+                    textShadowRadius: 1,
+                  }
                 ]}>
                   All conversation history has been permanently deleted
+                </Text>
+                
+                {/* Spacer to match button area height */}
+                <View style={{ height: 68, marginTop: 24 }} />
+              </>
+            )}
+          </Animated.View>
+        </Animated.View>
+      )}
+
+      {/* Delete Single Conversation Modal */}
+      {showDeleteModal && (
+        <Animated.View style={[
+          styles.modalOverlay,
+          {
+            opacity: deleteOverlayOpacity,
+          }
+        ]}>
+          <Animated.View style={[
+            styles.modalContainer,
+            {
+              backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+              borderColor: isDarkMode 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(255, 255, 255, 0.3)',
+              opacity: deleteContainerOpacity,
+              transform: [{ scale: deleteContainerScale }],
+            }
+          ]}>
+            {!isDeleting ? (
+              <>
+                <FontAwesome5 
+                  name="exclamation-triangle" 
+                  size={15} 
+                  color={isDarkMode ? '#ff6b6b' : '#e53e3e'} 
+                />
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { 
+                    color: isDarkMode ? '#ffffff' : '#1f2937',
+                    textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                  }
+                ]}>
+                  Delete Conversation?
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { 
+                    color: isDarkMode ? '#d1d5db' : '#6b7280',
+                    textShadowColor: isDarkMode ? 'rgba(209, 213, 219, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                    textShadowOffset: { width: 0, height: 0.5 },
+                    textShadowRadius: 1,
+                  }
+                ]}>
+                  This action cannot be undone. This conversation will be permanently deleted.
+                </Text>
+                
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, width: '100%' }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      {
+                        backgroundColor: isDarkMode ? '#374151' : '#e2e8f0',
+                        flex: 1,
+                      }
+                    ]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                      hideDeleteModal();
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.modalButtonText,
+                      { 
+                        color: isDarkMode ? '#ffffff' : '#374151',
+                        textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(55, 65, 81, 0.1)',
+                        textShadowOffset: { width: 0, height: 0.5 },
+                        textShadowRadius: 1,
+                      }
+                    ]}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.modalButton,
+                      {
+                        backgroundColor: isDarkMode ? '#dc2626' : '#e53e3e',
+                        flex: 1,
+                      }
+                    ]}
+                    onPress={confirmDeleteConversation}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.modalButtonText,
+                      { 
+                        color: '#ffffff',
+                        textShadowColor: 'rgba(255, 255, 255, 0.2)',
+                        textShadowOffset: { width: 0, height: 0.5 },
+                        textShadowRadius: 1,
+                      }
+                    ]}>
+                      Delete
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Animated.View
+                  style={{
+                    transform: [{ scale: deleteTrashScale }]
+                  }}
+                >
+                  <FontAwesome5 
+                    name="trash-alt" 
+                    size={15} 
+                    color={isDarkMode ? '#dc2626' : '#e53e3e'} 
+                  />
+                </Animated.View>
+                
+                <Animated.View
+                  style={{
+                    opacity: deleteCheckOpacity,
+                    position: 'absolute',
+                    top: 20,
+                  }}
+                >
+                  <FontAwesome5 
+                    name="check-circle" 
+                    size={15} 
+                    color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
+                  />
+                </Animated.View>
+                
+                <Text style={[
+                  styles.modalTitle,
+                  { 
+                    color: isDarkMode ? '#ffffff' : '#1f2937',
+                    textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(31, 41, 55, 0.1)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 2,
+                  }
+                ]}>
+                  Conversation Deleted
+                </Text>
+                
+                <Text style={[
+                  styles.modalMessage,
+                  { 
+                    color: isDarkMode ? '#d1d5db' : '#6b7280',
+                    textShadowColor: isDarkMode ? 'rgba(209, 213, 219, 0.1)' : 'rgba(107, 114, 128, 0.1)',
+                    textShadowOffset: { width: 0, height: 0.5 },
+                    textShadowRadius: 1,
+                  }
+                ]}>
+                  The conversation has been permanently deleted
                 </Text>
                 
                 {/* Spacer to match button area height */}
@@ -698,10 +990,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
-    fontFamily: 'Nunito_700Bold',
-    letterSpacing: -0.2,
+    fontFamily: 'CrimsonPro_700Bold',
+    letterSpacing: -0.4,
     lineHeight: 28,
     marginLeft: 0,
     marginBottom: 0,
@@ -709,12 +1001,18 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 0,
+    borderWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   conversationList: {
     flex: 1,
@@ -724,59 +1022,82 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   conversationCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    minHeight: 50, // Slimmer height
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    minHeight: 32,
+    borderRadius: 8,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   conversationContent: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     overflow: 'hidden',
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
+    alignItems: 'center',
+    marginBottom: 2,
     overflow: 'hidden',
   },
   conversationTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Nunito_600SemiBold',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'CrimsonPro_700Bold',
     flex: 1,
     marginRight: 8,
     flexShrink: 1,
+    lineHeight: 16,
+    letterSpacing: -0.3,
   },
   conversationTime: {
     fontSize: 10,
-    fontWeight: '400',
-    fontFamily: 'Nunito_400Regular',
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
     flexShrink: 0,
+    lineHeight: 12,
+    letterSpacing: 0.2,
+    opacity: 0.8,
   },
   conversationPreview: {
-    fontSize: 10,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 14,
     fontWeight: '400',
-    fontFamily: 'Nunito_400Regular',
-    marginBottom: 4,
+    fontFamily: 'Inter_400Regular',
+    marginBottom: 3,
+    opacity: 0.75,
+    letterSpacing: -0.1,
   },
   conversationMeta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexWrap: 'nowrap',
+    marginTop: 1,
   },
   messageCount: {
     fontSize: 8,
-    fontWeight: '400',
-    fontFamily: 'Nunito_400Regular',
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    opacity: 0.7,
+    lineHeight: 10,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   activeIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    shadowColor: '#6ee7b7',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 3,
+    elevation: 2,
   },
   headerButtons: {
     flexDirection: 'row',
@@ -785,19 +1106,30 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   newChatButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   clearAllButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 0,
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 1,
   },
   metaRight: {
     flexDirection: 'row',
@@ -806,10 +1138,10 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   deleteButton: {
-    padding: 8,
-    marginRight: -8,
+    padding: 4,
+    marginRight: -4,
     borderRadius: 8,
-    alignSelf: 'flex-end',
+    alignSelf: 'center',
   },
   emptyState: {
     flex: 1,
@@ -821,10 +1153,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '400',
-    fontFamily: 'Inter_400Regular',
+    fontSize: 15,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
     textAlign: 'center',
+    letterSpacing: -0.1,
+    opacity: 0.8,
   },
   modalOverlay: {
     position: 'absolute',
@@ -850,18 +1184,20 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   modalTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 26,
+    fontWeight: '700',
+    fontFamily: 'CrimsonPro_700Bold',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
+    letterSpacing: -0.5,
   },
   modalMessage: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: 'Inter_400Regular',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    letterSpacing: -0.1,
   },
   modalButton: {
     height: 44,
@@ -876,8 +1212,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   modalButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
+    letterSpacing: 0.2,
   },
 });

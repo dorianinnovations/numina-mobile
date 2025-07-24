@@ -24,7 +24,7 @@ import { PageBackground } from '../components/PageBackground';
 import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
 import { NuminaColors } from '../utils/colors';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 interface SignInScreenProps {
   onNavigateBack: () => void;
@@ -39,9 +39,8 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onNavigateToSignUp,
   onNavigateToHero,
 }) => {
-  log.debug('Component mounting/rendering', null, 'SignInScreen');
   
-  const { theme, isDarkMode } = useTheme();
+  const { isDarkMode } = useTheme();
   const { login, loading: authLoading } = useAuth();
   
   const [email, setEmail] = useState('');
@@ -52,7 +51,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const [authStatus, setAuthStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [showSlowServerMessage, setShowSlowServerMessage] = useState(false);
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  const [isInputFocused, setIsInputFocused] = useState(false);
   
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
@@ -72,14 +70,13 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    log.debug('useEffect mount called', null, 'SignInScreen');
     // Fast tech entry - no conflicting animations with navigation
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
     slideAnim.setValue(0); // Start in final position for navigation compatibility
     
     return () => {
-      log.debug('Component unmounting', null, 'SignInScreen');
+      // Cleanup on unmount
     };
   }, []);
 
@@ -162,35 +159,29 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
 
       log.debug('Login result', { result, successType: typeof result.success }, 'SignInScreen');
 
-      try {
-        if (result && result.success === true) {
-          log.info('Login successful, calling onSignInSuccess', null, 'SignInScreen');
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          
-          setIsSignInSuccess(true);
-          setAuthStatus('success');
-          
-          // Call success callback immediately - auth routing will handle navigation
-          onSignInSuccess();
-        } else {
-          log.warn('Login failed, staying on signin screen', null, 'SignInScreen');
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-          
-          // Set user-friendly error message
-          const errorMessage = result?.error || 'Invalid email or password';
-          setError(errorMessage);
-          setIsSignInSuccess(false);
-          setAuthStatus('error');
-          
-          // Clear error status after showing it
-          setTimeout(() => {
-            setAuthStatus('idle');
-          }, 3000); // Extended to 3 seconds for better visibility
-        }
-      } catch (authError) {
-        log.error('Error in auth result processing', authError, 'SignInScreen');
-        setError('Authentication error occurred');
+      if (result && result.success === true) {
+        log.info('Login successful, calling onSignInSuccess', null, 'SignInScreen');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        setIsSignInSuccess(true);
+        setAuthStatus('success');
+        
+        // Call success callback immediately - auth routing will handle navigation
+        onSignInSuccess();
+      } else {
+        log.warn('Login failed, staying on signin screen', null, 'SignInScreen');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        
+        // Set user-friendly error message
+        const errorMessage = result?.error || 'Invalid email or password';
+        setError(errorMessage);
+        setIsSignInSuccess(false);
         setAuthStatus('error');
+        
+        // Clear error status after showing it
+        setTimeout(() => {
+          setAuthStatus('idle');
+        }, 3000); // Extended to 3 seconds for better visibility
       }
     } catch (err: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -206,7 +197,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
         setAuthStatus('idle');
       }, 3000); // Extended to 3 seconds for better visibility
     } finally {
-      log.debug('Login attempt complete, cleaning up state', null, 'SignInScreen');
       setLocalLoading(false);
       setShowSlowServerMessage(false);
       
@@ -317,9 +307,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               color: isDarkMode ? '#ffffff' : '#000000',
                               backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                               shadowColor: isDarkMode ? '#000000' : '#000000',
-                              shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
-                              shadowOpacity: isDarkMode ? 0.5 : 0.08,
-                              shadowRadius: isDarkMode ? 12 : 8,
+                              shadowOffset: { width: 0, height: isDarkMode ? 4 : 1 },
+                              shadowOpacity: isDarkMode ? 0.5 : 0.12,
+                              shadowRadius: isDarkMode ? 12 : 3,
                               elevation: isDarkMode ? 6 : 3,
                             }
                           ]}
@@ -339,7 +329,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           editable={!loading}
                           onSubmitEditing={() => passwordInputRef.current?.focus()}
                           onFocus={() => {
-                            setIsInputFocused(true);
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             Animated.parallel([
                               Animated.spring(emailInputScaleAnim, {
@@ -363,7 +352,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             ]).start();
                           }}
                           onBlur={() => {
-                            setIsInputFocused(false);
                             Animated.parallel([
                               Animated.spring(emailInputScaleAnim, {
                                 toValue: 1,
@@ -396,9 +384,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                               color: isDarkMode ? '#ffffff' : '#000000',
                               backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                               shadowColor: isDarkMode ? '#000000' : '#000000',
-                              shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
-                              shadowOpacity: isDarkMode ? 0.5 : 0.08,
-                              shadowRadius: isDarkMode ? 12 : 8,
+                              shadowOffset: { width: 0, height: isDarkMode ? 4 : 1 },
+                              shadowOpacity: isDarkMode ? 0.5 : 0.12,
+                              shadowRadius: isDarkMode ? 12 : 3,
                               elevation: isDarkMode ? 6 : 3,
                             }
                           ]}
@@ -420,7 +408,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             handleSubmit();
                           }}
                           onFocus={() => {
-                            setIsInputFocused(true);
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             Animated.parallel([
                               Animated.spring(passwordInputScaleAnim, {
@@ -444,7 +431,6 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                             ]).start();
                           }}
                           onBlur={() => {
-                            setIsInputFocused(false);
                             Animated.parallel([
                               Animated.spring(passwordInputScaleAnim, {
                                 toValue: 1,
@@ -612,20 +598,19 @@ const styles = StyleSheet.create({
     padding: 32,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   glassmorphic: {
     backgroundColor: 'rgba(255, 255, 255, 0.18)',
     borderColor: 'rgba(255, 255, 255, 0.3)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-    backdropFilter: 'blur(20px)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   header: {
@@ -657,7 +642,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 0,
-    borderRadius: 12,
+    borderRadius: 8,
     fontSize: 16,
     fontWeight: '400',
     height: 42,

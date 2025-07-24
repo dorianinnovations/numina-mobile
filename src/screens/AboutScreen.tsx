@@ -58,86 +58,86 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
   }).current;
 
   useEffect(() => {
-    // Professional entry animation sequence
+    // Fast entry animation sequence
     Animated.sequence([
-      // Header animation first
+      // Header animation first - much faster
       Animated.parallel([
         Animated.timing(headerAnim.fade, {
           toValue: 1,
-          duration: 800,
-          easing: Easing.out(Easing.cubic),
+          duration: 250,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(headerAnim.slide, {
           toValue: 0,
-          duration: 800,
-          easing: Easing.out(Easing.cubic),
+          duration: 250,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.spring(headerAnim.scale, {
           toValue: 1,
-          tension: 50,
-          friction: 8,
+          tension: 100,
+          friction: 10,
           useNativeDriver: true,
         }),
       ]),
-      // Main content animation
+      // Main content animation - faster
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 600,
-          delay: 200,
-          easing: Easing.out(Easing.cubic),
+          duration: 200,
+          delay: 50,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(slideAnim, {
           toValue: 0,
-          duration: 600,
-          delay: 200,
-          easing: Easing.out(Easing.cubic),
+          duration: 200,
+          delay: 50,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.spring(scaleAnim, {
           toValue: 1,
-          tension: 60,
-          friction: 8,
-          delay: 200,
+          tension: 120,
+          friction: 10,
+          delay: 50,
           useNativeDriver: true,
         }),
       ]),
     ]).start();
 
-    // Staggered card animations with professional timing
+    // Much faster staggered card animations
     cardAnims.forEach((anim, index) => {
-      const delay = 400 + (index * 120); // More sophisticated stagger timing
+      const delay = 100 + (index * 60); // Much faster stagger
       
       Animated.parallel([
         Animated.timing(anim.fade, {
           toValue: 1,
-          duration: 700,
+          duration: 300,
           delay,
-          easing: Easing.out(Easing.cubic),
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(anim.slide, {
           toValue: 0,
-          duration: 700,
+          duration: 300,
           delay,
-          easing: Easing.out(Easing.cubic),
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.spring(anim.scale, {
           toValue: 1,
-          tension: 55,
-          friction: 8,
+          tension: 80,
+          friction: 10,
           delay,
           useNativeDriver: true,
         }),
         Animated.timing(anim.rotate, {
           toValue: 0,
-          duration: 700,
+          duration: 300,
           delay,
-          easing: Easing.out(Easing.cubic),
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
       ]).start();
@@ -150,56 +150,50 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
 
   const creatorData = [
     {
-      type: 'app',
-      name: 'Numina',
-      role: 'Your AI companion for growth',
-      bio: 'We believe everyone deserves to understand themselves better. Numina helps you decode your patterns, discover insights, and connect with what matters most.',
-      icon: 'heart',
-      version: '1.0.0',
-      build: '2025.01.001',
+      type: 'brain',
+      name: 'Your Second Brain, Supercharged',
+      role: 'Central intelligence hub for brilliant minds',
+      bio: 'Stop juggling scattered notes, forgotten bookmarks, and brilliant ideas that vanish. Numina is your central intelligence hub—a second brain that doesn\'t just store information, but understands it. It captures everything and instantly organizes the chaos, giving you the clarity and space to do your best thinking.',
+      icon: 'brain',
     },
     {
-      type: 'creator',
-      name: 'Meet the developer',
-      role: 'Developer • San Diego, CA',
-      bio: 'Curious has been my compass from a young age. I\'ve always been fascinated by the human mind and how we can use technology to understand ourselves better.',
+      type: 'partner',
+      name: 'An AI Partner That Truly Knows You',
+      role: 'Beyond generic chatbots—true AI collaboration',
+      bio: 'Generic chatbots are useless for deep work. Numina is different. It\'s a true AI partner that learns from every interaction, building a persistent memory of your projects, goals, and style. The result? A collaborator that anticipates your needs, offers deeply relevant insights, and becomes an indispensable extension of your own mind.',
+      icon: 'handshake',
+    },
+    {
+      type: 'execution',
+      name: 'From Scattered Ideas to Finished Work',
+      role: 'Close the gap between ideas and results',
+      bio: 'The gap between a great idea and a finished product is where most projects die. Numina closes that gap. It transforms messy brainstorms, voice notes, and conversations into structured outlines, coherent drafts, and actionable plans. It\'s the most powerful tool you can have for turning creative sparks into tangible results, faster.',
+      icon: 'rocket',
+    },
+    {
+      type: 'privacy',
+      name: 'A Private Sanctuary for Your Mind',
+      role: 'We work for you, not advertisers',
+      bio: 'Your best ideas require absolute privacy. Our business model is simple: we work for you, not advertisers. We will never sell your data. Numina is a fortified, private sanctuary for your thoughts, built on a subscription model that ensures our only focus is providing you with a world-class, secure, and confidential tool.',
+      icon: 'shield-alt',
+    },
+    {
+      type: 'connections',
+      name: 'Discover Connections You\'d Otherwise Miss',
+      role: 'AI that maps the relationships between your thoughts',
+      bio: 'The most valuable insights lie in the connections between ideas. While you focus on the big picture, Numina\'s AI works in the background, mapping the relationships between your thoughts. It surfaces forgotten notes, links disparate concepts, and reveals hidden patterns, giving you a powerful intellectual advantage.',
+      icon: 'project-diagram',
+    },
+    {
+      type: 'craftsmanship',
+      name: 'Built for the Discerning Mind',
+      role: 'A precision instrument for demanding creators',
+      bio: 'Numina isn\'t a mass-market product built by a committee. It\'s a precision instrument, crafted by a single developer obsessed with creating the ultimate tool for thought. Every detail is meticulously engineered to serve the needs of demanding creators, founders, and thinkers who refuse to settle for anything less than the best.',
       icon: 'user-circle',
       links: [
         { type: 'github', url: 'https://github.com/dorianinnovations', icon: 'github' },
         { type: 'linkedin', url: 'https://www.linkedin.com/in/isaiahpappas', icon: 'linkedin' },
         { type: 'twitter', url: 'https://twitter.com/numinaworks', icon: 'twitter' },
-      ],
-    },
-    {
-      type: 'vision',
-      name: 'Our Mission',
-      role: 'Making self-discovery accessible',
-      bio: 'Personal growth shouldn\'t require expensive therapy or complicated tools. We\'re building something that meets you where you are and helps you understand your patterns naturally.',
-      icon: 'compass',
-    },
-    {
-      type: 'technology',
-      name: 'How It Works',
-      role: 'AI that actually gets you',
-      bio: 'Numina learns your communication style, remembers what matters to you, and adapts its responses. It\'s like having a conversation partner who really listens.',
-      icon: 'lightbulb-on',
-    },
-    {
-      type: 'community',
-      name: 'Privacy First',
-      role: 'Your data stays yours',
-      bio: 'We don\'t sell your data, period. Your conversations and insights belong to you. We\'re building this to help, not to harvest.',
-      icon: 'shield-alt',
-    },
-    {
-      type: 'contact',
-      name: 'Get In Touch',
-      role: 'Questions? Ideas? Just want to chat?',
-      bio: 'I love hearing from users! Whether you have feedback, ideas, or just want to say hi, don\'t be a stranger.',
-      icon: 'envelope',
-      links: [
-        { type: 'email', url: 'mailto:numinaworks@gmail.com', icon: 'envelope' },
-        { type: 'website', url: 'https://numinaai.netlify.app', icon: 'globe' },
       ],
     },
   ];
@@ -457,7 +451,9 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 24,
+    padding: 20,
+    paddingTop: 24,
+    paddingBottom: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -466,45 +462,54 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 20,
+    minHeight: 60,
   },
   cardIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 20,
+    marginRight: 16,
+    marginTop: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    flexShrink: 0,
   },
   cardTitleContainer: {
     flex: 1,
+    paddingRight: 8,
   },
   cardName: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
-    marginBottom: 4,
-    letterSpacing: -0.5,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+    lineHeight: 20,
+    flexWrap: 'wrap',
   },
   cardRole: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     fontFamily: 'Nunito_500Medium',
-    letterSpacing: -0.2,
+    letterSpacing: -0.1,
+    lineHeight: 16,
+    marginBottom: 2,
   },
   cardBio: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: 20,
-    letterSpacing: -0.1,
+    letterSpacing: -0.05,
+    textAlign: 'left',
   },
   appInfo: {
     marginBottom: 20,

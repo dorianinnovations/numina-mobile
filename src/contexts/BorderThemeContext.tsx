@@ -6,7 +6,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BORDER_THEMES, BorderTheme } from '../components/BorderThemeSelector';
+import { BORDER_THEMES, BorderTheme } from '../constants/borderThemes';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // CONTEXT DEFINITION
@@ -42,14 +42,20 @@ export const BorderThemeProvider: React.FC<BorderThemeProviderProps> = ({ childr
   const loadSavedTheme = async () => {
     try {
       const savedThemeId = await AsyncStorage.getItem(STORAGE_KEY);
+      
       if (savedThemeId) {
         const theme = BORDER_THEMES.find(t => t.id === savedThemeId);
-        if (theme) {
+        if (theme && theme.colors && Array.isArray(theme.colors) && theme.colors.length > 0) {
           setSelectedTheme(theme);
+        } else {
+          console.warn('⚠️ BorderThemeContext: Saved theme ID not found or invalid in BORDER_THEMES:', savedThemeId);
+          setSelectedTheme(BORDER_THEMES[0]);
         }
+      } else {
+        setSelectedTheme(BORDER_THEMES[0]);
       }
     } catch (error) {
-      console.warn('Failed to load saved border theme:', error);
+      console.error('❌ BorderThemeContext: Failed to load saved border theme:', error);
     } finally {
       setIsLoading(false);
     }
@@ -59,9 +65,8 @@ export const BorderThemeProvider: React.FC<BorderThemeProviderProps> = ({ childr
     try {
       setSelectedTheme(theme);
       await AsyncStorage.setItem(STORAGE_KEY, theme.id);
-      console.log(`🎨 Border theme changed to: ${theme.name}`);
     } catch (error) {
-      console.error('Failed to save border theme:', error);
+      console.error('❌ BorderThemeContext: Failed to save border theme:', error);
     }
   };
 
@@ -73,7 +78,7 @@ export const BorderThemeProvider: React.FC<BorderThemeProviderProps> = ({ childr
 
   return (
     <BorderThemeContext.Provider value={value}>
-      {children}
+      {React.Children.toArray(children)}
     </BorderThemeContext.Provider>
   );
 };

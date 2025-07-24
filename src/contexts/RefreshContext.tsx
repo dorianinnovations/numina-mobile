@@ -40,7 +40,7 @@ export const RefreshProvider: React.FC<RefreshProviderProps> = ({ children }) =>
 
   return (
     <RefreshContext.Provider value={value}>
-      {children}
+      {React.Children.toArray(children)}
     </RefreshContext.Provider>
   );
 };

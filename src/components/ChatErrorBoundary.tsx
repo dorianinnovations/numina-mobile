@@ -28,13 +28,6 @@ export class ChatErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: any) {
     // Enhanced error logging
-    console.error('🚨 ChatErrorBoundary caught an error:', {
-      error: error.message,
-      stack: error.stack,
-      componentStack: errorInfo.componentStack,
-      timestamp: new Date().toISOString(),
-    });
-    
     this.setState({ error, errorInfo });
     this.props.onError?.(error, errorInfo);
     
@@ -45,7 +38,6 @@ export class ChatErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    console.log('🔄 ChatErrorBoundary: Attempting to recover from error');
     this.setState({ hasError: false, error: null, errorInfo: null });
     
     // Call parent retry function if provided
@@ -54,7 +46,6 @@ export class ChatErrorBoundary extends Component<Props, State> {
 
   handleReportError = () => {
     if (this.state.error) {
-      console.log('📧 ChatErrorBoundary: Reporting error to support');
       // Send to support system
       // Example: SupportService.reportError(this.state.error, this.state.errorInfo);
     }

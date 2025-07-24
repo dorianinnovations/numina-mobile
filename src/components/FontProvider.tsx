@@ -41,7 +41,11 @@ export const FontProvider: React.FC<FontProviderProps> = ({ children }) => {
 
   // Don't block the app - load fonts in background
   // App will start with system fonts and switch to custom fonts once loaded
-  return <>{children}</>;
+  return (
+    <View style={{ flex: 1 }}>
+      {React.Children.toArray(children)}
+    </View>
+  );
 };
 
 export default FontProvider;

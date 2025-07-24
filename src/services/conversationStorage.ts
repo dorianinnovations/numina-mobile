@@ -179,7 +179,7 @@ class ConversationStorageService {
   // Periodic sync to ensure conversations are always available for analytics
   static async performPeriodicSync(): Promise<void> {
     try {
-      console.log('📊 PeriodicSync: Ensuring conversations are synced to server');
+      console.log('PeriodicSync: Ensuring conversations are synced to server');
       // Trigger the cloud sync via CloudAuth service which handles the actual server sync
       await this.triggerCloudSync();
     } catch (error) {
@@ -278,17 +278,8 @@ class ConversationStorageService {
         const questionType = match[1].toLowerCase();
         const subject = this.cleanAndCapitalize(match[2]);
         
-        // Create contextual emoji based on question type
-        let emoji = '❓';
-        if (questionType.includes('how')) emoji = '🔧';
-        if (questionType.includes('what')) emoji = '💡';
-        if (questionType.includes('why')) emoji = '🤔';
-        if (questionType.includes('when')) emoji = '⏰';
-        if (questionType.includes('where')) emoji = '📍';
-        if (questionType.includes('can') || questionType.includes('will')) emoji = '🚀';
-        if (questionType.includes('should')) emoji = '🤝';
-        
-        return `${emoji} ${this.truncateSmartly(subject, 30)}`;
+        // Clean title without emojis
+        return this.truncateSmartly(subject, 35);
       }
     }
     
@@ -312,49 +303,36 @@ class ConversationStorageService {
         const action = match[1].toLowerCase();
         const subject = this.cleanAndCapitalize(match[2]);
         
-        // Contextual emojis for actions
-        let emoji = '✨';
-        if (action.includes('help')) emoji = '🆘';
-        if (action.includes('show')) emoji = '👁️';
-        if (action.includes('tell') || action.includes('explain')) emoji = '📖';
-        if (action.includes('create') || action.includes('make')) emoji = '🔨';
-        if (action.includes('write')) emoji = '✍️';
-        if (action.includes('find') || action.includes('search')) emoji = '🔍';
-        if (action.includes('analyze') || action.includes('review')) emoji = '📊';
-        if (action.includes('fix') || action.includes('debug')) emoji = '🔧';
-        if (action.includes('plan') || action.includes('organize')) emoji = '📋';
-        
-        return `${emoji} ${this.truncateSmartly(subject, 30)}`;
+        // Clean title without emojis
+        return this.truncateSmartly(subject, 35);
       }
     }
     
-    // Topic detection based on keywords
+    // Topic detection based on keywords - clean titles without emojis
     const topicPatterns = [
-      { keywords: ['code', 'programming', 'function', 'variable', 'syntax', 'bug', 'error'], emoji: '💻', prefix: 'Code' },
-      { keywords: ['design', 'ui', 'interface', 'layout', 'color', 'style'], emoji: '🎨', prefix: 'Design' },
-      { keywords: ['emotion', 'feeling', 'mood', 'sad', 'happy', 'anxious', 'stress'], emoji: '🎭', prefix: 'Mood' },
-      { keywords: ['data', 'analysis', 'chart', 'graph', 'statistics', 'metrics'], emoji: '📊', prefix: 'Data' },
-      { keywords: ['project', 'task', 'deadline', 'meeting', 'schedule', 'plan'], emoji: '📅', prefix: 'Planning' },
-      { keywords: ['learn', 'study', 'understand', 'concept', 'theory', 'practice'], emoji: '📚', prefix: 'Learning' },
-      { keywords: ['creative', 'story', 'write', 'poem', 'art', 'inspire'], emoji: '✨', prefix: 'Creative' },
-      { keywords: ['health', 'fitness', 'exercise', 'diet', 'wellness', 'sleep'], emoji: '🏃', prefix: 'Health' },
-      { keywords: ['travel', 'trip', 'vacation', 'explore', 'adventure', 'journey'], emoji: '✈️', prefix: 'Travel' },
-      { keywords: ['finance', 'money', 'budget', 'investment', 'savings', 'cost'], emoji: '💰', prefix: 'Finance' },
+      { keywords: ['code', 'programming', 'function', 'variable', 'syntax', 'bug', 'error'], prefix: 'Code' },
+      { keywords: ['design', 'ui', 'interface', 'layout', 'color', 'style'], prefix: 'Design' },
+      { keywords: ['emotion', 'feeling', 'mood', 'sad', 'happy', 'anxious', 'stress'], prefix: 'Mood' },
+      { keywords: ['data', 'analysis', 'chart', 'graph', 'statistics', 'metrics'], prefix: 'Data' },
+      { keywords: ['project', 'task', 'deadline', 'meeting', 'schedule', 'plan'], prefix: 'Planning' },
+      { keywords: ['learn', 'study', 'understand', 'concept', 'theory', 'practice'], prefix: 'Learning' },
+      { keywords: ['creative', 'story', 'write', 'poem', 'art', 'inspire'], prefix: 'Creative' },
+      { keywords: ['health', 'fitness', 'exercise', 'diet', 'wellness', 'sleep'], prefix: 'Health' },
+      { keywords: ['travel', 'trip', 'vacation', 'explore', 'adventure', 'journey'], prefix: 'Travel' },
+      { keywords: ['finance', 'money', 'budget', 'investment', 'savings', 'cost'], prefix: 'Finance' },
     ];
 
     for (const topic of topicPatterns) {
       if (topic.keywords.some(keyword => lowerText.includes(keyword))) {
         const essence = this.extractEssence(text);
-        return `${topic.emoji} ${essence}`;
+        return essence;
       }
     }
     
-    // Sentiment-based titles
-    if (lowerText.includes('excited') || lowerText.includes('amazing') || lowerText.includes('awesome')) {
-      return `🎉 ${this.extractEssence(text)}`;
-    }
-    if (lowerText.includes('worried') || lowerText.includes('concerned') || lowerText.includes('problem')) {
-      return `😰 ${this.extractEssence(text)}`;
+    // Simple essence extraction without emojis
+    const essence = this.extractEssence(text);
+    if (essence && essence.length > 0) {
+      return essence;
     }
     if (lowerText.includes('confused') || lowerText.includes('stuck') || lowerText.includes("don't understand")) {
       return `🤯 ${this.extractEssence(text)}`;
@@ -375,18 +353,8 @@ class ConversationStorageService {
   }
 
   private static intelligentTruncate(text: string): string {
-    // Add contextual emoji based on text analysis
-    let emoji = '💬';
-    const lowerText = text.toLowerCase();
-    
-    if (lowerText.includes('!')) emoji = '❗';
-    if (lowerText.includes('?')) emoji = '❓';
-    if (lowerText.includes('thank') || lowerText.includes('please')) emoji = '🙏';
-    if (lowerText.includes('love') || lowerText.includes('great')) emoji = '❤️';
-    if (lowerText.includes('sorry') || lowerText.includes('apologize')) emoji = '😔';
-    
-    const truncated = this.truncateSmartly(text, 35);
-    return `${emoji} ${truncated}`;
+    // Clean truncation without emojis
+    return this.truncateSmartly(text, 40);
   }
 
   private static truncateSmartly(text: string, maxLength: number): string {
@@ -450,7 +418,7 @@ class ConversationStorageService {
     try {
       // Invalidate AI personality cache to force fresh analysis with new conversation data
       AsyncStorage.removeItem('@ai_emotional_state_cache');
-      // console.log('📊 Analytics: Invalidated emotional state cache due to conversation update');
+      // console.log('Analytics: Invalidated emotional state cache due to conversation update');
       
       // Trigger background sync to server for rich analytics (handled by CloudAuth service)
       this.triggerCloudSync();
@@ -470,14 +438,14 @@ class ConversationStorageService {
       if (cloudAuth && typeof cloudAuth.getInstance === 'function') {
         const instance = cloudAuth.getInstance();
         if (instance.isAuthenticated()) {
-          // console.log('📊 ConversationSync: Conversation sync already handled by CloudAuth service');
+          // console.log('ConversationSync: Conversation sync already handled by CloudAuth service');
           // The CloudAuth service automatically syncs conversations when they're updated
           // No need to duplicate the sync - just acknowledge that it's working
         } else {
-          console.log('📊 ConversationSync: User not authenticated, sync will happen at next login');
+          console.log('ConversationSync: User not authenticated, sync will happen at next login');
         }
       } else {
-        console.log('📊 ConversationSync: CloudAuth not available, skipping sync trigger');
+        console.log('ConversationSync: CloudAuth not available, skipping sync trigger');
       }
     } catch (error) {
       console.warn('Failed to access cloud conversation sync:', error);

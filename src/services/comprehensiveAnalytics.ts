@@ -1,6 +1,20 @@
 import CloudAuth from './cloudAuth';
 import NetInfo from '@react-native-community/netinfo';
 import ApiService from './api';
+import {
+  transformPersonalityTraits,
+  transformAnalyticsResponse,
+  transformBehavioralPatternsToChartData,
+  transformPersonalityToRadarData,
+  transformEmotionalToLineData,
+  transformGrowthToPieData,
+  transformSocialToBarData,
+  transformWeeklyInsightsToChartData,
+  createMockBarData,
+  createMockPieData,
+  safeTransform,
+  safeDataAccess
+} from './analyticsDataTransformer';
 
 
 
@@ -118,6 +132,14 @@ export interface BehavioralMetrics {
     featureAdoption: Record<string, boolean>;
     retentionScore: number;
   };
+  
+  // Enhanced chart data
+  chartData?: {
+    personalityRadar: Array<{ trait: string; score: number; color: string }>;
+    behavioralPatterns: Array<{ value: number; label: string; frontColor: string; gradientColor: string }>;
+    emotionalTrends: Array<{ value: number; label: string }>;
+    socialConnections: Array<{ value: number; label: string; frontColor: string; gradientColor: string }>;
+  };
 }
 
 export interface CollectiveInsights {
@@ -168,6 +190,12 @@ export interface PersonalGrowthInsights {
     progress: number;
     achievedAt?: string;
   }>;
+  
+  // Enhanced chart data
+  chartData?: {
+    growthMetrics: Array<{ value: number; color: string; text: string; label: string }>;
+    weeklyInsights: Array<{ value: number; label: string; frontColor: string; gradientColor: string }>;
+  };
 }
 
 export interface UBPMContextData {
@@ -233,10 +261,17 @@ class ComprehensiveAnalyticsService {
 
   async getPersonalGrowthInsights(timeframe: 'week' | 'month' | 'quarter' = 'week'): Promise<PersonalGrowthInsights> {
     try {
-      const [growthSummaryResponse, milestonesResponse] = await Promise.all([
-        ApiService.getPersonalGrowthSummary(timeframe),
-        ApiService.apiRequest('/personal-insights/milestones')
-      ]);
+      // Get growth summary first
+      const growthSummaryResponse = await ApiService.getPersonalGrowthSummary(timeframe);
+      
+      // Try to get milestones, but don't fail if it doesn't work
+      let milestonesResponse;
+      try {
+        milestonesResponse = await ApiService.apiRequest('/personal-insights/milestones');
+      } catch (milestonesError) {
+        console.log('Milestones endpoint not available, using empty array');
+        milestonesResponse = { data: [] };
+      }
 
       // Transform API response to match interface
       const apiData = growthSummaryResponse?.data;
@@ -259,11 +294,27 @@ class ComprehensiveAnalyticsService {
         recommendations: []
       };
 
-      const milestones = milestonesResponse?.data || [];
+      const milestones = Array.isArray(milestonesResponse?.data) ? milestonesResponse.data : [];
 
       return {
         growthSummary,
-        milestones: Array.isArray(milestones) ? milestones : []
+        milestones: Array.isArray(milestones) ? milestones : [],
+        
+        // Generate enhanced chart data
+        chartData: {
+          growthMetrics: safeTransform(
+            () => transformGrowthToPieData(growthSummary, milestones),
+            []
+          ),
+          weeklyInsights: safeTransform(
+            () => transformWeeklyInsightsToChartData({
+              totalDataPoints: apiData?.metrics?.totalDataPoints || 0,
+              completenessScore: apiData?.metrics?.completenessScore || 0,
+              keyInsights: apiData?.insights || []
+            }),
+            []
+          )
+        }
       };
     } catch (error) {
       console.error('Error fetching personal growth insights:', error);
@@ -284,7 +335,13 @@ class ComprehensiveAnalyticsService {
           insights: [],
           recommendations: []
         },
-        milestones: []
+        milestones: [],
+        
+        // Fallback chart data
+        chartData: {
+          growthMetrics: [],
+          weeklyInsights: []
+        }
       };
     }
   }
@@ -382,6 +439,37 @@ class ComprehensiveAnalyticsService {
         toolUsageFrequency: {},
         featureAdoption: {},
         retentionScore: 0.8
+      },
+      
+      // Generate enhanced chart data
+      chartData: {
+        personalityRadar: safeTransform(
+          () => transformPersonalityToRadarData(personalityData.openness ? personalityData : {
+            openness: personalityData.openness || { score: 0.7, confidence: 0.6 },
+            conscientiousness: personalityData.conscientiousness || { score: 0.6, confidence: 0.6 },
+            extraversion: personalityData.extraversion || { score: 0.5, confidence: 0.6 },
+            agreeableness: personalityData.agreeableness || { score: 0.8, confidence: 0.6 },
+            neuroticism: personalityData.neuroticism || { score: 0.4, confidence: 0.6 },
+            curiosity: personalityData.curiosity || { score: 0.8, confidence: 0.7 },
+            empathy: personalityData.empathy || { score: 0.7, confidence: 0.6 },
+            resilience: personalityData.resilience || { score: 0.6, confidence: 0.5 },
+            creativity: personalityData.creativity || { score: 0.7, confidence: 0.6 },
+            analyticalThinking: personalityData.analyticalThinking || { score: 0.6, confidence: 0.6 }
+          }),
+          []
+        ),
+        behavioralPatterns: safeTransform(
+          () => transformBehavioralPatternsToChartData(temporalData),
+          []
+        ),
+        emotionalTrends: safeTransform(
+          () => transformEmotionalToLineData(emotionalData),
+          []
+        ),
+        socialConnections: safeTransform(
+          () => transformSocialToBarData(behaviorProfile.socialPreferences),
+          []
+        )
       }
     };
   }
@@ -600,6 +688,7 @@ class ComprehensiveAnalyticsService {
     } catch (error) {
       recommendations = { success: true, data: { recommendations: [] } };
     }
+
 
     return {
       personalGrowth,

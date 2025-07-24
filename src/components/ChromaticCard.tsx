@@ -150,16 +150,16 @@ export const ChromaticText: React.FC<ChromaticTextProps> = ({
 
   // Core colors: Single neutral colors
   const coreColors = {
-    title: ['#ffffff', '#ffffff'], // Pure white
-    price: ['#94a3b8', '#94a3b8'], // Neutral slate
-    normal: ['#94a3b8', '#94a3b8'], // Neutral slate
+    title: ['#ffffff', '#ffffff'] as const, // Pure white
+    price: ['#94a3b8', '#94a3b8'] as const, // Neutral slate
+    normal: ['#94a3b8', '#94a3b8'] as const, // Neutral slate
   };
 
   // Aether colors: Single purple theme
   const aetherColors = {
-    title: ['#a855f7', '#a855f7'], // Single purple
-    price: ['#c084fc', '#c084fc'], // Light purple
-    normal: ['#a855f7', '#a855f7'], // Purple
+    title: ['#a855f7', '#a855f7'] as const, // Single purple
+    price: ['#c084fc', '#c084fc'] as const, // Light purple
+    normal: ['#a855f7', '#a855f7'] as const, // Purple
   };
 
   const colors = tier === 'aether' ? aetherColors[variant] : coreColors[variant];

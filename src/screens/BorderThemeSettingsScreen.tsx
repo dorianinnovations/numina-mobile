@@ -16,7 +16,9 @@ import {
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useBorderTheme } from '../contexts/BorderThemeContext';
-import { BorderThemeSelector, BorderTheme } from '../components/BorderThemeSelector';
+import { useBorderSettings } from '../contexts/BorderSettingsContext';
+import { BorderThemeSelector } from '../components/BorderThemeSelector';
+import { BorderTheme } from '../constants/borderThemes';
 import { AnimatedGradientBorder } from '../components/AnimatedGradientBorder';
 import { FontAwesome5 } from '@expo/vector-icons';
 
@@ -29,12 +31,14 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
 }) => {
   const { isDarkMode } = useTheme();
   const { selectedTheme, selectTheme } = useBorderTheme();
+  const { 
+    effectsEnabled, 
+    direction, 
+    speed, 
+    variation,
+    updateBorderSetting 
+  } = useBorderSettings();
   const [isScreenActive, setIsScreenActive] = useState(false);
-  
-  // Animation controls
-  const [direction, setDirection] = useState<'clockwise' | 'counterclockwise'>('clockwise');
-  const [speed, setSpeed] = useState<1 | 2 | 3>(2); // 1=slow, 2=medium, 3=fast
-  const [variation, setVariation] = useState<'smooth' | 'pulse' | 'wave'>('smooth');
 
   // Control when animations should be active
   useEffect(() => {
@@ -86,7 +90,7 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
       
       {/* Header with animated border */}
       <AnimatedGradientBorder
-        isActive={isScreenActive}
+        isActive={effectsEnabled && isScreenActive}
         borderRadius={12}
         borderWidth={1}
         animationSpeed={3000}
@@ -124,10 +128,25 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
 
       {/* Animation Controls */}
       <View style={styles.controls}>
+        {/* Effects Toggle */}
+        <TouchableOpacity 
+          style={[
+            styles.controlButton,
+            { backgroundColor: effectsEnabled ? 'rgba(110, 197, 255, 0.2)' : 'rgba(128, 128, 128, 0.1)' }
+          ]}
+          onPress={() => updateBorderSetting('effectsEnabled', !effectsEnabled)}
+        >
+          <FontAwesome5 
+            name={effectsEnabled ? 'magic' : 'ban'} 
+            size={18} 
+            color={effectsEnabled ? '#6ec5ff' : (isDarkMode ? '#888' : '#666')} 
+          />
+        </TouchableOpacity>
+
         {/* Direction */}
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={() => setDirection(direction === 'clockwise' ? 'counterclockwise' : 'clockwise')}
+          onPress={() => updateBorderSetting('direction', direction === 'clockwise' ? 'counterclockwise' : 'clockwise')}
         >
           <FontAwesome5 
             name={direction === 'clockwise' ? 'redo' : 'undo'} 
@@ -139,7 +158,7 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
         {/* Speed */}
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={() => setSpeed(speed === 3 ? 1 : (speed + 1) as 1 | 2 | 3)}
+          onPress={() => updateBorderSetting('speed', speed === 3 ? 1 : (speed + 1) as 1 | 2 | 3)}
         >
           <FontAwesome5 
             name={speed === 1 ? 'tachometer-alt' : speed === 2 ? 'shipping-fast' : 'rocket'} 
@@ -151,7 +170,7 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
         {/* Variation */}
         <TouchableOpacity 
           style={styles.controlButton}
-          onPress={() => setVariation(
+          onPress={() => updateBorderSetting('variation', 
             variation === 'smooth' ? 'pulse' : 
             variation === 'pulse' ? 'wave' : 'smooth'
           )}
@@ -168,7 +187,7 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
       <BorderThemeSelector
         selectedThemeId={selectedTheme.id}
         onThemeSelect={handleThemeSelect}
-        isActive={isScreenActive}
+        isActive={effectsEnabled && isScreenActive}
         direction={direction}
         speed={speed}
         variation={variation}
@@ -210,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    gap: 24,
+    gap: 20,
   },
   controlButton: {
     width: 44,

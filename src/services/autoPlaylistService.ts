@@ -169,7 +169,7 @@ class AutoPlaylistService {
   // Sync playlist to Spotify
   async syncToSpotify(playlist: AutoPlaylist): Promise<void> {
     try {
-      const isConnected = await SpotifyService.isConnected();
+      const isConnected = await SpotifyService().isConnected();
       if (!isConnected) {
         console.log('ℹ️ Spotify not connected, skipping sync');
         return;

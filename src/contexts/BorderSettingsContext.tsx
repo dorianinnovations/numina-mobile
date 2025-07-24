@@ -36,15 +36,27 @@ export const BorderSettingsProvider: React.FC<{ children: ReactNode }> = ({ chil
     const loadBorderSettings = async () => {
       try {
         const settings = await SettingsService.loadSettings();
-        setBorderSettings({
-          effectsEnabled: settings.borderEffectsEnabled,
-          brightness: settings.borderBrightness,
-          speed: settings.borderSpeed,
-          direction: settings.borderDirection,
-          variation: settings.borderVariation,
-        });
+        
+        const newBorderSettings = {
+          effectsEnabled: settings.borderEffectsEnabled ?? true,
+          brightness: settings.borderBrightness ?? 80,
+          speed: (settings.borderSpeed ?? 2) as 1 | 2 | 3,
+          direction: (settings.borderDirection ?? 'clockwise') as 'clockwise' | 'counterclockwise',
+          variation: (settings.borderVariation ?? 'smooth') as 'smooth' | 'pulse' | 'wave',
+        };
+        
+        setBorderSettings(newBorderSettings);
       } catch (error) {
-        console.error('Error loading border settings:', error);
+        console.error('❌ BorderSettingsContext: Error loading border settings:', error);
+        // Use default settings on error
+        const defaultSettings = {
+          effectsEnabled: true,
+          brightness: 80,
+          speed: 2 as const,
+          direction: 'clockwise' as const,
+          variation: 'smooth' as const,
+        };
+        setBorderSettings(defaultSettings);
       } finally {
         setLoading(false);
       }
@@ -55,6 +67,7 @@ export const BorderSettingsProvider: React.FC<{ children: ReactNode }> = ({ chil
 
   const updateBorderSetting = useCallback(async (key: keyof BorderSettings, value: any) => {
     try {
+      
       // Map border settings to user settings keys
       const settingsKeyMap: Record<keyof BorderSettings, keyof UserSettings> = {
         effectsEnabled: 'borderEffectsEnabled',
@@ -67,30 +80,26 @@ export const BorderSettingsProvider: React.FC<{ children: ReactNode }> = ({ chil
       const settingsKey = settingsKeyMap[key];
       
       // Update the setting immediately for instant UI feedback
-      setBorderSettings(prev => {
-        const newSettings = { ...prev, [key]: value };
-        console.log(`🔄 Border setting updated immediately: ${key} = ${value}`, newSettings);
-        return newSettings;
-      });
+      setBorderSettings(prev => ({ ...prev, [key]: value }));
       
       // Then persist to storage
       await SettingsService.updateSetting(settingsKey, value);
-      console.log(`💾 Border setting persisted: ${key} = ${value}`);
       
     } catch (error) {
-      console.error('Error updating border setting:', error);
+      console.error('❌ BorderSettingsContext: Error updating border setting:', error);
       // Revert the optimistic update on error
       try {
         const settings = await SettingsService.loadSettings();
-        setBorderSettings({
-          effectsEnabled: settings.borderEffectsEnabled,
-          brightness: settings.borderBrightness,
-          speed: settings.borderSpeed,
-          direction: settings.borderDirection,
-          variation: settings.borderVariation,
-        });
+        const revertedSettings = {
+          effectsEnabled: settings.borderEffectsEnabled ?? true,
+          brightness: settings.borderBrightness ?? 80,
+          speed: settings.borderSpeed ?? 2,
+          direction: settings.borderDirection ?? 'clockwise',
+          variation: settings.borderVariation ?? 'smooth',
+        };
+        setBorderSettings(revertedSettings);
       } catch (revertError) {
-        console.error('Error reverting border setting:', revertError);
+        console.error('❌ BorderSettingsContext: Error reverting border setting:', revertError);
       }
     }
   }, []);
@@ -108,7 +117,7 @@ export const BorderSettingsProvider: React.FC<{ children: ReactNode }> = ({ chil
 
   return (
     <BorderSettingsContext.Provider value={contextValue}>
-      {children}
+      {React.Children.toArray(children)}
     </BorderSettingsContext.Provider>
   );
 };

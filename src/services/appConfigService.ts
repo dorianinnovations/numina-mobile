@@ -77,14 +77,11 @@ class AppConfigService {
       this.configState.isLoaded = true;
       this.configState.error = 'Using default configuration';
       
-      console.warn('Using default app configuration');
       this.notifyListeners(defaultConfig);
       
       return defaultConfig;
 
     } catch (error) {
-      console.error('Failed to initialize app config:', error);
-      
       this.configState.isLoading = false;
       this.configState.error = error instanceof Error ? error.message : 'Config initialization failed';
       
@@ -273,7 +270,7 @@ class AppConfigService {
         fileUploadLimit: 5242880 // 5MB
       },
       endpoints: {
-        websocket: 'wss://server-a7od.onrender.com',
+        websocket: 'https://server-a7od.onrender.com',
         api: 'https://server-a7od.onrender.com',
         cdn: undefined
       },

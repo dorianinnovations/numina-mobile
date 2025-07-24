@@ -1,4 +1,4 @@
-import ENV from '../config/environment';
+import ENV, { FEATURE_FLAGS } from '../config/environment';
 import { ErrorHandler } from '../utils/errorHandler';
 import { log } from '../utils/logger';
 
@@ -31,6 +31,12 @@ class CloudAuth {
   static getInstance(): CloudAuth {
     if (!CloudAuth.instance) {
       CloudAuth.instance = new CloudAuth();
+      
+      // Initialize dev auth bypass if enabled
+      if (FEATURE_FLAGS.DEV_AUTH_BYPASS) {
+        console.log('🔧 DEV AUTH BYPASS: Enabled - auto-authenticating with dev user');
+        CloudAuth.instance.initDevAuthBypass();
+      }
     }
     return CloudAuth.instance;
   }
@@ -239,6 +245,62 @@ class CloudAuth {
   // Get token for API calls
   getToken(): string | null {
     return this.authState.token;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // DEV AUTH BYPASS - Skip login during development
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  private initDevAuthBypass(): void {
+    if (!FEATURE_FLAGS.DEV_AUTH_BYPASS) return;
+
+    console.log('🔧 DEV AUTH BYPASS: Initializing dev user session');
+    
+    const devUser: User = {
+      id: 'dev-user-12345',
+      email: 'dev@numina.ai',
+      tierInfo: {
+        tier: 'AETHER',
+        dailyUsage: 0,
+        dailyLimit: 10000,
+        features: {
+          unlimitedMessages: true,
+          premiumTools: true,
+          prioritySupport: true,
+          betaFeatures: true,
+        }
+      }
+    };
+
+    this.authState = {
+      isAuthenticated: true,
+      user: devUser,
+      token: 'dev-token-bypass-authentication-12345'
+    };
+
+    // Notify listeners with a small delay to ensure components are mounted
+    setTimeout(() => {
+      this.notifyListeners();
+      console.log('🔧 DEV AUTH BYPASS: Dev user authenticated automatically');
+    }, 100);
+  }
+
+  // Toggle dev auth bypass at runtime (useful for testing)
+  toggleDevAuthBypass(): void {
+    if (!__DEV__) {
+      console.warn('🔧 DEV AUTH BYPASS: Only available in development mode');
+      return;
+    }
+
+    if (this.authState.isAuthenticated && this.authState.user?.email === 'dev@numina.ai') {
+      // Currently using dev bypass, switch to normal auth
+      this.logout();
+      console.log('🔧 DEV AUTH BYPASS: Disabled - switched to normal auth');
+    } else {
+      // Not using dev bypass, enable it
+      this.initDevAuthBypass();
+      console.log('🔧 DEV AUTH BYPASS: Enabled - switched to dev user');
+    }
   }
 
   // Sync conversations to server after login

@@ -109,10 +109,6 @@ export const submitEmotionalEntry = async (emotionData: any) => {
     const canSync = await canUseOnlineAPI();
     if (!canSync) {
       const token = await getAuthToken();
-      console.log('📡 Online sync not possible:', {
-        hasToken: !!token,
-        reason: !token ? 'Not authenticated - please log in to sync' : 'No network connection'
-      });
     }
     if (canSync) {
       try {

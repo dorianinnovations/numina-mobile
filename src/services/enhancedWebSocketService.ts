@@ -56,8 +56,7 @@ class EnhancedWebSocketService {
       wsUrl = wsUrl.slice(0, -4);
     }
     
-    // Convert HTTP to WebSocket protocol
-    wsUrl = wsUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+    // Keep HTTP/HTTPS - Socket.io handles protocol switching internally
     
     log.info('Enhanced WebSocket will connect to', { wsUrl }, 'EnhancedWebSocketService');
     

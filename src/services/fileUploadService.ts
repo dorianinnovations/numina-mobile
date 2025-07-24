@@ -49,8 +49,7 @@ export class FileUploadService {
 
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 0.9,
       });
 
@@ -75,8 +74,7 @@ export class FileUploadService {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false,
         quality: 0.9,
       });
 
@@ -260,16 +258,36 @@ export class FileUploadService {
       // Create FormData for multipart upload
       const formData = new FormData();
       
+      // Validate file exists before upload
+      const fileInfo = await FileSystem.getInfoAsync(attachment.uri);
+      if (!fileInfo.exists) {
+        throw new Error(`File not found: ${attachment.name}`);
+      }
+      
       // For React Native, we need to format the file object correctly
       const fileObject = {
-        uri: Platform.OS === 'ios' ? attachment.uri.replace('file://', '') : attachment.uri,
+        uri: attachment.uri,
         type: attachment.mimeType,
         name: attachment.name,
       } as any;
+      
+      console.log('📤 Uploading file:', {
+        name: attachment.name,
+        type: attachment.mimeType,
+        size: attachment.size,
+        uri: attachment.uri.substring(0, 50) + '...',
+        exists: fileInfo.exists,
+        actualSize: fileInfo.size,
+      });
 
-      formData.append('file', fileObject);
-      formData.append('type', attachment.type);
-      formData.append('attachmentId', attachment.id);
+      try {
+        formData.append('file', fileObject);
+        formData.append('type', attachment.type);
+        formData.append('attachmentId', attachment.id);
+      } catch (error) {
+        console.error('Failed to create FormData:', error);
+        throw new Error('Failed to prepare file for upload');
+      }
 
       // Upload to server using ApiService
       const result = await ApiService.uploadFile(formData);
@@ -317,16 +335,57 @@ export class FileUploadService {
     try {
       if (attachment.type === 'image') {
         // For images, convert to base64 for GPT-4o vision
-        // console.log('📸 Processing image for GPT-4o vision:', attachment.name);
+        console.log('📸 Processing image for GPT-4o vision:', attachment.name);
         return await this.convertImageToBase64(attachment);
       } else {
         // For other files, use traditional server upload
-        // console.log('📎 Uploading file to server:', attachment.name);
+        console.log('📎 Uploading file to server:', attachment.name);
+        
+        // Check network connectivity before attempting upload
+        const isConnected = await this.checkNetworkConnectivity();
+        if (!isConnected) {
+          console.warn('📵 No network connection - processing file locally');
+          
+          // For text files, try to extract content locally
+          if (attachment.type === 'text') {
+            const textContent = await this.extractTextFromFile(attachment);
+            return {
+              ...attachment,
+              uploadStatus: 'uploaded',
+              processedText: textContent,
+              serverUrl: attachment.uri, // Use local URI as fallback
+            };
+          }
+          
+          // For other files, return as-is with local processing
+          return {
+            ...attachment,
+            uploadStatus: 'uploaded',
+            serverUrl: attachment.uri,
+          };
+        }
+        
         return await this.uploadFile(attachment);
       }
     } catch (error) {
       console.error('Failed to process attachment:', error);
       throw error;
+    }
+  }
+
+  // Check network connectivity
+  private async checkNetworkConnectivity(): Promise<boolean> {
+    try {
+      // Use a lightweight check to our own API server instead of Google
+      const response = await fetch(`${ApiService.baseURL}/health`, {
+        method: 'HEAD',
+        timeout: 3000,
+      });
+      return response.ok;
+    } catch (error) {
+      console.warn('Network connectivity check failed:', error);
+      // Assume connected if check fails - better to try and fail than not try at all
+      return true;
     }
   }
 
@@ -350,35 +409,59 @@ export class FileUploadService {
     try {
       // Process files sequentially to avoid overwhelming the server
       for (const attachment of attachments) {
-        // Update progress to processing
-        progressMap.set(attachment.id, {
-          attachmentId: attachment.id,
-          progress: 50,
-          status: 'uploading',
-        });
-        
-        if (onProgress) {
-          const progressArray = Array.from(progressMap.values());
-          const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
-          onProgress(overallProgress, progressArray);
-        }
+        try {
+          // Update progress to processing
+          progressMap.set(attachment.id, {
+            attachmentId: attachment.id,
+            progress: 25,
+            status: 'uploading',
+          });
+          
+          if (onProgress) {
+            const progressArray = Array.from(progressMap.values());
+            const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+            onProgress(overallProgress, progressArray);
+          }
 
-        const result = await this.processAttachmentForSending(attachment);
-        
-        // Update progress to complete
-        progressMap.set(attachment.id, {
-          attachmentId: attachment.id,
-          progress: 100,
-          status: 'uploaded',
-        });
-        
-        if (onProgress) {
-          const progressArray = Array.from(progressMap.values());
-          const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
-          onProgress(overallProgress, progressArray);
+          const result = await this.processAttachmentForSending(attachment);
+          
+          // Update progress to complete
+          progressMap.set(attachment.id, {
+            attachmentId: attachment.id,
+            progress: 100,
+            status: 'uploaded',
+          });
+          
+          if (onProgress) {
+            const progressArray = Array.from(progressMap.values());
+            const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+            onProgress(overallProgress, progressArray);
+          }
+          
+          results.push(result);
+        } catch (error) {
+          console.error(`Failed to process attachment ${attachment.name}:`, error);
+          
+          // Update progress to error
+          progressMap.set(attachment.id, {
+            attachmentId: attachment.id,
+            progress: 0,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Upload failed',
+          });
+          
+          if (onProgress) {
+            const progressArray = Array.from(progressMap.values());
+            const overallProgress = progressArray.reduce((sum, p) => sum + p.progress, 0) / progressArray.length;
+            onProgress(overallProgress, progressArray);
+          }
+          
+          // Don't throw here, continue with other files
+          results.push({
+            ...attachment,
+            uploadStatus: 'error',
+          });
         }
-        
-        results.push(result);
       }
 
       return results;

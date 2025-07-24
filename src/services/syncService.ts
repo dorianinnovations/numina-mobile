@@ -4,6 +4,7 @@ import offlineQueueService from './offlineQueue';
 import { getEnhancedWebSocketService } from './enhancedWebSocketService';
 import CloudAuth from './cloudAuth';
 import { Message, Conversation } from '../types/message';
+import AppStateManager from './appStateManager';
 
 interface UserProfile {
   id: string;
@@ -132,19 +133,26 @@ class SyncService {
    * Start automatic sync
    */
   static startAutoSync(): void {
+    const appStateManager = AppStateManager.getInstance();
+    
     if (this.syncTimer) {
-      clearInterval(this.syncTimer);
+      appStateManager.unregisterInterval('sync-service-auto');
     }
     
-    this.syncTimer = setInterval(async () => {
-      const lastSync = await this.getLastSyncTimestamp();
-      const now = Date.now();
-      
-      // Only sync if last sync was more than sync interval ago
-      if (now - new Date(lastSync).getTime() > this.SYNC_INTERVAL) {
-        this.triggerSync({ dataTypes: ['emotions', 'conversations'] });
-      }
-    }, this.SYNC_INTERVAL);
+    // Register as pausable interval that stops in background
+    this.syncTimer = appStateManager.registerPausableInterval(
+      'sync-service-auto',
+      async () => {
+        const lastSync = await this.getLastSyncTimestamp();
+        const now = Date.now();
+        
+        // Only sync if last sync was more than sync interval ago
+        if (now - new Date(lastSync).getTime() > this.SYNC_INTERVAL) {
+          this.triggerSync({ dataTypes: ['emotions', 'conversations'] });
+        }
+      },
+      this.SYNC_INTERVAL
+    );
   }
 
   /**
@@ -152,7 +160,8 @@ class SyncService {
    */
   static stopAutoSync(): void {
     if (this.syncTimer) {
-      clearInterval(this.syncTimer);
+      const appStateManager = AppStateManager.getInstance();
+      appStateManager.unregisterInterval('sync-service-auto');
       this.syncTimer = null;
     }
   }

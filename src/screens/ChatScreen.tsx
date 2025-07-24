@@ -144,7 +144,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   const restoreHeader = async () => {
     try {
-      log.debug('Touch gesture triggered! Restoring header', null, 'ChatScreen');
       
       if (scrollDebounceTimeout) {
         clearTimeout(scrollDebounceTimeout);
@@ -156,7 +155,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setHeaderVisible(true);
       setHeaderPermanentlyHidden(false);
-      log.debug('Header restored successfully', null, 'ChatScreen');
       
       createManagedTimeout(() => {
         setIsTouchActive(false);
@@ -267,7 +265,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   // Setup WebSocket listeners
   const setupWebSocketListeners = () => {
-    websocketService.addEventListener('connection_status', (data) => {
+    websocketService.addEventListener('connection_status', (data: { connected: boolean }) => {
       setIsConnected(data.connected);
       if (data.connected) {
         websocketService.joinRoom(roomId, 'general');
@@ -521,7 +519,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     // Pre-detect potential tool executions
     const potentialTools = detectPotentialTools(messageText);
     if (potentialTools.length > 0) {
-      log.debug('Pre-detected tools', { tools: potentialTools.map(t => t.name) }, 'ChatScreen');
       potentialTools.forEach(tool => {
         toolExecutionService.startExecution(tool.name, tool.parameters);
       });
@@ -623,9 +620,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         isStreaming: false,
       };
       
-      log.debug('Final AI message generated', {
-        responseLength: finalResponseText.length
-      }, 'ChatScreen');
       
       // Send AI response via WebSocket (graceful fallback)
       if (isConnected) {
@@ -931,7 +925,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const handleStartNewChat = () => {
     // Save current conversation if it exists and has messages (non-blocking)
     if (conversation && conversation.messages.length > 0) {
-      saveConversation(conversation).catch(console.error);
+      saveConversation(conversation).catch(() => {});
     }
     
     // Immediately clear everything - no waiting, no intermediate states
@@ -945,7 +939,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     // Safety check for item - allow empty text for streaming messages
     if (!item || (!item.text && !item.isStreaming)) {
-      console.warn('Invalid message item:', item);
       return null;
     }
 
@@ -988,7 +981,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   return (
     <ChatErrorBoundary
       onError={(error, errorInfo) => {
-        console.error('ChatScreen Error:', error, errorInfo);
       }}
     >
       <ScreenWrapper
@@ -1023,7 +1015,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                 style={styles.headerRestoreArea}
                 onPress={restoreHeader}
                 onPressIn={() => {
-                  console.log('🎯 Touch area pressed!');
                   setIsTouchActive(true);
                 }}
                 onPressOut={() => {

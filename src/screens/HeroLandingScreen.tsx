@@ -67,6 +67,14 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   const exploreButtonPressScale = useRef(new Animated.Value(1)).current;
   const signUpButtonPressScale = useRef(new Animated.Value(1)).current;
   const signInButtonPressScale = useRef(new Animated.Value(1)).current;
+  
+  // Dark mode toggle animations
+  const toggleScale = useRef(new Animated.Value(1)).current;
+  const toggleGlow = useRef(new Animated.Value(0)).current;
+  const toggleRotate = useRef(new Animated.Value(0)).current;
+  
+  // Debounce ref to prevent rapid toggling issues
+  const toggleDebounceRef = useRef(false);
 
 
   useEffect(() => {
@@ -183,26 +191,77 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   }, []);
 
   const handleToggleDarkMode = () => {
-    // Animate character change when toggling theme
-    Animated.sequence([
-      Animated.timing(characterOpacity, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotateAnim, {
+    // Prevent rapid toggling to avoid rendering issues (500ms rate limit)
+    if (toggleDebounceRef.current) return;
+    
+    toggleDebounceRef.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    
+    // Toggle theme immediately
+    toggleTheme();
+    
+    // Run animations in parallel without blocking theme change
+    Animated.parallel([
+      // Button press effect
+      Animated.sequence([
+        Animated.timing(toggleScale, {
+          toValue: 0.92,
+          duration: 80,
+          useNativeDriver: true,
+        }),
+        Animated.spring(toggleScale, {
+          toValue: 1,
+          tension: 200,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Glow effect
+      Animated.sequence([
+        Animated.timing(toggleGlow, {
+          toValue: 1,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(toggleGlow, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Icon rotation
+      Animated.timing(toggleRotate, {
         toValue: 1,
-        duration: 100,
+        duration: 200,
         useNativeDriver: true,
       }),
+      // Character change animation
+      Animated.sequence([
+        Animated.timing(characterOpacity, {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(rotateAnim, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+        Animated.timing(characterOpacity, {
+          toValue: 1,
+          duration: 100,
+          useNativeDriver: true,
+        }),
+      ]),
     ]).start(() => {
-      toggleTheme();
+      // Reset animation values and allow next toggle
+      toggleRotate.setValue(0);
       rotateAnim.setValue(0);
-      Animated.timing(characterOpacity, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }).start();
+      
+      // Release debounce after animations complete (500ms rate limit)
+      setTimeout(() => {
+        toggleDebounceRef.current = false;
+      }, 500);
     });
   };
 
@@ -268,6 +327,16 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     outputRange: ['0deg', '360deg'],
   });
 
+  const toggleIconRotation = toggleRotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
+  const toggleGlowOpacity = toggleGlow.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.6],
+  });
+
 
   return (
     <PageBackground>
@@ -280,9 +349,53 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
       
       {/* Dark mode overlay effect */}
       {isDarkMode && (
-        <View style={styles.darkModeOverlay}>
+        <View style={[styles.darkModeOverlay, { backgroundColor: '#0a0a0a' }]}>
         </View>
       )}
+
+      {/* Dark Mode Toggle Button - Top Right */}
+      <View style={styles.toggleContainer}>
+        <TouchableOpacity
+          onPress={handleToggleDarkMode}
+          activeOpacity={0.8}
+          style={styles.toggleButton}
+        >
+          <Animated.View
+            style={[
+              styles.toggleButtonInner,
+              {
+                backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
+                borderColor: isDarkMode ? '#404040' : '#e0e0e0',
+                transform: [{ scale: toggleScale }],
+              },
+            ]}
+          >
+            {/* Glow effect */}
+            <Animated.View
+              style={[
+                styles.toggleGlow,
+                {
+                  opacity: toggleGlowOpacity,
+                  backgroundColor: isDarkMode ? '#87ebde' : '#0099ff',
+                },
+              ]}
+            />
+            
+            {/* Icon */}
+            <Animated.View
+              style={{
+                transform: [{ rotate: toggleIconRotation }],
+              }}
+            >
+              <Feather
+                name={isDarkMode ? 'sun' : 'moon'}
+                size={18}
+                color={isDarkMode ? '#87ebde' : '#0099ff'}
+              />
+            </Animated.View>
+          </Animated.View>
+        </TouchableOpacity>
+      </View>
 
 
 
@@ -364,60 +477,80 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 styles.primaryButtonContainer,
                 isDarkMode ? {
                   width: '88%',
-                  shadowColor: '#a5b4fc', // indigo pastel as base
-                  shadowOpacity: 0.55,
-                  shadowRadius: 32,
-                  shadowOffset: { width: 0, height: 6 },
-                  borderColor: '#9ca3af',
-                  borderWidth: 1,
-                  // For a more rainbow effect, you can add a background gradient or use a custom shadow library for multi-color
-                } : {},
-                !isDarkMode ? {
-                  shadowColor: '#e0e7ef',
-                  shadowOpacity: 0.12,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 2 },
-                  elevation: 8,
-                } : {},
+                  shadowColor: 'rgba(139, 92, 246, 0.8)', // Soft purple glow
+                  shadowOpacity: 0.4,
+                  shadowRadius: 40,
+                  shadowOffset: { width: 0, height: 0 },
+                } : {
+                  width: '88%',
+                  shadowColor: '#1f2937',
+                  shadowOpacity: 0.15,
+                  shadowRadius: 20,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 15,
+                },
               ]}
               onPress={handleExploreButtonPress}
               activeOpacity={0.9}
             >
-                <View
-                  style={[
-                    styles.primaryButton,
-                    isDarkMode
-                      ? {
-                          backgroundColor: '#18181b',
-                          borderColor: '#9ca3af',
-                          borderWidth: 1,
-                          height: 44,
-                          paddingHorizontal: 16,
-                        }
-                      : {},
-                    {
-                      backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-                      borderColor: isDarkMode ? '#44474a' : '#e0e0e0', // fallback for borderColor
-                      borderWidth: 1,
-                      shadowColor: isDarkMode ? '#000000' : '#f1f5f9',
-                      shadowOpacity: isDarkMode ? 0.3 : 0.6,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { 
-                      color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
-                      textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: isDarkMode ? 3 : 2,
-                    }
-                  ]}>
-                    Explore
-                  </Text>
+              {/* Professional layered depth */}
+              <View style={[
+                styles.shadowLayerContainer,
+                isDarkMode ? {
+                  shadowColor: 'rgba(139, 92, 246, 0.6)', // Inner purple glow
+                  shadowOpacity: 0.3,
+                  shadowRadius: 25,
+                  shadowOffset: { width: 0, height: 0 },
+                } : {
+                  shadowColor: '#374151',
+                  shadowOpacity: 0.08,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 },
+                }
+              ]}>
+                <View style={[
+                  styles.innerShadowLayer,
+                  isDarkMode ? {
+                    shadowColor: 'rgba(139, 92, 246, 0.4)', // Innermost purple glow
+                    shadowOpacity: 0.2,
+                    shadowRadius: 15,
+                    shadowOffset: { width: 0, height: 0 },
+                  } : {
+                    shadowColor: '#6b7280',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 },
+                  }
+                ]}>
+                  <View
+                    style={[
+                      styles.primaryButton,
+                      {
+                        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+                        borderColor: isDarkMode ? '#262626' : '#e5e7eb',
+                        borderWidth: isDarkMode ? 1 : 0.5,
+                        shadowColor: isDarkMode ? '#000000' : '#f9fafb',
+                        shadowOpacity: isDarkMode ? 0.3 : 0.4,
+                        shadowRadius: isDarkMode ? 6 : 3,
+                        shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
+                        elevation: isDarkMode ? 6 : 3,
+                      }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.primaryButtonText, 
+                      { 
+                        color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                        textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
+                        textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
+                        textShadowRadius: isDarkMode ? 2 : 1,
+                      }
+                    ]}>
+                      Explore
+                    </Text>
+                  </View>
                 </View>
+              </View>
               </TouchableOpacity>
           </Animated.View>
 
@@ -439,64 +572,80 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 styles.primaryButtonContainer,
                 isDarkMode ? {
                   width: '88%',
-                  shadowColor: '#a5b4fc', // indigo pastel as base
-                  shadowOpacity: 0.55,
-                  shadowRadius: 32,
-                  shadowOffset: { width: 0, height: 6 },
-                  borderColor: '#9ca3af',
-                  borderWidth: 1,
-                  // For a more rainbow effect, you can add a background gradient or use a custom shadow library for multi-color
-                } : {},
-                !isDarkMode ? {
-                  shadowColor: '#e0e7ef',
-                  shadowOpacity: 0.12,
-                  shadowRadius: 10,
-                  shadowOffset: { width: 0, height: 2 },
-                  elevation: 8,
-                } : {},
+                  shadowColor: 'rgba(6, 182, 212, 0.8)', // Vibrant blue-green glow
+                  shadowOpacity: 0.4,
+                  shadowRadius: 40,
+                  shadowOffset: { width: 0, height: 0 },
+                } : {
+                  width: '88%',
+                  shadowColor: '#1f2937',
+                  shadowOpacity: 0.15,
+                  shadowRadius: 20,
+                  shadowOffset: { width: 0, height: 8 },
+                  elevation: 15,
+                },
               ]}
                 onPress={handleSignUpButtonPress}
                 activeOpacity={0.9}
               >
-                <View
-                  style={[
-                    styles.primaryButton,
-                    isDarkMode
-                      ? {
-                          backgroundColor: '#18181b',
-                          borderColor: '#9ca3af',
-                          borderWidth: 1,
-                          height: 44,
-                          paddingHorizontal: 16,
-                        }
-                      : {},
-                    {
-                      backgroundColor: isDarkMode 
-                        ? '#0f0f0f'
-                        : '#ffffff',
-                      borderColor: isDarkMode 
-                        ? '#44474a'
-                        : '#e0e0e0',
-                      borderWidth: 1,
-                      shadowColor: isDarkMode ? '#000000' : '#f1f5f9',
-                      shadowOpacity: isDarkMode ? 0.3 : 0.6,
-                      shadowRadius: 6,
-                      shadowOffset: { width: 0, height: 2 },
-                    }
-                  ]}
-                >
-                  <Text style={[
-                    styles.primaryButtonText, 
-                    { 
-                      color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
-                      textShadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.4)',
-                      textShadowOffset: { width: 0, height: 1 },
-                      textShadowRadius: isDarkMode ? 3 : 2,
-                    }
-                  ]}>
-                    Create Account
-                  </Text>
+              {/* Beautiful glowing layers */}
+              <View style={[
+                styles.shadowLayerContainer,
+                isDarkMode ? {
+                  shadowColor: 'rgba(6, 182, 212, 0.6)', // Middle blue-green glow
+                  shadowOpacity: 0.3,
+                  shadowRadius: 25,
+                  shadowOffset: { width: 0, height: 0 },
+                } : {
+                  shadowColor: '#374151',
+                  shadowOpacity: 0.08,
+                  shadowRadius: 12,
+                  shadowOffset: { width: 0, height: 4 },
+                }
+              ]}>
+                <View style={[
+                  styles.innerShadowLayer,
+                  isDarkMode ? {
+                    shadowColor: 'rgba(6, 182, 212, 0.4)', // Innermost blue-green glow
+                    shadowOpacity: 0.2,
+                    shadowRadius: 15,
+                    shadowOffset: { width: 0, height: 0 },
+                  } : {
+                    shadowColor: '#6b7280',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 6,
+                    shadowOffset: { width: 0, height: 2 },
+                  }
+                ]}>
+                  <View
+                    style={[
+                      styles.primaryButton,
+                      {
+                        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+                        borderColor: isDarkMode ? 'rgba(85, 85, 85, 0.4)' : '#e5e7eb',
+                        borderWidth: isDarkMode ? 1 : 0.5,
+                        shadowColor: isDarkMode ? '#34d399' : '#f9fafb', // Green accent border glow
+                        shadowOpacity: isDarkMode ? 0.1 : 0.4,
+                        shadowRadius: isDarkMode ? 8 : 3,
+                        shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
+                        elevation: isDarkMode ? 8 : 3,
+                      }
+                    ]}
+                  >
+                    <Text style={[
+                      styles.primaryButtonText, 
+                      { 
+                        color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                        textShadowColor: isDarkMode ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.8)',
+                        textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
+                        textShadowRadius: isDarkMode ? 3 : 1,
+                      }
+                    ]}>
+                      Create Account
+                    </Text>
+                  </View>
                 </View>
+              </View>
               </TouchableOpacity>
           </Animated.View>
 
@@ -525,6 +674,8 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
         </Animated.View>
       </Animated.View>
+      
+
       </SafeAreaView>
     </PageBackground>
   );
@@ -608,6 +759,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
   },
+  shadowLayerContainer: {
+    width: '100%',
+    borderRadius: 12,
+  },
+  innerShadowLayer: {
+    width: '100%',
+    borderRadius: 12,
+  },
   primaryButton: {
     width: '100%',
     height: 37,
@@ -650,6 +809,47 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     letterSpacing: -0.3,
     fontFamily: 'Nunito_400Regular',
+  },
+
+  // Dark Mode Toggle Styles
+  toggleContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 45,
+    right: 20,
+    zIndex: 1000,
+  },
+  toggleButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleButtonInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+    // Neumorphic shadows following app style guide
+    shadowColor: '#000000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  toggleGlow: {
+    position: 'absolute',
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    shadowColor: 'currentColor',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
 });

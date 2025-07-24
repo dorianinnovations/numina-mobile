@@ -260,9 +260,6 @@ export const AnimatedHamburger: React.FC<AnimatedHamburgerProps> = ({
 
   return (
     <View style={styles.wrapper}>
-     
-
-      
       {/* Main hamburger container */}
       <Animated.View 
         style={[

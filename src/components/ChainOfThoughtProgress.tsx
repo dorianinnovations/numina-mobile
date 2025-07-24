@@ -5,13 +5,13 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  StatusBar,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { StreamingMarkdown } from './StreamingMarkdown';
+import { NuminaSpinner } from './NuminaSpinner';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface ChainStep {
   id: string;
@@ -37,80 +37,145 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
   onComplete,
 }) => {
   const { isDarkMode } = useTheme();
-  const [displayedMessage, setDisplayedMessage] = useState('');
   
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const loaderRotation = useRef(new Animated.Value(0)).current;
+  const [capturedMessages, setCapturedMessages] = useState<string[]>([]);
+  const [isFirstMessage, setIsFirstMessage] = useState(true);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [allTextRendered, setAllTextRendered] = useState(false);
+  const messageAnims = useRef<Map<number, Animated.Value>>(new Map()).current;
 
+
+  // Fade in/out animation
   useEffect(() => {
     if (visible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-      
-      // Start pulsing animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.05,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      // Gentle delay before appearing
+      setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 150);
     } else {
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 300,
+        duration: 350,
         useNativeDriver: true,
       }).start();
     }
-  }, [visible]);
+  }, [visible, fadeAnim]);
 
+  // Loader rotation animation
   useEffect(() => {
-    const completedSteps = steps.filter(step => step.status === 'completed').length;
-    const progress = completedSteps / steps.length;
+    if (visible && !showCompleted) {
+      loaderRotation.setValue(0);
+      Animated.loop(
+        Animated.timing(loaderRotation, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        })
+      ).start();
+    }
+  }, [visible, showCompleted, loaderRotation]);
+
+  // Detect when all text has finished rendering - INCREASED DELAY TO ENSURE VISIBILITY
+  useEffect(() => {
+    if (capturedMessages.length > 0) {
+      // Wait for streaming to complete (no new messages for 5 seconds) - EXTENDED DELAY
+      const renderCheckTimer = setTimeout(() => {
+        setAllTextRendered(true);
+      }, 5000);
+      
+      return () => clearTimeout(renderCheckTimer);
+    }
+  }, [streamingMessage, capturedMessages]);
+
+  // Show completed state only after all text is rendered
+  useEffect(() => {
+    if (allTextRendered && capturedMessages.length > 0) {
+      // Small delay after text completion for smooth transition
+      const completionTimer = setTimeout(() => {
+        setShowCompleted(true);
+      }, 500);
+      
+      return () => clearTimeout(completionTimer);
+    }
+  }, [allTextRendered, capturedMessages.length]);
+
+  // Capture streaming messages with staggered animations
+  useEffect(() => {
+    console.log('🎯 ChainOfThoughtProgress: Received streamingMessage:', {
+      message: streamingMessage,
+      trimmed: streamingMessage?.trim(),
+      length: streamingMessage?.length,
+      type: typeof streamingMessage
+    });
     
-    Animated.timing(progressAnim, {
-      toValue: progress,
-      duration: 500,
-      useNativeDriver: false,
-    }).start();
-
-    if (progress === 1 && onComplete) {
-      setTimeout(() => onComplete(), 1000);
+    // Only process non-empty messages to prevent flickering
+    if (streamingMessage && streamingMessage.trim() && streamingMessage.trim().length > 0) {
+      // Check if this looks like a LLAMA contextual report (2-5 words, no generic phrases)
+      const words = streamingMessage.trim().split(' ').filter(w => w.length > 0);
+      if (words.length >= 2 && words.length <= 6) {
+        console.log('✅ LLAMA CONTEXTUAL REPORT DISPLAYING:', streamingMessage.trim());
+      } else {
+        console.log('⚠️ Generic message detected (likely fallback):', streamingMessage.trim());
+      }
     }
-  }, [steps]);
-
-  const getStepIcon = (step: ChainStep) => {
-    switch (step.status) {
-      case 'completed':
-        return 'check-circle';
-      case 'active':
-        return 'loading';
-      default:
-        return 'circle-outline';
+    
+    if (streamingMessage && streamingMessage.trim() && streamingMessage.trim().length > 0) {
+      setCapturedMessages(prev => {
+        const trimmedMessage = streamingMessage.trim();
+        // Check if this message is already captured to prevent duplicates
+        if (prev.includes(trimmedMessage)) {
+          console.log('🔄 Duplicate message prevented:', trimmedMessage);
+          return prev;
+        }
+        
+        const newMessages = [...prev, trimmedMessage];
+        const messageIndex = newMessages.length - 1;
+        console.log('✅ Adding new LLAMA message to display:', trimmedMessage);
+        
+        // Create animation value for this message if it doesn't exist
+        if (!messageAnims.has(messageIndex)) {
+          messageAnims.set(messageIndex, new Animated.Value(0));
+        }
+        
+        // REDUCED DELAYS FOR IMMEDIATE VISIBILITY
+        const isFirstMessage = messageIndex === 0;
+        const randomDelay = isFirstMessage ? 10 : 50; // Much faster appearance
+        const animDuration = isFirstMessage ? 150 : 200; // Faster animation
+        
+        setTimeout(() => {
+          const anim = messageAnims.get(messageIndex);
+          if (anim) {
+            Animated.timing(anim, {
+              toValue: 1,
+              duration: animDuration,
+              useNativeDriver: true,
+            }).start();
+          }
+        }, randomDelay);
+        
+        return newMessages;
+      });
+      setIsFirstMessage(false);
     }
-  };
+  }, [streamingMessage, messageAnims]);
 
-  const getStepColor = (step: ChainStep) => {
-    switch (step.status) {
-      case 'completed':
-        return '#10B981';
-      case 'active':
-        return '#3B82F6';
-      default:
-        return isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.3)';
+  // Reset when modal becomes visible
+  useEffect(() => {
+    if (visible) {
+      setCapturedMessages([]);
+      setIsFirstMessage(true);
+      setShowCompleted(false);
+      setAllTextRendered(false);
+      loaderRotation.setValue(0);
+      messageAnims.clear(); // Clear all message animations
     }
-  };
+  }, [visible, loaderRotation, messageAnims]);
 
   if (!visible) return null;
 
@@ -118,191 +183,198 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
     <Animated.View 
       style={[
         styles.container,
-        { opacity: fadeAnim }
+        { 
+          opacity: fadeAnim,
+          backgroundColor: isDarkMode ? '#0F0F0F' : '#FFFFFF'
+        }
       ]}
     >
-      <LinearGradient
-        colors={isDarkMode 
-          ? ['rgba(30, 30, 35, 0.95)', 'rgba(20, 20, 25, 0.9)']
-          : ['rgba(255, 255, 255, 0.95)', 'rgba(250, 250, 255, 0.9)']
-        }
-        style={styles.gradient}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-            <MaterialCommunityIcons 
-              name="brain" 
-              size={24} 
-              color="#3B82F6" 
-            />
-          </Animated.View>
+      <View style={styles.centerContainer}>
+        {/* Always show placeholder with loader - keep it consistent */}
+        <View style={styles.placeholderRow}>
+          <View style={styles.loaderContainer}>
+            {showCompleted ? (
+              // Completed checkmark
+              <View style={[
+                styles.completedCircle,
+                { 
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)' 
+                }
+              ]}>
+                <Text style={[
+                  styles.checkmark,
+                  { color: isDarkMode ? '#0F0F0F' : '#FFFFFF' }
+                ]}>
+                  ✓
+                </Text>
+              </View>
+            ) : (
+              // Spinning loader - using NuminaSpinner
+              <NuminaSpinner 
+                size={16} 
+                visible={!showCompleted}
+              />
+            )}
+          </View>
           <Text style={[
-            styles.headerTitle,
-            { color: isDarkMode ? '#F8FAFC' : '#1F2937' }
+            styles.unifiedText,
+            { 
+              color: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.6)' 
+            }
           ]}>
-            Thinking Process
+            Processing your request...
           </Text>
         </View>
 
-        {/* Progress Bar */}
-        <View style={styles.progressContainer}>
-          <View style={[
-            styles.progressTrack,
-            { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
-          ]}>
-            <Animated.View
-              style={[
-                styles.progressFill,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                }
-              ]}
-            />
-          </View>
-        </View>
-
-        {/* Steps */}
-        <View style={styles.stepsContainer}>
-          {steps.map((step, index) => (
-            <View key={step.id} style={styles.stepRow}>
-              <View style={styles.stepIconContainer}>
-                <MaterialCommunityIcons 
-                  name={getStepIcon(step)} 
-                  size={16} 
-                  color={getStepColor(step)} 
-                />
-              </View>
-              <View style={styles.stepContent}>
+        {/* Show captured messages in same unified format with staggered animations */}
+        {capturedMessages.length > 0 && (
+          <View style={styles.messagesContainer}>
+            {capturedMessages.map((message, index) => {
+              const animValue = messageAnims.get(index) || new Animated.Value(0);
+              return (
+                <Animated.View 
+                  key={index} 
+                  style={[
+                    styles.messageRow,
+                    {
+                      opacity: animValue,
+                      transform: [{
+                        translateY: animValue.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [10, 0],
+                        })
+                      }]
+                    }
+                  ]}
+                >
+                  <View style={styles.loaderContainer}>
+                    {/* Empty space to align with loader above */}
+                  </View>
+                  <Animated.Text style={[
+                    styles.messagePrefix,
+                    { 
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.4)',
+                      opacity: animValue
+                    }
+                  ]}>
+                    {index + 1}.
+                  </Animated.Text>
+                  <Animated.Text style={[
+                    styles.unifiedText,
+                    { 
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 0, 0, 0.9)',
+                      opacity: animValue
+                    }
+                  ]}>
+                    {message}
+                  </Animated.Text>
+                </Animated.View>
+              );
+            })}
+            
+            {/* Show current streaming message */}
+            {streamingMessage && 
+             streamingMessage.trim() && 
+             !capturedMessages.includes(streamingMessage.trim()) && (
+              <View style={styles.messageRow}>
+                <View style={styles.loaderContainer}>
+                  {/* Empty space to align with loader above */}
+                </View>
                 <Text style={[
-                  styles.stepTitle,
+                  styles.messagePrefix,
                   { 
-                    color: step.status === 'active' 
-                      ? '#3B82F6' 
-                      : isDarkMode ? '#F8FAFC' : '#1F2937',
-                    opacity: step.status === 'pending' ? 0.5 : 1
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.4)' 
                   }
                 ]}>
-                  {step.title}
+                  {capturedMessages.length + 1}.
                 </Text>
-                {step.message && (
-                  <Text style={[
-                    styles.stepMessage,
-                    { color: isDarkMode ? 'rgba(248, 250, 252, 0.7)' : 'rgba(31, 41, 55, 0.7)' }
-                  ]}>
-                    {step.message}
-                  </Text>
-                )}
+                <Text style={[
+                  styles.unifiedText,
+                  { 
+                    color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)' 
+                  }
+                ]}>
+                  {streamingMessage.trim()}
+                </Text>
               </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Streaming Message */}
-        {streamingMessage && (
-          <View style={styles.streamingContainer}>
-            <View style={[
-              styles.streamingBubble,
-              { backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)' }
-            ]}>
-              <StreamingMarkdown 
-                content={streamingMessage}
-                speed={30}
-                style={[
-                  styles.streamingText,
-                  { color: isDarkMode ? '#E5E7EB' : '#374151' }
-                ]}
-              />
-            </View>
+            )}
           </View>
         )}
-      </LinearGradient>
+      </View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: screenWidth * 0.9,
-    maxHeight: 400,
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: screenWidth,
+    height: screenHeight,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    zIndex: 9999,
   },
-  gradient: {
-    padding: 20,
+  centerContainer: {
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingHorizontal: 40,
+    width: '100%',
   },
-  header: {
+  placeholderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
+  loaderContainer: {
+    marginRight: 12,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  progressContainer: {
-    marginBottom: 20,
+  loaderCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
   },
-  progressTrack: {
-    height: 3,
-    borderRadius: 2,
-    overflow: 'hidden',
+  completedCircle: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 2,
+  checkmark: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
-  stepsContainer: {
-    gap: 12,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  stepIconContainer: {
-    marginTop: 2,
-  },
-  stepContent: {
+  unifiedText: {
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 24,
+    letterSpacing: 0.2,
     flex: 1,
   },
-  stepTitle: {
+  messagesContainer: {
+    width: '100%',
+    maxWidth: screenWidth * 0.85,
+    marginTop: 12,
+  },
+  messageRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    alignItems: 'flex-start',
+  },
+  messagePrefix: {
     fontSize: 14,
     fontWeight: '500',
-    fontFamily: 'Inter_500Medium',
-    marginBottom: 2,
-  },
-  stepMessage: {
-    fontSize: 12,
-    fontFamily: 'Inter_400Regular',
-    lineHeight: 16,
-  },
-  streamingContainer: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(59, 130, 246, 0.2)',
-  },
-  streamingBubble: {
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#3B82F6',
-  },
-  streamingText: {
-    fontSize: 13,
-    fontFamily: 'Inter_400Regular',
-    lineHeight: 18,
+    marginRight: 8,
+    minWidth: 20,
+    textAlign: 'right',
   },
 });

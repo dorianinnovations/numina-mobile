@@ -18,6 +18,7 @@ import {
   Easing,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
@@ -237,8 +238,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               await AppInitializer.performInitialDataSync();
               
               // Additional features for users who accept terms
-              const healthStatus = await AppInitializer.getHealthStatus();
-              console.log('📊 Enhanced features activated:', healthStatus);
+              await AppInitializer.getHealthStatus();
               
               console.log('✅ Terms acceptance three-tier system complete!');
             } catch (error) {
@@ -370,9 +370,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                 color: isDarkMode ? '#ffffff' : '#000000',
                                 backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                                 shadowColor: isDarkMode ? '#000000' : '#000000',
-                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
-                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
-                                shadowRadius: isDarkMode ? 12 : 8,
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 1 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.12,
+                                shadowRadius: isDarkMode ? 12 : 3,
                                 elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
@@ -435,9 +435,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                 color: isDarkMode ? '#ffffff' : '#000000',
                                 backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                                 shadowColor: isDarkMode ? '#000000' : '#000000',
-                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
-                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
-                                shadowRadius: isDarkMode ? 12 : 8,
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 1 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.12,
+                                shadowRadius: isDarkMode ? 12 : 3,
                                 elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
@@ -499,9 +499,9 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                 color: isDarkMode ? '#ffffff' : '#000000',
                                 backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff',
                                 shadowColor: isDarkMode ? '#000000' : '#000000',
-                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 2 },
-                                shadowOpacity: isDarkMode ? 0.5 : 0.08,
-                                shadowRadius: isDarkMode ? 12 : 8,
+                                shadowOffset: { width: 0, height: isDarkMode ? 4 : 1 },
+                                shadowOpacity: isDarkMode ? 0.5 : 0.12,
+                                shadowRadius: isDarkMode ? 12 : 3,
                                 elevation: isDarkMode ? 6 : 3,
                               }
                             ]}
@@ -767,7 +767,15 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           ]}
                         >
                           <View style={styles.successContent}>
-                            <FontAwesome5 name="check-circle" size={20} color="#10b981" />
+                            <LottieView
+                              source={require('../../assets/greencheckmark.json')}
+                              autoPlay
+                              loop={false}
+                              style={{
+                                width: 24,
+                                height: 24,
+                              }}
+                            />
                             <Text style={[styles.successText, { color: '#10b981' }]}>
                               Account created successfully! Redirecting...
                             </Text>
@@ -904,19 +912,19 @@ const styles = StyleSheet.create({
     padding: 32,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    elevation: 2,
   },
   glassmorphic: {
     backgroundColor: 'rgba(255, 255, 255, 0.22)',
     borderColor: 'rgba(255, 255, 255, 0.35)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   header: {
     marginBottom: 32,
@@ -947,7 +955,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 0,
-    borderRadius: 12,
+    borderRadius: 8,
     fontSize: 16,
     fontWeight: '400',
     height: 42,

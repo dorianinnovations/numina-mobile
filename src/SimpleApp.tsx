@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Animated, Easing } from 'react-native';
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +11,7 @@ import { RefreshProvider } from './contexts/RefreshContext';
 import { BorderThemeProvider } from './contexts/BorderThemeContext';
 import { BorderSettingsProvider } from './contexts/BorderSettingsContext';
 import { FontProvider } from './components/FontProvider';
+// import { DevTools } from './components/DevTools'; // TEMP DISABLED
 import { NuminaColors } from './utils/colors';
 import AppInitializer from './services/appInitializer';
 import { log } from './utils/logger';
@@ -44,51 +44,22 @@ const SmoothLoader: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
-  const [isAppReady, setIsAppReady] = useState(true); // INSTANT FIX: Start ready
-
-  useEffect(() => {
-    log.debug('Initializing app services once on mount', null, 'SimpleApp');
+  try {
+    const { isAuthenticated } = useAuth();
     
-    const initializeServices = async () => {
-      log.info('Authentication status', { isAuthenticated }, 'SimpleApp');
-
-      if (isAuthenticated) {
-        log.info('Starting three-tier system initialization', null, 'SimpleApp');
-        try {
-          const initResult = await AppInitializer.initialize();
-          log.info('Tier 1 (Infrastructure) initialized', { success: initResult.success }, 'SimpleApp');
-          
-          if (initResult.success) {
-            const wsConnected = await AppInitializer.initializeWebSocketAfterAuth();
-            log.info('Tier 2 (WebSocket) initialized', { connected: wsConnected }, 'SimpleApp');
-          }
-          
-          await AppInitializer.performInitialDataSync();
-          log.info('Tier 3 (Data Sync) initialized', null, 'SimpleApp');
-          
-          log.info('Three-tier system initialization complete', null, 'SimpleApp');
-        } catch (error) {
-          log.error('Three-tier system initialization failed', error, 'SimpleApp');
-        }
-      }
-
-      setIsAppReady(true);
-      log.debug('App initialization complete', null, 'SimpleApp');
-    };
-
-    initializeServices();
-  }, []); // Run once on mount - no dependencies to prevent re-runs
-
-  if (!isAppReady) {
-    log.debug('Still loading, showing SmoothLoader', null, 'SimpleApp');
-    return <SmoothLoader />;
+    return (
+      <View style={{ flex: 1 }}>
+        <AppNavigator />
+      </View>
+    );
+  } catch (error) {
+    console.error('AppContent error:', error);
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </View>
+    );
   }
-
-  log.debug('Rendering main app', { authenticated: isAuthenticated }, 'SimpleApp');
-  log.debug('About to render AppNavigator', null, 'SimpleApp');
-
-  return <AppNavigator />;
 };
 
 const SimpleApp: React.FC = () => {
@@ -101,8 +72,9 @@ const SimpleApp: React.FC = () => {
               <RefreshProvider>
                 <FontProvider>
                   <AuthProvider>
-                  <AppContent />
-                  <StatusBar style="auto" />
+                    <View style={{ flex: 1 }}>
+                      <AppContent />
+                    </View>
                   </AuthProvider>
                 </FontProvider>
               </RefreshProvider>

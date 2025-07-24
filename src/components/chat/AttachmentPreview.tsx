@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,11 +7,16 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { MessageAttachment, UploadProgress } from '../../types/message';
+import { NuminaColors } from '../../utils/colors';
+
+const { width: screenWidth } = Dimensions.get('window');
 
 interface AttachmentPreviewProps {
   attachments: MessageAttachment[];
@@ -24,9 +29,10 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({
   attachments,
   uploadProgress = [],
   onRemoveAttachment,
-  maxHeight = 120,
+  maxHeight = 300, // Increased default max height
 }) => {
   const { theme, isDarkMode } = useTheme();
+  const [imageDimensions, setImageDimensions] = useState<{[key: string]: {width: number, height: number}}>({});
 
   if (attachments.length === 0) {
     return null;
@@ -44,17 +50,19 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const getFileIcon = (attachment: MessageAttachment): string => {
+  const getFileIcon = (attachment: MessageAttachment): { icon: string; color: string } => {
     switch (attachment.type) {
       case 'image':
-        return 'image';
+        return { icon: 'image', color: '#10b981' };
       case 'document':
-        if (attachment.mimeType === 'application/pdf') return 'file-pdf';
-        return 'file-alt';
+        if (attachment.mimeType === 'application/pdf') {
+          return { icon: 'file-pdf', color: '#ef4444' };
+        }
+        return { icon: 'file-alt', color: '#3b82f6' };
       case 'text':
-        return 'file-text';
+        return { icon: 'file-text', color: '#f59e0b' };
       default:
-        return 'file';
+        return { icon: 'file', color: '#6b7280' };
     }
   };
 
@@ -78,114 +86,161 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({
     onRemoveAttachment(attachmentId);
   };
 
-  return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: isDarkMode ? '#1f2937' : '#f9fafb',
-          borderColor: isDarkMode ? '#374151' : '#e5e7eb',
-          maxHeight,
-        },
-      ]}
-    >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+  // Calculate optimal image size based on aspect ratio
+  const getOptimalImageSize = (attachment: MessageAttachment) => {
+    const dimensions = imageDimensions[attachment.id];
+    if (!dimensions || attachment.type !== 'image') {
+      return { width: 140, height: 90 }; // Default size for non-images
+    }
+
+    const maxPreviewWidth = screenWidth * 0.7; // Max 70% of screen width
+    const maxPreviewHeight = 200; // Max height for images
+    const minWidth = 120;
+    const minHeight = 80;
+
+    const aspectRatio = dimensions.width / dimensions.height;
+    
+    let optimalWidth = Math.min(maxPreviewWidth, dimensions.width);
+    let optimalHeight = optimalWidth / aspectRatio;
+
+    // If height exceeds max, adjust width accordingly
+    if (optimalHeight > maxPreviewHeight) {
+      optimalHeight = maxPreviewHeight;
+      optimalWidth = optimalHeight * aspectRatio;
+    }
+
+    // Ensure minimums
+    optimalWidth = Math.max(minWidth, optimalWidth);
+    optimalHeight = Math.max(minHeight, optimalHeight);
+
+    return {
+      width: Math.round(optimalWidth),
+      height: Math.round(optimalHeight)
+    };
+  };
+
+  // Load image dimensions when attachments change
+  useEffect(() => {
+    attachments.forEach(attachment => {
+      if (attachment.type === 'image' && attachment.uri && !imageDimensions[attachment.id]) {
+        Image.getSize(
+          attachment.uri,
+          (width, height) => {
+            setImageDimensions(prev => ({
+              ...prev,
+              [attachment.id]: { width, height }
+            }));
+          },
+          (error) => {
+            console.warn('Failed to get image dimensions:', error);
+            // Set fallback dimensions
+            setImageDimensions(prev => ({
+              ...prev,
+              [attachment.id]: { width: 140, height: 90 }
+            }));
+          }
+        );
+      }
+    });
+  }, [attachments, imageDimensions]);
+
+  const renderAttachmentCard = (attachment: MessageAttachment) => {
+    const progress = getProgressForAttachment(attachment.id);
+    const isUploading = attachment.uploadStatus === 'uploading';
+    const isError = attachment.uploadStatus === 'error';
+    const fileInfo = getFileIcon(attachment);
+    const optimalSize = getOptimalImageSize(attachment);
+
+    return (
+      <View
+        key={attachment.id}
+        style={[
+          styles.attachmentCard,
+          {
+            width: optimalSize.width,
+            height: optimalSize.height,
+            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+            shadowColor: isDarkMode ? '#000' : '#000',
+          },
+        ]}
       >
-        {attachments.map((attachment) => {
-          const progress = getProgressForAttachment(attachment.id);
-          const isUploading = attachment.uploadStatus === 'uploading';
-          const hasError = attachment.uploadStatus === 'error';
+        {/* Status gradient overlay */}
+        <LinearGradient
+          colors={
+            isError
+              ? ['rgba(239, 68, 68, 0.1)', 'transparent']
+              : isUploading
+              ? ['rgba(59, 130, 246, 0.1)', 'transparent']
+              : ['rgba(16, 185, 129, 0.1)', 'transparent']
+          }
+          style={styles.statusOverlay}
+        />
 
-          return (
-            <View
-              key={attachment.id}
-              style={[
-                styles.attachmentCard,
-                {
-                  backgroundColor: isDarkMode ? '#374151' : '#ffffff',
-                  borderColor: isDarkMode ? '#4b5563' : '#d1d5db',
-                },
-                hasError && { borderColor: '#ef4444' },
-              ]}
-            >
-              {/* Remove button */}
-              <TouchableOpacity
-                style={[
-                  styles.removeButton,
-                  { backgroundColor: isDarkMode ? '#1f2937' : '#ffffff' },
-                ]}
-                onPress={() => handleRemoveAttachment(attachment.id)}
-                disabled={isUploading}
-              >
-                <FontAwesome5
-                  name="times"
-                  size={12}
-                  color={isDarkMode ? '#ef4444' : '#dc2626'}
-                />
-              </TouchableOpacity>
+        {/* Remove button */}
+        <TouchableOpacity
+          style={[
+            styles.removeButton,
+            {
+              backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.9)',
+            }
+          ]}
+          onPress={() => handleRemoveAttachment(attachment.id)}
+          activeOpacity={0.7}
+          hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+        >
+          <FontAwesome5 name="times" size={12} color="#ef4444" />
+        </TouchableOpacity>
 
-              {/* Content */}
-              <View style={styles.attachmentContent}>
-                {attachment.type === 'image' ? (
-                  <View style={styles.imageContainer}>
-                    <Image
-                      source={{ uri: attachment.uri }}
-                      style={styles.thumbnailImage}
-                      resizeMode="cover"
-                    />
-                    {isUploading && (
-                      <View style={styles.uploadOverlay}>
-                        <ActivityIndicator size="small" color="#ffffff" />
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <View
-                    style={[
-                      styles.fileIconContainer,
-                      { backgroundColor: getStatusColor(attachment.uploadStatus) + '20' },
-                    ]}
-                  >
-                    <FontAwesome5
-                      name={getFileIcon(attachment)}
-                      size={20}
-                      color={getStatusColor(attachment.uploadStatus)}
-                    />
-                  </View>
-                )}
-
-                {/* File info */}
-                <View style={styles.fileInfo}>
-                  <Text
-                    style={[
-                      styles.fileName,
-                      { color: isDarkMode ? '#ffffff' : '#1f2937' },
-                    ]}
-                    numberOfLines={1}
-                    ellipsizeMode="middle"
-                  >
-                    {attachment.name}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.fileSize,
-                      { color: isDarkMode ? '#9ca3af' : '#6b7280' },
-                    ]}
-                  >
-                    {formatFileSize(attachment.size)}
-                  </Text>
+        {/* Content */}
+        <View style={styles.attachmentContent}>
+          {attachment.type === 'image' && attachment.uri ? (
+            <View style={[styles.imageContainer, { height: optimalSize.height - 60 }]}>
+              <Image source={{ uri: attachment.uri }} style={styles.previewImage} />
+              {isUploading && (
+                <View style={styles.imageOverlay}>
+                  <ActivityIndicator size="small" color="#ffffff" />
                 </View>
+              )}
+            </View>
+          ) : (
+            <View style={[styles.fileIconContainer, { backgroundColor: `${fileInfo.color}15`, height: optimalSize.height - 60 }]}>
+              <FontAwesome5 name={fileInfo.icon as any} size={Math.min(32, optimalSize.height / 4)} color={fileInfo.color} />
+            </View>
+          )}
 
-                {/* Upload progress */}
-                {isUploading && progress && (
+          <View style={styles.attachmentInfo}>
+            <Text
+              style={[
+                styles.fileName,
+                {
+                  color: isDarkMode ? NuminaColors.darkMode[100] : NuminaColors.darkMode[700],
+                }
+              ]}
+              numberOfLines={2}
+            >
+              {attachment.name}
+            </Text>
+            
+            <View style={styles.statusRow}>
+              <Text
+                style={[
+                  styles.fileSize,
+                  {
+                    color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[500],
+                  }
+                ]}
+              >
+                {formatFileSize(attachment.size)}
+              </Text>
+              
+              <View style={styles.statusIndicator}>
+                {isUploading && progress ? (
                   <View style={styles.progressContainer}>
                     <View
                       style={[
                         styles.progressBar,
-                        { backgroundColor: isDarkMode ? '#4b5563' : '#e5e7eb' },
+                        { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)' }
                       ]}
                     >
                       <View
@@ -194,80 +249,142 @@ export const AttachmentPreview: React.FC<AttachmentPreviewProps> = ({
                           {
                             width: `${progress.progress}%`,
                             backgroundColor: '#3b82f6',
-                          },
+                          }
                         ]}
                       />
                     </View>
-                    <Text
-                      style={[
-                        styles.progressText,
-                        { color: isDarkMode ? '#9ca3af' : '#6b7280' },
-                      ]}
-                    >
+                    <Text style={[styles.progressText, { color: '#3b82f6' }]}>
                       {Math.round(progress.progress)}%
                     </Text>
                   </View>
+                ) : (
+                  <FontAwesome5
+                    name={
+                      isError ? 'exclamation-circle' :
+                      attachment.uploadStatus === 'uploaded' ? 'check-circle' :
+                      'clock'
+                    }
+                    size={12}
+                    color={getStatusColor(attachment.uploadStatus)}
+                  />
                 )}
-
-                {/* Status indicator */}
-                <View style={styles.statusContainer}>
-                  {attachment.uploadStatus === 'uploaded' && (
-                    <FontAwesome5 name="check-circle" size={12} color="#10b981" />
-                  )}
-                  {attachment.uploadStatus === 'error' && (
-                    <FontAwesome5 name="exclamation-circle" size={12} color="#ef4444" />
-                  )}
-                  {attachment.uploadStatus === 'pending' && (
-                    <FontAwesome5 name="clock" size={12} color={getStatusColor('pending')} />
-                  )}
-                </View>
               </View>
             </View>
-          );
-        })}
-      </ScrollView>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
-      {/* Summary */}
-      <View style={styles.summary}>
+  return (
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDarkMode ? 'rgba(20, 20, 20, 0.95)' : 'rgba(248, 250, 252, 0.95)',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+          maxHeight,
+        },
+      ]}
+    >
+      <View style={styles.header}>
+        <FontAwesome5 
+          name="paperclip" 
+          size={14} 
+          color={isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[500]} 
+        />
         <Text
           style={[
-            styles.summaryText,
-            { color: isDarkMode ? '#9ca3af' : '#6b7280' },
+            styles.headerText,
+            {
+              color: isDarkMode ? NuminaColors.darkMode[300] : NuminaColors.darkMode[500],
+            }
           ]}
         >
-          {attachments.length} file{attachments.length !== 1 ? 's' : ''} selected
+          {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
         </Text>
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={true}
+        style={styles.scrollView}
+      >
+        <View style={styles.scrollContent}>
+          {attachments.map(renderAttachmentCard)}
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    borderTopWidth: 1,
-    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: 4,
+    marginBottom: 2,
+    paddingVertical: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    gap: 8,
+  },
+  headerText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+  },
+  scrollView: {
+    flexGrow: 1,
+    minHeight: 80,
   },
   scrollContent: {
+    flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
+    paddingRight: 20,
+    alignItems: 'flex-start',
+    minWidth: '100%',
   },
   attachmentCard: {
-    width: 140,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    padding: 8,
+    overflow: 'hidden',
     position: 'relative',
+    marginRight: 12,
+    flexShrink: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  statusOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   removeButton: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: 6,
+    right: 6,
     width: 20,
     height: 20,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    zIndex: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -275,80 +392,80 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   attachmentContent: {
-    alignItems: 'center',
-    gap: 6,
+    flex: 1,
+    padding: 8,
+    zIndex: 2,
   },
   imageContainer: {
-    position: 'relative',
-  },
-  thumbnailImage: {
-    width: 60,
-    height: 60,
+    width: '100%',
     borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    flex: 1,
   },
-  uploadOverlay: {
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    backgroundColor: 'transparent',
+  },
+  imageOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fileIconContainer: {
-    width: 60,
-    height: 60,
+    width: '100%',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    flex: 1,
   },
-  fileInfo: {
-    alignItems: 'center',
-    gap: 2,
+  attachmentInfo: {
+    flex: 1,
+    marginTop: 6,
   },
   fileName: {
-    fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Nunito_500Medium',
-    textAlign: 'center',
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+    lineHeight: 14,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 4,
   },
   fileSize: {
     fontSize: 10,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'Inter_400Regular',
+  },
+  statusIndicator: {
+    alignItems: 'center',
   },
   progressContainer: {
-    width: '100%',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
   },
   progressBar: {
-    width: '100%',
-    height: 3,
-    borderRadius: 1.5,
+    width: 30,
+    height: 2,
+    borderRadius: 1,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 1.5,
+    borderRadius: 1,
   },
   progressText: {
-    fontSize: 10,
-    fontFamily: 'Nunito_400Regular',
-  },
-  statusContainer: {
-    position: 'absolute',
-    bottom: 4,
-    left: 4,
-  },
-  summary: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    alignItems: 'center',
-  },
-  summaryText: {
-    fontSize: 12,
-    fontFamily: 'Nunito_400Regular',
+    fontSize: 8,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

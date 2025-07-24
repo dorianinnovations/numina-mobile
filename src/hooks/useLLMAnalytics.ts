@@ -57,7 +57,6 @@ export const useLLMAnalytics = () => {
     try {
       const userId = await SecureStorageService.getCurrentUserId();
       if (!userId) {
-        console.log('No user ID found for LLM cache - user may not be logged in');
         return;
       }
       
@@ -75,7 +74,6 @@ export const useLLMAnalytics = () => {
         llmRecommendations: recommendations ? JSON.parse(recommendations).data : null,
       }));
     } catch (error) {
-      console.error('Error loading cached LLM data:', error);
     }
   };
 
@@ -86,7 +84,6 @@ export const useLLMAnalytics = () => {
         timestamp: Date.now(),
       }));
     } catch (error) {
-      console.error('Error caching LLM data:', error);
     }
   };
 
@@ -205,7 +202,9 @@ export const useLLMAnalytics = () => {
     setState(prev => ({ ...prev, isGeneratingInsights: true, insightsError: null }));
 
     try {
-      const response = await ApiService.generateLLMInsights(options);
+      // Temporarily disabled due to HTTP 400 error - endpoint may not be available
+      // const response = await ApiService.generateLLMInsights(options);
+      const response = { success: false, data: null };
       
       if (response.success && response.data?.insights) {
         const insights = response.data.insights;

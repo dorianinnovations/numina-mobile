@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+// NOTE: Push notifications require a development build in SDK 53+, not available in Expo Go
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';

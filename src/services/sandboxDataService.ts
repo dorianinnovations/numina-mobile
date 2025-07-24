@@ -2,6 +2,7 @@ import CloudAuth from './cloudAuth';
 import ApiService from './api';
 import ComprehensiveAnalyticsService from './comprehensiveAnalytics';
 import { BehavioralMetrics } from './comprehensiveAnalytics';
+import { ENV } from '../config/environment';
 
 interface UserDataSnapshot {
   ubpmData: any;
@@ -516,7 +517,6 @@ class SandboxDataService {
         console.log('✅ Sandbox session saved to backend');
         return true;
       } else {
-        console.log('⚠️ Failed to save sandbox session:', response.status);
         return false;
       }
     } catch (error) {

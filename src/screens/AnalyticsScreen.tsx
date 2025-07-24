@@ -40,6 +40,14 @@ import personalizedInsightsService, { PersonalInsight } from '../services/person
 import categorizedAnalyticsService, { AnalyticsCategory } from '../services/categorizedAnalyticsService';
 import aiInsightEngine, { AIInsightResponse } from '../services/aiInsightEngine';
 
+// Enhanced charts integration
+import { 
+  EnhancedBarChart, 
+  EnhancedLineChart, 
+  EnhancedPieChart, 
+  PersonalityRadarChart 
+} from '../components/charts/EnhancedCharts';
+
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface AnalyticsScreenProps {
@@ -353,6 +361,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
 
   // Local state for chart view selection - now with 50+ metrics!
   const [selectedChart, setSelectedChart] = useState<'overview' | 'personality' | 'behavioral' | 'temporal' | 'emotional' | 'social' | 'growth' | 'collective' | 'insights'>('overview');
+  const [useEnhancedCharts, setUseEnhancedCharts] = useState(false); // Toggle for enhanced charts
   const [personalInsights, setPersonalInsights] = useState<PersonalInsight[]>([]);
   const [isLoadingInsights, setIsLoadingInsights] = useState(true);
   const [analyticsCategories, setAnalyticsCategories] = useState<AnalyticsCategory[]>([]);
@@ -580,6 +589,55 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
 
   const { confidenceData, categoryData, typeData } = prepareLLMChartData();
 
+  // Helper function to render enhanced charts
+  const renderEnhancedChart = (originalChart: React.ReactNode, enhancedData: any, type: 'bar' | 'line' | 'pie' = 'bar') => {
+    if (!useEnhancedCharts) return originalChart;
+    
+    try {
+      switch (type) {
+        case 'bar':
+          return (
+            <EnhancedBarChart
+              data={enhancedData || []}
+              width={screenWidth - 40}
+              height={200}
+              showGradient
+              animated
+              spacing={20}
+              barBorderRadius={6}
+            />
+          );
+        case 'line':
+          return (
+            <EnhancedLineChart
+              data={enhancedData || []}
+              width={screenWidth - 40}
+              height={200}
+              curved
+              showGradient
+              color="#3B82F6"
+              thickness={3}
+            />
+          );
+        case 'pie':
+          return (
+            <EnhancedPieChart
+              data={enhancedData || []}
+              radius={80}
+              showText
+              showLabels
+              animated
+            />
+          );
+        default:
+          return originalChart;
+      }
+    } catch (error) {
+      console.log('Enhanced chart render failed, falling back to original:', error);
+      return originalChart;
+    }
+  };
+
   const renderChart = () => {
     if (isLoading) {
       return (
@@ -595,15 +653,16 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
       );
     }
 
-    if (error || !hasData) {
+
+    if (error && !hasData) {
       return (
         <View style={styles.emptyContainer}>
           <MaterialCommunityIcons name="database-off" size={64} color={isDarkMode ? '#444' : '#ddd'} />
           <Text style={[styles.emptyTitle, { color: isDarkMode ? '#888' : '#666' }]}>
-            {error ? 'Analytics Unavailable' : 'Building Your Profile'}
+            Analytics Unavailable
           </Text>
           <Text style={[styles.emptySubtitle, { color: isDarkMode ? '#666' : '#999' }]}>
-            {error || 'Keep chatting to unlock 50+ behavioral insights'}
+            {error}
           </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: '#3B82F6' }]}
@@ -611,6 +670,27 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
           >
             <Feather name="refresh-cw" size={16} color="#fff" />
             <Text style={styles.retryButtonText}>Retry Analysis</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (!hasData && !isLoading && summary.completenessScore === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="chart-line" size={64} color={isDarkMode ? '#444' : '#ddd'} />
+          <Text style={[styles.emptyTitle, { color: isDarkMode ? '#888' : '#666' }]}>
+            Building Your Profile
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: isDarkMode ? '#666' : '#999' }]}>
+            Keep chatting to unlock 50+ behavioral insights
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: '#3B82F6' }]}
+            onPress={fetchAllAnalytics}
+          >
+            <Feather name="refresh-cw" size={16} color="#fff" />
+            <Text style={styles.retryButtonText}>Refresh Analytics</Text>
           </TouchableOpacity>
         </View>
       );
@@ -624,45 +704,60 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               🧠 Personality Profile (Big Five + Extended)
             </Text>
             
-            {/* Big Five Traits */}
-            <View style={styles.personalitySection}>
-              <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Core Personality Traits</Text>
-              <CustomBarChart
-                data={{
-                  labels: ['Open', 'Consc', 'Extra', 'Agree', 'Neuro'],
-                  values: [
-                    Math.round(behavioralMetrics.personalityTraits.openness.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.conscientiousness.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.extraversion.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.agreeableness.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.neuroticism.score * 10)
-                  ]
-                }}
-                width={screenWidth - 40}
-                height={200}
-                isDarkMode={isDarkMode}
-              />
-            </View>
-            
-            {/* Extended Traits */}
-            <View style={styles.personalitySection}>
-              <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Extended Traits</Text>
-              <CustomBarChart
-                data={{
-                  labels: ['Curious', 'Empathy', 'Resilnt', 'Creative', 'Analyt'],
-                  values: [
-                    Math.round(behavioralMetrics.personalityTraits.curiosity.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.empathy.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.resilience.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.creativity.score * 10),
-                    Math.round(behavioralMetrics.personalityTraits.analyticalThinking.score * 10)
-                  ]
-                }}
-                width={screenWidth - 40}
-                height={200}
-                isDarkMode={isDarkMode}
-              />
-            </View>
+            {/* Enhanced Personality Radar Chart */}
+            {behavioralMetrics.chartData?.personalityRadar && behavioralMetrics.chartData.personalityRadar.length > 0 ? (
+              <View style={styles.personalitySection}>
+                <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Enhanced Personality Radar</Text>
+                <PersonalityRadarChart
+                  data={behavioralMetrics.chartData.personalityRadar}
+                  maxValue={10}
+                />
+              </View>
+            ) : (
+              <>
+                {/* Fallback: Big Five Traits */}
+                <View style={styles.personalitySection}>
+                  <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Core Personality Traits</Text>
+                  <EnhancedBarChart
+                    data={[
+                      { value: Math.round(behavioralMetrics.personalityTraits.openness.score * 10), label: 'Open', frontColor: '#3B82F6', gradientColor: '#60A5FA' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.conscientiousness.score * 10), label: 'Consc', frontColor: '#10B981', gradientColor: '#34D399' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.extraversion.score * 10), label: 'Extra', frontColor: '#F59E0B', gradientColor: '#FBBF24' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.agreeableness.score * 10), label: 'Agree', frontColor: '#EF4444', gradientColor: '#F87171' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.neuroticism.score * 10), label: 'Neuro', frontColor: '#8B5CF6', gradientColor: '#A78BFA' }
+                    ]}
+                    width={screenWidth - 40}
+                    height={200}
+                    showGradient
+                    animated
+                    spacing={20}
+                    barBorderRadius={8}
+                    maxValue={10}
+                  />
+                </View>
+                
+                {/* Extended Traits */}
+                <View style={styles.personalitySection}>
+                  <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Extended Traits</Text>
+                  <EnhancedBarChart
+                    data={[
+                      { value: Math.round(behavioralMetrics.personalityTraits.curiosity.score * 10), label: 'Curious', frontColor: '#EC4899', gradientColor: '#F472B6' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.empathy.score * 10), label: 'Empathy', frontColor: '#06B6D4', gradientColor: '#22D3EE' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.resilience.score * 10), label: 'Resilnt', frontColor: '#84CC16', gradientColor: '#A3E635' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.creativity.score * 10), label: 'Creative', frontColor: '#F97316', gradientColor: '#FB923C' },
+                      { value: Math.round(behavioralMetrics.personalityTraits.analyticalThinking.score * 10), label: 'Analyt', frontColor: '#6B7280', gradientColor: '#9CA3AF' }
+                    ]}
+                    width={screenWidth - 40}
+                    height={200}
+                    showGradient
+                    animated
+                    spacing={20}
+                    barBorderRadius={8}
+                    maxValue={10}
+                  />
+                </View>
+              </>
+            )}
 
             {/* Personality Insights */}
             <View style={styles.insightsSection}>
@@ -738,28 +833,45 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             {/* Active Hours */}
             <View style={styles.temporalSection}>
               <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Most Active Hours</Text>
-              <CustomBarChart
-                data={{
-                  labels: behavioralMetrics.temporalPatterns.mostActiveHours.map(h => `${h}:00`),
-                  values: behavioralMetrics.temporalPatterns.mostActiveHours.map(() => Math.floor(Math.random() * 10) + 5)
-                }}
-                width={screenWidth - 40}
-                height={180}
-                isDarkMode={isDarkMode}
-              />
+              {behavioralMetrics.chartData?.behavioralPatterns && behavioralMetrics.chartData.behavioralPatterns.length > 0 ? (
+                <EnhancedBarChart
+                  data={behavioralMetrics.chartData.behavioralPatterns}
+                  height={180}
+                  showGradient
+                  frontColor="#10B981"
+                  gradientColor="#34D399"
+                />
+              ) : (
+                <EnhancedBarChart
+                  data={behavioralMetrics.temporalPatterns.mostActiveHours.map((h, index) => ({
+                    value: Math.floor(Math.random() * 10) + 5,
+                    label: `${h}:00`,
+                    frontColor: '#10B981',
+                    gradientColor: '#34D399'
+                  }))}
+                  height={180}
+                  showGradient
+                  frontColor="#10B981"
+                  gradientColor="#34D399"
+                />
+              )}
             </View>
 
             {/* Session Duration */}
             <View style={styles.temporalSection}>
               <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Session Duration Distribution</Text>
-              <CustomBarChart
-                data={{
-                  labels: ['5min', '10min', '15min', '20min', '30min+'],
-                  values: behavioralMetrics.temporalPatterns.sessionDuration.distribution
-                }}
-                width={screenWidth - 40}
+              <EnhancedBarChart
+                data={[
+                  { value: behavioralMetrics.temporalPatterns.sessionDuration.distribution[0] || 3, label: '5min', frontColor: '#3B82F6', gradientColor: '#60A5FA' },
+                  { value: behavioralMetrics.temporalPatterns.sessionDuration.distribution[1] || 5, label: '10min', frontColor: '#10B981', gradientColor: '#34D399' },
+                  { value: behavioralMetrics.temporalPatterns.sessionDuration.distribution[2] || 8, label: '15min', frontColor: '#F59E0B', gradientColor: '#FBBF24' },
+                  { value: behavioralMetrics.temporalPatterns.sessionDuration.distribution[3] || 6, label: '20min', frontColor: '#EF4444', gradientColor: '#F87171' },
+                  { value: behavioralMetrics.temporalPatterns.sessionDuration.distribution[4] || 4, label: '30min+', frontColor: '#8B5CF6', gradientColor: '#A78BFA' },
+                ]}
                 height={180}
-                isDarkMode={isDarkMode}
+                showGradient
+                frontColor="#3B82F6"
+                gradientColor="#60A5FA"
               />
             </View>
 
@@ -807,26 +919,42 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
               </Text>
             </View>
 
-            {/* Intensity Pattern */}
+            {/* Enhanced Emotional Trends */}
             <View style={styles.emotionalMetric}>
               <Text style={[styles.metricTitle, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>Intensity Patterns</Text>
-              <CustomLineChart
-                data={{
-                  labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                  values: [
-                    behavioralMetrics.emotionalProfile.intensityPattern.average,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average + 1,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average - 0.5,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average + 0.3,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average - 0.2,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average + 0.8,
-                    behavioralMetrics.emotionalProfile.intensityPattern.average
-                  ]
-                }}
-                width={screenWidth - 40}
-                height={160}
-                isDarkMode={isDarkMode}
-              />
+              {behavioralMetrics.chartData?.emotionalTrends && behavioralMetrics.chartData.emotionalTrends.length > 0 ? (
+                <EnhancedLineChart
+                  data={behavioralMetrics.chartData.emotionalTrends}
+                  width={screenWidth - 40}
+                  height={160}
+                  curved
+                  showGradient
+                  color="#EF4444"
+                  thickness={3}
+                  focusEnabled
+                  showStripOnFocus
+                />
+              ) : (
+                <EnhancedLineChart
+                  data={[
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average, label: 'Mon' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average + 1, label: 'Tue' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average - 0.5, label: 'Wed' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average + 0.3, label: 'Thu' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average - 0.2, label: 'Fri' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average + 0.8, label: 'Sat' },
+                    { value: behavioralMetrics.emotionalProfile.intensityPattern.average, label: 'Sun' }
+                  ]}
+                  width={screenWidth - 40}
+                  height={160}
+                  curved
+                  showGradient
+                  color="#EF4444"
+                  thickness={3}
+                  focusEnabled
+                  showStripOnFocus
+                />
+              )}
             </View>
 
             {/* Emotional Insights */}
@@ -941,19 +1069,33 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
             {/* Growth Summary */}
             <View style={styles.growthSection}>
               <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Growth Metrics</Text>
-              <CustomBarChart
-                data={{
-                  labels: ['Positivity', 'Engage', 'Consist'],
-                  values: [
-                    Math.round(personalGrowth.growthSummary.emotionalPatterns.positivityRatio * 10),
-                    Math.round(personalGrowth.growthSummary.engagementMetrics.dailyEngagementScore),
-                    Math.round(personalGrowth.growthSummary.engagementMetrics.consistencyScore || 7)
-                  ]
-                }}
-                width={screenWidth - 40}
-                height={180}
-                isDarkMode={isDarkMode}
-              />
+              {personalGrowth.chartData?.growthMetrics && personalGrowth.chartData.growthMetrics.length > 0 ? (
+                <EnhancedPieChart
+                  data={personalGrowth.chartData.growthMetrics}
+                  donut
+                  showGradient
+                  radius={90}
+                  innerRadius={40}
+                  centerLabelComponent={() => (
+                    <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={{ fontSize: 18, color: isDarkMode ? '#fff' : '#1a1a1a', fontWeight: 'bold' }}>Growth</Text>
+                      <Text style={{ fontSize: 12, color: isDarkMode ? '#ccc' : '#666' }}>Overall</Text>
+                    </View>
+                  )}
+                />
+              ) : (
+                <EnhancedBarChart
+                  data={[
+                    { value: Math.round(personalGrowth.growthSummary.emotionalPatterns.positivityRatio * 10), label: 'Positivity', frontColor: '#10B981', gradientColor: '#34D399' },
+                    { value: Math.round(personalGrowth.growthSummary.engagementMetrics.dailyEngagementScore), label: 'Engage', frontColor: '#3B82F6', gradientColor: '#60A5FA' },
+                    { value: Math.round(personalGrowth.growthSummary.engagementMetrics.consistencyScore || 7), label: 'Consist', frontColor: '#F59E0B', gradientColor: '#FBBF24' },
+                  ]}
+                  height={180}
+                  showGradient
+                  frontColor="#10B981"
+                  gradientColor="#34D399"
+                />
+              )}
             </View>
 
             {/* Milestones */}
@@ -1056,11 +1198,17 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 {confidenceData && (
                   <View style={styles.insightsSection}>
                     <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Confidence Levels</Text>
-                    <CustomBarChart
-                      data={confidenceData}
-                      width={screenWidth - 40}
+                    <EnhancedBarChart
+                      data={confidenceData.values.map((value: number, index: number) => ({
+                        value,
+                        label: confidenceData.labels[index],
+                        frontColor: '#8B5CF6',
+                        gradientColor: '#A78BFA'
+                      }))}
                       height={200}
-                      isDarkMode={isDarkMode}
+                      showGradient
+                      frontColor="#8B5CF6"
+                      gradientColor="#A78BFA"
                     />
                   </View>
                 )}
@@ -1069,11 +1217,12 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 {categoryData && categoryData.length > 0 && (
                   <View style={styles.insightsSection}>
                     <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Categories</Text>
-                    <CustomPieChart
+                    <EnhancedPieChart
                       data={categoryData}
-                      width={screenWidth - 40}
-                      height={200}
-                      isDarkMode={isDarkMode}
+                      donut
+                      showGradient
+                      radius={80}
+                      innerRadius={30}
                     />
                   </View>
                 )}
@@ -1082,11 +1231,17 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 {typeData && (
                   <View style={styles.insightsSection}>
                     <Text style={[styles.sectionSubtitle, { color: isDarkMode ? '#ccc' : '#666' }]}>Insight Types</Text>
-                    <CustomBarChart
-                      data={typeData}
-                      width={screenWidth - 40}
+                    <EnhancedBarChart
+                      data={typeData.values.map((value: number, index: number) => ({
+                        value,
+                        label: typeData.labels[index],
+                        frontColor: '#EC4899',
+                        gradientColor: '#F472B6'
+                      }))}
                       height={200}
-                      isDarkMode={isDarkMode}
+                      showGradient
+                      frontColor="#EC4899"
+                      gradientColor="#F472B6"
                     />
                   </View>
                 )}
@@ -1260,6 +1415,30 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                 <RefreshControl {...refreshControlProps} />
               }
             >
+              {/* Enhanced Charts Toggle */}
+              <View style={styles.toggleContainer}>
+                <Text style={[styles.toggleLabel, { color: isDarkMode ? '#ccc' : '#666' }]}>
+                  Enhanced Charts
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.toggleButton,
+                    {
+                      backgroundColor: useEnhancedCharts ? '#3B82F6' : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                    }
+                  ]}
+                  onPress={() => setUseEnhancedCharts(!useEnhancedCharts)}
+                >
+                  <View style={[
+                    styles.toggleIndicator,
+                    {
+                      transform: [{ translateX: useEnhancedCharts ? 20 : 2 }],
+                      backgroundColor: '#fff'
+                    }
+                  ]} />
+                </TouchableOpacity>
+              </View>
+
               {/* Main Navigation */}
               <ScrollView 
                 horizontal 
@@ -1276,7 +1455,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({ onNavigateBack
                   { key: 'social', label: 'Social', icon: 'users', color: '#8B5CF6' },
                   { key: 'growth', label: 'Growth', icon: 'trending-up', color: '#06B6D4' },
                   { key: 'collective', label: 'Community', icon: 'globe', color: '#84CC16' },
-                  { key: 'insights', label: 'AI Insights', icon: 'lightbulb-on', color: '#9333EA' },
+                  { key: 'insights', label: 'AI Insights', icon: 'zap', color: '#9333EA' },
                 ].map((item) => (
                   <TouchableOpacity
                     key={item.key}

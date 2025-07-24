@@ -24,7 +24,6 @@ class SimpleEventEmitter {
       try {
         listener(...args);
       } catch (error) {
-        console.error('Error in event listener:', error);
       }
     });
   }
@@ -105,7 +104,6 @@ class ToolExecutionService extends SimpleEventEmitter {
     this.executions.set(executionId, execution);
     this.currentExecutions.push(executionId);
 
-    console.log(`🔧 Tool execution started: ${toolName} (${executionId})`);
     this.emit('executionStarted', execution);
     this.emit('executionsUpdated', this.getAllExecutions());
 
@@ -135,7 +133,6 @@ class ToolExecutionService extends SimpleEventEmitter {
       execution.details = { ...execution.details, ...details };
     }
 
-    console.log(`⚡ Tool execution progress: ${execution.toolName} - ${progress}% (${executionId})`);
     this.emit('executionProgress', execution);
     this.emit('executionsUpdated', this.getAllExecutions());
   }
@@ -151,7 +148,6 @@ class ToolExecutionService extends SimpleEventEmitter {
 
     this.currentExecutions = this.currentExecutions.filter(id => id !== executionId);
 
-    console.log(`✅ Tool execution completed: ${execution.toolName} in ${execution.endTime - execution.startTime}ms (${executionId})`);
     
     this.processForAutoPlaylist(execution);
     
@@ -168,7 +164,6 @@ class ToolExecutionService extends SimpleEventEmitter {
         );
       }
     } catch (error) {
-      console.error('Error processing tool execution for auto-playlist:', error);
     }
   }
 
@@ -182,7 +177,6 @@ class ToolExecutionService extends SimpleEventEmitter {
 
     this.currentExecutions = this.currentExecutions.filter(id => id !== executionId);
 
-    console.error(`❌ Tool execution failed: ${execution.toolName} - ${error} (${executionId})`);
     this.emit('executionFailed', execution);
     this.emit('executionsUpdated', this.getAllExecutions());
   }
@@ -213,7 +207,6 @@ class ToolExecutionService extends SimpleEventEmitter {
           this.updateProgress(executionId, 50, { rawResponse: responseData });
         }
     } catch (error) {
-      console.error('Error parsing tool response:', error);
     }
   }
 

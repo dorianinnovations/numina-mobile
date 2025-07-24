@@ -36,6 +36,7 @@ export const InteractiveParticles: React.FC<InteractiveParticlesProps> = ({
   const particles = useRef<Particle[]>([]);
   const [gestureEnabled, setGestureEnabled] = useState(enabled);
   const lastTouch = useRef({ x: 0, y: 0, timestamp: 0 });
+  const animationFrameRef = useRef<Set<number>>(new Set());
 
   const particleTypes = ['dot', 'ring', 'cross', 'triangle'] as const;
 
@@ -79,8 +80,14 @@ export const InteractiveParticles: React.FC<InteractiveParticlesProps> = ({
 
     // Physics-based movement
     const updatePosition = () => {
-      const currentX = particle.x._value;
-      const currentY = particle.y._value;
+      // Stop if not enabled
+      if (!enabled || !gestureEnabled) {
+        animationFrameRef.current.delete(particle.id);
+        return;
+      }
+      
+      const currentX = (particle.x as any)._value;
+      const currentY = (particle.y as any)._value;
       
       // Apply gravity and friction
       particle.vy += 0.3; // Gravity
@@ -100,14 +107,17 @@ export const InteractiveParticles: React.FC<InteractiveParticlesProps> = ({
       particle.opacity.setValue(Math.max(0, lifeRatio));
       
       if (particle.life > 0 && newY < height + 50) {
-        requestAnimationFrame(updatePosition);
+        const frameId = requestAnimationFrame(updatePosition);
+        animationFrameRef.current.add(frameId);
       } else {
         // Remove particle
+        animationFrameRef.current.delete(particle.id);
         particles.current = particles.current.filter(p => p.id !== particle.id);
       }
     };
 
-    requestAnimationFrame(updatePosition);
+    const frameId = requestAnimationFrame(updatePosition);
+    animationFrameRef.current.add(frameId);
   };
 
   const handleTouch = (event: any) => {
@@ -139,11 +149,26 @@ export const InteractiveParticles: React.FC<InteractiveParticlesProps> = ({
 
   useEffect(() => {
     setGestureEnabled(enabled);
+    
+    // Stop all animations when disabled
+    if (!enabled) {
+      animationFrameRef.current.forEach(frameId => {
+        cancelAnimationFrame(frameId);
+      });
+      animationFrameRef.current.clear();
+    }
   }, [enabled]);
 
   // Cleanup particles on unmount
   useEffect(() => {
     return () => {
+      // Cancel all animation frames
+      animationFrameRef.current.forEach(frameId => {
+        cancelAnimationFrame(frameId);
+      });
+      animationFrameRef.current.clear();
+      
+      // Stop all particle animations
       particles.current.forEach(particle => {
         particle.x.stopAnimation();
         particle.y.stopAnimation();

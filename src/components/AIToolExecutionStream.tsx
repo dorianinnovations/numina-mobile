@@ -674,9 +674,9 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
                 </Text>
               </View>
               <Text style={[styles.headerTitle, isDarkMode ? { color: '#FFFFFF' } : { color: NuminaColors.darkMode[500] }]}>
-                {hasNewUBPM ? 'UBPM Insights' : 'Numina Tools'} 
-                {hasActiveTools && ` (${activeExecutions.length} active)`}
-                {hasNewUBPM && ` (${newUBPMInsights.length} new)`}
+                {hasNewUBPM ? 'UBPM Insights' : 'Numina Tools'}
+                {hasActiveTools && <Text> ({activeExecutions.length} active)</Text>}
+                {hasNewUBPM && <Text> ({newUBPMInsights.length} new)</Text>}
               </Text>
             </View>
             <View style={styles.chevronContainer}>
@@ -721,13 +721,13 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
               ) : (
                 <>
                   {/* Show new UBPM insights first */}
-                  {newUBPMInsights.map(renderUBPMInsight)}
+                  {newUBPMInsights.map((insight) => renderUBPMInsight(insight))}
                   
                   {/* Show active tool executions */}
-                  {executions.map(renderExecutionItem)}
+                  {executions.map((execution) => renderExecutionItem(execution))}
                   
                   {/* Show acknowledged UBPM insights at bottom */}
-                  {ubpmInsights.filter(i => i.status === 'acknowledged').map(renderUBPMInsight)}
+                  {ubpmInsights.filter(i => i.status === 'acknowledged').map((insight) => renderUBPMInsight(insight))}
                 </>
               )}
             </ScrollView>
@@ -738,7 +738,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
             <View style={styles.quickStats}>
               <Text style={[styles.quickStatsText, isDarkMode ? styles.textSecondaryDark : styles.textSecondaryLight]}>
                 {executions.filter(e => e.status === 'completed').length} completed • {activeExecutions.length} active
-                {ubpmInsights.length > 0 && ` • ${ubpmInsights.length} UBPM insights`}
+                {ubpmInsights.length > 0 && <Text> • {ubpmInsights.length} UBPM insights</Text>}
               </Text>
             </View>
           )}

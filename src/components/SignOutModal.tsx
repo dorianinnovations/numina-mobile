@@ -47,94 +47,76 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
 
   useEffect(() => {
     if (visible) {
-      // Entrance animation - 200ms
+      // Fast 200ms total entrance animation
       Animated.parallel([
         Animated.timing(backgroundOpacity, {
           toValue: 1,
-          duration: 200,
+          duration: 100,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
         Animated.timing(containerOpacity, {
           toValue: 1,
-          duration: 200,
+          duration: 100,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-        Animated.spring(containerScale, {
+        Animated.timing(containerScale, {
           toValue: 1,
-          tension: 150,
-          friction: 6,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-      ]).start(() => {
-        // Staggered content animation - faster
-        Animated.stagger(50, [
-          // Icon animation
-          Animated.parallel([
-            Animated.timing(iconOpacity, {
-              toValue: 1,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.spring(iconScale, {
-              toValue: 1,
-              tension: 180,
-              friction: 5,
-              useNativeDriver: true,
-            }),
-          ]),
-          
-          // Title animation
-          Animated.parallel([
-            Animated.timing(titleOpacity, {
-              toValue: 1,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(titleTranslateY, {
-              toValue: 0,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ]),
-          
-          // Message animation
-          Animated.parallel([
-            Animated.timing(messageOpacity, {
-              toValue: 1,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(messageTranslateY, {
-              toValue: 0,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ]),
-          
-          // Buttons animation
-          Animated.parallel([
-            Animated.timing(buttonsOpacity, {
-              toValue: 1,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-            Animated.timing(buttonsTranslateY, {
-              toValue: 0,
-              duration: 200,
-              easing: Easing.out(Easing.quad),
-              useNativeDriver: true,
-            }),
-          ]),
-        ]).start();
-      });
+        // All content animates simultaneously for speed
+        Animated.timing(iconOpacity, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(iconScale, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(titleTranslateY, {
+          toValue: 0,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(messageOpacity, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(messageTranslateY, {
+          toValue: 0,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonsOpacity, {
+          toValue: 1,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(buttonsTranslateY, {
+          toValue: 0,
+          duration: 100,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
     } else {
       // Reset animations
       backgroundOpacity.setValue(0);
@@ -182,7 +164,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             styles.container,
             {
               backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-              borderColor: isDarkMode ? '#87ebde' : '#00d4ff',
+              borderColor: isDarkMode ? 'rgba(255, 182, 193, 0.6)' : 'rgba(230, 230, 250, 0.8)',
               opacity: containerOpacity,
               transform: [{ scale: containerScale }],
             }
@@ -201,7 +183,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             <FontAwesome5 
               name="sign-out-alt" 
               size={48} 
-              color={isDarkMode ? '#b4a7d6' : '#a78bfa'} 
+              color={isDarkMode ? 'rgba(230, 230, 250, 0.8)' : 'rgba(255, 182, 193, 0.9)'} 
             />
           </Animated.View>
           
@@ -229,7 +211,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
           >
             <Text style={[
               styles.message,
-              { color: isDarkMode ? '#b4a7d6' : '#6b7280' }
+              { color: isDarkMode ? 'rgba(152, 251, 152, 0.9)' : 'rgba(255, 182, 193, 0.8)' }
             ]}>
               Are you sure you want to sign out of your account?
             </Text>
@@ -251,7 +233,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 styles.cancelButton,
                 {
                   backgroundColor: isDarkMode ? '#1a1a1a' : '#f8fafc',
-                  borderColor: isDarkMode ? '#87ebde' : '#00d4ff',
+                  borderColor: isDarkMode ? 'rgba(230, 230, 250, 0.6)' : 'rgba(152, 251, 152, 0.6)',
                 }
               ]}
               onPress={handleCancel}
@@ -259,7 +241,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             >
               <Text style={[
                 styles.buttonText,
-                { color: isDarkMode ? '#87ebde' : '#00d4ff' }
+                { color: isDarkMode ? 'rgba(230, 230, 250, 0.9)' : 'rgba(152, 251, 152, 0.9)' }
               ]}>
                 Cancel
               </Text>
@@ -270,7 +252,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 styles.button,
                 styles.confirmButton,
                 {
-                  backgroundColor: isDarkMode ? '#b4a7d6' : '#a78bfa',
+                  backgroundColor: isDarkMode ? 'rgba(255, 182, 193, 0.8)' : 'rgba(230, 230, 250, 0.9)',
                 }
               ]}
               onPress={handleConfirm}
@@ -341,7 +323,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   confirmButton: {
-    shadowColor: '#b4a7d6',
+    shadowColor: 'rgba(255, 182, 193, 0.6)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

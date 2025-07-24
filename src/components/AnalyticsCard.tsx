@@ -9,7 +9,7 @@ interface BaseAnalyticsCardProps {
   style?: ViewStyle;
   onPress?: () => void;
   disabled?: boolean;
-  gradient?: string[];
+  gradient?: readonly [string, string, ...string[]];
   borderColor?: string;
 }
 
@@ -74,7 +74,7 @@ export const BaseAnalyticsCard: React.FC<BaseAnalyticsCardProps> = ({
       onPress={onPress}
       disabled={disabled}
     >
-      {gradient && (
+      {gradient && gradient.length >= 2 && (
         <LinearGradient
           colors={gradient}
           style={[StyleSheet.absoluteFillObject, { borderRadius: 12 }]}

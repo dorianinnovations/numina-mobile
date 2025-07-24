@@ -124,38 +124,27 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
     loading: settingsLoading 
   } = useBorderSettings();
   
-  // Use props or fall back to settings, but always respect global effectsEnabled setting
-  // If effects are globally disabled, override any explicit enabling
-  const globalEffectsDisabled = !settingsLoading && !settingsEffectsEnabled;
-  
-  const finalEffectsEnabled = globalEffectsDisabled ? false : 
-    (effectsEnabled !== undefined ? effectsEnabled : settingsEffectsEnabled);
-  const finalBrightness = brightness !== undefined ? brightness : settingsBrightness;
-  const finalSpeed = speed !== undefined ? speed : settingsSpeed;
-  const finalDirection = direction !== undefined ? direction : settingsDirection;
-  const finalVariation = variation !== undefined ? variation : settingsVariation;
-  
-  if (debug) {
-    console.log('🔍 AnimatedGradientBorder Settings:', {
-      effectsEnabled,
-      brightness,
-      speed,
-      direction, 
-      variation,
-      settingsEffectsEnabled,
-      settingsBrightness,
-      settingsSpeed,
-      settingsDirection,
-      settingsVariation,
-      settingsLoading,
-      globalEffectsDisabled,
-      finalEffectsEnabled,
-      finalBrightness,
-      finalSpeed,
-      finalDirection,
-      finalVariation,
-    });
-  }
+  // Wait for settings to load before determining final values
+  // If still loading, use defaults to prevent flickering
+  const finalEffectsEnabled = settingsLoading 
+    ? (effectsEnabled !== undefined ? effectsEnabled : true)
+    : (effectsEnabled !== undefined ? effectsEnabled : settingsEffectsEnabled);
+    
+  const finalBrightness = settingsLoading 
+    ? (brightness !== undefined ? brightness : 80)
+    : (brightness !== undefined ? brightness : settingsBrightness);
+    
+  const finalSpeed = settingsLoading 
+    ? (speed !== undefined ? speed : 2)
+    : (speed !== undefined ? speed : settingsSpeed);
+    
+  const finalDirection = settingsLoading 
+    ? (direction !== undefined ? direction : 'clockwise')
+    : (direction !== undefined ? direction : settingsDirection);
+    
+  const finalVariation = settingsLoading 
+    ? (variation !== undefined ? variation : 'smooth')
+    : (variation !== undefined ? variation : settingsVariation);
   
   // ═══════════════════════════════════════════════════════════════════════════════
   // STATE AND REFS
@@ -163,6 +152,8 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
   
   const [width, setWidth] = useState(0);
   const [height, setHeight] = useState(0);
+
+  // Debug logging moved after state declarations to fix scoping issues
 
   // Animation values - use refs to prevent recreation on re-renders
   const progress = useRef(new Animated.Value(0)).current;
@@ -195,10 +186,10 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
   const computedGradientColors = useMemo(() => {
     const primary = gradientColors?.[0] || (isDarkMode 
       ? `rgba(88, 183, 255, ${adjustedOpacity})` // Bright Cyan - ELECTRIC!
-      : `rgba(0, 255, 255, ${adjustedOpacity})`); // Keep colors bright in light mode
+      : `rgba(59, 130, 246, ${adjustedOpacity})`); // Blue for light mode
     const secondary = gradientColors?.[1] || (isDarkMode 
       ? `rgba(138, 43, 226, ${adjustedOpacity * 0.75})` // Electric Purple - VIBRANT!
-      : `rgba(138, 43, 226, ${adjustedOpacity * 0.75})`); // Keep colors bright in light mode
+      : `rgba(99, 102, 241, ${adjustedOpacity * 0.75})`); // Indigo for light mode
     return [primary, secondary];
   }, [gradientColors, isDarkMode, adjustedOpacity]);
   
@@ -223,7 +214,6 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
 
   useEffect(() => {
     if (debug) {
-      // console.log('🔍 AnimatedGradientBorder Debug:', {
       //   isActive,
       //   width,
       //   height,
@@ -235,7 +225,8 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
       // });
     }
     
-    // Check if component is active and effects are not disabled
+    // Check if component is active and effects are enabled
+    // Also ensure settings have loaded to prevent premature animation start
     if (isActive && finalEffectsEnabled && width > 0 && height > 0) {
       // Cleanup function to stop all animations
       const cleanup = () => {
@@ -293,7 +284,7 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
         progress.setValue(0);
       });
     }
-  }, [finalEffectsEnabled, width, height, animationConfig, debug]);
+  }, [isActive, finalEffectsEnabled, width, height, animationConfig, debug]);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // PERIMETER PATH CALCULATION
@@ -359,7 +350,6 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
     setHeight(newHeight);
     
     if (debug) {
-      // console.log('📐 Layout updated:', { width: newWidth, height: newHeight });
     }
   }, [debug]);
 
@@ -397,6 +387,8 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
           right: 0,
           bottom: 0,
           borderRadius,
+          borderWidth: finalEffectsEnabled ? 0 : borderWidth,
+          borderColor: finalEffectsEnabled ? 'transparent' : (isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.1)'),
           overflow: 'hidden', // 🔑 THIS IS THE BREAKTHROUGH - clips everything to border shape
         }}
       >
@@ -426,7 +418,16 @@ const AnimatedGradientBorderComponent: React.FC<AnimatedGradientBorderProps> = (
               }}
             >
               <LinearGradient
-                colors={((computedGradientColors || selectedTheme.colors) as [string, string, ...string[]])}
+                colors={(() => {
+                  if (computedGradientColors && computedGradientColors.length > 0) {
+                    return computedGradientColors;
+                  }
+                  if (selectedTheme && selectedTheme.colors && Array.isArray(selectedTheme.colors)) {
+                    return selectedTheme.colors;
+                  }
+                  // Safe fallback colors
+                  return ['rgba(88, 183, 255, 0.8)', 'rgba(138, 43, 226, 0.6)', 'transparent'];
+                })()}
                 style={{
                   width: spotlightSize,
                   height: spotlightSize,

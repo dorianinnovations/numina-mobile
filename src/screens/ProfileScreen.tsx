@@ -486,7 +486,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             <Animated.View style={[
               styles.successContainer,
               {
-                backgroundColor: isDarkMode ? '#1a1a1a' : '#add5fa',
+                backgroundColor: isDarkMode ? '#1a1a1a' : '#cae6ff',
                 borderColor: isDarkMode 
                   ? 'rgba(255, 255, 255, 0.1)' 
                   : 'rgba(255, 255, 255, 0.3)',
@@ -509,7 +509,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               >
                 <FontAwesome5 
                   name="check-circle" 
-                  size={48} 
+                  size={15} 
                   color={isDarkMode ? '#6ec5ff' : '#4a5568'} 
                 />
               </Animated.View>

@@ -350,7 +350,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
           /* Bot Message with AI Personality Features - No Bubble */
           <View style={styles.botMessageContainer}>
             {/* Message Options - Lower Right */}
-            {isAI && !message.isStreaming && (
+            {false && isAI && !message.isStreaming && (
               <View style={styles.aiMessageOptionsContainer}>
                 <TouchableOpacity
                   style={styles.aiOptionsButton}
@@ -385,7 +385,7 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
                   { color: getPersonalityColor(message.personalityContext.communicationStyle) }
                 ]}>
                   {getPersonalityLabel(message.personalityContext.communicationStyle)}
-                  {message.personalityContext.adaptedResponse && ' • Adapted for you'}
+                  {message.personalityContext.adaptedResponse ? ' • Adapted for you' : ''}
                 </Text>
                 {message.personalityContext.userMoodDetected && (
                   <View style={[
