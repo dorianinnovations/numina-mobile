@@ -3,7 +3,13 @@
  * Generates dynamic, personalized insights using OpenRouter API
  */
 
-import { AnalyticsCategory } from './categorizedAnalyticsService';
+// Analytics category type definition
+interface AnalyticsCategory {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+}
 
 interface InsightCooldown {
   categoryId: string;

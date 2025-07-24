@@ -46,7 +46,7 @@ interface Event {
   duration?: string;
 }
 
-interface CloudScreenProps {
+interface CloudFindProps {
   onNavigateBack: () => void;
 }
 
@@ -69,7 +69,7 @@ const EVENT_TYPES = [
   { id: 'cultural_exploration', label: 'Culture', icon: 'globe', color: '#a29bfe' },
 ];
 
-export const CloudScreen: React.FC<CloudScreenProps> = ({ onNavigateBack }) => {
+export const CloudFind: React.FC<CloudFindProps> = ({ onNavigateBack }) => {
   const { isDarkMode } = useTheme();
   const { 
     events: realTimeEvents, 
@@ -560,7 +560,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 200,
-    background: 'linear-gradient(transparent, rgba(0,0,0,0.6))',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   topRightBadge: {
@@ -735,3 +734,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+export default CloudFind;

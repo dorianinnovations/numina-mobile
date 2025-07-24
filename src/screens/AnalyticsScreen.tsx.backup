@@ -1,24 +1,50 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Dimensions,
   Animated,
+  RefreshControl,
+  Alert,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { 
   Feather, 
-  MaterialCommunityIcons
+  MaterialCommunityIcons, 
+  Ionicons,
+  FontAwesome5 
 } from '@expo/vector-icons';
-import LottieView from 'lottie-react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { NuminaColors } from '../utils/colors';
 import { PageBackground } from '../components/PageBackground';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { BaseWalletCard } from '../components/WalletCard';
 import { ShineEffect } from '../components/ShineEffect';
 import { EnhancedSpinner } from '../components/EnhancedSpinner';
 import { useAnalytics } from '../hooks/useAnalytics';
+import LottieView from 'lottie-react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
+
+// Custom Lottie RefreshControl Component
+const LottieRefreshControl = ({ refreshing, onRefresh, isDarkMode }: { 
+  refreshing: boolean; 
+  onRefresh: () => void; 
+  isDarkMode: boolean;
+}) => {
+  return (
+    <RefreshControl
+      refreshing={refreshing} // Show actual refreshing state
+      onRefresh={onRefresh}
+      tintColor={isDarkMode ? '#8B5CF6' : '#6366F1'}
+      colors={['#8B5CF6', '#6366F1']}
+      progressBackgroundColor={isDarkMode ? '#1F2937' : '#F9FAFB'}
+    />
+  );
+};
 
 interface AnalyticsScreenProps {
   onNavigateBack: () => void;
@@ -33,29 +59,11 @@ const categories = [
   { id: 'growth', label: 'Growth', icon: 'trending-up', color: '#10B981' }
 ];
 
-// Lottie Refresh Spinner Component
-const LottieRefreshSpinner: React.FC<{ size?: number }> = ({ size = 29 }) => {
-  return (
-    <View style={{ width: size, height: size }}>
-      <LottieView
-        source={require('../../assets/Loading.json')}
-        autoPlay
-        loop
-        style={{
-          width: size,
-          height: size,
-        }}
-      />
-    </View>
-  );
-};
-
 export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   onNavigateBack
 }) => {
   const { isDarkMode } = useTheme();
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const scrollY = useRef(new Animated.Value(0)).current;
   
   // Analytics hook
   const {
@@ -73,29 +81,108 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
     lastUpdated
   } = useAnalytics();
 
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  
+  // Card animations
+  const cardAnimations = useRef(
+    Array(6).fill(0).map(() => ({
+      scale: new Animated.Value(0.8),
+      opacity: new Animated.Value(0),
+      translateY: new Animated.Value(30)
+    }))
+  ).current;
 
-  const handleCategorySelect = async (categoryId: string) => {
+  useEffect(() => {
+    // Reset animations first
+    fadeAnim.setValue(0);
+    slideAnim.setValue(50);
+    scaleAnim.setValue(0.9);
+    
+    cardAnimations.forEach((anim) => {
+      anim.scale.setValue(0.8);
+      anim.opacity.setValue(0);
+      anim.translateY.setValue(30);
+    });
+
+    // Start entrance animations with delay
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 700,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Staggered card animations
+      cardAnimations.forEach((anim, index) => {
+        setTimeout(() => {
+          Animated.parallel([
+            Animated.timing(anim.scale, {
+              toValue: 1,
+              duration: 600,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.opacity, {
+              toValue: 1,
+              duration: 500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(anim.translateY, {
+              toValue: 0,
+              duration: 600,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }, index * 100);
+      });
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [fadeAnim, slideAnim, scaleAnim, cardAnimations]);
+
+  const handleCategorySelect = (categoryId: string) => {
+    // Add haptic feedback for category selection
     setSelectedCategory(categoryId);
     
-    // Refresh data based on category selection
-    if (categoryId === 'all') {
-      // Refresh all data when showing overview
-      await refresh();
-    } else {
-      // Refresh specific insights for the selected category
-      await refreshInsights(categoryId);
-      
-      // Also refresh UBMP analysis if it's behavioral category
-      if (categoryId === 'behavioral') {
-        await refreshUBMP();
-      }
+    // Animate selection change
+    Animated.timing(scaleAnim, {
+      toValue: 0.95,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+    
+    if (categoryId !== 'all') {
+      refreshInsights(categoryId);
     }
   };
 
 
 
   const renderCategorySelector = () => (
-    <View style={styles.categoryContainer}>
+    <Animated.View style={[
+      styles.categoryContainer,
+      { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+    ]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -103,14 +190,11 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       >
         {categories.map((category) => {
           const isSelected = selectedCategory === category.id;
-          const isLoading = refreshing && isSelected;
-          
           return (
             <TouchableOpacity
               key={category.id}
               onPress={() => handleCategorySelect(category.id)}
               activeOpacity={0.7}
-              disabled={refreshing}
               style={[
                 styles.pillButton,
                 {
@@ -120,19 +204,14 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                   borderColor: isSelected
                     ? category.color
                     : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
-                  opacity: refreshing && !isSelected ? 0.5 : 1,
                 }
               ]}
             >
-              {isLoading ? (
-                <EnhancedSpinner type="ring" color={isSelected ? '#fff' : category.color} size={16} />
-              ) : (
-                <Feather 
-                  name={category.icon as any} 
-                  size={16} 
-                  color={isSelected ? '#fff' : category.color} 
-                />
-              )}
+              <Feather 
+                name={category.icon as any} 
+                size={16} 
+                color={isSelected ? '#fff' : category.color} 
+              />
               <Text style={[
                 styles.pillText,
                 {
@@ -147,15 +226,17 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
           );
         })}
       </ScrollView>
-    </View>
+    </Animated.View>
   );
 
   const renderUBPMAnalysis = () => {
-    // Only show UBMP analysis for 'all' or 'behavioral' categories
-    if (!ubmpAnalysis || (selectedCategory !== 'all' && selectedCategory !== 'behavioral')) return null;
+    if (!ubmpAnalysis) return null;
 
     return (
-      <View style={styles.sectionContainer}>
+      <Animated.View style={[
+        styles.sectionContainer,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+      ]}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
           Behavioral Analysis (UBPM)
         </Text>
@@ -165,11 +246,11 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
           
           <View style={styles.ubmpHeader}>
             <View style={styles.ubmpIconContainer}>
-              <MaterialCommunityIcons name="head-lightbulb" size={28} color="#8B5CF6" />
+              <MaterialCommunityIcons name="brain" size={28} color="#8B5CF6" />
             </View>
             <View style={styles.ubmpTitleContainer}>
               <Text style={[styles.ubmpTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-                Behavioral Vector Analysis
+                AI Behavioral Vector Analysis
               </Text>
               <Text style={[styles.ubmpSubtitle, { color: isDarkMode ? '#999' : '#666' }]}>
                 {ubmpAnalysis.behavioralInsights.length} insights • {ubmpAnalysis.recommendations.length} recommendations
@@ -224,7 +305,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
             </View>
           )}
         </BaseWalletCard>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -233,43 +314,34 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
       ? llmInsights 
       : llmInsights.filter(insight => insight.category === selectedCategory);
 
-    // Show loading state if refreshing and no data yet
-    if (filteredInsights.length === 0 && refreshing && selectedCategory !== 'all') {
-      return (
-        <View style={styles.sectionContainer}>
-          <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-            {categories.find(cat => cat.id === selectedCategory)?.label || 'Category'} Insights
-          </Text>
-          <BaseWalletCard style={styles.insightCard}>
-            <View style={styles.loadingStateCard}>
-              <EnhancedSpinner type="holographic" color="#8B5CF6" size={32} />
-              <Text style={[styles.loadingStateText, { color: isDarkMode ? '#999' : '#666' }]}>
-                Loading {categories.find(cat => cat.id === selectedCategory)?.label?.toLowerCase() || 'category'} insights...
-              </Text>
-            </View>
-          </BaseWalletCard>
-        </View>
-      );
-    }
-    
     if (filteredInsights.length === 0) return null;
 
     return (
-      <View style={styles.sectionContainer}>
+      <Animated.View style={[
+        styles.sectionContainer,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+      ]}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-          {selectedCategory === 'all' 
-            ? `Pattern Insights (${filteredInsights.length})` 
-            : `${categories.find(cat => cat.id === selectedCategory)?.label || 'Category'} Insights (${filteredInsights.length})`
-          }
+          AI Insights
         </Text>
         
         {filteredInsights.map((insight, index) => {
           const categoryInfo = categories.find(cat => cat.id === insight.category);
+          const anim = cardAnimations[index % cardAnimations.length];
           
           return (
-            <View
+            <Animated.View
               key={`${insight.category}-${index}`}
-              style={styles.insightCardWrapper}
+              style={[
+                styles.insightCardWrapper,
+                {
+                  opacity: anim.opacity,
+                  transform: [
+                    { scale: anim.scale },
+                    { translateY: anim.translateY }
+                  ]
+                }
+              ]}
             >
               <BaseWalletCard style={styles.insightCard}>
                 <View style={styles.insightCardHeader}>
@@ -310,19 +382,21 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                   </View>
                 )}
               </BaseWalletCard>
-            </View>
+            </Animated.View>
           );
         })}
-      </View>
+      </Animated.View>
     );
   };
 
   const renderGrowthSummary = () => {
-    // Show growth summary for 'all' or 'growth' categories
-    if (!growthSummary || (selectedCategory !== 'all' && selectedCategory !== 'growth')) return null;
+    if (!growthSummary || selectedCategory !== 'all') return null;
 
     return (
-      <View style={styles.sectionContainer}>
+      <Animated.View style={[
+        styles.sectionContainer,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+      ]}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
           Personal Growth
         </Text>
@@ -374,18 +448,20 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
             </View>
           )}
         </BaseWalletCard>
-      </View>
+      </Animated.View>
     );
   };
 
   const renderRecommendations = () => {
-    // Show recommendations for 'all' category or when there are category-specific recommendations
-    if (recommendations.length === 0 || (selectedCategory !== 'all' && selectedCategory !== 'growth')) return null;
+    if (recommendations.length === 0 || selectedCategory !== 'all') return null;
 
     return (
-      <View style={styles.sectionContainer}>
+      <Animated.View style={[
+        styles.sectionContainer,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+      ]}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-          Personalized Recommendations
+          AI Recommendations
         </Text>
         
         <BaseWalletCard style={styles.recommendationsCard}>
@@ -407,7 +483,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
             </View>
           ))}
         </BaseWalletCard>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -429,12 +505,12 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
 
   const renderLoadingState = () => (
     <View style={styles.loadingContainer}>
-      <EnhancedSpinner type="holographic" color="#8B5CF6" size={32} />
+      <EnhancedSpinner type="holographic" color="#8B5CF6" size={60} />
       <Text style={[styles.loadingText, { color: isDarkMode ? '#999' : '#666' }]}>
-        Weaving insights from your patterns...
+        Loading AI analytics...
       </Text>
       <Text style={[styles.loadingSubtext, { color: isDarkMode ? '#666' : '#999' }]}>
-        Mapping behavioral resonance through UBPM
+        Analyzing behavioral patterns with UBPM
       </Text>
     </View>
   );
@@ -469,37 +545,26 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
         
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={[
-            styles.scrollContent,
-            refreshing && { paddingTop: 60 }
-          ]}
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { 
-              useNativeDriver: false,
-              listener: (event: any) => {
-                const offsetY = event.nativeEvent.contentOffset.y;
-                // Trigger refresh when pulled down beyond -100
-                if (offsetY < -100 && !refreshing) {
-                  refresh();
-                }
-              }
-            }
-          )}
-          scrollEventThrottle={16}
-          bounces={true}
+          refreshControl={
+            <LottieRefreshControl
+              refreshing={refreshing}
+              onRefresh={refresh}
+              isDarkMode={isDarkMode}
+            />
+          }
         >
-          {/* Custom Lottie Refresh Indicator */}
+          {/* Lottie Loading Overlay - Centered within ScrollView */}
           {refreshing && (
-            <View style={styles.lottieRefreshContainer}>
-              <LottieRefreshSpinner size={38} />
-              <Text style={[
-                styles.refreshingText,
-                { color: isDarkMode ? '#8B5CF6' : '#6366F1' }
-              ]}>
-                Refreshing insights...
-              </Text>
+            <View style={styles.lottieOverlay}>
+              <LottieView
+                source={require('../../assets/Loading.json')}
+                autoPlay
+                loop
+                style={styles.lottieRefresh}
+                resizeMode="contain"
+              />
             </View>
           )}
           {renderError()}
@@ -510,7 +575,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
           
           {/* Empty state when no data */}
           {!loading && !error && !ubmpAnalysis && llmInsights.length === 0 && !growthSummary && recommendations.length === 0 && (
-            <View style={styles.emptyStateContainer}>
+            <Animated.View style={[
+              styles.emptyStateContainer,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+            ]}>
               <MaterialCommunityIcons 
                 name="chart-line" 
                 size={48} 
@@ -526,7 +594,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                 <MaterialCommunityIcons name="refresh" size={16} color="#fff" />
                 <Text style={styles.refreshButtonText}>Refresh Analytics</Text>
               </TouchableOpacity>
-            </View>
+            </Animated.View>
           )}
           
           {lastUpdated && (
@@ -546,9 +614,10 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 100,
   },
   categoryContainer: {
-    paddingTop: 140,
+    paddingTop: 0,
     paddingBottom: 16,
   },
   categoryScroll: {
@@ -559,7 +628,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
     gap: 6,
     overflow: 'hidden',
@@ -574,22 +643,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 8,
+    paddingTop: 60,
     paddingBottom: 24,
   },
   sectionContainer: {
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 16,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
-    paddingHorizontal: 16,
+    marginTop: 8,
   },
   
-  // UBMP Card Styles
+  // UBPM Card Styles
   ubmpCard: {
-    marginHorizontal: 16,
     padding: 20,
     position: 'relative',
     overflow: 'hidden',
@@ -687,11 +757,10 @@ const styles = StyleSheet.create({
   
   // LLM Insight Card Styles
   insightCardWrapper: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   insightCard: {
-    marginHorizontal: 16,
-    padding: 20,
+    padding: 16,
   },
   insightCardHeader: {
     flexDirection: 'row',
@@ -742,7 +811,6 @@ const styles = StyleSheet.create({
   
   // Growth Card Styles
   growthCard: {
-    marginHorizontal: 16,
     padding: 20,
   },
   growthHeader: {
@@ -820,7 +888,6 @@ const styles = StyleSheet.create({
   
   // Recommendations Card Styles
   recommendationsCard: {
-    marginHorizontal: 16,
     padding: 20,
   },
   recommendationsHeader: {
@@ -909,6 +976,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
+  // Lottie Refresh Styles
+  lottieOverlay: {
+    position: 'absolute',
+    top: 60,
+    left: 0,
+    right: 0,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    backgroundColor: 'transparent',
+    pointerEvents: 'none',
+  },
+  lottieRefresh: {
+    width: 80,
+    height: 80,
+  },
+  
   // Empty State Styles
   emptyStateContainer: {
     alignItems: 'center',
@@ -941,34 +1026,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-  },
-  
-  // Loading State Card
-  loadingStateCard: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    paddingHorizontal: 16,
-  },
-  loadingStateText: {
-    fontSize: 14,
-    marginTop: 12,
-    textAlign: 'center',
-  },
-  
-  // Lottie Refresh Styles
-  lottieRefreshContainer: {
-    position: 'absolute',
-    top: 20,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  refreshingText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 8,
-    textAlign: 'center',
   },
 });

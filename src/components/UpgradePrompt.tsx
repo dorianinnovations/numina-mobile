@@ -46,24 +46,6 @@ export const UpgradePrompt: React.FC<UpgradePromptProps> = ({
             shadowRadius: 8,
             elevation: 4,
           }]}
-          onPress={() => onUpgrade('PRO')}
-        >
-          <Text style={styles.upgradeButtonText}>
-            Pro - $29.99/mo
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.upgradeButton, { 
-            backgroundColor: '#6ec5ff',
-            borderWidth: 1,
-            borderColor: isDarkMode ? '#ffffff' : '#000000',
-            shadowColor: isDarkMode ? '#6ec5ff' : '#000000',
-            shadowOpacity: isDarkMode ? 0.3 : 0.1,
-            shadowOffset: { width: 0, height: 2 },
-            shadowRadius: 8,
-            elevation: 4,
-          }]}
           onPress={() => onUpgrade('AETHER')}
         >
           <Text style={styles.upgradeButtonText}>

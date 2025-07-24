@@ -495,7 +495,7 @@ export const LLMAnalyticsSection: React.FC<LLMAnalyticsSectionProps> = ({ isVisi
   return (
     <View style={styles.container}>
       <Text style={[styles.sectionTitle, { color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.9)' }]}>
-        AI-Powered Insights
+        Behavioral Insights
       </Text>
       
       <View style={styles.tabContainer}>

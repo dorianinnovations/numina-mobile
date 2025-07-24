@@ -11,6 +11,7 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -379,7 +380,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
     
     
     return (
-      <BaseWalletCard
+      <TouchableOpacity
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             onSelectConversation(item);
@@ -388,21 +389,27 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
           style={[
             styles.conversationCard,
             {
-              backgroundColor: isActive
-                ? isDarkMode 
-                  ? 'rgba(110, 231, 183, 0.15)'
-                  : 'rgba(110, 231, 183, 0.20)'
-                : isDarkMode
-                  ? 'rgba(17, 17, 17, 0.95)'
-                  : 'rgba(248, 250, 252, 0.95)',
-              shadowColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.2)',
-              shadowOffset: { width: -2, height: -2 },
-              shadowOpacity: 1,
-              shadowRadius: 6,
-              marginBottom: 4,
+              marginBottom: 12,
             }
           ]}
+          activeOpacity={0.8}
         >
+          <BlurView
+            intensity={isActive ? 80 : 60}
+            tint={isDarkMode ? 'dark' : 'light'}
+            style={[
+              styles.conversationBlur,
+              {
+                backgroundColor: isActive
+                  ? isDarkMode 
+                    ? 'rgba(110, 231, 183, 0.15)'
+                    : 'rgba(110, 231, 183, 0.25)'
+                  : isDarkMode
+                    ? 'rgba(17, 17, 17, 0.4)'
+                    : 'rgba(248, 250, 252, 0.4)',
+              }
+            ]}
+          >
           <View style={styles.conversationContent}>
             <View style={styles.conversationHeader}>
               <Text style={[
@@ -456,7 +463,8 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               </View>
             </View>
           </View>
-        </BaseWalletCard>
+          </BlurView>
+        </TouchableOpacity>
     );
   };
 
@@ -971,8 +979,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: width * 0.80,
     borderRightWidth: 1,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
+    borderTopRightRadius: 50,
+    borderBottomRightRadius: 25,
     elevation: 10,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
@@ -992,7 +1000,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    fontFamily: 'CrimsonPro_700Bold',
+    fontFamily: 'Nunito_700Bold',
     letterSpacing: -0.4,
     lineHeight: 28,
     marginLeft: 0,
@@ -1018,37 +1026,41 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   conversationListContent: {
-    padding: 12,
-    paddingBottom: 24,
+    padding: 20,
+    paddingTop: 12,
   },
   conversationCard: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    minHeight: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  conversationBlur: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 60,
+    borderRadius: 16,
+    overflow: 'hidden',
   },
   conversationContent: {
     flex: 1,
     justifyContent: 'flex-start',
-    overflow: 'hidden',
   },
   conversationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
-    overflow: 'hidden',
+    marginBottom: 6,
   },
   conversationTitle: {
     fontSize: 13,
     fontWeight: '700',
-    fontFamily: 'CrimsonPro_700Bold',
+    fontFamily: 'Nunito_700Bold',
     flex: 1,
     marginRight: 8,
     flexShrink: 1,

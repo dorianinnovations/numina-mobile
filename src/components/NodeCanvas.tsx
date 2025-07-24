@@ -24,14 +24,35 @@ interface NodeCanvasProps {
 const CANVAS_WIDTH = screenWidth * 2; // Double the screen width
 const CANVAS_HEIGHT = screenHeight * 2; // Double the screen height
 
+// Rainbow pastel color palette
+const getRainbowPastelColor = (index: number): string => {
+  const colors = [
+    '#FFB3BA', // Pastel pink
+    '#FFDFBA', // Pastel peach
+    '#FFFFBA', // Pastel yellow
+    '#BAFFBA', // Pastel green
+    '#BAE1FF', // Pastel blue
+    '#E6BAFF', // Pastel purple
+    '#FFBAE6', // Pastel magenta
+    '#BAF0FF', // Pastel cyan
+    '#F0BAFF', // Pastel lavender
+    '#BAFFF0', // Pastel mint
+  ];
+  return colors[index % colors.length];
+};
+
 const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, onNodePress, onLockNode, onUnlockNode, lockedNodes, nodeConnections }) => {
   return (
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollViewContent}
-        maximumZoomScale={2} // Allow zooming
-        minimumZoomScale={0.2} // Allow more zoom out
-        centerContent={true} // Center content when zoomed out
+        maximumZoomScale={3} // Increased max zoom
+        minimumZoomScale={0.1} // Allow much more zoom out
+        centerContent={true}
+        bouncesZoom={true} // Enable bouncy zoom
+        pinchGestureEnabled={true} // Explicitly enable pinch
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
       >
         <Svg height={CANVAS_HEIGHT} width={CANVAS_WIDTH} style={StyleSheet.absoluteFill}>
           {nodeConnections.map((connection, index) => {
@@ -63,18 +84,22 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, onNodePress, onLockNode,
             return null;
           })}
         </Svg>
-        {nodes.map(node => {
+        {nodes.map((node, index) => {
           const isLocked = lockedNodes.some(lockedNode => lockedNode.id === node.id);
+          const nodeColor = getRainbowPastelColor(index);
+          const lockedColor = '#FFD700'; // Gold for locked nodes
+          
           return (
             <TouchableOpacity
               key={node.id}
               style={[
                 styles.node,
                 {
-                  left: node.position?.x || 0, // Use node's position, default to 0
-                  top: node.position?.y || 0,  // Use node's position, default to 0
-                  backgroundColor: isLocked ? '#FFD700' : '#A7F3D0', // Gold for locked, pastel green for unlocked
-                  borderColor: isLocked ? '#FFA500' : '#6EE7B7', // Orange border for locked
+                  left: node.position?.x || 0,
+                  top: node.position?.y || 0,
+                  backgroundColor: isLocked ? lockedColor : nodeColor,
+                  borderColor: isLocked ? '#FFA500' : nodeColor.replace('FF', 'DD'), // Darker border
+                  shadowColor: isLocked ? lockedColor : nodeColor,
                 },
               ]}
               onPress={() => onNodePress(node)}
@@ -87,7 +112,7 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, onNodePress, onLockNode,
                 <Feather
                   name={isLocked ? 'lock' : 'unlock'}
                   size={12}
-                  color={isLocked ? '#8B4513' : '#1F2937'} // Brown for locked, dark gray for unlocked
+                  color={isLocked ? '#8B4513' : '#1F2937'}
                 />
               </TouchableOpacity>
             </TouchableOpacity>
@@ -101,13 +126,13 @@ const NodeCanvas: React.FC<NodeCanvasProps> = ({ nodes, onNodePress, onLockNode,
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a', // Dark background for contrast
+    backgroundColor: '#0a0a0a', // Darker background for better pastel contrast
   },
   scrollViewContent: {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT,
-    backgroundColor: '#333333', // Slightly lighter background for the canvas area
-    position: 'relative', // Important for absolute positioning of children
+    backgroundColor: '#1a1a1a', // Dark canvas background to make pastels pop
+    position: 'relative',
   },
   node: {
     position: 'absolute', // Absolute positioning for nodes

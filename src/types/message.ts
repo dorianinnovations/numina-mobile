@@ -23,6 +23,8 @@ export interface Message {
   isStreaming?: boolean;
   attachments?: MessageAttachment[];
   hasFileContext?: boolean; // Indicates if AI response considers uploaded files
+  isSystem?: boolean; // For system messages like upgrade prompts
+  onNavigateToWallet?: () => void; // Callback for navigation to wallet
 }
 
 

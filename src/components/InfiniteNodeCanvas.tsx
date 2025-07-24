@@ -699,10 +699,10 @@ export const InfiniteNodeCanvas: React.FC<InfiniteNodeCanvasProps> = ({
         onScroll={handleScroll}
         scrollEventThrottle={16} // 60fps scroll tracking
         bounces={false}
-        maximumZoomScale={1}
-        minimumZoomScale={1}
-        bouncesZoom={false}
-        pinchGestureEnabled={false}
+        maximumZoomScale={3}
+        minimumZoomScale={0.5}
+        bouncesZoom={true}
+        pinchGestureEnabled={true}
       >
         {/* Infinite background pattern */}
         <View style={[

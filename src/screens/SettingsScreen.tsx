@@ -30,12 +30,14 @@ interface SettingsScreenProps {
   onNavigateBack: () => void;
   onNavigateToSignIn?: () => void;
   onNavigateToBorderThemes?: () => void;
+  onNavigateToDataManagement?: () => void;
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onNavigateBack,
   onNavigateToSignIn,
   onNavigateToBorderThemes,
+  onNavigateToDataManagement,
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { logout, isAuthenticated } = useAuth();
@@ -182,6 +184,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         case 'borderThemes':
           if (onNavigateToBorderThemes) {
             onNavigateToBorderThemes();
+          }
+          break;
+          
+        case 'dataManagement':
+          if (onNavigateToDataManagement) {
+            onNavigateToDataManagement();
           }
           break;
           
@@ -407,6 +415,13 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               desc: 'Customize border colors and styles', 
               type: 'navigate',
               action: 'borderThemes'
+            },
+            { 
+              icon: 'database', 
+              title: 'Data Management', 
+              desc: 'Manage your data retention and storage', 
+              type: 'navigate',
+              action: 'dataManagement'
             },
           ]
         },

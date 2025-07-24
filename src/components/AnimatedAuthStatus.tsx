@@ -422,8 +422,8 @@ export const AnimatedAuthStatus: React.FC<AnimatedAuthStatusProps> = ({
               autoPlay
               loop={false}
               style={{
-                width: size * 0.6,
-                height: size * 0.6,
+                width: size * 0.72,
+                height: size * 0.72,
               }}
             />
           </Animated.View>

@@ -42,9 +42,9 @@ export const StarField: React.FC<StarFieldProps> = ({
   const createStar = (id: number): Star => {
     const x = Math.random() * width;
     const y = Math.random() * height;
-    const size = Math.random() * 1 + 0.5; // 0.5 to 1.5 - much smaller
-    const twinkleDelay = Math.random() * 8000; // Longer delays
-    const twinkleDuration = 2000 + Math.random() * 3000; // 2-5 seconds - slower
+    const size = Math.random() * 1 + 0.5; 
+    const twinkleDelay = Math.random() * 8000; 
+    const twinkleDuration = 2000 + Math.random() * 3000;
 
     return {
       id,

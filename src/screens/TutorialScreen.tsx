@@ -19,9 +19,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { ScreenTransitions } from '../utils/animations';
 import { Header } from '../components/Header';
 import { PageBackground } from '../components/PageBackground';
-import { StarField } from '../components/StarField';
-import { ShootingStars } from '../components/ShootingStars';
-import { LiquidProgress } from '../components/LiquidProgress';
 import { SimpleStreamingText } from '../components/SimpleStreamingText';
 import { NuminaColors } from '../utils/colors';
 import { BlurView } from 'expo-blur';
@@ -98,9 +95,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   onTitlePress,
   onMenuPress,
 }) => {
-  let { theme, isDarkMode } = useTheme() || {};
-  if (!theme) theme = {};
-  if (typeof isDarkMode !== 'boolean') isDarkMode = false;
+  const { theme, isDarkMode } = useTheme();
   const [currentStep, setCurrentStep] = useState(0);
   
   // Core animation refs
@@ -605,7 +600,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: isDarkMode ? '#0a0a0a' : 'rgba(255,255,255,0.22)',
-              padding: 32,
+              padding: 16,
             }}>
               {/* Shine shimmer effect overlay */}
               <ShineEffect enabled />
@@ -622,7 +617,6 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                         ? (isDarkMode ? '#1e2d24' : '#1bb98a')
                         : (isDarkMode ? 'rgba(180,200,200,0.18)' : '#e0e0e0'),
                       marginHorizontal: 2,
-                      transition: 'width 0.2s',
                     }}
                   />
                 ))}
@@ -649,7 +643,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/user.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
                 {currentStep === 1 && (
@@ -657,7 +651,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/bubble.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
                 {currentStep === 2 && (
@@ -665,7 +659,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/Green eco earth animation.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
                 {currentStep === 3 && (
@@ -673,7 +667,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/Radar.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
                 {currentStep === 4 && (
@@ -681,7 +675,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/alien.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
                 {currentStep === 5 && (
@@ -689,7 +683,7 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                     source={require('../../assets/stepfinal.json')}
                     autoPlay
                     loop
-                    style={{ width: 110, height: 110, zIndex: 1 }}
+                    style={{ width: 132, height: 132, zIndex: 1 }}
                   />
                 )}
               </View>
@@ -722,9 +716,9 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
                 fontFamily: 'Nunito_400Regular',
                 lineHeight: 26,
                 width: '100%',
-                paddingHorizontal: 38,
-                marginBottom: 36,
-                marginLeft: 24,
+                paddingHorizontal: 16,
+                marginBottom: 24,
+                marginLeft: 0,
               }}>
                 {tutorialSteps[currentStep].description}
               </Text>

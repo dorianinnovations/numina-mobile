@@ -353,7 +353,12 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         styles.subtitle, 
                         { color: isDarkMode ? '#888888' : '#666666' }
                       ]}>
-                        Create your credentials to get started
+                        <Text>
+                          <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Create </Text>
+                          <Text style={{ color: isDarkMode ? '#b0e3c8' : '#00b894' }}>your </Text>
+                          <Text style={{ color: isDarkMode ? '#ffd99f' : '#ffb347' }}>Numina </Text>
+                          <Text style={{ color: isDarkMode ? '#fbbf24' : '#e17055' }}>account</Text>
+                        </Text>
                       </Text>
                     </View>
 
@@ -772,8 +777,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               autoPlay
                               loop={false}
                               style={{
-                                width: 24,
-                                height: 24,
+                                width: 29,
+                                height: 29,
                               }}
                             />
                             <Text style={[styles.successText, { color: '#10b981' }]}>

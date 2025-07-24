@@ -26,7 +26,6 @@ import { NuminaColors } from '../utils/colors';
 import { ChatInput } from '../components/chat/ChatInput';
 import { MessageBubble } from '../components/chat/MessageBubble';
 import { ToolStatusIndicator } from '../components/ToolStatusIndicator';
-import analyticsNotificationService, { AnalyticsInsight } from '../services/analyticsNotificationService';
 import ConversationStorageService, { Message, Conversation } from '../services/conversationStorage';
 import { useLocation } from '../hooks/useLocation';
 import LocationContextService from '../services/locationContextService';
@@ -39,7 +38,6 @@ import { RootStackParamList } from '../navigation/AppNavigator';
 import { useCloudMatching } from '../hooks/useCloudMatching';
 import { ChatErrorBoundary } from '../components/ChatErrorBoundary';
 import { log } from '../utils/logger';
-import { UpgradePrompt } from '../components/UpgradePrompt';
 import { SubscriptionModal } from '../components/SubscriptionModal';
 
 import getBatchApiService from '../services/batchApiService';
@@ -78,12 +76,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [lastScrollY, setLastScrollY] = useState(0);
   const [isTouchActive, setIsTouchActive] = useState(false);
   const [scrollDebounceTimeout, setScrollDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [rateLimitInfo, setRateLimitInfo] = useState<{
-    tier: string;
-    upgradeOptions: string[];
-  } | null>(null);
 
   const websocketService = useMemo(() => {
     const { getEnhancedWebSocketService } = require('../services/enhancedWebSocketService');
@@ -116,7 +109,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const [batchStats, setBatchStats] = useState(batchApiService.getStats());
   const [syncStatus, setSyncStatus] = useState<any>(null);
   const [toolExecutions, setToolExecutions] = useState<ToolExecution[]>([]);
-  const [analyticsInsights, setAnalyticsInsights] = useState<AnalyticsInsight[]>([]);
   const [isToolStreamVisible, setIsToolStreamVisible] = useState(true);
   const [isToolModalVisible, setIsToolModalVisible] = useState(false);
   const [currentAIMessage, setCurrentAIMessage] = useState<string>('');
@@ -126,7 +118,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const toolExecutionService = ToolExecutionService.getInstance();
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const animationTimeoutRefs = useRef<Set<NodeJS.Timeout>>(new Set());
-  const analyticsUnsubscribeRef = useRef<(() => void) | null>(null);
   const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   
   // Store WebSocket event handlers for proper cleanup
@@ -197,7 +188,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     initializeEnhancedFeatures();
     setupToolExecutionListeners();
     setupWebSocketListeners();
-    analyticsUnsubscribeRef.current = setupAnalyticsNotifications();
 
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -344,15 +334,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     });
   };
 
-  // Setup analytics notifications
-  const setupAnalyticsNotifications = () => {
-    const unsubscribe = analyticsNotificationService.subscribe((insights: AnalyticsInsight[]) => {
-      setAnalyticsInsights(insights);
-    });
-
-    // Return cleanup function that will be called in useEffect cleanup
-    return unsubscribe;
-  };
 
   // Handle navigation to Analytics screen
   const handleNavigateToAnalytics = () => {
@@ -436,11 +417,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     // Clean up tool execution listeners
     toolExecutionService.removeAllListeners();
     
-    // Clean up analytics notification subscription
-    if (analyticsUnsubscribeRef.current) {
-      analyticsUnsubscribeRef.current();
-      analyticsUnsubscribeRef.current = null;
-    }
     
     // Sync service cleanup
     syncService.cleanup();
@@ -492,15 +468,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setIsLoading(true);
     setCurrentAIMessage('');
 
-    // Trigger analytics insights for user engagement
-    analyticsNotificationService.triggerAnalyticsUpdate('Message sent', `${messageText.length} chars`);
-    
-    // Analyze message patterns
-    if (messageText.length > 100) {
-      analyticsNotificationService.triggerBehavioralInsight('Detailed communication style', 0.85);
-    } else if (messageText.includes('?')) {
-      analyticsNotificationService.triggerBehavioralInsight('Inquiry-focused interaction', 0.75);
-    }
     
     // Clear attachments after a delay to allow UI rendering
     createManagedTimeout(() => {
@@ -684,19 +651,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
           upgradeMessageText = 'Thank you for using Numina! Please upgrade to Pro or Aether for more chatting.';
         }
         
-        // Set rate limit info for upgrade prompt
-        setRateLimitInfo({
-          tier: error.tier || 'CORE',
-          upgradeOptions: error.upgradeOptions || ['PRO', 'AETHER']
-        });
         
-        // Add the upgrade message as a system message
+        // Add the upgrade message as a system message with wallet navigation
         try {
           const upgradeMessage: Message = {
             ...aiMessage,
-            text: upgradeMessageText,
+            text: 'Upgrade to Aether for unlimited chatting. View your usage here',
             isStreaming: false,
             isSystem: true,
+            onNavigateToWallet: () => {
+              // Navigate to wallet screen
+              navigation.navigate('WalletScreen' as never);
+            },
           };
           
           const errorConversation = { ...currentConversation };
@@ -708,8 +674,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             await saveConversation(errorConversation);
           }
           
-          // Show upgrade prompt
-          setShowUpgradePrompt(true);
+          // No longer showing modal - message is inline now
         } catch (saveError) {
           log.error('Failed to save upgrade message', saveError, 'ChatScreen');
         }
@@ -840,16 +805,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
 
-  // Handle upgrade prompt actions
-  const handleUpgrade = (tier: string) => {
-    setShowUpgradePrompt(false);
-    setShowSubscriptionModal(true);
-  };
-
-  const handleDismissUpgrade = () => {
-    setShowUpgradePrompt(false);
-    setRateLimitInfo(null);
-  };
 
   const handleSubscriptionComplete = (plan: string) => {
     setShowSubscriptionModal(false);
@@ -1158,8 +1113,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                   
                   {/* Tool Status Indicator */}
                   <ToolStatusIndicator 
-                    toolExecutions={toolExecutions} 
-                    analyticsInsights={analyticsInsights}
+                    toolExecutions={toolExecutions}
                     onNavigateToAnalytics={handleNavigateToAnalytics}
                   />
                   
@@ -1198,15 +1152,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
               onSendQuery={handleQuickAnalyticsQuery}
             />
 
-            {/* Upgrade Prompt */}
-            {showUpgradePrompt && rateLimitInfo && (
-              <UpgradePrompt
-                tier={rateLimitInfo.tier}
-                upgradeOptions={rateLimitInfo.upgradeOptions}
-                onUpgrade={handleUpgrade}
-                onDismiss={handleDismissUpgrade}
-              />
-            )}
+            {/* Upgrade prompts are now inline in messages */}
 
             {/* Subscription Modal */}
             <SubscriptionModal

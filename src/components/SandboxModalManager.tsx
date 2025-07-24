@@ -55,37 +55,43 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
   const latestSessionRef = useRef<string | null>(null);
 
   const startSandboxProcess = useCallback(async (query: string, options: any) => {
-    try {
-      // Initialize progress state
-      const initialSteps: ChainStep[] = [
-        { id: '1', title: 'Analyzing core sources', status: 'pending' },
-        { id: '2', title: 'Checking additional scenarios', status: 'pending' },
-        { id: '3', title: 'Cross-referencing patterns', status: 'pending' },
-        { id: '4', title: 'Synthesizing insights', status: 'pending' },
-        { id: '5', title: 'Generating nodes', status: 'pending' },
-      ];
-      
-      setSteps(initialSteps);
-      setCurrentStep('1');
-      setStreamingMessage('');
-      setShowProgress(true);
+    // Schedule state updates for next tick to avoid render cycle conflicts
+    setTimeout(() => {
+      try {
+        // Initialize progress state
+        const initialSteps: ChainStep[] = [
+          { id: '1', title: 'Analyzing core sources', status: 'pending' },
+          { id: '2', title: 'Checking additional scenarios', status: 'pending' },
+          { id: '3', title: 'Cross-referencing patterns', status: 'pending' },
+          { id: '4', title: 'Synthesizing insights', status: 'pending' },
+          { id: '5', title: 'Generating nodes', status: 'pending' },
+        ];
+        
+        setSteps(initialSteps);
+        setCurrentStep('1');
+        setStreamingMessage('');
+        setShowProgress(true);
 
-      // Start chain of thought process
-      const sessionId = await ChainOfThoughtService.startChainOfThought(
-        query,
-        options,
-        handleChainUpdate,
-        handleChainComplete,
-        handleChainError
-      );
+        // Start chain of thought process
+        ChainOfThoughtService.startChainOfThought(
+          query,
+          options,
+          handleChainUpdate,
+          handleChainComplete,
+          handleChainError
+        ).then(sessionId => {
+          activeSessionRef.current = sessionId;
+          latestSessionRef.current = sessionId;
+        }).catch(error => {
+          console.error('Failed to start sandbox process:', error);
+          handleChainError(error);
+        });
 
-      activeSessionRef.current = sessionId;
-      latestSessionRef.current = sessionId;
-
-    } catch (error) {
-      console.error('Failed to start sandbox process:', error);
-      handleChainError(error);
-    }
+      } catch (error) {
+        console.error('Failed to start sandbox process:', error);
+        handleChainError(error);
+      }
+    }, 0);
   }, []);
 
   const handleChainUpdate = useCallback((response: any) => {
@@ -203,9 +209,9 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       fullData: finalData
     });
     
-    // Only process completion if it's from the latest session
-    if (completingSessionId !== latestSessionId) {
-      console.warn('🚫 Ignoring completion from old session:', completingSessionId, 'latest is:', latestSessionId);
+    // Only process completion if it's from the latest session or no session is currently active
+    if (completingSessionId !== latestSessionId && latestSessionId !== null) {
+      console.log('🚫 Ignoring completion from old session:', completingSessionId, 'latest is:', latestSessionId);
       return;
     }
     
@@ -241,6 +247,9 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
         category: 'system',
         confidence: 0.7,
         personalHook: 'System generated fallback response',
+        position: { x: 150, y: 150 },
+        connections: [],
+        isLocked: false,
         deepInsights: {
           summary: 'No specific insights were generated from your query.',
           keyPatterns: ['Processing completed', 'No specific patterns identified'],
@@ -328,14 +337,6 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
     }
   }, [nodes]);
 
-  // Expose methods via ref
-  useImperativeHandle(ref, () => ({
-    startSandboxProcess,
-    showNode,
-    showNodeWithSkeleton,
-    stopProcess,
-  }), [startSandboxProcess, showNode, showNodeWithSkeleton, stopProcess]);
-
   const handleCloseNodeCanvas = useCallback(() => {
     console.log('🎨 Closing node canvas');
     setShowNodeCanvas(false);
@@ -354,6 +355,14 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
     }
     setShowProgress(false);
   }, []);
+
+  // Expose methods via ref
+  useImperativeHandle(ref, () => ({
+    startSandboxProcess,
+    showNode,
+    showNodeWithSkeleton,
+    stopProcess,
+  }), [startSandboxProcess, showNode, showNodeWithSkeleton, stopProcess]);
 
   return (
     <View style={styles.container} pointerEvents={showNodeCanvas ? 'auto' : 'box-none'}>

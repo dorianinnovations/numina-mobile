@@ -23,7 +23,7 @@ numina-mobile/
 │   │   ├── ChatScreen.tsx              # Main AI chat interface with 25+ tools
 │   │   ├── TutorialScreen.tsx          # Interactive feature tutorial
 │   │   ├── AnalyticsScreen.tsx         # Real-time emotional analytics dashboard
-│   │   ├── CloudScreen.tsx             # Social features & AI event matching
+│   │   ├── CloudFind.tsx             # Social features & AI event matching
 │   │   ├── WalletScreen.tsx            # Credits & subscription management
 │   │   ├── LegacyWalletScreen.tsx      # Legacy wallet interface
 │   │   ├── SettingsScreen.tsx          # App preferences & configurations

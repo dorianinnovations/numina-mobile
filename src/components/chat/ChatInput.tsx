@@ -750,6 +750,7 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
       uri: asset.uri,
       size: asset.fileSize || 0,
       uploadStatus: 'pending',
+      mimeType: asset.mimeType || 'application/octet-stream',
     };
 
     onAttachmentsChange?.([...attachments, newAttachment]);

@@ -31,6 +31,8 @@ interface Message {
   mood?: string;
   isStreaming?: boolean;
   attachments?: MessageAttachment[];
+  isSystem?: boolean;
+  onNavigateToWallet?: () => void;
   // AI Personality Features
   personalityContext?: {
     communicationStyle: 'supportive' | 'direct' | 'collaborative' | 'encouraging';
@@ -58,6 +60,34 @@ interface MessageBubbleProps {
   };
   onPersonalityFeedback?: (feedback: 'helpful' | 'not_helpful' | 'love_it') => void;
 }
+
+// Component for system upgrade messages with inline link
+const SystemUpgradeMessage: React.FC<{
+  onNavigateToWallet?: () => void;
+  isDarkMode: boolean;
+}> = ({ onNavigateToWallet, isDarkMode }) => {
+  return (
+    <View style={styles.systemMessageContainer}>
+      <Text style={[styles.systemMessageText, { color: isDarkMode ? '#e5e7eb' : '#374151' }]}>
+        Upgrade to Aether for unlimited chatting.{' '}
+        <TouchableOpacity 
+          onPress={onNavigateToWallet}
+          style={styles.inlineLinkContainer}
+        >
+          <Text style={[
+            styles.inlineLink, 
+            { 
+              color: isDarkMode ? '#8B5CF6' : '#6366F1',
+              textDecorationColor: isDarkMode ? '#8B5CF6' : '#6366F1'
+            }
+          ]}>
+            View your usage here
+          </Text>
+        </TouchableOpacity>
+      </Text>
+    </View>
+  );
+};
 
 // Component for rendering formatted bot messages - no duplicate streaming
 const BotMessageContent: React.FC<{
@@ -419,11 +449,18 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
               </View>
             )}
             
-            <BotMessageContent 
-              text={message.text}
-              isStreaming={message.isStreaming}
-              theme={{ isDarkMode }}
-            />
+            {message.isSystem ? (
+              <SystemUpgradeMessage 
+                onNavigateToWallet={message.onNavigateToWallet}
+                isDarkMode={isDarkMode}
+              />
+            ) : (
+              <BotMessageContent 
+                text={message.text}
+                isStreaming={message.isStreaming}
+                theme={{ isDarkMode }}
+              />
+            )}
             
             {/* AI Insight Section */}
             {message.aiInsight && (
@@ -818,5 +855,30 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontFamily: 'Nunito_400Regular',
     letterSpacing: -0.2,
+  },
+  
+  // System upgrade message styles
+  systemMessageContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  systemMessageText: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  inlineLinkContainer: {
+    alignSelf: 'flex-start',
+  },
+  inlineLink: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'solid',
   },
 });

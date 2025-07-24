@@ -56,7 +56,7 @@ src/
 │   ├── ChatScreen.tsx            # Main chat interface
 │   ├── TutorialScreen.tsx        # Feature tutorial
 │   ├── AnalyticsScreen.tsx       # Enhanced analytics with real-time charts
-│   ├── CloudScreen.tsx           # Social features
+│   ├── CloudFind.tsx           # Social features
 │   ├── WalletScreen.tsx          # Credits/subscription
 │   ├── LegacyWalletScreen.tsx    # Legacy wallet view
 │   ├── SettingsScreen.tsx        # App settings

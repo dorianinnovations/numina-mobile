@@ -38,40 +38,40 @@ export const QuickAnalyticsModal: React.FC<QuickAnalyticsModalProps> = ({
   // Quick query options - expanded for scrollable modal
   const quickQueries = [
     // Instant Metrics
-    { category: 'Instant Metrics', queries: [
-      "show my behavioral data",
-      "what are my intelligence metrics?", 
-      "behavioral data - show my complexity progression",
-      "display my current emotional baseline",
-      "what patterns do you see in my interactions?",
-      "show my communication style analysis"
+    { category: 'Quick Stats', queries: [
+      "show my data",
+      "what are my metrics?", 
+      "show my progress",
+      "display my current baseline",
+      "what patterns do you see?",
+      "show my communication style"
     ]},
-    // Taxonomies  
-    { category: 'Taxonomies', queries: [
-      "What emotional states can you identify in me?",
-      "What is your complete topic classification system?",
-      "What engagement levels do you track?",
-      "How do you categorize my behavioral patterns?",
-      "What personality traits have you identified?",
-      "Show me your complete analytical framework"
+    // Categories  
+    { category: 'Categories', queries: [
+      "What states can you identify in me?",
+      "What is your classification system?",
+      "What levels do you track?",
+      "How do you categorize my patterns?",
+      "What traits have you identified?",
+      "Show me your framework"
     ]},
     // Predictions
     { category: 'Predictions', queries: [
-      "Based on my behavioral patterns, predict my evolution",
-      "What changes do you anticipate in my behavior?",
-      "Analyze my learning trajectory",
-      "Predict my next developmental phase",
-      "What challenges might I face in my growth?",
-      "How will my communication style evolve?"
+      "predict my evolution",
+      "What changes do you anticipate?",
+      "Analyze my learning path",
+      "Predict my next phase",
+      "What challenges might I face?",
+      "How will my style evolve?"
     ]},
-    // Deep Analysis
-    { category: 'Deep Analysis', queries: [
-      "Perform a complete psychological assessment",
-      "Analyze my decision-making patterns",
-      "What motivates me at a core level?",
-      "Map my emotional triggers and responses",
-      "How do I handle stress and challenges?",
-      "What are my fundamental values and beliefs?"
+    // Analysis
+    { category: 'Analysis', queries: [
+      "Perform a complete assessment",
+      "Analyze my decision patterns",
+      "What motivates me?",
+      "Map my triggers and responses",
+      "How do I handle challenges?",
+      "What are my core values?"
     ]}
   ];
 

@@ -77,7 +77,7 @@ interface SubscriptionData {
   };
 }
 
-type UserTier = 'core' | 'pro' | 'aether';
+type UserTier = 'core' | 'aether';
 
 interface TierFeatures {
   tier: UserTier;
@@ -160,7 +160,7 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
       {
         tier: 'core',
         name: 'Core',
-        description: 'The hook. Generous enough to be magical and demonstrate the app\'s core value.',
+        description: "The hook. Generous enough to be magical and demonstrate the app's core value.",
         icon: 'heart',
         color: '#10b981',
         features: [
@@ -178,25 +178,6 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
           'Limited tool usage'
         ],
         isCurrentTier: currentTier === 'core',
-        canUpgrade: true
-      },
-      {
-        tier: 'pro',
-        name: 'Pro',
-        description: 'The power-up. For users who are invested and want to go deeper.',
-        icon: 'rocket',
-        color: '#6366f1',
-        price: '$9.99/month',
-        features: [
-          'Premier AI Models (GPT-4o)',
-          'Unlimited tool use (fair use)',
-          'Full advanced analytics unlock',
-          'Accelerated UBPM updates',
-          'Advanced social matching',
-          'Unlimited conversation history',
-          'Monthly credit allotment (500)'
-        ],
-        isCurrentTier: currentTier === 'pro',
         canUpgrade: currentTier === 'core'
       },
       {
@@ -207,7 +188,7 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
         color: '#a855f7',
         price: '$29.99/month',
         features: [
-          'All Pro features included',
+          'All Core features included',
           'Advanced psychological profiling',
           'Real-time insights & monitoring',
           'Predictive analytics engine',
@@ -216,7 +197,7 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
           'First access to experimental AI'
         ],
         isCurrentTier: currentTier === 'aether',
-        canUpgrade: currentTier !== 'aether'
+        canUpgrade: currentTier === 'core'
       }
     ];
     setTierFeatures(features);
@@ -280,8 +261,6 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
           const plan = subscription.plan?.toLowerCase() || '';
           if (plan.includes('aether') || plan.includes('premium')) {
             setCurrentTier('aether');
-          } else if (plan.includes('pro') || plan.includes('trace')) {
-            setCurrentTier('pro');
           } else {
             setCurrentTier('core');
           }
@@ -785,18 +764,12 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
         )}
       </View>
       
-      {tierData.canUpgrade && !tierData.isCurrentTier && (
+      {tierData.canUpgrade && !tierData.isCurrentTier && tierData.tier === 'aether' && (
         <TouchableOpacity
           style={[styles.upgradeButton, { backgroundColor: tierData.color }]}
-          onPress={() => {
-            if (tierData.tier === 'pro' || tierData.tier === 'aether') {
-              setShowSubscriptionModal(true);
-            }
-          }}
+          onPress={() => setShowSubscriptionModal(true)}
         >
-          <Text style={[styles.upgradeButtonText, { color: '#fff' }]}>
-            Upgrade to {tierData.name}
-          </Text>
+          <Text style={[styles.upgradeButtonText, { color: '#fff' }]}>Upgrade to {tierData.name}</Text>
         </TouchableOpacity>
       )}
     </View>

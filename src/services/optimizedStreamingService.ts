@@ -147,8 +147,8 @@ export class OptimizedStreamingService {
                   hasNewContent = true;
                 }
               } catch {
-                // Handle raw text data
-                if (data !== '[DONE]') {
+                // Handle raw text data - filter out malformed JSON objects
+                if (data !== '[DONE]' && !data.match(/^\s*[{]/)) {
                   chunkContent += data;
                   hasNewContent = true;
                 }

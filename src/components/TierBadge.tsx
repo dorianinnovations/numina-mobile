@@ -4,7 +4,7 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface TierBadgeProps {
-  tier?: 'CORE' | 'PRO' | 'AETHER' | 'core' | 'pro' | 'aether' | string;
+  tier?: 'CORE' | 'AETHER' | 'core' | 'aether' | string;
   size?: 'small' | 'medium' | 'large';
 }
 
@@ -18,15 +18,9 @@ export const TierBadge: React.FC<TierBadgeProps> = ({ tier, size = 'medium' }) =
       icon: 'circle',
       label: 'Core'
     },
-    PRO: {
-      color: '#3B82F6',
-      bgColor: isDarkMode ? '#1E3A8A' : '#EBF4FF',
-      icon: 'star',
-      label: 'Pro'
-    },
     AETHER: {
       color: '#7C3AED',
-      bgColor: isDarkMode ? '#581C87' : '#F3E8FF',
+      bgColor: isDarkMode ? '#5bd0ff' : '#90e9ff',
       icon: 'gem',
       label: 'Aether'
     }

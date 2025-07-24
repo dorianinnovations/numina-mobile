@@ -92,28 +92,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
             ]
           },
           {
-            name: 'pro',
-            displayName: 'Pro',
-            price: 29.99,
-            currency: 'USD',
-            duration: '/month',
-            savings: 'Most Popular',
-            features: [
-              'All AI Tools',
-              '200 Daily Requests',
-              'Emotional Analysis',
-              'Personalized Insights',
-              'Priority Support'
-            ]
-          },
-          {
             name: 'aether',
             displayName: 'Aether',
             price: 99.99,
             currency: 'USD',
             duration: '/month',
             features: [
-              'Everything in Pro',
               'Unlimited Requests',
               'Priority Processing',
               'Advanced Analytics',
@@ -122,7 +106,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           }
         ];
         setPlans(fallbackPlans);
-        setSelectedPlan('pro');
+        setSelectedPlan('aether');
       }
     } catch (error) {
       console.error('Error loading pricing:', error);
@@ -141,28 +125,12 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           ]
         },
         {
-          name: 'pro',
-          displayName: 'Pro',
-          price: 29.99,
-          currency: 'USD',
-          duration: '/month',
-          savings: 'Most Popular',
-          features: [
-            'All AI Tools',
-            '200 Daily Requests',
-            'Emotional Analysis',
-            'Personalized Insights',
-            'Priority Support'
-          ]
-        },
-        {
           name: 'aether',
           displayName: 'Aether',
           price: 99.99,
           currency: 'USD',
           duration: '/month',
           features: [
-            'Everything in Pro',
             'Unlimited Requests',
             'Priority Processing',
             'Advanced Analytics',
@@ -171,7 +139,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
         }
       ];
       setPlans(fallbackPlans);
-      setSelectedPlan('pro');
+      setSelectedPlan('aether');
     } finally {
       setLoading(false);
     }

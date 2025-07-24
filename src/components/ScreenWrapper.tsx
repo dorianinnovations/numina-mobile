@@ -65,7 +65,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
     
     switch (key) {
       case 'chat':
-        if (currentRoute !== 'Chat') {
+        if (isAuthenticated && currentRoute !== 'Chat') {
           navigation.reset({
             index: 0,
             routes: [{ name: 'Chat' }],
@@ -73,47 +73,51 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
         }
         break;
       case 'analytics':
-        if (currentRoute !== 'Analytics') {
+        if (isAuthenticated && currentRoute !== 'Analytics') {
           navigation.push('Analytics');
         }
         break;
       case 'sandbox':
-        if (currentRoute !== 'Sandbox') {
+        if (isAuthenticated && currentRoute !== 'Sandbox') {
           navigation.push('Sandbox');
         }
         break;
       case 'cloud':
-        if (currentRoute !== 'Cloud') {
+        if (isAuthenticated && currentRoute !== 'Cloud') {
           navigation.push('Cloud');
         }
         break;
       case 'wallet':
-        if (currentRoute !== 'Wallet') {
+        if (isAuthenticated && currentRoute !== 'Wallet') {
           navigation.push('Wallet');
         }
         break;
       case 'sentiment':
-        if (currentRoute !== 'Sentiment') {
+        if (isAuthenticated && currentRoute !== 'Sentiment') {
           navigation.push('Sentiment');
         }
         break;
       case 'profile':
-        if (currentRoute !== 'Profile') {
+        if (isAuthenticated && currentRoute !== 'Profile') {
           navigation.push('Profile');
         }
         break;
       case 'settings':
+        // Settings always accessible
         if (currentRoute !== 'Settings') {
           navigation.push('Settings');
         }
         break;
       case 'about':
+        // About always accessible  
         if (currentRoute !== 'About') {
           navigation.push('About');
         }
         break;
       case 'signout':
-        setShowSignOutModal(true);
+        if (isAuthenticated) {
+          setShowSignOutModal(true);
+        }
         break;
       default:
         break;
@@ -163,6 +167,7 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
           onStartNewChat={onStartNewChat}
           onQuickAnalyticsPress={onQuickAnalyticsPress}
           currentConversationId={currentConversationId}
+          showAuthOptions={isAuthenticated}
           {...headerProps}
           onRestoreHeader={headerProps?.onRestoreHeader}
         />

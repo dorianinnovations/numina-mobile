@@ -290,7 +290,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                       styles.subtitle, 
                       { color: isDarkMode ? '#888888' : '#666666' }
                     ]}>
-                      Welcome back to Numina
+                      <Text style={{ color: isDarkMode ? '#87ebde' : '#6883ff' }}>Welcome </Text>
+                      <Text style={{ color: isDarkMode ? '#a3c3ff' : '#8a69ff' }}>back</Text>
+                      <Text style={{ color: isDarkMode ? '#c6ade6' : '#bb72ff' }}> to </Text>
+                      <Text style={{ color: isDarkMode ? '#ffd99f' : '#ffd18d' }}>Numina</Text>
                     </Text>
                   </View>
 
@@ -514,9 +517,9 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     >
                       <Text style={[
                         styles.linkText, 
-                        { color: isDarkMode ? '#ffffff' : '#000000' }
+                        { color: isDarkMode ? '#cccccc' : '#b0b0b0' }
                       ]}>
-                        Don't have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#80c1ff' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#80c1ff' : '#000000' }]}>up</Text>
+                        Don't have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>up</Text>
                       </Text>
                     </TouchableOpacity>
 

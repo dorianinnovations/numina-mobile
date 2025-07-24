@@ -1,7 +1,12 @@
 import CloudAuth from './cloudAuth';
 import ApiService from './api';
-import ComprehensiveAnalyticsService from './comprehensiveAnalytics';
-import { BehavioralMetrics } from './comprehensiveAnalytics';
+// Simple behavioral metrics type definition
+interface BehavioralMetrics {
+  communicationStyle: any;
+  personalityTraits: any;
+  temporalPatterns: any;
+  engagementMetrics: any;
+}
 import { ENV } from '../config/environment';
 
 interface UserDataSnapshot {
@@ -55,7 +60,7 @@ class SandboxDataService {
         insights,
         mongoData
       ] = await Promise.all([
-        ComprehensiveAnalyticsService.getAllAnalytics(),
+        Promise.resolve(null), // Behavioral metrics removed - using new analytics service
         ApiService.getUserProfile(),
         this.getConversationHistory(),
         this.getToolUsageData(),

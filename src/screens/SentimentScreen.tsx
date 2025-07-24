@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path, Circle, G, Text as SvgText, Line, Polygon, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../contexts/ThemeContext';
@@ -426,7 +426,7 @@ export const SentimentScreen: React.FC<SentimentScreenProps> = ({
                   
                   <View style={styles.insightCard}>
                     <View style={[styles.insightIcon, { backgroundColor: 'rgba(74, 159, 255, 0.2)' }]}>
-                      <FontAwesome5 name="brain" size={20} color="#4A9FFF" />
+                      <MaterialCommunityIcons name="head-lightbulb" size={20} color="#4A9FFF" />
                     </View>
                     <View style={styles.insightContent}>
                       <Text style={styles.insightTitle}>Cognitive Pattern</Text>

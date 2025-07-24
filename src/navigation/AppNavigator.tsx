@@ -18,8 +18,9 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
 import { BorderThemeSettingsScreen } from "../screens/BorderThemeSettingsScreen";
 import { WalletScreen } from "../screens/WalletScreen";
-import { CloudScreen } from "../screens/CloudScreen";
+import { CloudFind } from "../screens/CloudFind";
 import { TutorialScreen } from "../screens/TutorialScreen";
+import { DataManagementScreen } from "../screens/DataManagementScreen";
 import { ExperienceLevelSelector } from "../components/ExperienceLevelSelector";
 import { ExperienceLevelService } from "../services/experienceLevelService";
 import { useTheme } from "../contexts/ThemeContext";
@@ -43,13 +44,14 @@ export type RootStackParamList = {
   Wallet: undefined;
   Cloud: undefined;
   Tutorial: undefined;
+  DataManagement: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
 
 const mobileTransition = TransitionPresets.SlideFromRightIOS;
 const LottieLoader: React.FC<{ size?: number; isDarkMode?: boolean }> = ({ 
-  size = 80,
+  size = 38,
   isDarkMode = false
 }) => {
   return (
@@ -122,13 +124,30 @@ export const AppNavigator: React.FC = () => {
 
   const createMenuHandler = (navigation: any) => (key: string) => {
     switch (key) {
-      case 'chat': navigation.navigate('Chat'); break;
-      case 'analytics': navigation.navigate('Analytics'); break;
-      case 'cloud': navigation.navigate('Cloud'); break;
-      case 'wallet': navigation.navigate('Wallet'); break;
-      case 'profile': navigation.navigate('Profile'); break;
-      case 'settings': navigation.navigate('Settings'); break;
-      case 'about': navigation.navigate('About'); break;
+      case 'chat': 
+        if (isAuthenticated) navigation.navigate('Chat'); 
+        break;
+      case 'analytics': 
+        if (isAuthenticated) navigation.navigate('Analytics'); 
+        break;
+      case 'sandbox':
+        if (isAuthenticated) navigation.navigate('Sandbox');
+        break;
+      case 'cloud': 
+        if (isAuthenticated) navigation.navigate('Cloud'); 
+        break;
+      case 'wallet': 
+        if (isAuthenticated) navigation.navigate('Wallet'); 
+        break;
+      case 'profile': 
+        if (isAuthenticated) navigation.navigate('Profile'); 
+        break;
+      case 'settings': 
+        navigation.navigate('Settings'); // Always allow settings
+        break;
+      case 'about': 
+        navigation.navigate('About'); // Always allow about
+        break;
       case 'signout': {
         log.info('User signed out - routing will handle navigation to Hero', null, 'AppNavigator');
         break;
@@ -181,10 +200,10 @@ export const AppNavigator: React.FC = () => {
                 routes: [{ name: 'ExperienceLevel' }],
               });
             } else {
-              log.info('User authenticated with experience level, navigating to Chat', null, 'AppNavigator');
+              log.info('User authenticated with experience level, navigating to Sandbox', null, 'AppNavigator');
               navigationRef.current?.reset({
                 index: 0,
-                routes: [{ name: 'Chat' }],
+                routes: [{ name: 'Sandbox' }],
               });
             }
           });
@@ -345,10 +364,10 @@ export const AppNavigator: React.FC = () => {
               onSelectionComplete={async (level) => {
                 console.log('✅ EXPERIENCE LEVEL SELECTED:', level);
                 await ExperienceLevelService.setExperienceLevel(level);
-                console.log('💾 Experience level saved, navigating to Chat');
+                console.log('💾 Experience level saved, navigating to Sandbox');
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'Chat' }],
+                  routes: [{ name: 'Sandbox' }],
                 });
               }}
               // onSkip removed - experience level selection is now MANDATORY for all users
@@ -395,6 +414,18 @@ export const AppNavigator: React.FC = () => {
           )}
         </Stack.Screen>
 
+        <Stack.Screen
+          name="DataManagement"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation }) => (
+            <DataManagementScreen 
+              onNavigateBack={() => navigation.goBack()}
+            />
+          )}
+        </Stack.Screen>
 
         <Stack.Screen
           name="Sandbox"
@@ -446,6 +477,7 @@ export const AppNavigator: React.FC = () => {
               onNavigateBack={() => navigation.goBack()}
               onNavigateToSignIn={() => navigation.navigate('SignIn')}
               onNavigateToBorderThemes={() => navigation.navigate('BorderThemeSettings')}
+              onNavigateToDataManagement={() => navigation.navigate('DataManagement')}
             />
           )}
         </Stack.Screen>
@@ -483,7 +515,7 @@ export const AppNavigator: React.FC = () => {
           }}
         >
           {({ navigation }) => (
-            <CloudScreen 
+            <CloudFind 
               onNavigateBack={() => navigation.goBack()}
             />
           )}
@@ -522,7 +554,7 @@ export const AppNavigator: React.FC = () => {
         zIndex: 1000,
         pointerEvents: 'box-none', // Allow touches to pass through when appropriate
       }}>
-        <LottieLoader size={80} isDarkMode={isDarkMode} />
+        <LottieLoader size={32} isDarkMode={isDarkMode} />
         <Animated.Text style={{
           marginTop: 16,
           fontSize: 11,

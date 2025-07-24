@@ -6,7 +6,7 @@ interface User {
   id: string;
   email: string;
   tierInfo?: {
-    tier: 'CORE' | 'PRO' | 'AETHER';
+    tier: 'CORE' | 'AETHER';
     dailyUsage: number;
     dailyLimit: number;
     features: Record<string, boolean>;
