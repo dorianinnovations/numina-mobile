@@ -48,6 +48,7 @@ import getWebSocketService, { ChatMessage as WSChatMessage, UserPresence } from 
 import syncService from '../services/syncService';
 import ToolExecutionService, { ToolExecution } from '../services/toolExecutionService';
 import { ToolExecutionModal } from '../components/ToolExecutionModal';
+import { useOptimizedStreaming } from '../hooks/useOptimizedStreaming';
 import { QuickAnalyticsModal } from '../components/QuickAnalyticsModal';
 import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
@@ -133,6 +134,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   
   // Streaming optimization
   const streamingUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const { processStreamingContent, flushBuffer, scrollToEnd, getStreamingHandler } = useOptimizedStreaming({
+    minUpdateInterval: 50, // Update max 20fps
+    bufferSize: 30, // Buffer more characters
+    scrollThrottle: 100, // Scroll max 10fps
+    enableSmartBatching: true,
+  });
+  
   const createManagedTimeout = useCallback((callback: () => void, delay: number) => {
     const timeoutId = setTimeout(() => {
       animationTimeoutRefs.current.delete(timeoutId);
@@ -400,11 +408,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setScrollDebounceTimeout(null);
     }
     
-    // Clear streaming update timeout
-    if (streamingUpdateTimeoutRef.current) {
-      clearTimeout(streamingUpdateTimeoutRef.current);
-      streamingUpdateTimeoutRef.current = null;
-    }
+    // Flush any remaining streaming content on cleanup
+    flushBuffer(() => {});
     
     // Clear all managed animation timeouts
     animationTimeoutRefs.current.forEach(timeoutId => {
@@ -558,52 +563,63 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
         }))
       };
       
-      // Send streaming chat message
+      // Send streaming chat message with optimized handler
+      let accumulatedContent = '';
+      
       finalResponseText = await ApiService.sendChatMessageStreaming(
         chatMessage,
         (partialResponse: string) => {
-          // Validate partialResponse
-          const safePartialResponse = partialResponse || '';
-          
-          // Update current AI message for tool execution
-          setCurrentAIMessage(safePartialResponse);
-          
-          // Hide header during streaming and make it sticky (only once)
-          if (!headerPermanentlyHidden) {
-            setHeaderVisible(false);
-            setHeaderPermanentlyHidden(true);
-          }
-          
-          // Process tool executions from streaming response
-          toolExecutionService.processStreamingToolResponse(safePartialResponse);
-          toolExecutionService.detectToolExecutionsInMessage(safePartialResponse);
-          
-          // Update the AI message with streaming content
-          const updatedAIMessage = {
-            ...aiMessage,
-            text: safePartialResponse,
-            isStreaming: true,
-          };
-          
-          // Throttled state updates to reduce UI lag
-          if (currentConversation.messages && currentConversation.messages.length > 0) {
-            // Direct mutation for performance during streaming
-            currentConversation.messages[currentConversation.messages.length - 1] = updatedAIMessage;
-            currentConversation.updatedAt = new Date().toISOString();
+          // Process streaming content with intelligent batching
+          processStreamingContent(partialResponse, (bufferedContent) => {
+            // Accumulate content
+            accumulatedContent += bufferedContent;
             
-            // Ultra-fast state updates for responsive streaming (16ms = 60fps)
-            if (!streamingUpdateTimeoutRef.current) {
-              streamingUpdateTimeoutRef.current = setTimeout(() => {
-                setConversation({ ...currentConversation });
-                streamingUpdateTimeoutRef.current = null;
-                
-                // Instant scroll for streaming - no delay or animation
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }, 16);
+            // Update current AI message for tool execution
+            setCurrentAIMessage(accumulatedContent);
+            
+            // Hide header during streaming (only once)
+            if (!headerPermanentlyHidden) {
+              setHeaderVisible(false);
+              setHeaderPermanentlyHidden(true);
             }
-          }
+            
+            // Process tool executions from accumulated response
+            toolExecutionService.processStreamingToolResponse(accumulatedContent);
+            toolExecutionService.detectToolExecutionsInMessage(accumulatedContent);
+            
+            // Update the AI message with optimized batching
+            const updatedAIMessage = {
+              ...aiMessage,
+              text: accumulatedContent,
+              isStreaming: true,
+            };
+            
+            // Update conversation state efficiently
+            if (currentConversation.messages && currentConversation.messages.length > 0) {
+              const updatedConversation = {
+                ...currentConversation,
+                messages: [...currentConversation.messages.slice(0, -1), updatedAIMessage],
+                updatedAt: new Date().toISOString()
+              };
+              
+              setConversation(updatedConversation);
+              
+              // Throttled scroll
+              scrollToEnd(() => {
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }, false);
+            }
+          });
         }
       );
+      
+      // Flush any remaining buffered content
+      flushBuffer((remainingContent) => {
+        if (remainingContent) {
+          accumulatedContent += remainingContent;
+          setCurrentAIMessage(accumulatedContent);
+        }
+      });
       
       // Update search indicator with final response to extract tool results
       // Search indicator removed
@@ -647,11 +663,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setIsStreaming(false);
       setCurrentAIMessage('');
       
-      // Clear streaming optimization timeout
-      if (streamingUpdateTimeoutRef.current) {
-        clearTimeout(streamingUpdateTimeoutRef.current);
-        streamingUpdateTimeoutRef.current = null;
-      }
+      // Flush any remaining streaming buffer
+      flushBuffer((remainingContent) => {
+        if (remainingContent) {
+          log.debug('Flushed remaining streaming content', { length: remainingContent.length }, 'ChatScreen');
+        }
+      });
       
       // Don't automatically restore header - let it stay hidden
     } catch (error: any) {
@@ -743,11 +760,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       setIsStreaming(false);
       setCurrentAIMessage('');
       
-      // Clear streaming optimization timeout
-      if (streamingUpdateTimeoutRef.current) {
-        clearTimeout(streamingUpdateTimeoutRef.current);
-        streamingUpdateTimeoutRef.current = null;
-      }
+      // Flush any remaining streaming buffer
+      flushBuffer((remainingContent) => {
+        if (remainingContent) {
+          log.debug('Flushed remaining streaming content', { length: remainingContent.length }, 'ChatScreen');
+        }
+      });
       
       // Don't automatically restore header after error - let it stay hidden
     }
@@ -1046,8 +1064,10 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                     keyExtractor={item => item?.id || Math.random().toString()}
                     style={styles.messagesList}
                     onContentSizeChange={() => {
-                      // Ultra-fast scroll for streaming - no animation delay
-                      flatListRef.current?.scrollToEnd({ animated: false });
+                      // Only scroll if not actively streaming
+                      if (!isStreaming) {
+                        flatListRef.current?.scrollToEnd({ animated: false });
+                      }
                     }}
                     onScroll={(event) => {
                       const currentScrollY = event.nativeEvent.contentOffset.y;
@@ -1100,18 +1120,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
                       // Top-down message flow
                       { justifyContent: 'flex-start' }
                     ]}
-                    // Performance optimizations for ultra-fast streaming
+                    // Performance optimizations for streaming
                     removeClippedSubviews={true}
                     maxToRenderPerBatch={5}
-                    updateCellsBatchingPeriod={16}
+                    updateCellsBatchingPeriod={50}
+                    windowSize={10}
                     initialNumToRender={10}
-                    windowSize={5}
-                    scrollEventThrottle={16}
-                    extraData={conversation?.messages?.length || 0} // Force re-render on new messages
                     maintainVisibleContentPosition={{
                       minIndexForVisible: 0,
                       autoscrollToTopThreshold: 10,
                     }}
+                    scrollEventThrottle={16}
+                    extraData={conversation?.messages?.length || 0} // Force re-render on new messages
                   />
 
                   {/* Tool Execution Modal */}

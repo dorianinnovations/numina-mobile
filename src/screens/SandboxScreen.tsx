@@ -64,6 +64,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const { 
     handleNodesGenerated,
     handleLockNode,
+    handleUnlockNode,
     saveSandboxSession,
     buildContextFromLockedNodes,
   } = useSandboxData();
@@ -393,7 +394,20 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
               {isProcessing && renderProcessingState()}
 
               {showNodes && (
-                <NodeCanvas nodes={nodes} onNodePress={handleNodePress} />
+                <NodeCanvas 
+                  nodes={nodes}
+                  onNodePress={handleNodePress}
+                  onLockNode={(node) => {
+                    sandboxActions.lockNode(node.id);
+                    handleLockNode(node);
+                  }}
+                  onUnlockNode={(nodeId) => {
+                    sandboxActions.unlockNode(nodeId);
+                    handleUnlockNode(nodeId);
+                  }}
+                  lockedNodes={lockedNodes}
+                  nodeConnections={nodeConnections}
+                />
               )}
 
 

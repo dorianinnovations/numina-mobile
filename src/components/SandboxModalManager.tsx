@@ -26,6 +26,7 @@ export interface SandboxModalManagerRef {
   startSandboxProcess: (query: string, options: any) => Promise<void>;
   showNode: (node: SandboxNode) => void;
   showNodeWithSkeleton: (node: SandboxNode) => void;
+  stopProcess: () => void;
 }
 
 export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxModalManagerProps>(({
@@ -332,7 +333,8 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
     startSandboxProcess,
     showNode,
     showNodeWithSkeleton,
-  }), [startSandboxProcess, showNode, showNodeWithSkeleton]);
+    stopProcess,
+  }), [startSandboxProcess, showNode, showNodeWithSkeleton, stopProcess]);
 
   const handleCloseNodeCanvas = useCallback(() => {
     console.log('🎨 Closing node canvas');
@@ -388,33 +390,37 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
 
 // Export the hook for using the modal manager
 export const useSandboxModalManager = () => {
-  const managerRef = useRef<{
+  const managerRef = useRef<SandboxModalManagerRef | null>(null);
+  const operationsRef = useRef<{
     startProcess: (query: string, options: any) => void;
     stopProcess: () => void;
   } | null>(null);
 
   const SandboxModalManagerComponent = useCallback((props: SandboxModalManagerProps) => {
-    const [manager, setManager] = useState<SandboxModalManagerRef | null>(null);
+    const handleRef = useCallback((ref: SandboxModalManagerRef | null) => {
+      managerRef.current = ref;
+      
+      if (ref) {
+        const startProcess = (query: string, options: any) => {
+          ref.startSandboxProcess(query, options);
+        };
 
-    const startProcess = useCallback((query: string, options: any) => {
-      if (manager) {
-        (manager as any).startSandboxProcess(query, options);
+        const stopProcess = () => {
+          // Add stopProcess method if it exists on the ref
+          if ('stopProcess' in ref && typeof (ref as any).stopProcess === 'function') {
+            (ref as any).stopProcess();
+          }
+        };
+
+        operationsRef.current = { startProcess, stopProcess };
+      } else {
+        operationsRef.current = null;
       }
-    }, [manager]);
-
-    const stopProcess = useCallback(() => {
-      if (manager) {
-        (manager as any).stopProcess();
-      }
-    }, [manager]);
-
-    React.useEffect(() => {
-      managerRef.current = { startProcess, stopProcess };
-    }, [startProcess, stopProcess]);
+    }, []);
 
     return (
       <SandboxModalManager
-        ref={setManager}
+        ref={handleRef}
         {...props}
       />
     );
@@ -423,10 +429,10 @@ export const useSandboxModalManager = () => {
   return {
     SandboxModalManagerComponent,
     startProcess: (query: string, options: any) => {
-      managerRef.current?.startProcess(query, options);
+      operationsRef.current?.startProcess(query, options);
     },
     stopProcess: () => {
-      managerRef.current?.stopProcess();
+      operationsRef.current?.stopProcess();
     }
   };
 };

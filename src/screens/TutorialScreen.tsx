@@ -24,6 +24,8 @@ import { ShootingStars } from '../components/ShootingStars';
 import { LiquidProgress } from '../components/LiquidProgress';
 import { SimpleStreamingText } from '../components/SimpleStreamingText';
 import { NuminaColors } from '../utils/colors';
+import { BlurView } from 'expo-blur';
+import { ShineEffect } from '../components/ShineEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -96,7 +98,9 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   onTitlePress,
   onMenuPress,
 }) => {
-  const { theme, isDarkMode } = useTheme();
+  let { theme, isDarkMode } = useTheme() || {};
+  if (!theme) theme = {};
+  if (typeof isDarkMode !== 'boolean') isDarkMode = false;
   const [currentStep, setCurrentStep] = useState(0);
   
   // Core animation refs
@@ -556,841 +560,262 @@ export const TutorialScreen: React.FC<TutorialScreenProps> = ({
   const step = tutorialSteps[currentStep] || tutorialSteps[0];
   const isLastStep = currentStep === tutorialSteps.length - 1;
 
-  return (
-    <PageBackground>
-      <StarField 
-        density="low" 
-        animated={false} 
-        interactive={false}
-        constellation={false}
-      />
-      
+  // --- MAIN RENDER ---
+  const mainChildren = (
+    <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.container}>
         <StatusBar 
           barStyle={isDarkMode ? 'light-content' : 'dark-content'} 
           backgroundColor={isDarkMode ? '#0a0a0a' : 'transparent'}
           translucent={true}
         />
-      
-        {/* Header */}
         <Header 
           title="Numina"
           showBackButton={true}
           showMenuButton={true}
           showAuthOptions={false}
-          onBackPress={() => {
-            onNavigateHome();
-          }}
+          onBackPress={onNavigateHome}
           onTitlePress={onTitlePress}
           onMenuPress={onMenuPress}
         />
-
-        {/* LOCKED Neural Network Background - No animations */}
-        <View style={[styles.neuralNetworkBackground, { 
-          opacity: 0.4
-        }]}>
-          {/* Central Hub Node - STATIC */}
-          <Animated.View style={[
-            styles.centralNode,
-            {
-              backgroundColor: isDarkMode ? '#98fb98' : '#22c55e',
-              shadowColor: isDarkMode ? '#98fb98' : '#22c55e',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: centralNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.6, 0.9, 0.6],
-              }),
-              shadowRadius: centralNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [8, 12, 8],
-              }),
-              elevation: 4,
-              transform: [{
-                scale: centralNodePulse.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.1, 1],
-                }),
-              }],
-            }
-          ]} />
-          
-          {/* Radial Connections */}
-          <Animated.View style={[styles.radialConnection, styles.connectionTop,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(110,231,183,0.3)' : 'rgba(16,185,129,0.3)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.3, 0.6, 0.3],
-              }),
-            }
-          ]} />
-          <Animated.View style={[styles.radialConnection, styles.connectionTopRight,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(196,181,253,0.25)' : 'rgba(139,92,246,0.25)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.25, 0.5, 0.25],
-              }),
-            }
-          ]} />
-          <Animated.View style={[styles.radialConnection, styles.connectionRight,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(252,165,165,0.3)' : 'rgba(239,68,68,0.3)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.3, 0.6, 0.3],
-              }),
-            }
-          ]} />
-          <Animated.View style={[styles.radialConnection, styles.connectionBottomRight,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(251,207,232,0.2)' : 'rgba(236,72,153,0.2)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.2, 0.4, 0.2],
-              }),
-            }
-          ]} />
-          <Animated.View style={[styles.radialConnection, styles.connectionBottom,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(196,181,253,0.25)' : 'rgba(139,92,246,0.25)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.25, 0.5, 0.25],
-              }),
-            }
-          ]} />
-          <Animated.View style={[styles.radialConnection, styles.connectionBottomLeft,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(110,231,183,0.3)' : 'rgba(16,185,129,0.3)',
-              opacity: connectionShimmer.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.3, 0.6, 0.3],
-              }),
-            }
-          ]} />
-          
-          {/* Satellite Nodes - STATIC */}
-          <Animated.View style={[
-            styles.satelliteNode, styles.nodeTop,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(152,251,152,0.9)' : 'rgba(34,197,94,0.9)',
-              shadowColor: isDarkMode ? '#98fb98' : '#22c55e',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.8, 1, 0.8],
-              }),
-              shadowRadius: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [4, 6, 4],
-              }),
-              transform: [{
-                scale: satelliteNodePulse.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.1, 1],
-                }),
-              }],
-            }
-          ]} />
-          <Animated.View style={[
-            styles.satelliteNode, styles.nodeTopRight,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(196,181,253,0.7)' : 'rgba(139,92,246,0.7)',
-              shadowColor: isDarkMode ? '#c4b5fd' : '#8b5cf6',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.6, 0.9, 0.6],
-              }),
-              shadowRadius: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [3, 5, 3],
-              }),
-              transform: [{
-                scale: satelliteNodePulse.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.1, 1],
-                }),
-              }],
-            }
-          ]} />
-          <Animated.View style={[
-            styles.satelliteNode, styles.nodeBottomRight,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(252,165,165,0.8)' : 'rgba(239,68,68,0.8)',
-              shadowColor: isDarkMode ? '#fca5a5' : '#ef4444',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.7, 1, 0.7],
-              }),
-              shadowRadius: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [3, 5, 3],
-              }),
-              transform: [{
-                scale: satelliteNodePulse.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.1, 1],
-                }),
-              }],
-            }
-          ]} />
-          <Animated.View style={[
-            styles.satelliteNode, styles.nodeBottomLeft,
-            { 
-              backgroundColor: isDarkMode ? 'rgba(165,243,252,0.6)' : 'rgba(6,182,212,0.6)',
-              shadowColor: isDarkMode ? '#a5f3fc' : '#06b6d4',
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [0.5, 0.8, 0.5],
-              }),
-              shadowRadius: satelliteNodePulse.interpolate({
-                inputRange: [0, 0.5, 1],
-                outputRange: [3, 5, 3],
-              }),
-              transform: [{
-                scale: satelliteNodePulse.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [1, 1.1, 1],
-                }),
-              }],
-            }
-          ]} />
-        </View>
-
-        {/* Flexible Content Layout */}
-        <Animated.View
-          style={[
-            styles.flexibleLayout,
-            {
-              opacity: fadeAnim,
-            },
-          ]}
-        >
-          {/* Content Area with Text Wrapping */}
-          <Animated.View
-            style={[
-              styles.contentArea,
-              {
-                opacity: cardOpacity,
-                shadowColor: isDarkMode ? 'rgba(173, 213, 250, 0.4)' : 'rgba(59, 130, 246, 0.1)', // More pronounced glow
-                shadowOffset: { width: 0, height: 0 }, // No offset for diffused glow
-                shadowOpacity: isDarkMode ? 0.6 : 0.3,
-                shadowRadius: isDarkMode ? 20 : 8, // Larger radius for diffused glow
-                transform: [
-                  { scale: cardScale },
-                  { 
-                    translateY: cardFloat.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, -2],
-                    })
-                  },
-                ],
-              },
-            ]}
-          >
-            {/* Step Number Badge */}
-            <View style={[
-              styles.stepBadge,
-              {
-                shadowColor: isDarkMode ? 'rgba(152, 251, 152, 0.8)' : 'rgba(34, 197, 94, 0.6)',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: stepBadgeGlow.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [0.3, 0.8, 0.3],
-                }),
-                shadowRadius: stepBadgeGlow.interpolate({
-                  inputRange: [0, 0.5, 1],
-                  outputRange: [4, 10, 4],
-                }),
-                elevation: 2,
-              }
-            ]}>
-              <Text style={[
-                styles.stepNumber,
-                { 
-                  color: isDarkMode ? '#98fb98' : '#22c55e',
-                  textShadowColor: isDarkMode ? 'rgba(152,251,152,0.5)' : 'rgba(34,197,94,0.3)',
-                  textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: 4,
-                }
-              ]}>
-                {String(currentStep + 1).padStart(2, '0')}
-              </Text>
-              <View style={[
-                styles.stepDivider,
-                { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
-              ]} />
-              <Text style={[
-                styles.stepTotal,
-                { color: isDarkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)' }
-              ]}>
-                {String(tutorialSteps.length).padStart(2, '0')}
-              </Text>
-            </View>
-
-
-            {/* Step Title */}
-            <SimpleStreamingText
-              text={step.title}
-              style={[
-                styles.creativeTitle,
-                { 
-                  color: isDarkMode ? '#ffffff' : '#000000',
-                  fontFamily: 'CrimsonPro_600SemiBold',
-                  letterSpacing: 0.2,
-                }
-              ]}
-              speed={2}
-            />
-
-            {/* Step Description */}
-            <SimpleStreamingText
-              text={step.description}
-              style={[
-                styles.creativeDescription,
-                { 
-                  color: isDarkMode ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
-                  fontFamily: 'Nunito_400Regular',
-                  fontSize: 20,
-                  letterSpacing: -0.1,
-                  marginTop: 12,
-                }
-              ]}
-              speed={2}
-            />
-
-
-          </Animated.View>
-
-          {/* Icon Container - LOCKED Top Right Position */}
-          <Animated.View
-            style={[
-              styles.iconContainer,
-              {
-                position: 'absolute',
-                top: 160,
-                right: 24,
-                zIndex: 10,
-                opacity: cardOpacity,
-              },
-            ]}
-          >
-            {/* Neural Processing Core for all steps */}
-            <View style={styles.neuralCore}>
-              {/* Core Processing Unit */}
-              <Animated.View
-                style={[
-                  styles.processingCore,
-                  {
-                    transform: [
-                      { scale: iconScale },
-                      { 
-                        translateY: iconFloat.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, -1],
-                        })
-                      },
-                    ],
-                  }
-                ]}
-              >
-                {currentStep === 0 ? (
+        {/* Main Content Area - Only step title/description and navigation */}
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          {/* Glassy mysterious card with shine, border, and neumorphic shadow, matching sign up card, no fixed height */}
+          <View style={{
+            width: '100%',
+            maxWidth: 420,
+            minHeight: width > 600 ? 500 : 420,
+            borderRadius: 16,
+            overflow: 'visible',
+            borderWidth: isDarkMode ? 1.3 : 1,
+            borderColor: isDarkMode ? '#181818' : 'rgba(255,255,255,0.35)',
+            shadowColor: '#000',
+            shadowOffset: isDarkMode ? { width: 0, height: 6 } : { width: 0, height: 2 },
+            shadowOpacity: isDarkMode ? 0.7 : 0.06,
+            shadowRadius: isDarkMode ? 16 : 8,
+            elevation: isDarkMode ? 18 : 3,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: 'transparent',
+          }}>
+            <BlurView intensity={40} tint={isDarkMode ? 'dark' : 'light'} style={{
+              width: '100%',
+              borderRadius: 16,
+              overflow: 'hidden',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: isDarkMode ? '#0a0a0a' : 'rgba(255,255,255,0.22)',
+              padding: 32,
+            }}>
+              {/* Shine shimmer effect overlay */}
+              <ShineEffect enabled />
+              {/* Step indicator (minimalistic maximism) */}
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', marginTop: 0, marginBottom: 18, gap: 10 }}>
+                {tutorialSteps.map((_, idx) => (
+                  <View
+                    key={idx}
+                    style={{
+                      width: currentStep === idx ? 22 : 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: currentStep === idx
+                        ? (isDarkMode ? '#1e2d24' : '#1bb98a')
+                        : (isDarkMode ? 'rgba(180,200,200,0.18)' : '#e0e0e0'),
+                      marginHorizontal: 2,
+                      transition: 'width 0.2s',
+                    }}
+                  />
+                ))}
+              </View>
+              {/* Lottie animation with mysterious glow */}
+              <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', marginTop: 0, marginBottom: 0 }}>
+                <View style={{
+                  position: 'absolute',
+                  top: 10,
+                  left: '50%',
+                  marginLeft: -60,
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                  backgroundColor: isDarkMode ? 'rgba(44,54,50,0.18)' : 'rgba(27,185,138,0.08)',
+                  shadowColor: isDarkMode ? '#23272b' : '#1bb98a',
+                  shadowOpacity: 0.18,
+                  shadowRadius: 32,
+                  shadowOffset: { width: 0, height: 0 },
+                  zIndex: 0,
+                }} />
+                {currentStep === 0 && (
                   <LottieView
                     source={require('../../assets/user.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
-                ) : currentStep === 1 ? (
+                )}
+                {currentStep === 1 && (
                   <LottieView
                     source={require('../../assets/bubble.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
-                ) : currentStep === 2 ? (
+                )}
+                {currentStep === 2 && (
                   <LottieView
                     source={require('../../assets/Green eco earth animation.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
-                ) : currentStep === 3 ? (
+                )}
+                {currentStep === 3 && (
                   <LottieView
                     source={require('../../assets/Radar.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
-                ) : currentStep === 4 ? (
+                )}
+                {currentStep === 4 && (
                   <LottieView
                     source={require('../../assets/alien.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
-                ) : currentStep === 5 ? (
+                )}
+                {currentStep === 5 && (
                   <LottieView
                     source={require('../../assets/stepfinal.json')}
                     autoPlay
                     loop
-                    style={{
-                      width: 90,
-                      height: 90,
-                    }}
-                  />
-                ) : (
-                  <Feather
-                    name={step.icon as any}
-                    size={60}
-                    color={isDarkMode ? '#98fb98' : '#22c55e'}
+                    style={{ width: 110, height: 110, zIndex: 1 }}
                   />
                 )}
-              </Animated.View>
-
-              {/* Data Points */}
-              <Animated.View style={[
-                styles.dataPoint,
-                styles.dataPoint1,
-                {
-                  backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                  opacity: iconPulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.4, 0.8],
-                  }),
-                }
-              ]} />
-              
-              <Animated.View style={[
-                styles.dataPoint,
-                styles.dataPoint2,
-                {
-                  backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                  opacity: iconPulse.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0.2, 0.6],
-                  }),
-                  transform: [{
-                    scale: iconPulse.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.8, 1],
-                    })
-                  }],
-                }
-              ]} />
-            </View>
-
-            {/* Step-specific Interactive Elements */}
-            <View style={styles.stepInteractives}>
-              {currentStep === 0 && (
-                <Animated.View
-                  style={[
-                    styles.pulsingOrb,
-                    {
-                      opacity: iconPulse.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.3, 0.8],
-                      }),
-                      transform: [{
-                        scale: iconPulse.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.8, 1.2],
-                        })
-                      }],
-                    },
-                  ]}
-                >
-                  <View style={[
-                    styles.orbCore,
-                    { 
-                      backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.4)' : 'rgba(59, 130, 246, 0.3)',
-                      shadowColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                    }
-                  ]} />
-                </Animated.View>
-              )}
-              
-              {currentStep === 1 && (
-                <View style={styles.dataNodes}>
-                  {[0, 1, 2].map((index) => (
-                    <Animated.View
-                      key={index}
-                      style={[
-                        styles.dataNode,
-                        {
-                          opacity: ambientPulse1.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.2, 0.9],
-                          }),
-                          transform: [{
-                            translateY: ambientPulse1.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [0, -5 * (index + 1)],
-                            })
-                          }],
-                          left: 20 + index * 15,
-                          top: 10 + index * 8,
-                        },
-                      ]}
-                    >
-                      <View style={[
-                        styles.nodePoint,
-                        { backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6' }
-                      ]} />
-                    </Animated.View>
-                  ))}
-                </View>
-              )}
-              
-              {currentStep === 2 && (
-                <Animated.View
-                  style={[
-                    styles.analyticsWave,
-                    {
-                      opacity: ambientPulse2.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.4, 0.9],
-                      }),
-                      transform: [{
-                        scaleX: ambientPulse2.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [1, 1.4],
-                        })
-                      }],
-                    },
-                  ]}
-                >
-                  <View style={[
-                    styles.waveBar,
-                    { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.6)' : 'rgba(59, 130, 246, 0.5)' }
-                  ]} />
-                </Animated.View>
-              )}
-              
-              {currentStep === 3 && (
-                <View style={styles.connectionWeb}>
-                  {[0, 1, 2, 3].map((index) => (
-                    <Animated.View
-                      key={index}
-                      style={[
-                        styles.connectionNode,
-                        {
-                          opacity: iconPulse.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.3, 0.8],
-                          }),
-                          transform: [{
-                            rotate: iconPulse.interpolate({
-                              inputRange: [0, 1],
-                              outputRange: [`${index * 90}deg`, `${index * 90 + 15}deg`],
-                            })
-                          }],
-                          top: 30 + Math.sin(index) * 20,
-                          left: 30 + Math.cos(index) * 20,
-                        },
-                      ]}
-                    >
-                      <View style={[
-                        styles.connectionDot,
-                        { backgroundColor: isDarkMode ? '#add5fa' : '#3b82f6' }
-                      ]} />
-                      <View style={[
-                        styles.connectionLine,
-                        { backgroundColor: isDarkMode ? 'rgba(173, 213, 250, 0.3)' : 'rgba(59, 130, 246, 0.2)' }
-                      ]} />
-                    </Animated.View>
-                  ))}
-                </View>
-              )}
-              
-              {currentStep === 4 && (
-                <Animated.View
-                  style={[
-                    styles.finalGlow,
-                    {
-                      opacity: cardGlow,
-                      transform: [{
-                        scale: cardGlow.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.5, 1.5],
-                        })
-                      }],
-                    },
-                  ]}
-                >
-                  <View style={[
-                    styles.glowRing,
-                    { 
-                      borderColor: isDarkMode ? 'rgba(173, 213, 250, 0.8)' : 'rgba(59, 130, 246, 0.6)',
-                      shadowColor: isDarkMode ? '#add5fa' : '#3b82f6',
-                    }
-                  ]} />
-                </Animated.View>
-              )}
-            </View>
-          </Animated.View>
-
-          {/* Neumorphic Navigation Bricks */}
-          <View style={styles.navigationBrickContainer}>
-            {/* Left Brick */}
-            <View style={[
-              styles.brickShadowContainer,
-              isDarkMode ? {
-                shadowColor: 'rgba(139, 92, 246, 0.6)', // Purple glow
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.4,
-                shadowRadius: 15,
-              } : {
-                shadowColor: '#000000',
-                shadowOffset: { width: 2, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              },
-            ]}>
-              <Animated.View
-                style={[
-                  styles.navigationBrick,
-                  {
-                    backgroundColor: leftBrickPress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        isDarkMode ? '#111111' : '#f0f2f5',
-                        isDarkMode ? '#0f1419' : '#eef5ff'
-                      ]
-                    }),
-                  },
-                  isDarkMode ? {
-                    shadowColor: leftBrickPress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        'rgba(139, 92, 246, 0.8)', // Default glow
-                        'rgba(139, 92, 246, 0.4)', // Pressed glow
-                      ],
-                    }),
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.8,
-                    shadowRadius: 20,
-                    elevation: 12,
-                  } : {
-                    shadowColor: '#d1d5db',
-                    shadowOffset: { width: 4, height: 4 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 12,
-                  },
-                  !isDarkMode && {
-                    shadowColor: '#ffffff',
-                    shadowOffset: { width: -4, height: -4 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 12,
-                  }
-                ]}
-              >
+              </View>
+              {/* Divider between Lottie and title */}
+              <View style={{ width: '100%', height: 1, backgroundColor: isDarkMode ? 'rgba(180,200,200,0.10)' : '#e0e0e0', marginVertical: 24 }} />
+              {/* Accent bar and left-aligned title/description */}
+              <View style={{ width: '100%', flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, marginTop: 0, paddingHorizontal: 32 }}>
+                <View style={{ width: 6, height: 60, borderRadius: 4, backgroundColor: isDarkMode ? '#1e2d24' : '#1bb98a', marginRight: 18, marginTop: 2 }} />
+                <Text style={{
+                  fontSize: 29,
+                  fontWeight: '800',
+                  color: isDarkMode ? '#e6e6e6' : '#23272b',
+                  textAlign: 'left',
+                  fontFamily: 'CrimsonPro_700Bold',
+                  letterSpacing: -0.5,
+                  flex: 1,
+                  textShadowColor: isDarkMode ? 'rgba(30,30,30,0.32)' : 'rgba(200,255,220,0.08)',
+                  textShadowOffset: { width: 0, height: 2 },
+                  textShadowRadius: 8,
+                  marginTop: 2,
+                }}>
+                  {tutorialSteps[currentStep].title}
+                </Text>
+              </View>
+              <Text style={{
+                fontSize: 17,
+                color: isDarkMode ? '#b0b8c6' : '#8a939b',
+                textAlign: 'left',
+                fontWeight: '400',
+                fontFamily: 'Nunito_400Regular',
+                lineHeight: 26,
+                width: '100%',
+                paddingHorizontal: 38,
+                marginBottom: 36,
+                marginLeft: 24,
+              }}>
+                {tutorialSteps[currentStep].description}
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: '100%', gap: 18, paddingHorizontal: 32, marginBottom: 8 }}>
                 <TouchableOpacity
-                  style={{ width: '100%', height: '100%' }}
-                  onPressIn={() => {
-                    Animated.timing(leftBrickPress, {
-                      toValue: 1,
-                      duration: 120,
-                      useNativeDriver: false,
-                    }).start();
-                  }}
-                  onPressOut={() => {
-                    Animated.timing(leftBrickPress, {
-                      toValue: 0,
-                      duration: 200,
-                      useNativeDriver: false,
-                    }).start();
-                  }}
-                  onPress={currentStep > 0 ? handlePrev : onNavigateHome}
-                  activeOpacity={1}
-                >
-                  <View style={[
-                    styles.brickRingBorder,
-                    {
-                      borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-                      shadowColor: isDarkMode ? leftBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['rgba(255, 255, 255, 0.1)', 'rgba(139, 92, 246, 0.8)'],
-                      }) : 'rgba(0, 0, 0, 0.1)',
-                      shadowOffset: { width: -2, height: -2 },
-                      shadowOpacity: isDarkMode ? leftBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [1, 0.4],
-                      }) : 1,
-                      shadowRadius: isDarkMode ? leftBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [4, 15],
-                      }) : 4,
-                    }
-                  ]}>
-                    <Feather
-                      name={currentStep > 0 ? "chevron-left" : "arrow-left"}
-                      size={24}
-                      color={isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.7)'}
-                    />
-                  </View>
-                </TouchableOpacity>
-              </Animated.View>
-            </View>
-
-            {/* Right Brick */}
-            <View style={[
-              styles.brickShadowContainer,
-              isDarkMode ? {
-                shadowColor: 'rgba(139, 92, 246, 0.6)', // Purple glow
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.4,
-                shadowRadius: 15,
-              } : {
-                shadowColor: '#000000',
-                shadowOffset: { width: 2, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              },
-            ]}>
-              <Animated.View
-                style={[
-                  styles.navigationBrick,
-                  {
-                    backgroundColor: rightBrickPress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        isDarkMode ? '#111111' : '#f0f2f5',
-                        isDarkMode ? '#0f1419' : '#eef5ff'
-                      ]
-                    }),
-                  },
-                  isDarkMode ? {
-                    shadowColor: leftBrickPress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [
-                        'rgba(139, 92, 246, 0.8)', // Default glow
-                        'rgba(139, 92, 246, 0.4)', // Pressed glow
-                      ],
-                    }),
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.8,
-                    shadowRadius: 20,
-                    elevation: 12,
-                  } : {
-                    shadowColor: '#d1d5db',
-                    shadowOffset: { width: 4, height: 4 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 12,
-                  },
-                  !isDarkMode && {
-                    shadowColor: '#ffffff',
-                    shadowOffset: { width: -4, height: -4 },
-                    shadowOpacity: 0.7,
-                    shadowRadius: 12,
-                  }
-                ]}
-              >
-                <TouchableOpacity
-                  style={{ width: '100%', height: '100%' }}
-                  onPressIn={() => {
-                    Animated.timing(rightBrickPress, {
-                      toValue: 1,
-                      duration: 120,
-                      useNativeDriver: false,
-                    }).start();
-                  }}
-                  onPressOut={() => {
-                    Animated.timing(rightBrickPress, {
-                      toValue: 0,
-                      duration: 200,
-                      useNativeDriver: false,
-                    }).start();
-                  }}
                   onPress={() => {
-                    if (isLastStep) {
-                      handleFinish();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (currentStep === 0) {
+                      onNavigateHome();
                     } else {
-                      handleNext();
+                      setCurrentStep(currentStep - 1);
                     }
                   }}
-                  activeOpacity={1}
+                  style={{
+                    flex: 1,
+                    backgroundColor: currentStep === 0 ? (isDarkMode ? '#23272b' : '#e5e7eb') : (isDarkMode ? '#23272b' : '#e0e0e0'),
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    shadowColor: isDarkMode ? '#23272b' : '#1bb98a',
+                    shadowOpacity: currentStep === 0 ? 0.08 : 0.16,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 2 },
+                    opacity: currentStep === 0 ? 0.5 : 1,
+                    minWidth: 110,
+                    maxWidth: 180,
+                  }}
+                  disabled={currentStep === 0}
+                  activeOpacity={0.85}
                 >
-                  <View style={[
-                    styles.brickRingBorder,
-                    {
-                      borderColor: isDarkMode ? 'rgba(110, 197, 255, 0.4)' : 'rgba(59, 130, 246, 0.3)',
-                      shadowColor: isDarkMode ? rightBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['#add5fa', '#3b82f6'],
-                      }) : '#add5fa',
-                      shadowOffset: { width: -2, height: -2 },
-                      shadowOpacity: isDarkMode ? rightBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0.3, 0.8],
-                      }) : 0.3,
-                      shadowRadius: isDarkMode ? rightBrickPress.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [6, 15],
-                      }) : 6,
-                    }
-                  ]}>
-                    {isLastStep ? (
-                      <Text style={[
-                        styles.brickText,
-                        { 
-                          color: isDarkMode ? '#98fb98' : '#22c55e',
-                  textShadowColor: isDarkMode ? 'rgba(152,251,152,0.3)' : 'rgba(34,197,94,0.2)',
-                  textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: 2,
-                          fontWeight: '600',
-                        }
-                      ]}>
-                        Start
-                      </Text>
-                    ) : (
-                      <Feather
-                        name="chevron-right"
-                        size={24}
-                        color={isDarkMode ? '#98fb98' : '#22c55e'}
-                      />
-                    )}
-                  </View>
+                  <Text style={{ color: currentStep === 0 ? (isDarkMode ? '#666' : '#888') : (isDarkMode ? '#e6e6e6' : '#23272b'), fontSize: 16, fontWeight: '700', letterSpacing: 0.2 }}>
+                    Back
+                  </Text>
                 </TouchableOpacity>
-              </Animated.View>
-            </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    if (currentStep === tutorialSteps.length - 1) {
+                      onStartChat();
+                    } else {
+                      setCurrentStep(currentStep + 1);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    backgroundColor: isDarkMode ? '#1e2d24' : '#1bb98a',
+                    borderRadius: 8,
+                    paddingVertical: 14,
+                    alignItems: 'center',
+                    shadowColor: isDarkMode ? '#23272b' : '#1bb98a',
+                    shadowOpacity: 0.16,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 2 },
+                    minWidth: 110,
+                    maxWidth: 180,
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Text style={{ color: isDarkMode ? '#e6e6e6' : '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.2 }}>
+                    {currentStep === tutorialSteps.length - 1 ? 'Start' : 'Next'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </BlurView>
           </View>
-        </Animated.View>
-        
-        {/* Bottom Liquid Bar - Absolute positioning */}
-        <Animated.View style={[styles.bottomLiquidBar, { opacity: fadeAnim }]}>
-          <LiquidProgress
-            currentStep={currentStep}
-            totalSteps={tutorialSteps.length}
-            liquidFlow={liquidFlow}
-            liquidBubbles={liquidBubbles}
-            liquidWave={liquidWave}
-            liquidShimmer={liquidShimmer}
-          />
-        </Animated.View>
+        </View>
       </SafeAreaView>
+    </View>
+  );
+
+  // Log the type and value of what is being passed as children
+  let isValidNode = React.isValidElement(mainChildren) || typeof mainChildren === 'string' || typeof mainChildren === 'number' || Array.isArray(mainChildren);
+  if (!isValidNode) {
+    console.warn('TutorialScreen: mainChildren is not a valid React node. Rendering fallback error UI.', mainChildren);
+    return (
+      <PageBackground style={{ flex: 1, position: 'relative' }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: 'red', fontSize: 18 }}>TutorialScreen: Invalid content. Please contact support.</Text>
+        </View>
+      </PageBackground>
+    );
+  }
+
+  return (
+    <PageBackground style={{ flex: 1, position: 'relative' }}>
+      {mainChildren}
     </PageBackground>
   );
 };
+
+export default TutorialScreen;
 
 const styles = StyleSheet.create({
   container: {
