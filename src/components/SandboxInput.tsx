@@ -7,6 +7,7 @@ import {
   TouchableWithoutFeedback,
   Animated,
   StyleSheet,
+  Pressable,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
@@ -120,6 +121,12 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
   const microInteractionOpacity = useRef(new Animated.Value(0)).current;
   const microInteractionInterval = useRef<NodeJS.Timeout | null>(null);
   const [hasShownInitialMicroInteraction, setHasShownInitialMicroInteraction] = useState(false);
+
+  // Tooltip state
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const tooltipOpacity = useRef(new Animated.Value(0)).current;
+  const tooltipScale = useRef(new Animated.Value(0.8)).current;
 
   const {
     ghostText,
@@ -329,6 +336,51 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
     }
   };
 
+  const showTooltip = (actionId: string, event: any) => {
+    event.persist();
+    const action = SANDBOX_ACTIONS.find(a => a.id === actionId);
+    if (!action) return;
+
+    NuminaAnimations.haptic.light();
+    
+    // Calculate position based on touch event
+    const { pageX, pageY } = event.nativeEvent;
+    setTooltipPosition({ x: pageX, y: pageY - 60 });
+    setActiveTooltip(actionId);
+
+    // Animate tooltip in
+    Animated.parallel([
+      Animated.timing(tooltipOpacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(tooltipScale, {
+        toValue: 1,
+        tension: 400,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const hideTooltip = () => {
+    Animated.parallel([
+      Animated.timing(tooltipOpacity, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(tooltipScale, {
+        toValue: 0.8,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setActiveTooltip(null);
+    });
+  };
+
   const getSendButtonIcon = () => {
     if (selectedActions.length === 0) return 'send';
     if (selectedActions.length === 1) {
@@ -434,7 +486,7 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                 ],
               }}
             >
-              <TouchableOpacity
+              <Pressable
                 style={[
                   styles.actionPill,
                   {
@@ -447,6 +499,9 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                   }
                 ]}
                 onPress={() => handleActionSelect(action.id)}
+                onLongPress={(event) => showTooltip(action.id, event)}
+                onPressOut={hideTooltip}
+                delayLongPress={500}
               >
                 <Feather 
                   name={action.icon as any} 
@@ -465,13 +520,69 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                 >
                   {action.label}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </Animated.View>
           );
         })}
       </View>
     </Animated.View>
   );
+
+  const renderTooltip = () => {
+    if (!activeTooltip) return null;
+    
+    const action = SANDBOX_ACTIONS.find(a => a.id === activeTooltip);
+    if (!action) return null;
+
+    return (
+      <Animated.View
+        style={[
+          styles.tooltip,
+          {
+            left: tooltipPosition.x - 75, // Center the tooltip (150px width / 2)
+            top: tooltipPosition.y,
+            opacity: tooltipOpacity,
+            transform: [{ scale: tooltipScale }],
+          }
+        ]}
+        pointerEvents="none"
+      >
+        <View style={[
+          styles.tooltipContent,
+          { 
+            backgroundColor: isDarkMode ? '#1a1a1a' : '#fff',
+            borderColor: action.color,
+          }
+        ]}>
+          <View style={styles.tooltipHeader}>
+            <Feather 
+              name={action.icon as any} 
+              size={16} 
+              color={action.color} 
+            />
+            <Text style={[
+              styles.tooltipTitle,
+              { color: isDarkMode ? '#fff' : '#1a1a1a' }
+            ]}>
+              {action.label}
+            </Text>
+          </View>
+          <Text style={[
+            styles.tooltipDescription,
+            { color: isDarkMode ? '#ccc' : '#666' }
+          ]}>
+            {action.description}
+          </Text>
+        </View>
+        <View style={[
+          styles.tooltipArrow,
+          { 
+            borderTopColor: isDarkMode ? '#1a1a1a' : '#fff',
+          }
+        ]} />
+      </Animated.View>
+    );
+  };
 
   return (
     <TouchableWithoutFeedback 
@@ -695,6 +806,7 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
       </View>
       
       {renderActionPills()}
+      {renderTooltip()}
     </Animated.View>
     </TouchableWithoutFeedback>
   );
@@ -853,5 +965,48 @@ const styles = StyleSheet.create({
   microInteractionAnimation: {
     width: 45,
     height: 45,
+  },
+  tooltip: {
+    position: 'absolute',
+    zIndex: 1000,
+    alignItems: 'center',
+  },
+  tooltipContent: {
+    width: 150,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tooltipHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  tooltipTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  tooltipDescription: {
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'left',
+  },
+  tooltipArrow: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 8,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -1,
   },
 }); 

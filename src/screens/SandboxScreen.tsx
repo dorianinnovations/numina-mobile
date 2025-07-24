@@ -331,7 +331,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   const handleNodePress = (node: SandboxNode) => {
     if (modalManagerRef.current) {
-      modalManagerRef.current.showNodeWithSkeleton(node);
+      modalManagerRef.current.showNode(node);
     }
   };
 
@@ -352,6 +352,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       showMenuButton={true}
       title="Sandbox"
       subtitle="Collaborative discovery environment"
+      onBackPress={onNavigateBack}
       headerProps={{
         style: {
           top: Platform.OS === 'ios' ? 50 : 15,
@@ -402,7 +403,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                     handleLockNode(node);
                   }}
                   onUnlockNode={(nodeId) => {
-                    sandboxActions.unlockNode(nodeId);
+                    sandboxActions.lockNode(nodeId);
                     handleUnlockNode(nodeId);
                   }}
                   lockedNodes={lockedNodes}
@@ -417,7 +418,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         </SafeAreaView>
       </PageBackground>
 
-      {/* SandboxModalManager positioned outside all wrappers for full screen coverage */}
+      {/* SandboxModalManager */}
       <SandboxModalManager
         ref={modalManagerRef}
         onNodesGenerated={(newNodes) => {
@@ -432,10 +433,8 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         onError={handleModalError}
         onStreamingMessage={(message) => {
           console.log('🎯 SandboxScreen: Received LLAMA message:', message);
-          // The LLAMA contextual reports are now properly flowing to the screen
         }}
         onProcessComplete={() => {
-          // Reset processing state to allow navigation when modal closes
           setIsProcessing(false);
           setShowImmediateLoader(false);
         }}
