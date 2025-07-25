@@ -65,8 +65,20 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   onConversationUpdate,
 }) => {
   const { theme, isDarkMode, toggleTheme } = useTheme();
-  const { userData, logout } = useAuth();
+  const { userData, logout, isAuthenticated } = useAuth();
   const navigation = useNavigation<ChatScreenNavigationProp>();
+  
+  // Authentication guard - redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      log.warn('Unauthorized access to ChatScreen - redirecting to Hero', null, 'ChatScreen');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hero' }],
+      });
+      return;
+    }
+  }, [isAuthenticated, navigation]);
   const [conversation, setConversation] = useState<Conversation | null>(initialConversation || null);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);

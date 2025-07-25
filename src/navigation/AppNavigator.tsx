@@ -23,6 +23,7 @@ import { DataManagementScreen } from "../screens/DataManagementScreen";
 import { ExperienceLevelSelector } from "../components/selectors/ExperienceLevelSelector";
 import { ExperienceLevelService } from "../services/experienceLevelService";
 import { UserOnboardingService } from "../services/userOnboardingService";
+import { UserChoiceService } from "../services/userChoiceService";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
 import { log } from "../utils/logger";
@@ -133,22 +134,42 @@ export const AppNavigator: React.FC = () => {
   const createMenuHandler = (navigation: any) => (key: string) => {
     switch (key) {
       case 'chat': 
-        if (isAuthenticated) navigation.navigate('Chat'); 
+        if (isAuthenticated) {
+          navigation.navigate('Chat');
+        } else {
+          navigation.navigate('Hero'); // Redirect to choice screen
+        }
         break;
       case 'analytics': 
-        if (isAuthenticated) navigation.navigate('Analytics'); 
+        if (isAuthenticated) {
+          navigation.navigate('Analytics');
+        } else {
+          navigation.navigate('Hero'); // Redirect to choice screen
+        }
         break;
       case 'sandbox':
-        if (isAuthenticated) navigation.navigate('Sandbox');
+        navigation.navigate('Sandbox'); // Sandbox is available for both auth and unauth users
         break;
       case 'cloud': 
-        if (isAuthenticated) navigation.navigate('Cloud'); 
+        if (isAuthenticated) {
+          navigation.navigate('Cloud');
+        } else {
+          navigation.navigate('Hero'); // Redirect to choice screen
+        }
         break;
       case 'wallet': 
-        if (isAuthenticated) navigation.navigate('Wallet'); 
+        if (isAuthenticated) {
+          navigation.navigate('Wallet');
+        } else {
+          navigation.navigate('Hero'); // Redirect to choice screen
+        }
         break;
       case 'profile': 
-        if (isAuthenticated) navigation.navigate('Profile'); 
+        if (isAuthenticated) {
+          navigation.navigate('Profile');
+        } else {
+          navigation.navigate('Hero'); // Redirect to choice screen
+        }
         break;
       case 'settings': 
         navigation.navigate('Settings'); // Always allow settings
@@ -195,7 +216,7 @@ export const AppNavigator: React.FC = () => {
       setTimeout(() => {
         const currentRouteAfterDelay = navigationRef.current?.getCurrentRoute()?.name;
         
-        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'SignIn') {
+        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'SignIn' && currentRouteAfterDelay !== 'Sandbox') {
           // Only auto-route if NOT coming from signup (signup has explicit navigation)
           log.debug('Authenticated user detected', { currentRoute: currentRouteAfterDelay }, 'AppNavigator');
           
@@ -209,10 +230,10 @@ export const AppNavigator: React.FC = () => {
                   routes: [{ name: 'ExperienceLevel' }],
                 });
               } else {
-                log.info('Existing user authenticated, navigating to Sandbox', null, 'AppNavigator');
+                log.info('Existing authenticated user, navigating to Chat', null, 'AppNavigator');
                 navigationRef.current?.reset({
                   index: 0,
-                  routes: [{ name: 'Sandbox' }],
+                  routes: [{ name: 'Chat' }],
                 });
               }
             });
@@ -299,6 +320,22 @@ export const AppNavigator: React.FC = () => {
                 onNavigateToSignIn={() => {
                   navigation.navigate("SignIn");
                 }}
+                onNavigateToSignUp={() => {
+                  navigation.navigate("SignUp");
+                }}
+                onChooseCloud={async () => {
+                  // Save choice and require authentication
+                  await UserChoiceService.setUserChoice('cloud');
+                  navigation.navigate("SignUp");
+                }}
+                onChooseJustForMe={async () => {
+                  // Save choice and go directly to sandbox (no auth required)
+                  await UserChoiceService.setUserChoice('just_for_me');
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Sandbox' }],
+                  });
+                }}
               />
             );
           }}
@@ -331,10 +368,10 @@ export const AppNavigator: React.FC = () => {
                 safeGoBack(navigation);
               }}
               onSignInSuccess={() => {
-                // Navigate directly to Sandbox after successful login
+                // Navigate directly to Chat after successful login for authenticated users
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'Sandbox' }],
+                  routes: [{ name: 'Chat' }],
                 });
               }}
               onNavigateToSignUp={() => {
@@ -384,10 +421,10 @@ export const AppNavigator: React.FC = () => {
                   await UserOnboardingService.markOnboardingCompleted(user.id);
                 }
                 
-                console.log('💾 Experience level saved, navigating to Sandbox');
+                console.log('💾 Experience level saved, navigating to Chat');
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'Sandbox' }],
+                  routes: [{ name: 'Chat' }],
                 });
               }}
               onSignUp={() => navigation.navigate('SignUp')}

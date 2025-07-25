@@ -56,6 +56,11 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const loading = authLoading || localLoading;
 
   // Animation refs
+  // Staggered load-in animations
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const linkOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -70,10 +75,51 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   const passwordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Fast tech entry - no conflicting animations with navigation
+    // Staggered load-in sequence
+    const animateSequence = () => {
+      // Title first (200ms delay)
+      setTimeout(() => {
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 200);
+
+      // Form second (500ms delay)
+      setTimeout(() => {
+        Animated.timing(formOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 500);
+
+      // Button third (800ms delay)
+      setTimeout(() => {
+        Animated.timing(buttonOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 800);
+
+      // Link last (1100ms delay)
+      setTimeout(() => {
+        Animated.timing(linkOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 1100);
+    };
+
+    animateSequence();
+    
+    // Set legacy animations for compatibility
     fadeAnim.setValue(1);
     scaleAnim.setValue(1);
-    slideAnim.setValue(0); // Start in final position for navigation compatibility
+    slideAnim.setValue(0);
     
     return () => {
       // Cleanup on unmount
@@ -269,7 +315,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                   } : styles.glassmorphic
                 ]}>
                   {/*  header */}
-                  <View style={styles.header}>
+                  <Animated.View style={[styles.header, { opacity: titleOpacity }]}>
                     <Animated.Text
                       style={[
                         styles.title,
@@ -289,7 +335,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     <Text style={[
                       styles.subtitle, 
                       { 
-                        color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                        color: isDarkMode ? '#ffffff' : '#4a4a4a',
                         fontWeight: '600',
                         fontSize: 20,
                         marginBottom: 8
@@ -303,10 +349,10 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                         Numina
                       </Text>
                     </Text>
-                  </View>
+                  </Animated.View>
 
                   {/* Form Content */}
-                  <View style={styles.formContent}>
+                  <Animated.View style={[styles.formContent, { opacity: formOpacity }]}>
                     {/* Input fields */}
                     <View style={styles.inputGroup}>
                       <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
@@ -468,7 +514,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     </View>
 
                     {/* Sign In Button with Animation */}
-                    <View style={styles.buttonContainer}>
+                    <Animated.View style={[styles.buttonContainer, { opacity: buttonOpacity }]}>
                       <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
                         <TouchableOpacity
                           style={[
@@ -510,26 +556,28 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           </View>
                         </TouchableOpacity>
                       </Animated.View>
-                    </View>
+                    </Animated.View>
 
                     {/* Create Account Link */}
-                    <TouchableOpacity
-                      style={styles.linkButton}
-                      onPress={() => {
-                        // Light haptic for navigation
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        // Fast navigation - let navigation handle transition
-                        onNavigateToSignUp();
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[
-                        styles.linkText, 
-                        { color: isDarkMode ? '#cccccc' : '#b0b0b0' }
-                      ]}>
-                        Don't have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>up</Text>
-                      </Text>
-                    </TouchableOpacity>
+                    <Animated.View style={{ opacity: linkOpacity }}>
+                      <TouchableOpacity
+                        style={styles.linkButton}
+                        onPress={() => {
+                          // Light haptic for navigation
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          // Fast navigation - let navigation handle transition
+                          onNavigateToSignUp();
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.linkText, 
+                          { color: isDarkMode ? '#cccccc' : '#b0b0b0' }
+                        ]}>
+                          Don't have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#aaaaaa' : '#888888' }]}>up</Text>
+                        </Text>
+                      </TouchableOpacity>
+                    </Animated.View>
 
                       {/* Error Message */}
                       {error && (
@@ -565,7 +613,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                           </Text>
                         </Animated.View>
                       )}
-                    </View>
+                    </Animated.View>
                   </View>
                 </View>
               </Animated.View>

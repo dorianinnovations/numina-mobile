@@ -764,8 +764,8 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
     Animated.spring(attachmentButtonsAnim, {
       toValue: newVisibility ? 1 : 0,
       useNativeDriver: false,
-      tension: 300,
-      friction: 20,
+      tension: 200,
+      friction: 12,
     }).start();
   };
   
@@ -775,8 +775,8 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
       Animated.spring(attachmentButtonsAnim, {
         toValue: 1,
         useNativeDriver: false,
-        tension: 300,
-        friction: 20,
+        tension: 200,
+        friction: 12,
       }).start();
     } else {
       Animated.timing(attachmentButtonsAnim, {
@@ -854,6 +854,11 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
           borderColor: isDarkMode
             ? 'rgba(255, 255, 255, 0.1)'
             : 'rgba(0, 0, 0, 0.1)',
+          borderBottomColor: attachmentButtonsVisible 
+            ? 'transparent' 
+            : (isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'),
+          borderBottomLeftRadius: attachmentButtonsVisible ? 0 : 16,
+          borderBottomRightRadius: attachmentButtonsVisible ? 0 : 16,
         }
       ]}>
         <View style={styles.inputRow}>
@@ -1140,11 +1145,14 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
           styles.attachmentButtonsContainer,
           {
             backgroundColor: isDarkMode 
-              ? 'rgba(20, 20, 20, 0.95)' 
-              : 'rgba(255, 255, 255, 0.95)',
+              ? '#121212' 
+              : '#ffffff',
             borderColor: isDarkMode 
               ? 'rgba(255, 255, 255, 0.1)' 
               : 'rgba(0, 0, 0, 0.1)',
+            borderTopWidth: 0,
+            borderTopLeftRadius: 0,
+            borderTopRightRadius: 0,
             opacity: attachmentButtonsAnim,
             height: attachmentButtonsAnim.interpolate({
               inputRange: [0, 1],
@@ -1152,8 +1160,13 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
             }),
             transform: [{
               scaleY: attachmentButtonsAnim,
+            }, {
+              translateY: attachmentButtonsAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [-20, 0],
+              }),
             }],
-            marginBottom: attachmentButtonsVisible ? 8 : 0,
+            marginBottom: attachmentButtonsVisible ? 16 : 0,
           }
         ]}>
           {attachmentButtonsVisible && (
@@ -1445,8 +1458,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 24,
-    marginHorizontal: 4,
+    borderRadius: 12,
+    marginHorizontal: 0,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

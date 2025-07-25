@@ -163,40 +163,44 @@ const styles = StyleSheet.create({
 
   // Package Card Styles
   packageCard: {
-    flex: 1,
-    minWidth: '22%',
-    padding: 16,
+    width: '48%',
+    padding: 20,
     alignItems: 'center',
     position: 'relative',
+    minHeight: 120,
   },
   popularBadge: {
     position: 'absolute',
-    top: -8,
+    top: -10,
     backgroundColor: '#f59e0b',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 1,
   },
   popularText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   packageAmount: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '800',
-    marginBottom: 4,
+    marginBottom: 6,
+    marginTop: 8,
   },
   packagePrice: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
+    marginBottom: 4,
   },
   bonusText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: '#10b981',
-    marginTop: 4,
+    marginTop: 6,
+    textAlign: 'center',
   },
 
   // Discount Banner Styles

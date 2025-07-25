@@ -23,42 +23,40 @@ const TYPO_PATTERNS: Record<string, string[]> = {
 };
 
 const GHOST_TYPING_EXAMPLES = [
-  "explore my relationships with creativity",
-  "find patterns in my decision making",
-  "think about my career growth trajectory", 
-  "connect my emotions to daily routines",
-  "write about overcoming recent challenges",
-  "imagine my ideal work environment",
-  "analyze my communication patterns",
-  "discover hidden productivity habits",
-  "explore what motivates me most",
-  "find connections between my goals",
-  "think through my learning preferences",
-  "write about meaningful relationships",
-  "connect my values to actions",
-  "imagine breakthrough moments",
-  "analyze my stress responses",
-  "understand my perfectionist tendencies",
-  "explore creative blocks and breakthroughs",
-  "think about work-life boundaries",
-  "connect past experiences to present choices",
-  "write about moments of clarity",
-  "analyze my leadership style evolution",
-  "discover what drains my energy",
-  "imagine my future self's perspective",
-  "find patterns in my social interactions",
-  "explore financial mindset and habits",
-  "think about legacy and impact",
-  "connect childhood influences to adult behaviors",
-  "write about overcoming fear and doubt",
-  "analyze seasonal mood changes",
-  "discover my authentic voice and expression"
+  "What's been on your mind lately?",
+  "Tell me about something that made you smile today",
+  "What would you like to explore together?",
+  "Share something you've been curious about",
+  "What's one thing you're excited about right now?",
+  "I'm here to listen - what's going on?",
+  "What's something you've been thinking about?",
+  "How are you feeling in this moment?",
+  "What would make today feel meaningful?",
+  "Tell me about a recent moment of joy",
+  "What's something you'd like to understand better?",
+  "Share what's inspiring you lately",
+  "What's one thing you're grateful for today?",
+  "How can I help you think through something?",
+  "What's been challenging you recently?",
+  "Tell me about your hopes for tomorrow",
+  "What's something you've learned about yourself?",
+  "Share a thought that's been growing in your mind",
+  "What would you like to create or build?",
+  "How are you taking care of yourself today?",
+  "What's something you're proud of?",
+  "Tell me about a connection you've made recently",
+  "What questions are you sitting with?",
+  "Share something that's brought you peace",
+  "What's one way you've grown this week?",
+  "How are you navigating change in your life?",
+  "What's something you'd like to celebrate?",
+  "Tell me about your current perspective",
+  "What's alive in you right now?",
+  "Share what's calling your attention today"
 ];
 
 const getRandomStartIndex = () => {
-  const timestamp = Date.now();
-  const randomSeed = Math.sin(timestamp) * 10000;
-  return Math.floor((randomSeed - Math.floor(randomSeed)) * GHOST_TYPING_EXAMPLES.length);
+  return 0; // Always start with the first friendly message for new users
 };
 
 interface UseGhostTypingProps {
@@ -121,7 +119,7 @@ export const useGhostTyping = ({
       return;
     }
 
-    // Phase 1: Show solo blinking cursor to invite user interaction (4 seconds)
+    // Phase 1: Show solo blinking cursor briefly, then start typing immediately
     setShowingCursorOnly(true);
     setGhostText('');
     setIsTyping(false);
@@ -247,8 +245,8 @@ export const useGhostTyping = ({
             setGhostText('');
             setShowingCursorOnly(true); // Return to cursor-only phase
             setCurrentExampleIndex((prev) => (prev + 1) % GHOST_TYPING_EXAMPLES.length);
-            // Shorter pause before next ghost typing cycle (2-3 seconds)
-            typingTimeoutRef.current = setTimeout(startGhostTyping, 2000 + Math.random() * 1000);
+            // Shorter pause before next ghost typing cycle (3-4 seconds for better UX)
+            typingTimeoutRef.current = setTimeout(startGhostTyping, 3000 + Math.random() * 1000);
           }
         };
 
@@ -258,8 +256,8 @@ export const useGhostTyping = ({
       typeChar();
     };
 
-    // Phase 2: After 1.5 seconds total, start ghost typing
-    const ghostStartDelay = 1500 + Math.random() * 500; // 1.5-2 seconds
+    // Phase 2: Start ghost typing almost immediately for captivating first impression
+    const ghostStartDelay = 50; // Instantaneous start for new user experience
     typingTimeoutRef.current = setTimeout(startGhostTyping, ghostStartDelay);
 
     return () => {

@@ -37,14 +37,14 @@ interface LevelOption {
 const EXPERIENCE_LEVELS: LevelOption[] = [
   {
     id: 'private',
-    title: 'Lockdown',
-    description: 'Keep personal data fully private ',
+    title: 'Just for me',
+    description: 'Keep everything private and secure on your device',
     color: '#FFD99F',
   },
   {
     id: 'personal',
-    title: 'Cloud',
-    description: 'Sync to cloud, access Discover, Find, and more with provacy protection still in place',
+    title: 'Share & discover',
+    description: 'Connect to the cloud for enhanced features while staying protected',
     color: '#B0E3C8',
   },
 ];
@@ -57,7 +57,13 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
 }) => {
   const { isDarkMode } = useTheme();
   const [selectedLevel, setSelectedLevel] = useState<ExperienceLevel | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // Staggered load-in animations
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const optionsOpacity = useRef(new Animated.Value(0)).current;
+  const instructionOpacity = useRef(new Animated.Value(0)).current;
+  const skipOpacity = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   
@@ -65,6 +71,48 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Staggered load-in sequence
+    const animateSequence = () => {
+      // Title first (200ms delay)
+      setTimeout(() => {
+        Animated.timing(titleOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 200);
+
+      // Options second (500ms delay)
+      setTimeout(() => {
+        Animated.timing(optionsOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 500);
+
+      // Instruction third (800ms delay)
+      setTimeout(() => {
+        Animated.timing(instructionOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 800);
+
+      // Skip button last (1100ms delay)
+      setTimeout(() => {
+        Animated.timing(skipOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 1100);
+    };
+
+    animateSequence();
+    
+    // Set legacy animations for compatibility
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -78,19 +126,39 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
       }),
     ]).start();
     
-    // Start continuous RGB glow animation
-    Animated.loop(
+    // Start continuous RGB glow animation with cleanup
+    const glowAnimation = Animated.loop(
       Animated.timing(glowAnim, {
         toValue: 1,
         duration: 3000,
         useNativeDriver: false, // Can't use native driver for color interpolation
       })
-    ).start();
+    );
+    glowAnimation.start();
+    
+    return () => {
+      // Stop glow animation on unmount to prevent memory leaks
+      glowAnimation.stop();
+    };
   }, []);
 
   const handleLevelSelect = (level: ExperienceLevel) => {
     setSelectedLevel(level);
+    setShowConfirmModal(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleConfirm = () => {
+    if (selectedLevel) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      onSelectionComplete(selectedLevel);
+    }
+  };
+
+  const handleCancel = () => {
+    setSelectedLevel(null);
+    setShowConfirmModal(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleContinue = () => {
@@ -122,7 +190,7 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
             style={[
               styles.header,
               {
-                opacity: fadeAnim,
+                opacity: titleOpacity,
                 transform: [{ translateY: slideAnim }]
               }
             ]}
@@ -135,15 +203,17 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                   : { color: '#1a1a1abf', textShadowColor: 'rgba(0,0,0,0.04)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 }
               ]}
             >
-              Welcome
+              Let's get you started
             </Text>
-            <Text style={[styles.subtitle, { color: isDarkMode ? '#ffffff' : '#1a1a1a7a' }]}>Choose your experience level</Text>
+            <Text style={[styles.subtitle, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(26, 26, 26, 0.7)' }]}>
+              How would you like to use Numina?
+            </Text>
           </Animated.View>
           <Animated.View 
             style={[
               styles.optionsContainer,
               {
-                opacity: fadeAnim,
+                opacity: optionsOpacity,
                 transform: [{ translateY: slideAnim }]
               }
             ]}
@@ -163,14 +233,21 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                   style={[
                     styles.optionCard,
                     {
-                      backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-                      borderColor: isDarkMode ? '#262626' : '#e5e7eb',
-                      borderWidth: isDarkMode ? 1 : 0.5,
-                      shadowColor: isDarkMode ? '#000000' : '#f9fafb',
-                      shadowOpacity: isDarkMode ? 0.3 : 0.4,
-                      shadowRadius: isDarkMode ? 6 : 3,
-                      shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
-                      elevation: isDarkMode ? 6 : 3,
+                      backgroundColor: selectedLevel === option.id 
+                        ? (isDarkMode ? '#1a1a2e' : '#f0f8ff')
+                        : (isDarkMode ? '#0f0f0f' : '#ffffff'),
+                      borderColor: selectedLevel === option.id 
+                        ? option.color
+                        : (isDarkMode ? '#262626' : '#e5e7eb'),
+                      borderWidth: selectedLevel === option.id ? 2 : (isDarkMode ? 1 : 0.5),
+                      shadowColor: selectedLevel === option.id 
+                        ? option.color
+                        : (isDarkMode ? '#000000' : '#f9fafb'),
+                      shadowOpacity: selectedLevel === option.id ? 0.6 : (isDarkMode ? 0.3 : 0.4),
+                      shadowRadius: selectedLevel === option.id ? 12 : (isDarkMode ? 6 : 3),
+                      shadowOffset: { width: 0, height: selectedLevel === option.id ? 4 : (isDarkMode ? 2 : 1) },
+                      elevation: selectedLevel === option.id ? 10 : (isDarkMode ? 6 : 3),
+                      transform: selectedLevel === option.id ? [{ scale: 1.02 }] : [{ scale: 1 }],
                     }
                   ]}
                   onPress={() => handleLevelSelect(option.id)}
@@ -185,7 +262,9 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
                     <Text style={[
                       styles.optionTitle,
                       { 
-                        color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                        color: selectedLevel === option.id 
+                          ? option.color
+                          : (isDarkMode ? '#ffffff' : NuminaColors.darkMode[500]),
                         fontWeight: selectedLevel === option.id ? '700' : '600'
                       }
                     ]}>
@@ -205,67 +284,85 @@ export const ExperienceLevelSelector: React.FC<ExperienceLevelSelectorProps> = (
           </Animated.View>
           <Animated.View 
             style={[
-              styles.authButtonsContainer,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+              styles.instructionContainer,
+              { opacity: instructionOpacity, transform: [{ translateY: slideAnim }] }
             ]}
           >
-            <TouchableOpacity 
-              style={[
-                styles.authButton,
-                styles.signInButton,
-                { 
-                  backgroundColor: 'transparent',
-                  borderWidth: 1,
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)'
-                }
-              ]}
-              onPress={onSignIn}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.authButtonText,
-                { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : '#1a1a1abf' }
-              ]}>
-                Sign In
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.authButton,
-                styles.signUpButton,
-                { 
-                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.9)',
-                  borderColor: selectedLevel ? EXPERIENCE_LEVELS.find(l => l.id === selectedLevel)?.color : 'transparent',
-                  borderWidth: selectedLevel ? 2 : 0
-                }
-              ]}
-              onPress={onSignUp}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                styles.authButtonText,
-                { color: isDarkMode ? '#fff' : '#1a1a1abf' }
-              ]}>
-                Sign Up
-              </Text>
-            </TouchableOpacity>
+            <Text style={[
+              styles.instructionText,
+              { color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }
+            ]}>
+              Choose your preferred experience
+            </Text>
           </Animated.View>
           {onSkip && (
             <Animated.View 
               style={[
                 styles.skipContainer,
-                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+                { opacity: skipOpacity, transform: [{ translateY: slideAnim }] }
               ]}
             >
               <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
                 <Text style={[styles.skipText, { color: isDarkMode ? '#888' : '#666' }]}>
-                  Skip for now
+                  Maybe later
                 </Text>
               </TouchableOpacity>
             </Animated.View>
           )}
         </SafeAreaView>
       </PageBackground>
+      
+      {/* Confirmation Modal */}
+      {showConfirmModal && selectedLevel && (
+        <View style={styles.modalOverlay}>
+          <View style={[
+            styles.confirmModal,
+            { backgroundColor: isDarkMode ? '#1a1a1a' : '#ffffff' }
+          ]}>
+            <Text style={[
+              styles.modalTitle,
+              { color: EXPERIENCE_LEVELS.find(l => l.id === selectedLevel)?.color }
+            ]}>
+              {EXPERIENCE_LEVELS.find(l => l.id === selectedLevel)?.title}
+            </Text>
+            <Text style={[
+              styles.modalDescription,
+              { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }
+            ]}>
+              {EXPERIENCE_LEVELS.find(l => l.id === selectedLevel)?.description}
+            </Text>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.cancelButton,
+                  { borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.2)' }
+                ]}
+                onPress={handleCancel}
+              >
+                <Text style={[
+                  styles.modalButtonText,
+                  { color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }
+                ]}>
+                  Change
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modalButton,
+                  styles.confirmButton,
+                  { backgroundColor: EXPERIENCE_LEVELS.find(l => l.id === selectedLevel)?.color }
+                ]}
+                onPress={handleConfirm}
+              >
+                <Text style={styles.modalButtonText}>
+                  Continue
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -280,37 +377,47 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    
-    paddingTop: height * 0.05,
-    paddingBottom: 10,
+    paddingTop: height * 0.08,
+    paddingBottom: 40,
+  },
+  welcomeText: {
+    fontSize: 18,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: 0.2,
   },
   title: {
-    fontSize: 34,
+    fontSize: 28,
     fontWeight: '700',
     fontFamily: 'Nunito_700Bold',
     textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: -0.5,
+    marginBottom: 16,
+    letterSpacing: -0.3,
+    lineHeight: 36,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '400',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
     fontFamily: 'Nunito_400Regular',
+    paddingHorizontal: 20,
   },
   optionsContainer: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 8,
     justifyContent: 'center',
-    gap: 10,
+    gap: 16,
+    paddingTop: 20,
   },
   optionCardContainer: {
     borderRadius: 12,
   },
   optionCard: {
-    height: 80,
-    borderRadius: 12,
+    minHeight: 90,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   cardBlur: {
@@ -318,18 +425,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardContent: {
-    paddingHorizontal: 14,
-    paddingVertical: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
   },
   optionTitle: {
-    fontSize: 20,
-    marginBottom: 4,
-    letterSpacing: -0.3,
+    fontSize: 18,
+    marginBottom: 6,
+    letterSpacing: -0.2,
     fontFamily: 'Nunito_700Bold',
   },
   optionDescription: {
     fontSize: 14,
-    lineHeight: 18,
+    lineHeight: 20,
+    fontFamily: 'Nunito_400Regular',
+  },
+  instructionContainer: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    marginTop: 20,
+  },
+  instructionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    fontFamily: 'Nunito_500Medium',
   },
   continueContainer: {
     paddingVertical: 20,
@@ -353,20 +472,21 @@ const styles = StyleSheet.create({
   authButtonsContainer: {
     flexDirection: 'row',
     gap: 12,
-    paddingHorizontal: 10,
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 20,
   },
   authButton: {
     flex: 1,
-    height: 44,
-    borderRadius: 8,
+    height: 48,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   signUpButton: {},
   signInButton: {},
@@ -378,7 +498,7 @@ const styles = StyleSheet.create({
   },
   skipContainer: {
     alignItems: 'center',
-    paddingBottom: 20,
+    paddingBottom: 30,
   },
   skipButton: {
     paddingVertical: 12,
@@ -387,6 +507,74 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 15,
     fontWeight: '400',
+    fontFamily: 'Nunito_400Regular',
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  confirmModal: {
+    borderRadius: 16,
+    padding: 24,
+    minWidth: width * 0.8,
+    maxWidth: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+  },
+  confirmButton: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Nunito_600SemiBold',
+    color: '#ffffff',
   },
 });
 

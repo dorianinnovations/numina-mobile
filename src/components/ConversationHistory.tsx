@@ -540,7 +540,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <FontAwesome5 
                 name="plus" 
                 size={16} 
-                color={isDarkMode ? '#6ec5ff' : '#616161'} 
+                color={isDarkMode ? '#10b981' : '#059669'} 
               />
             </TouchableOpacity>
             {conversations.length > 0 && (
@@ -563,7 +563,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
                 <MaterialCommunityIcons 
                   name="trash-can-outline" 
                   size={16} 
-                  color={isDarkMode ? '#6ec5ff' : '#616161'} 
+                  color={isDarkMode ? '#ef4444' : '#dc2626'} 
                 />
               </TouchableOpacity>
             )}
@@ -587,7 +587,7 @@ export const ConversationHistory: React.FC<ConversationHistoryProps> = ({
               <FontAwesome5 
                 name="times" 
                 size={16} 
-                color={isDarkMode ? '#6ec5ff' : '#616161'} 
+                color={isDarkMode ? '#f59e0b' : '#d97706'} 
               />
             </TouchableOpacity>
           </View>
@@ -1042,8 +1042,8 @@ const styles = StyleSheet.create({
   },
   conversationBlur: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 60,
+    paddingVertical: 8,
+    minHeight: 52,
     borderRadius: 16,
     overflow: 'hidden',
   },

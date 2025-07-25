@@ -134,15 +134,23 @@ export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
     }
   };
 
-  const handleSignOutConfirm = async () => {
+  const handleSignOutConfirm = () => {
     try {
-      await logout();
+      logout();
       setShowSignOutModal(false);
-      // The AppNavigator will automatically redirect to Hero screen
-      // when isAuthenticated becomes false
+      // Explicitly navigate to Hero screen after logout
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hero' }],
+      });
     } catch (error) {
       console.error('Logout error:', error);
       setShowSignOutModal(false);
+      // Still navigate to Hero even if logout fails
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hero' }],
+      });
     }
   };
 

@@ -492,7 +492,7 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                   {
                     backgroundColor: isSelected
                       ? action.color
-                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'),
+                      : (isDarkMode ? 'rgba(255,255,255,0.05)' : (isInputFocused ? '#ffffff' : 'rgba(0,0,0,0.05)')),
                     borderColor: isSelected
                       ? action.color
                       : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 20,
+    borderRadius: 10,
     borderWidth: 1,
     gap: 6,
     overflow: 'hidden',

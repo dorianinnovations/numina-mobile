@@ -228,7 +228,7 @@ export const QuickAnalyticsModal: React.FC<QuickAnalyticsModalProps> = ({
                 <View key={categoryIndex} style={styles.queryCategory}>
                   <Text style={[
                     styles.categoryTitle,
-                    { color: isDarkMode ? '#71c9fc' : '#4a90e2' }
+                    { color: isDarkMode ? '#fbbf24' : '#f59e0b' }
                   ]}>
                     {category.category}
                   </Text>
@@ -254,7 +254,7 @@ export const QuickAnalyticsModal: React.FC<QuickAnalyticsModalProps> = ({
                       <FontAwesome5
                         name="arrow-right"
                         size={11}
-                        color={isDarkMode ? '#71c9fc' : '#4a90e2'}
+                        color={isDarkMode ? '#fbbf24' : '#f59e0b'}
                         style={{ marginLeft: 6 }}
                       />
                     </TouchableOpacity>

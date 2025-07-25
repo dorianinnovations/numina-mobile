@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,15 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { 
   Feather, 
   MaterialCommunityIcons
 } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/SimpleAuthContext';
+import { log } from '../utils/logger';
 import { PageBackground } from '../components/ui/PageBackground';
 import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { BaseWalletCard } from '../components/cards/WalletCard';
@@ -25,7 +28,7 @@ interface AnalyticsScreenProps {
 }
 
 const categories = [
-  { id: 'all', label: 'Overview', icon: 'brain', color: '#8B5CF6' },
+  { id: 'all', label: 'Overview', icon: 'grid', color: '#8B5CF6' },
   { id: 'communication', label: 'Communication', icon: 'message-circle', color: '#3B82F6' },
   { id: 'personality', label: 'Personality', icon: 'users', color: '#22C55E' },
   { id: 'behavioral', label: 'Behavioral', icon: 'activity', color: '#F59E0B' },
@@ -54,6 +57,20 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
   onNavigateBack
 }) => {
   const { isDarkMode } = useTheme();
+  const { isAuthenticated } = useAuth();
+  const navigation = useNavigation();
+  
+  // Authentication guard - redirect if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      log.warn('Unauthorized access to AnalyticsScreen - redirecting to Hero', null, 'AnalyticsScreen');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Hero' }],
+      });
+      return;
+    }
+  }, [isAuthenticated, navigation]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const scrollY = useRef(new Animated.Value(0)).current;
   
@@ -278,7 +295,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
                     { backgroundColor: `${categoryInfo?.color || '#8B5CF6'}20` }
                   ]}>
                     <Feather 
-                      name={categoryInfo?.icon as any || 'brain'} 
+                      name={categoryInfo?.icon as any || 'grid'} 
                       size={16} 
                       color={categoryInfo?.color || '#8B5CF6'} 
                     />

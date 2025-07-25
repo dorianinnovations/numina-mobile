@@ -11,7 +11,7 @@ import {
   SafeAreaView,
   PanResponder,
 } from 'react-native';
-import { FontAwesome5 } from '@expo/vector-icons';
+import { FontAwesome5, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ToolExecution } from '../../services/toolExecutionService';
@@ -476,7 +476,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
           style={[
             styles.modalContainer,
             {
-              backgroundColor: isDarkMode ? '#121212' : '#ffffff',
+              backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff',
               borderColor: isDarkMode
                 ? 'rgba(255, 255, 255, 0.1)'
                 : 'rgba(0, 0, 0, 0.1)',
@@ -498,7 +498,7 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
           <LinearGradient
             colors={
               isDarkMode
-                ? ['#121212', '#0f0f0f']
+                ? ['#0a0a0a', '#080808']
                 : ['#ffffff', '#f8fafc']
             }
             style={styles.modalContent}
@@ -521,10 +521,10 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
               {modalState !== 'small' && (
                 <View style={styles.header}>
                 <View style={styles.headerLeft}>
-                  <FontAwesome5
-                    name="bolt"
+                  <Feather
+                    name="zap"
                     size={20}
-                    color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                    color={isDarkMode ? '#98fb98' : '#22c55e'}
                   />
                   <Text style={[
                     styles.headerTitle,
@@ -551,10 +551,10 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
               {modalState === 'small' && (
                 <View style={styles.smallCardContent}>
                   <View style={styles.smallCardInfo}>
-                    <FontAwesome5
-                      name="bolt"
+                    <Feather
+                      name="zap"
                       size={16}
-                      color={isDarkMode ? '#71c9fc' : '#71c9fc'}
+                      color={isDarkMode ? '#98fb98' : '#22c55e'}
                     />
                     <Text style={[
                       styles.smallCardTitle,
@@ -577,43 +577,67 @@ export const ToolExecutionModal: React.FC<ToolExecutionModalProps> = ({
 
               {/* Status Summary - Only show in large/full/very-large states */}
               {modalState !== 'small' && (
-                <View style={styles.statusSummary}>
-                <View style={styles.statusItem}>
+                <View style={[
+                  styles.statusSummary,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                    borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)',
+                  }
+                ]}>
+                <View style={[
+                  styles.statusItem,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(145, 145, 145, 0.1)' : 'rgba(145, 145, 145, 0.08)',
+                    borderColor: isDarkMode ? 'rgba(145, 145, 145, 0.2)' : 'rgba(145, 145, 145, 0.15)',
+                  }
+                ]}>
                   <FontAwesome5
                     name="cog"
-                    size={14}
+                    size={12}
                     color={getStatusColor('executing')}
                   />
                   <Text style={[
                     styles.statusText,
-                    { color: isDarkMode ? '#d1d5db' : '#4b5563' }
+                    { color: isDarkMode ? '#e5e7eb' : '#374151' }
                   ]}>
                     {activeExecutions.length} Active
                   </Text>
                 </View>
-                <View style={styles.statusItem}>
+                <View style={[
+                  styles.statusItem,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(52, 211, 153, 0.1)' : 'rgba(16, 185, 129, 0.08)',
+                    borderColor: isDarkMode ? 'rgba(52, 211, 153, 0.2)' : 'rgba(16, 185, 129, 0.15)',
+                  }
+                ]}>
                   <FontAwesome5
                     name="check-circle"
-                    size={14}
+                    size={12}
                     color={getStatusColor('completed')}
                   />
                   <Text style={[
                     styles.statusText,
-                    { color: isDarkMode ? '#d1d5db' : '#4b5563' }
+                    { color: isDarkMode ? '#e5e7eb' : '#374151' }
                   ]}>
                     {completedExecutions.length} Complete
                   </Text>
                 </View>
                 {failedExecutions.length > 0 && (
-                  <View style={styles.statusItem}>
+                  <View style={[
+                    styles.statusItem,
+                    {
+                      backgroundColor: isDarkMode ? 'rgba(248, 113, 113, 0.1)' : 'rgba(239, 68, 68, 0.08)',
+                      borderColor: isDarkMode ? 'rgba(248, 113, 113, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                    }
+                  ]}>
                     <FontAwesome5
                       name="exclamation-circle"
-                      size={14}
+                      size={12}
                       color={getStatusColor('error')}
                     />
                     <Text style={[
                       styles.statusText,
-                      { color: isDarkMode ? '#d1d5db' : '#4b5563' }
+                      { color: isDarkMode ? '#e5e7eb' : '#374151' }
                     ]}>
                       {failedExecutions.length} Failed
                     </Text>
@@ -843,12 +867,11 @@ const styles = StyleSheet.create({
   },
   statusSummary: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    justifyContent: 'center',
   },
   headerRight: {
     flexDirection: 'row',
@@ -859,10 +882,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    minWidth: 80,
+    justifyContent: 'center',
   },
   statusText: {
-    fontSize: 13,
-    fontWeight: '500',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   scrollContainer: {
     flex: 1,

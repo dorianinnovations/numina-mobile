@@ -727,10 +727,10 @@ export const InfiniteNodeCanvas: React.FC<InfiniteNodeCanvasProps> = ({
           }
         ]}>
           {/* Subtle grid pattern */}
-          {Array.from({ length: Math.ceil(CANVAS_CONFIG.VIRTUAL_WIDTH / 100) }).map((_, i) =>
-            Array.from({ length: Math.ceil(CANVAS_CONFIG.VIRTUAL_HEIGHT / 100) }).map((_, j) => (
+          {Array.from({ length: Math.ceil(CANVAS_CONFIG.VIRTUAL_WIDTH / 100) }, (_, i) =>
+            Array.from({ length: Math.ceil(CANVAS_CONFIG.VIRTUAL_HEIGHT / 100) }, (_, j) => (
               <View
-                key={`${i}-${j}`}
+                key={`grid_${i}_${j}`}
                 style={[
                   styles.gridDot,
                   {
@@ -743,11 +743,15 @@ export const InfiniteNodeCanvas: React.FC<InfiniteNodeCanvasProps> = ({
                 ]}
               />
             ))
-          )}
+          ).flat()}
         </View>
 
         {/* Render only visible nodes */}
-        {visibleNodes.map(renderNode)}
+        {visibleNodes.map((node) => (
+          <React.Fragment key={`node_${node.id}`}>
+            {renderNode(node)}
+          </React.Fragment>
+        ))}
       </ScrollView>
 
       {/* Floating instructions */}

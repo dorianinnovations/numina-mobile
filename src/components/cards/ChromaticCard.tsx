@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import MaskedView from '@react-native-masked-view/masked-view';
 import { ShineEffect } from '../effects/ShineEffect';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ChromaticCardProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export const ChromaticCard: React.FC<ChromaticCardProps> = ({
   style,
   isActive = false 
 }) => {
+  const { isDarkMode } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -107,8 +109,8 @@ export const ChromaticCard: React.FC<ChromaticCardProps> = ({
         <View style={[
           styles.innerContent,
           {
-            backgroundColor: '#0a0a0a',
-            borderColor: '#333333',
+            backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+            borderColor: isDarkMode ? '#333333' : '#e5e7eb',
             borderWidth: 1,
           }
         ]}>

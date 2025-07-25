@@ -27,21 +27,32 @@ export const EnhancedSpinner: React.FC<EnhancedSpinnerProps> = ({
   ).current;
 
   // Base rotation animation - much faster spin speed
+  const rotationAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
   useEffect(() => {
     const duration = type === 'holographic' ? 300 : 400; // Much faster spin speed
     
     const startRotation = () => {
-      Animated.loop(
+      rotationAnimationRef.current = Animated.loop(
         Animated.timing(rotationValue, {
           toValue: 1,
           duration,
           useNativeDriver: true,
         })
-      ).start();
+      );
+      rotationAnimationRef.current.start();
     };
     
     // Start immediately for responsive feel
     startRotation();
+    
+    return () => {
+      // Stop rotation animation on unmount
+      if (rotationAnimationRef.current) {
+        rotationAnimationRef.current.stop();
+        rotationAnimationRef.current = null;
+      }
+    };
   }, [type]);
 
   // Success morphing animation

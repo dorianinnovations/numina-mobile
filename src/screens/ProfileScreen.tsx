@@ -54,6 +54,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   
+  // Staggered load-in animations
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const editButtonOpacity = useRef(new Animated.Value(0)).current;
+  const profileContentOpacity = useRef(new Animated.Value(0)).current;
+  
   // Animation values
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const containerScale = useRef(new Animated.Value(0.3)).current;
@@ -76,6 +81,37 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   });
 
   useEffect(() => {
+    // Staggered load-in sequence
+    const animateSequence = () => {
+      // Header first (200ms delay)
+      setTimeout(() => {
+        Animated.timing(headerOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 200);
+
+      // Edit button second (500ms delay)
+      setTimeout(() => {
+        Animated.timing(editButtonOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 500);
+
+      // Profile content third (800ms delay)
+      setTimeout(() => {
+        Animated.timing(profileContentOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 800);
+    };
+
+    animateSequence();
     loadProfile();
   }, []);
 
@@ -305,6 +341,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       showMenuButton={true}
       title={editMode ? 'Edit Profile' : 'Profile'}
       onBackPress={onNavigateBack}
+      headerOpacity={headerOpacity}
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -315,7 +352,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           />
           
           {/* Edit Button */}
-          <View style={styles.headerButtonContainer}>
+          <Animated.View style={[styles.headerButtonContainer, { opacity: editButtonOpacity }]}>
             <TouchableOpacity
               style={[
                 styles.headerButton,
@@ -340,7 +377,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 color={isDarkMode ? '#99CCFF' : '#3e98ff'} 
               />
             </TouchableOpacity>
-          </View>
+          </Animated.View>
 
         <View style={styles.contentContainer}>
           <ScrollView 
@@ -357,6 +394,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               />
             }
           >
+            <Animated.View style={{ opacity: profileContentOpacity }}>
             {/* Profile Header */}
             <View style={styles.profileHeader}>
             <TouchableOpacity 
@@ -471,6 +509,7 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
               )}
             </View>
           </View>
+            </Animated.View>
           </ScrollView>
         </View>
         </SafeAreaView>

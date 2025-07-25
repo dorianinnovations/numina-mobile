@@ -150,17 +150,17 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
                     )}
                   </View>
                 </View>
-                <Text style={styles.tierDesc}>
+                <Text style={[styles.tierDesc, { color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }]}>
                   Limited messaging and standard models
                 </Text>
                 <View style={styles.tierFeatures}>
                   <View style={styles.featureRow}>
                     <FontAwesome5 name="check" size={12} color="#94a3b8" />
-                    <Text style={styles.featureText}>100 messages/month</Text>
+                    <Text style={[styles.featureText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>100 messages/month</Text>
                   </View>
                   <View style={styles.featureRow}>
                     <FontAwesome5 name="check" size={12} color="#94a3b8" />
-                    <Text style={styles.featureText}>GPT-3.5 & Claude-3</Text>
+                    <Text style={[styles.featureText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>GPT-3.5 & Claude-3</Text>
                   </View>
                 </View>
               </ChromaticCard>
@@ -187,21 +187,21 @@ export const WalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack }) =>
                     )}
                   </View>
                 </View>
-                <Text style={styles.tierDesc}>
+                <Text style={[styles.tierDesc, { color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.7)' }]}>
                   Unlimited messaging, cutting-edge models, 50% credit discount
                 </Text>
                 <View style={styles.tierFeatures}>
                   <View style={styles.featureRow}>
                     <FontAwesome5 name="infinity" size={12} color="#a855f7" />
-                    <Text style={styles.featureText}>Unlimited messages</Text>
+                    <Text style={[styles.featureText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>Unlimited messages</Text>
                   </View>
                   <View style={styles.featureRow}>
                     <FontAwesome5 name="rocket" size={12} color="#a855f7" />
-                    <Text style={styles.featureText}>GPT-4o, Claude Opus 4, Grok 4</Text>
+                    <Text style={[styles.featureText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>GPT-4o, Claude Opus 4, Grok 4</Text>
                   </View>
                   <View style={styles.featureRow}>
                     <FontAwesome5 name="percentage" size={12} color="#a855f7" />
-                    <Text style={styles.featureText}>50% credit discount</Text>
+                    <Text style={[styles.featureText, { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.8)' }]}>50% credit discount</Text>
                   </View>
                 </View>
                 {currentTier !== 'aether' && (
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 80,
     padding: 20,
-    gap: 32,
+    gap: 40,
   },
   
   // Credits
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   tiers: {
     gap: 16,
@@ -370,11 +370,12 @@ const styles = StyleSheet.create({
 
   // Packages
   packages: {
-    gap: 16,
+    gap: 20,
   },
   packageGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 16,
+    justifyContent: 'space-between',
   },
 });

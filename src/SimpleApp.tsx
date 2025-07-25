@@ -19,14 +19,20 @@ const SmoothLoader: React.FC = () => {
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const rotationAnimation = Animated.loop(
       Animated.timing(rotateAnim, {
         toValue: 1,
         duration: 600,
         easing: Easing.linear,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    rotationAnimation.start();
+    
+    return () => {
+      // Stop rotation animation on unmount to prevent memory leaks
+      rotationAnimation.stop();
+    };
   }, []);
 
   const rotation = rotateAnim.interpolate({

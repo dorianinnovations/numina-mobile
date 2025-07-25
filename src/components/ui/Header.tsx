@@ -117,7 +117,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [showQuickAnalyticsButton]);
   
   useEffect(() => {
-    const targetOpacity = isVisible ? 1 : 0.3;
+    const targetOpacity = isVisible ? 1 : 0;
     
     visibilityAnim.stopAnimation();
     
@@ -448,11 +448,11 @@ export const Header: React.FC<HeaderProps> = ({
           borderWidth: 1,
           borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.3)',
           backgroundColor: isDarkMode ? 'rgb(9, 9, 9)' : 'rgb(255, 255, 255)',
-          shadowColor: isDarkMode ? 'transparent' : '#000000',
-          shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
-          shadowOpacity: isDarkMode ? 0 : 0.1,
-          shadowRadius: isDarkMode ? 0 : 4,
-          elevation: isDarkMode ? 0 : 3,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 1.0,
+          shadowRadius: 6,
+          elevation: 8,
         },
       ]}
     >
@@ -478,7 +478,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Text style={[
               styles.numinaText,
               {
-                color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                color: isDarkMode ? '#ffffff' : '#666666',
                 textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
                 textShadowOffset: { width: 0, height: 1 },
                 textShadowRadius: isDarkMode ? 3 : 2,
@@ -543,7 +543,7 @@ export const Header: React.FC<HeaderProps> = ({
                         shadowOpacity: conversationsButtonShadowOpacity,
                         shadowRadius: conversationsButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: showBackButton ? 8 : 0,
+                        marginLeft: showBackButton ? 4 : 0,
                       }
                     ]}
                   >
@@ -574,7 +574,7 @@ export const Header: React.FC<HeaderProps> = ({
                         shadowOpacity: brainButtonShadowOpacity,
                         shadowRadius: brainButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: (showBackButton || showConversationsButton) ? 8 : 0,
+                        marginLeft: (showBackButton || showConversationsButton) ? 4 : 0,
                       }
                     ]}
                   >
@@ -583,10 +583,10 @@ export const Header: React.FC<HeaderProps> = ({
                       onPress={handleBrainButtonPress}
                       activeOpacity={0.8}
                     >
-                      <FontAwesome5
-                        name="chart-line"
+                      <MaterialCommunityIcons
+                        name="lightning-bolt"
                         size={16}
-                        color={isDarkMode ? '#ff9ff3' : '#ec4899'}
+                        color={isDarkMode ? '#fbbf24' : '#f59e0b'}
                         style={{
                           opacity: brainPressed ? 0.7 : 1,
                         }}
@@ -608,7 +608,7 @@ export const Header: React.FC<HeaderProps> = ({
                         shadowOpacity: menuButtonShadowOpacity,
                         shadowRadius: menuButtonShadowRadius,
                         elevation: 1,
-                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 8 : 0,
+                        marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 4 : 0,
                       }
                     ]}
                   >
@@ -638,6 +638,11 @@ export const Header: React.FC<HeaderProps> = ({
           styles.header,
           {
             opacity: visibilityAnim,
+            shadowColor: '#000000',
+            shadowOffset: { width: 2, height: 4 },
+            shadowOpacity: Animated.multiply(visibilityAnim, 0.3),
+            shadowRadius: 8,
+            elevation: 3,
           },
           style,
         ]}
@@ -657,11 +662,11 @@ export const Header: React.FC<HeaderProps> = ({
                     borderWidth: 1,
                     borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.3)',
                     backgroundColor: isDarkMode ? 'rgba(0,0,0,0.02)' : 'rgb(255, 255, 255)',
-                    shadowColor: isDarkMode ? 'transparent' : '#000000',
-                    shadowOffset: isDarkMode ? { width: 0, height: 0 } : { width: 0, height: 2 },
-                    shadowOpacity: isDarkMode ? 0 : 0.1,
-                    shadowRadius: isDarkMode ? 0 : 4,
-                    elevation: isDarkMode ? 0 : 3,
+                    shadowColor: '#000000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 1.0,
+                    shadowRadius: 6,
+                    elevation: 8,
                   },
                 ]}
               >
@@ -687,7 +692,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <Text style={[
                       styles.numinaText,
                       {
-                        color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                        color: isDarkMode ? '#ffffff' : '#666666',
                         textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
                         textShadowOffset: { width: 0, height: 1 },
                         textShadowRadius: isDarkMode ? 3 : 2,
@@ -700,7 +705,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <Text style={[
                       styles.headerSubtitle,
                       { 
-                        color: isDarkMode ? '#888888' : '#666666',
+                        color: isDarkMode ? '#888888' : '#888888',
                         marginLeft: 4,
                       }
                     ]}>
@@ -752,7 +757,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 shadowOpacity: conversationsButtonShadowOpacity,
                                 shadowRadius: conversationsButtonShadowRadius,
                                 elevation: 1,
-                                marginLeft: showBackButton ? 8 : 0,
+                                marginLeft: showBackButton ? 4 : 0,
                               }
                             ]}
                           >
@@ -783,7 +788,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 shadowOpacity: brainButtonShadowOpacity,
                                 shadowRadius: brainButtonShadowRadius,
                                 elevation: 1,
-                                marginLeft: (showBackButton || showConversationsButton) ? 8 : 0,
+                                marginLeft: (showBackButton || showConversationsButton) ? 4 : 0,
                               }
                             ]}
                           >
@@ -792,10 +797,10 @@ export const Header: React.FC<HeaderProps> = ({
                               onPress={handleBrainButtonPress}
                               activeOpacity={0.8}
                             >
-                              <FontAwesome5
-                                name="chart-line"
+                              <MaterialCommunityIcons
+                                name="lightning-bolt"
                                 size={16}
-                                color={isDarkMode ? '#ff9ff3' : '#ec4899'}
+                                color={isDarkMode ? '#fbbf24' : '#f59e0b'}
                                 style={{
                                   opacity: brainPressed ? 0.7 : 1,
                                 }}
@@ -817,7 +822,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 shadowOpacity: menuButtonShadowOpacity,
                                 shadowRadius: menuButtonShadowRadius,
                                 elevation: 1,
-                                marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 8 : 0,
+                                marginLeft: (showBackButton || showConversationsButton || showQuickAnalyticsButton) ? 4 : 0,
                               }
                             ]}
                           >

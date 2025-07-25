@@ -53,12 +53,24 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
+  // Simple fade-in animation - no staggered complexity
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  
   // Animation values for delete modal
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const containerScale = useRef(new Animated.Value(0.3)).current;
   const containerOpacity = useRef(new Animated.Value(0)).current;
   const trashScale = useRef(new Animated.Value(1)).current;
   const checkOpacity = useRef(new Animated.Value(0)).current;
+
+  // Simple fade-in animation on mount
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, []);
 
   // Load settings on mount (only if authenticated)
   useEffect(() => {
@@ -68,6 +80,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
       setLoading(false);
     }
   }, [isAuthenticated]);
+
 
   const loadSettings = async () => {
     try {
@@ -668,7 +681,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   
   const settingsSections = getSettingsSections();
 
-  const renderSettingItem = (item: any, index: number) => {
+  const renderSettingItem = (item: any, index: number, sectionIndex: number) => {
     const handleSwitchToggle = (value: boolean) => {
       if (item.onToggle) {
         item.onToggle(value);
@@ -819,8 +832,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
     }
 
     return (
-      <TouchableOpacity
-        key={index}
+      <View key={index}>
+        <TouchableOpacity
         style={[
           styles.settingItem,
           {
@@ -862,11 +875,14 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           <Switch
             value={item.value}
             onValueChange={handleSwitchToggle}
-            trackColor={{ false: '#767577', true: '#6ec5ff' }}
-            thumbColor={item.value ? '#6ec5ff' : '#f4f3f4'}
+            trackColor={{ 
+              false: isDarkMode ? '#2a2a2a' : '#e5e7eb', 
+              true: isDarkMode ? '#6b7280' : '#9ca3af' 
+            }}
+            thumbColor={item.value ? '#ffffff' : '#ffffff'}
+            ios_backgroundColor={isDarkMode ? '#2a2a2a' : '#e5e7eb'}
             style={{ 
-              transform: [{ scaleX: 1.2 }, { scaleY: 1.2 }],
-              borderRadius: 4,
+              transform: [{ scaleX: 1.0 }, { scaleY: 0.9 }],
             }}
           />
         ) : (
@@ -876,7 +892,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             color={isDarkMode ? '#666666' : '#999999'} 
           />
         )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -902,19 +919,21 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
             isAuthenticated ? <RefreshControl {...refreshControlProps} /> : undefined
           }
         >
-          {settingsSections.map((section, sectionIndex) => (
-            <View key={sectionIndex} style={styles.section}>
-              <Text style={[
-                styles.sectionTitle,
-                { color: isDarkMode ? '#ffffff' : '#000000' }
-              ]}>
-                {section.title}
-              </Text>
-              <View style={styles.sectionItems}>
-                {section.items.map((item, itemIndex) => renderSettingItem(item, itemIndex))}
+          <Animated.View style={{ opacity: fadeAnim }}>
+            {settingsSections.map((section, sectionIndex) => (
+              <View key={sectionIndex} style={styles.section}>
+                <Text style={[
+                  styles.sectionTitle,
+                  { color: isDarkMode ? '#ffffff' : '#000000' }
+                ]}>
+                  {section.title}
+                </Text>
+                <View style={styles.sectionItems}>
+                  {section.items.map((item, itemIndex) => renderSettingItem(item, itemIndex, sectionIndex))}
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </Animated.View>
         </ScrollView>
 
         {/* Delete Account Modal */}
@@ -1088,14 +1107,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 8,
     borderWidth: 1,
-    padding: 16,
-    height: 38 * 1.8, 
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 38 * 1.6, 
   },
   sliderItem: {
     height: 'auto',
-    minHeight: 38 * 2.2,
+    minHeight: 38 * 1.8,
     alignItems: 'flex-start',
-    paddingVertical: 20,
+    paddingVertical: 14,
   },
   settingIcon: {
     width: 32,

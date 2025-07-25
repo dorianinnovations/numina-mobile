@@ -354,9 +354,9 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       subtitle="Collaborative discovery environment"
       onBackPress={onNavigateBack}
       headerProps={{
+        isVisible: !isInputFocused,
         style: {
           top: Platform.OS === 'ios' ? 50 : 15,
-          opacity: headerOpacityAnim,
         },
       }}
     >

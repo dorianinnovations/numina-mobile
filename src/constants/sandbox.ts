@@ -142,5 +142,5 @@ export const SUCCESS_MESSAGES = {
 
 // Processing messages
 export const PROCESSING_MESSAGES = {
-  WEAVING_CONNECTIONS: 'Weaving connections through your consciousness...',
+  WEAVING_CONNECTIONS: 'Thinking about this...',
 } as const; 

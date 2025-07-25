@@ -30,38 +30,30 @@ const numinaMoonImage = require('../../assets/unknownuser2.jpg');
 interface HeroLandingScreenProps {
   onNavigateToExperience: () => void;
   onNavigateToSignIn: () => void;
+  onNavigateToSignUp: () => void;
+  onChooseCloud: () => void;
+  onChooseJustForMe: () => void;
 }
 
 export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   onNavigateToExperience,
   onNavigateToSignIn,
+  onNavigateToSignUp,
+  onChooseCloud,
+  onChooseJustForMe,
 }) => {
   const { theme, isDarkMode } = useTheme();
   
-  // Main content animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const characterOpacity = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  
-  // Gentle staggered button animations
-  const exploreButtonOpacity = useRef(new Animated.Value(0)).current;
-  const exploreButtonY = useRef(new Animated.Value(16)).current;
-  
-  
-  const signInButtonOpacity = useRef(new Animated.Value(0)).current;
-  const signInButtonY = useRef(new Animated.Value(16)).current;
-  
-  // Subtle title animations
+  // Staggered load-in animations - start from invisible
   const titleOpacity = useRef(new Animated.Value(0)).current;
-  const titleY = useRef(new Animated.Value(12)).current;
-  
   const brandOpacity = useRef(new Animated.Value(0)).current;
-  const brandY = useRef(new Animated.Value(16)).current;
+  const exploreButtonOpacity = useRef(new Animated.Value(0)).current;
+  const signInButtonOpacity = useRef(new Animated.Value(0)).current;
+  const characterOpacity = useRef(new Animated.Value(0)).current;
   
   // Button press animations (kept separate)
   const exploreButtonPressScale = useRef(new Animated.Value(1)).current;
+  const justForMeButtonPressScale = useRef(new Animated.Value(1)).current;
   const signInButtonPressScale = useRef(new Animated.Value(1)).current;
   
   // Pastel RGB moving glow animation for explore button
@@ -71,110 +63,70 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
 
   useEffect(() => {
-    // IMMEDIATE VISIBILITY FIX: Set all elements visible first, then animate
-    fadeAnim.setValue(1);
-    scaleAnim.setValue(1);
-    slideAnim.setValue(0);
-    titleOpacity.setValue(1);
-    titleY.setValue(0);
-    brandOpacity.setValue(1);
-    brandY.setValue(0);
-    exploreButtonOpacity.setValue(1);
-    exploreButtonY.setValue(0);
-    signInButtonOpacity.setValue(1);
-    signInButtonY.setValue(0);
-    characterOpacity.setValue(1);
-
-    Animated.sequence([
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleAnim, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-      
-      Animated.parallel([
+    // Staggered load-in sequence with smooth opacity transitions
+    const animateSequence = () => {
+      // Title first (300ms delay)
+      setTimeout(() => {
         Animated.timing(titleOpacity, {
           toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(titleY, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-      
-      Animated.parallel([
-        Animated.timing(brandOpacity, {
-          toValue: 1,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(brandY, {
-          toValue: 0,
           duration: 600,
           useNativeDriver: true,
-        }),
-      ]),
-      
-      Animated.timing(characterOpacity, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      
-      Animated.stagger(200, [
-        Animated.parallel([
-          Animated.timing(exploreButtonOpacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(exploreButtonY, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]),
-        
-        
-        // Sign In button
-        Animated.parallel([
-          Animated.timing(signInButtonOpacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(signInButtonY, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]),
-      ]),
-    ]).start();
+        }).start();
+      }, 300);
 
-    // Start continuous RGB glow animation for explore button
-    Animated.loop(
+      // Brand name second (600ms delay) 
+      setTimeout(() => {
+        Animated.timing(brandOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 600);
+
+      // Explore button third (900ms delay)
+      setTimeout(() => {
+        Animated.timing(exploreButtonOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 900);
+
+      // Sign in button fourth (1200ms delay)
+      setTimeout(() => {
+        Animated.timing(signInButtonOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 1200);
+
+      // Character last (1500ms delay)
+      setTimeout(() => {
+        Animated.timing(characterOpacity, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start();
+      }, 1500);
+    };
+
+    animateSequence();
+
+    // Start continuous RGB glow animation for explore button with cleanup
+    const exploreGlowAnimation = Animated.loop(
       Animated.timing(exploreGlowAnim, {
         toValue: 1,
         duration: 3000,
         useNativeDriver: false, // Can't use native driver for color interpolation
       })
-    ).start();
+    );
+    exploreGlowAnimation.start();
+    
+    return () => {
+      // Stop glow animation on unmount to prevent memory leaks
+      exploreGlowAnimation.stop();
+    };
   }, []);
 
   // Create animated pastel RGB glow for explore button
@@ -191,10 +143,9 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   };
 
 
-  const handleExploreButtonPress = () => {
+  const handleCloudButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate immediately, run animation in background
-    onNavigateToExperience();
+    onChooseCloud();
     Animated.sequence([
       Animated.timing(exploreButtonPressScale, {
         toValue: 0.95,
@@ -202,6 +153,24 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         useNativeDriver: true,
       }),
       Animated.spring(exploreButtonPressScale, {
+        toValue: 1,
+        tension: 200,
+        friction: 6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handleJustForMeButtonPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onChooseJustForMe();
+    Animated.sequence([
+      Animated.timing(justForMeButtonPressScale, {
+        toValue: 0.95,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.spring(justForMeButtonPressScale, {
         toValue: 1,
         tension: 200,
         friction: 6,
@@ -229,10 +198,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     ]).start();
   };
 
-  const iconRotation = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
 
 
 
@@ -260,27 +225,13 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
 
       {/* Main Content */}
-      <Animated.View
-        style={[
-          styles.content,
-          {
-            opacity: fadeAnim,
-            transform: [
-              { translateY: slideAnim },
-              { scale: scaleAnim }
-            ],
-          },
-        ]}
-      >
+      <View style={styles.content}>
         {/* Enhanced Welcome Text with Professional Animation */}
         <Animated.View
           style={[
             styles.titleContainer,
             {
               opacity: titleOpacity,
-              transform: [
-                { translateY: titleY }
-              ],
             },
           ]}
         >
@@ -291,7 +242,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             fontFamily: 'Nunito_600SemiBold' // Use proper font but keep original sizing
           }
         ]}>
-          <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#a3c3ff' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#c6ade6' : '#7972ff' }}>patterns</Text>
+          <Text style={{ color: isDarkMode ? '#cccccc' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#999999' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#666666' : '#7972ff' }}>patterns</Text>
         </Text>
         
         {/* Enhanced Brand Text Animation */}
@@ -301,10 +252,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               { 
                 color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
                 opacity: brandOpacity,
-                transform: [
-                  { translateY: brandY }
-                ],
-                fontFamily: 'CrimsonPro_700Bold' // Use Crimson Pro but keep original responsive sizing
+                fontFamily: 'CrimsonPro_700Bold'
               }
             ]}
           >
@@ -314,116 +262,204 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
 
     
 
-        {/* Action Buttons - Stacked vertically */}
-        <Animated.View
-          style={[
-            styles.buttonsContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          {/* Explore Button */}
-          <Animated.View 
-            style={[
-              styles.stackedButtonContainer,
-              { 
-                opacity: exploreButtonOpacity,
-                transform: [
-                  { scale: exploreButtonPressScale },
-                  { translateY: exploreButtonY }
-                ]
-              }
-            ]}
-          >
-            <Animated.View style={[
-              styles.primaryButtonContainer,
-              {
-                width: '88%',
-                shadowColor: getExploreGlowColor(),
-                shadowOpacity: 1,
-                shadowRadius: 4,
-                shadowOffset: { width: 0, height: 0 },
-                elevation: 15,
-              }
-            ]}>
-            <TouchableOpacity
-              style={{ width: '100%' }}
-              onPress={handleExploreButtonPress}
-              activeOpacity={0.9}
+        {/* Action Buttons - Side by side choices */}
+        <View style={styles.buttonsContainer}>
+          {/* Button Row */}
+          <View style={styles.buttonRow}>
+            {/* Cloud Button */}
+            <Animated.View 
+              style={[
+                styles.halfWidth,
+                { 
+                  opacity: exploreButtonOpacity,
+                  transform: [{ scale: exploreButtonPressScale }]
+                }
+              ]}
             >
-              {/* Professional layered depth */}
-              <View style={[
-                styles.shadowLayerContainer,
-                isDarkMode ? {
-                  shadowColor: 'rgba(139, 92, 246, 0.6)', // Inner purple glow
-                  shadowOpacity: 0.3,
-                  shadowRadius: 25,
+              <Animated.View style={[
+                styles.primaryButtonContainer,
+                {
+                  shadowColor: getExploreGlowColor(),
+                  shadowOpacity: 1,
+                  shadowRadius: 4,
                   shadowOffset: { width: 0, height: 0 },
-                } : {
-                  shadowColor: '#374151',
-                  shadowOpacity: 0.08,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 4 },
+                  elevation: 15,
                 }
               ]}>
+              <TouchableOpacity
+                style={{ width: '100%' }}
+                onPress={handleCloudButtonPress}
+                activeOpacity={0.9}
+              >
                 <View style={[
-                  styles.innerShadowLayer,
+                  styles.shadowLayerContainer,
                   isDarkMode ? {
-                    shadowColor: 'rgba(139, 92, 246, 0.4)', // Innermost purple glow
-                    shadowOpacity: 0.2,
-                    shadowRadius: 15,
+                    shadowColor: 'rgba(139, 92, 246, 0.6)',
+                    shadowOpacity: 0.3,
+                    shadowRadius: 25,
                     shadowOffset: { width: 0, height: 0 },
                   } : {
-                    shadowColor: '#6b7280',
-                    shadowOpacity: 0.05,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 2 },
+                    shadowColor: '#374151',
+                    shadowOpacity: 0.08,
+                    shadowRadius: 12,
+                    shadowOffset: { width: 0, height: 4 },
                   }
                 ]}>
-                  <View
-                    style={[
-                      styles.primaryButton,
-                      {
-                        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-                        borderColor: isDarkMode ? '#262626' : '#e5e7eb',
-                        borderWidth: isDarkMode ? 1 : 0.5,
-                        shadowColor: isDarkMode ? '#000000' : '#f9fafb',
-                        shadowOpacity: isDarkMode ? 0.3 : 0.4,
-                        shadowRadius: isDarkMode ? 6 : 3,
-                        shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
-                        elevation: isDarkMode ? 6 : 3,
-                      }
-                    ]}
-                  >
-                    <Text style={[
-                      styles.primaryButtonText, 
-                      { 
-                        color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
-                        textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
-                        textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
-                        textShadowRadius: isDarkMode ? 2 : 1,
-                        fontFamily: 'Nunito_500Medium' // Use proper font but keep original sizing
-                      }
-                    ]}>
-                      Explore
-                    </Text>
+                  <View style={[
+                    styles.innerShadowLayer,
+                    isDarkMode ? {
+                      shadowColor: 'rgba(139, 92, 246, 0.4)',
+                      shadowOpacity: 0.2,
+                      shadowRadius: 15,
+                      shadowOffset: { width: 0, height: 0 },
+                    } : {
+                      shadowColor: '#6b7280',
+                      shadowOpacity: 0.05,
+                      shadowRadius: 6,
+                      shadowOffset: { width: 0, height: 2 },
+                    }
+                  ]}>
+                    <View
+                      style={[
+                        styles.primaryButton,
+                        {
+                          backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
+                          borderColor: isDarkMode ? '#262626' : '#e5e7eb',
+                          borderWidth: isDarkMode ? 1 : 0.5,
+                          shadowColor: isDarkMode ? '#000000' : '#f9fafb',
+                          shadowOpacity: isDarkMode ? 0.3 : 0.4,
+                          shadowRadius: isDarkMode ? 6 : 3,
+                          shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
+                          elevation: isDarkMode ? 6 : 3,
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.primaryButtonText, 
+                        { 
+                          color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
+                          textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
+                          textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
+                          textShadowRadius: isDarkMode ? 2 : 1,
+                          fontFamily: 'Nunito_500Medium'
+                        }
+                      ]}>
+                        Cloud
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-              </TouchableOpacity>
+                </TouchableOpacity>
+              </Animated.View>
             </Animated.View>
-          </Animated.View>
 
+            {/* Just for Me Button */}
+            <Animated.View 
+              style={[
+                styles.halfWidth,
+                { 
+                  opacity: exploreButtonOpacity,
+                  transform: [{ scale: justForMeButtonPressScale }]
+                }
+              ]}
+            >
+              <Animated.View style={[
+                styles.primaryButtonContainer,
+                {
+                  shadowColor: getExploreGlowColor(),
+                  shadowOpacity: 0.5,
+                  shadowRadius: 4,
+                  shadowOffset: { width: 0, height: 0 },
+                  elevation: 15,
+                }
+              ]}>
+              <TouchableOpacity
+                style={{ width: '100%' }}
+                onPress={handleJustForMeButtonPress}
+                activeOpacity={0.9}
+              >
+                <View style={[
+                  styles.shadowLayerContainer,
+                  isDarkMode ? {
+                    shadowColor: 'rgba(139, 92, 246, 0.4)',
+                    shadowOpacity: 0.2,
+                    shadowRadius: 20,
+                    shadowOffset: { width: 0, height: 0 },
+                  } : {
+                    shadowColor: '#374151',
+                    shadowOpacity: 0.06,
+                    shadowRadius: 10,
+                    shadowOffset: { width: 0, height: 3 },
+                  }
+                ]}>
+                  <View style={[
+                    styles.innerShadowLayer,
+                    isDarkMode ? {
+                      shadowColor: 'rgba(139, 92, 246, 0.3)',
+                      shadowOpacity: 0.15,
+                      shadowRadius: 12,
+                      shadowOffset: { width: 0, height: 0 },
+                    } : {
+                      shadowColor: '#6b7280',
+                      shadowOpacity: 0.04,
+                      shadowRadius: 5,
+                      shadowOffset: { width: 0, height: 2 },
+                    }
+                  ]}>
+                    <View
+                      style={[
+                        styles.primaryButton,
+                        {
+                          backgroundColor: isDarkMode ? '#1a1a1a' : '#f8f9fa',
+                          borderColor: isDarkMode ? '#333333' : '#e5e7eb',
+                          borderWidth: isDarkMode ? 1 : 0.5,
+                          shadowColor: isDarkMode ? '#000000' : '#f9fafb',
+                          shadowOpacity: isDarkMode ? 0.2 : 0.3,
+                          shadowRadius: isDarkMode ? 4 : 2,
+                          shadowOffset: { width: 0, height: isDarkMode ? 1 : 1 },
+                          elevation: isDarkMode ? 4 : 2,
+                        }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.primaryButtonText, 
+                        { 
+                          color: isDarkMode ? '#cccccc' : '#666666',
+                          textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.6)',
+                          textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
+                          textShadowRadius: isDarkMode ? 1 : 1,
+                          fontFamily: 'Nunito_500Medium'
+                        }
+                      ]}>
+                        Just for me
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
+          </View>
+
+          {/* Contextual Tip */}
+          <Animated.View 
+            style={{ 
+              opacity: signInButtonOpacity,
+              marginTop: 8,
+            }}
+          >
+            <Text style={[
+              styles.contextualTip,
+              { color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)' }
+            ]}>
+              You can change this later
+            </Text>
+          </Animated.View>
 
           {/* Sign In Link - Underneath */}
           <Animated.View 
             style={{ 
               opacity: signInButtonOpacity,
-              transform: [
-                { translateY: signInButtonY }
-              ]
             }}
           >
             <TouchableOpacity
@@ -443,10 +479,9 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             </TouchableOpacity>
           </Animated.View>
 
-        </Animated.View>
-      </Animated.View>
+        </View>
+      </View>
       
-
       </SafeAreaView>
     </PageBackground>
   );
@@ -515,9 +550,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     gap: 12,
+    justifyContent: 'center',
   },
   halfWidth: {
-    width: '50%',
+    width: '40%',
   },
   primaryButtonContainer: {
     width: '100%',
@@ -578,7 +614,13 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
     fontFamily: 'System',
   },
-
+  contextualTip: {
+    fontSize: 12,
+    fontWeight: '400',
+    textAlign: 'center',
+    fontFamily: 'Nunito_400Regular',
+    letterSpacing: -0.2,
+  },
 
   loadingContainer: {
     flex: 1,

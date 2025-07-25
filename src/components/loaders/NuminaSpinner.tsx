@@ -14,6 +14,7 @@ export const NuminaSpinner: React.FC<NuminaSpinnerProps> = ({
   const { isDarkMode } = useTheme();
   const rotationAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+  const rotationAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -25,14 +26,21 @@ export const NuminaSpinner: React.FC<NuminaSpinnerProps> = ({
       }).start();
 
       // Smooth fast spin - no stuttering
-      Animated.loop(
+      rotationAnimationRef.current = Animated.loop(
         Animated.timing(rotationAnim, {
           toValue: 1,
           duration: 600, // Fast smooth spin
           useNativeDriver: true,
         })
-      ).start();
+      );
+      rotationAnimationRef.current.start();
     } else {
+      // Stop rotation animation
+      if (rotationAnimationRef.current) {
+        rotationAnimationRef.current.stop();
+        rotationAnimationRef.current = null;
+      }
+      
       // Fade out
       Animated.timing(opacityAnim, {
         toValue: 0,
@@ -40,6 +48,14 @@ export const NuminaSpinner: React.FC<NuminaSpinnerProps> = ({
         useNativeDriver: true,
       }).start();
     }
+    
+    return () => {
+      // Cleanup on unmount
+      if (rotationAnimationRef.current) {
+        rotationAnimationRef.current.stop();
+        rotationAnimationRef.current = null;
+      }
+    };
   }, [visible]);
 
   const spin = rotationAnim.interpolate({

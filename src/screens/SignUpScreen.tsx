@@ -61,13 +61,23 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const [hasReadPrivacy, setHasReadPrivacy] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   
+  // Modal animation refs
+  const termsModalOpacity = useRef(new Animated.Value(0)).current;
+  const termsModalScale = useRef(new Animated.Value(0.9)).current;
+  const privacyModalOpacity = useRef(new Animated.Value(0)).current;
+  const privacyModalScale = useRef(new Animated.Value(0.9)).current;
+  
   // Use either auth loading or local loading
   const loading = authLoading || localLoading;
 
   // Animation refs
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Staggered load-in animations
+  const titleOpacity = useRef(new Animated.Value(0)).current;
+  const formOpacity = useRef(new Animated.Value(0)).current;
+  const buttonOpacity = useRef(new Animated.Value(0)).current;
+  const linkOpacity = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const emailInputScaleAnim = useRef(new Animated.Value(1)).current;
   const passwordInputScaleAnim = useRef(new Animated.Value(1)).current;
@@ -81,10 +91,58 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   const confirmPasswordInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    // Fast tech entry - no conflicting animations with navigation
-    fadeAnim.setValue(1);
-    scaleAnim.setValue(1);
-    slideAnim.setValue(0); // Start in final position for navigation compatibility
+    // Staggered load-in sequence
+    const animateSequence = () => {
+      // Title first (200ms delay)
+      setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(titleOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 200);
+
+      // Form second (500ms delay)
+      setTimeout(() => {
+        Animated.timing(formOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 500);
+
+      // Button third (800ms delay)
+      setTimeout(() => {
+        Animated.timing(buttonOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 800);
+
+      // Link last (1100ms delay)
+      setTimeout(() => {
+        Animated.timing(linkOpacity, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      }, 1100);
+    };
+
+    animateSequence();
   }, []);
 
   // Keyboard listeners for subtle slide-up animation
@@ -312,12 +370,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                 style={[
                   styles.content,
                   {
-                    opacity: fadeAnim,
-                    transform: [
-                      { translateX: slideAnim },
-                      { translateY: keyboardSlideAnim }, // Subtle slide up on keyboard
-                      { scale: scaleAnim },
-                    ],
+                    transform: [{ translateY: keyboardSlideAnim }],
                   },
                 ]}
               >
@@ -337,7 +390,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                     } : styles.glassmorphic
                   ]}>
                     {/* Clean header */}
-                    <View style={styles.header}>
+                    <Animated.View style={[styles.header, { opacity: titleOpacity }]}>
                       <Animated.Text
                         style={[
                           styles.title,
@@ -352,7 +405,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       <Text style={[
                         styles.subtitle, 
                         { 
-                          color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                          color: isDarkMode ? '#ffffff' : '#4a4a4a',
                           fontWeight: '600',
                           fontSize: 20,
                           marginBottom: 8
@@ -367,10 +420,10 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         </Text>
                         {' '}account
                       </Text>
-                    </View>
+                    </Animated.View>
 
                     {/* Form Content */}
-                    <View style={styles.formContent}>
+                    <Animated.View style={[styles.formContent, { opacity: formOpacity }]}>
                       {/* Input fields */}
                       <View style={styles.inputGroup}>
                         <Animated.View style={{ transform: [{ scale: emailInputScaleAnim }] }}>
@@ -582,6 +635,24 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               // Force user to read terms first
                               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                               setShowTermsModal(true);
+                              // Reset and animate modal entrance
+                              termsModalOpacity.setValue(0);
+                              termsModalScale.setValue(0.9);
+                              setTimeout(() => {
+                                Animated.parallel([
+                                  Animated.timing(termsModalOpacity, {
+                                    toValue: 1,
+                                    duration: 300,
+                                    useNativeDriver: true,
+                                  }),
+                                  Animated.spring(termsModalScale, {
+                                    toValue: 1,
+                                    tension: 100,
+                                    friction: 8,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
+                              }, 100);
                               return;
                             }
                             // Light haptic for checkbox toggle
@@ -611,7 +682,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           </View>
                           <Text style={[
                             styles.termsCheckboxText,
-                            { color: isDarkMode ? '#ffffff' : '#000000' }
+                            { color: isDarkMode ? '#ffffff' : '#4a4a4a' }
                           ]}>
                             I agree to the{' '}
                             <Text 
@@ -619,7 +690,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                 styles.termsLinkText, 
                                 { color: isDarkMode ? '#add5fa' : '#007AFF' }
                               ]}
-                              onPress={() => setShowTermsModal(true)}
+                              onPress={() => {
+                                setShowTermsModal(true);
+                                // Reset and animate modal entrance
+                                termsModalOpacity.setValue(0);
+                                termsModalScale.setValue(0.9);
+                                setTimeout(() => {
+                                  Animated.parallel([
+                                    Animated.timing(termsModalOpacity, {
+                                      toValue: 1,
+                                      duration: 300,
+                                      useNativeDriver: true,
+                                    }),
+                                    Animated.spring(termsModalScale, {
+                                      toValue: 1,
+                                      tension: 100,
+                                      friction: 8,
+                                      useNativeDriver: true,
+                                    }),
+                                  ]).start();
+                                }, 100);
+                              }}
                             >
                               Terms of Service
                             </Text>
@@ -636,6 +727,24 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               // Force user to read privacy policy first
                               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                               setShowPrivacyModal(true);
+                              // Reset and animate modal entrance
+                              privacyModalOpacity.setValue(0);
+                              privacyModalScale.setValue(0.9);
+                              setTimeout(() => {
+                                Animated.parallel([
+                                  Animated.timing(privacyModalOpacity, {
+                                    toValue: 1,
+                                    duration: 300,
+                                    useNativeDriver: true,
+                                  }),
+                                  Animated.spring(privacyModalScale, {
+                                    toValue: 1,
+                                    tension: 100,
+                                    friction: 8,
+                                    useNativeDriver: true,
+                                  }),
+                                ]).start();
+                              }, 100);
                               return;
                             }
                             // Light haptic for checkbox toggle
@@ -665,7 +774,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           </View>
                           <Text style={[
                             styles.termsCheckboxText,
-                            { color: isDarkMode ? '#ffffff' : '#000000' }
+                            { color: isDarkMode ? '#ffffff' : '#4a4a4a' }
                           ]}>
                             I agree to the{' '}
                             <Text 
@@ -673,7 +782,27 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                                 styles.termsLinkText, 
                                 { color: isDarkMode ? '#add5fa' : '#007AFF' }
                               ]}
-                              onPress={() => setShowPrivacyModal(true)}
+                              onPress={() => {
+                                setShowPrivacyModal(true);
+                                // Reset and animate modal entrance
+                                privacyModalOpacity.setValue(0);
+                                privacyModalScale.setValue(0.9);
+                                setTimeout(() => {
+                                  Animated.parallel([
+                                    Animated.timing(privacyModalOpacity, {
+                                      toValue: 1,
+                                      duration: 300,
+                                      useNativeDriver: true,
+                                    }),
+                                    Animated.spring(privacyModalScale, {
+                                      toValue: 1,
+                                      tension: 100,
+                                      friction: 8,
+                                      useNativeDriver: true,
+                                    }),
+                                  ]).start();
+                                }, 100);
+                              }}
                             >
                               Privacy Policy
                             </Text>
@@ -690,7 +819,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       </View>
 
                       {/* Sign Up Button with Animation */}
-                      <View style={styles.buttonContainer}>
+                      <Animated.View style={[styles.buttonContainer, { opacity: buttonOpacity }]}>
                         <Animated.View style={{ transform: [{ scale: buttonScaleAnim }] }}>
                           <TouchableOpacity
                             style={[
@@ -732,24 +861,26 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                             </View>
                           </TouchableOpacity>
                         </Animated.View>
-                      </View>
+                      </Animated.View>
 
                       {/* Sign In Link */}
-                      <TouchableOpacity
-                        style={styles.linkButton}
-                        onPress={() => {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                          onNavigateToSignIn();
-                        }}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.linkText, 
-                          { color: isDarkMode ? '#ffffff' : '#000000' }
-                        ]}>
-                          Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#000000' }]}>in</Text>
-                        </Text>
-                      </TouchableOpacity>
+                      <Animated.View style={{ opacity: linkOpacity }}>
+                        <TouchableOpacity
+                          style={styles.linkButton}
+                          onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            onNavigateToSignIn();
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[
+                            styles.linkText, 
+                            { color: isDarkMode ? '#ffffff' : '#4a4a4a' }
+                          ]}>
+                            Already have an account? <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#4a4a4a' }]}>Sign</Text> <Text style={[styles.linkTextBold, { color: isDarkMode ? '#add5fa' : '#4a4a4a' }]}>in</Text>
+                          </Text>
+                        </TouchableOpacity>
+                      </Animated.View>
 
                       {/* Error Message */}
                       {error && (
@@ -793,7 +924,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                           </View>
                         </Animated.View>
                       )}
-                    </View>
+                    </Animated.View>
                   </View>
                 </View>
               </Animated.View>
@@ -812,6 +943,15 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             styles.modalContainer,
             { backgroundColor: isDarkMode ? '#000000' : '#ffffff' }
           ]}>
+            <Animated.View 
+              style={[
+                { flex: 1 },
+                {
+                  opacity: termsModalOpacity,
+                  transform: [{ scale: termsModalScale }]
+                }
+              ]}
+            >
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity
@@ -841,6 +981,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               }}
               accepted={termsAccepted}
             />
+            </Animated.View>
           </SafeAreaView>
         </Modal>
 
@@ -855,6 +996,15 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             styles.modalContainer,
             { backgroundColor: isDarkMode ? '#000000' : '#ffffff' }
           ]}>
+            <Animated.View 
+              style={[
+                { flex: 1 },
+                {
+                  opacity: privacyModalOpacity,
+                  transform: [{ scale: privacyModalScale }]
+                }
+              ]}
+            >
             {/* Modal Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity
@@ -884,6 +1034,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
               }}
               accepted={privacyAccepted}
             />
+            </Animated.View>
           </SafeAreaView>
         </Modal>
       </SafeAreaView>
