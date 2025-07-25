@@ -72,8 +72,8 @@ export const lightTheme: Theme = {
 export const darkTheme: Theme = {
   name: 'dark',
   colors: {
-    background: '#000000',
-    backgroundGradient: ['#000000', '#111111', '#000000'],
+    background: '#0a0a0a',
+    backgroundGradient: ['#0a0a0a', '#111111', '#0a0a0a'],
     surface: '#111111',
     surfaceGradient: ['#111111', '#1a1a1a', '#111111'],
     

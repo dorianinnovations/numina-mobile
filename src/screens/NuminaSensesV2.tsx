@@ -335,6 +335,7 @@ export const NuminaSensesV2: React.FC<NuminaSensesV2Props> = ({ onNavigateBack }
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           {/* Real-time tool execution overview */}
           <View style={[styles.card, { backgroundColor: isDarkMode ? NuminaColors.darkMode[800] : '#FFFFFF' }]}>
+            <View style={styles.cardInsetShadow} />
             <View style={styles.cardHeader}>
               <MaterialCommunityIcons name="robot-outline" size={24} color={NuminaColors.chatGreen[500]} />
               <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : '#000' }]}>
@@ -357,6 +358,7 @@ export const NuminaSensesV2: React.FC<NuminaSensesV2Props> = ({ onNavigateBack }
 
           {/* Recent executions preview */}
           <View style={[styles.card, { backgroundColor: isDarkMode ? NuminaColors.darkMode[800] : '#FFFFFF' }]}>
+            <View style={styles.cardInsetShadow} />
             <Text style={[styles.cardTitle, { color: isDarkMode ? '#FFF' : '#000' }]}>
               Recent Tool Executions
             </Text>
@@ -417,6 +419,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+    // Simulated inset shadow
+    overflow: 'hidden',
+  },
+  cardInsetShadow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 16,
+    zIndex: 1,
+    pointerEvents: 'none',
+    // Simulate inset shadow: 8px x 12px
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 0,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    opacity: 0.18,
   },
   cardHeader: {
     flexDirection: 'row',

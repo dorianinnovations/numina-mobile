@@ -342,23 +342,30 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                         style={[
                           styles.title,
                           {
-                            color: isDarkMode ? '#ffffff' : '#000000',
+                            color: isDarkMode ? '#ffffff' : '#1a1a1abf',
                             transform: [{ translateX: slideAnim.interpolate({ inputRange: [-30, 0], outputRange: [-15, 0] }) }],
                           },
                         ]}
                       >
-                        Glad you made it.
+                        Glad you made it
                       </Animated.Text>
                       <Text style={[
                         styles.subtitle, 
-                        { color: isDarkMode ? '#888888' : '#666666' }
+                        { 
+                          color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                          fontWeight: '600',
+                          fontSize: 20,
+                          marginBottom: 8
+                        }
                       ]}>
-                        <Text>
-                          <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Create </Text>
-                          <Text style={{ color: isDarkMode ? '#b0e3c8' : '#00b894' }}>your </Text>
-                          <Text style={{ color: isDarkMode ? '#ffd99f' : '#ffb347' }}>Numina </Text>
-                          <Text style={{ color: isDarkMode ? '#fbbf24' : '#e17055' }}>account</Text>
+                        Create your{' '}
+                        <Text style={{ 
+                          fontWeight: '700',
+                          fontSize: 22
+                        }}>
+                          Numina
                         </Text>
+                        {' '}account
                       </Text>
                     </View>
 
@@ -731,7 +738,6 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                       <TouchableOpacity
                         style={styles.linkButton}
                         onPress={() => {
-                          // Light haptic for navigation
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           onNavigateToSignIn();
                         }}

@@ -35,7 +35,7 @@ export const PageBackground: React.FC<PageBackgroundProps> = (props) => {
   }
 
   if (isDarkMode) {
-    return <View style={[styles.container, { backgroundColor: 'transparent' }, style]}>{children}</View>;
+    return <View style={[styles.container, { backgroundColor: '#0a0a0a' }, style]}>{children}</View>;
   }
 
   return (

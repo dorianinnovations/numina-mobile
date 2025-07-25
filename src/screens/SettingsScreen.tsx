@@ -181,11 +181,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           }
           break;
           
-        case 'borderThemes':
-          if (onNavigateToBorderThemes) {
-            onNavigateToBorderThemes();
-          }
-          break;
+        // FUTURE PREMIUM FEATURE - Border Themes navigation
+        // case 'borderThemes':
+        //   if (onNavigateToBorderThemes) {
+        //     onNavigateToBorderThemes();
+        //   }
+        //   break;
           
         case 'dataManagement':
           if (onNavigateToDataManagement) {
@@ -392,6 +393,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               value: isDarkMode,
               onToggle: toggleTheme,
             },
+            // FUTURE PREMIUM FEATURES - Border Effects and Border Themes
+            // Temporarily disabled for unauthenticated users, technology preserved
+            /*
             { 
               icon: 'magic', 
               title: 'Border Effects', 
@@ -416,6 +420,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               type: 'navigate',
               action: 'borderThemes'
             },
+            */
             { 
               icon: 'database', 
               title: 'Data Management', 
@@ -479,6 +484,9 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           value: isDarkMode,
           onToggle: toggleTheme,
         },
+        // FUTURE PREMIUM FEATURES - Border Effects, Border Themes, Theme Color
+        // These settings are temporarily disabled but technology is preserved for future premium tier
+        /*
         { 
           icon: 'magic', 
           title: 'Border Effects', 
@@ -549,6 +557,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
           type: 'navigate',
           action: 'themeColor'
         },
+        */
         { 
           icon: 'text-height', 
           title: 'Font Size', 

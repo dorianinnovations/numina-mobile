@@ -994,23 +994,29 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
                 styles.sendButton,
                 {
                   backgroundColor: canSend
-                    ? (isDarkMode ? '#6ec5ff' : '#6ec5ff')
-                    : (isDarkMode ? '#8acbff' : '#acdcff'),
-                  borderColor: 'transparent',
+                    ? (isDarkMode ? 'rgba(255,255,255,0.95)' : '#6ec5ff')
+                    : (isDarkMode ? 'rgba(255,255,255,0.5)' : '#acdcff'),
+                  borderColor: isDarkMode ? (canSend ? '#87CEEB' : 'rgba(135,206,235,0.5)') : 'transparent',
+                  borderWidth: isDarkMode ? 1 : 0,
+                  shadowColor: isDarkMode ? '#87CEEB' : '#000',
+                  shadowOffset: { width: 0, height: isDarkMode ? 0 : 2 },
+                  shadowOpacity: isDarkMode ? (canSend ? 0.6 : 0.3) : 0.1,
+                  shadowRadius: isDarkMode ? 8 : 4,
+                  elevation: isDarkMode ? 8 : 4,
                   transform: [{ scale: sendButtonScale }],
                 }
               ]}>
                 {isLoading || isUploading ? (
                   <FastRingLoader 
                     size={18} 
-                    color={isDarkMode ? '#ffffff' : '#616161'} 
+                    color={isDarkMode ? '#1a1a1a' : '#616161'} 
                     strokeWidth={2}
                   />
                 ) : (
                   <FontAwesome5
                     name="arrow-up"
                     size={18}
-                    color={isDarkMode ? '#ffffff' : '#616161'}
+                    color={isDarkMode ? '#1a1a1a' : '#616161'}
                   />
                 )}
               </Animated.View>
@@ -1157,17 +1163,17 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
               style={[
                 styles.premiumPillButton,
                 {
-                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
-                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                  backgroundColor: 'rgba(100, 149, 237, 0.1)',
+                  borderColor: 'rgba(100, 149, 237, 0.2)',
                 }
               ]}
               onPress={handleCameraPress}
               activeOpacity={0.7}
             >
-              <FontAwesome5 name="camera" size={16} color="#98fb98" />
+              <FontAwesome5 name="camera" size={16} color="#6495ed" />
               <Text style={[
                 styles.pillButtonText,
-                { color: '#98fb98' }
+                { color: '#6495ed' }
               ]}>Camera</Text>
             </TouchableOpacity>
 
@@ -1176,17 +1182,17 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
               style={[
                 styles.premiumPillButton,
                 {
-                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
-                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                  backgroundColor: 'rgba(147, 112, 219, 0.1)',
+                  borderColor: 'rgba(147, 112, 219, 0.2)',
                 }
               ]}
               onPress={handleGalleryPress}
               activeOpacity={0.7}
             >
-              <FontAwesome5 name="image" size={16} color="#98fb98" />
+              <FontAwesome5 name="image" size={16} color="#9370db" />
               <Text style={[
                 styles.pillButtonText,
-                { color: '#98fb98' }
+                { color: '#9370db' }
               ]}>Gallery</Text>
             </TouchableOpacity>
 
@@ -1195,17 +1201,17 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
               style={[
                 styles.premiumPillButton,
                 {
-                  backgroundColor: 'rgba(152, 251, 152, 0.1)',
-                  borderColor: 'rgba(152, 251, 152, 0.2)',
+                  backgroundColor: 'rgba(255, 140, 0, 0.1)',
+                  borderColor: 'rgba(255, 140, 0, 0.2)',
                   }
                 ]}
                 onPress={handleDocumentPress}
                 activeOpacity={0.7}
               >
-                <FontAwesome5 name="file-alt" size={16} color="#98fb98" />
+                <FontAwesome5 name="file-alt" size={16} color="#ff8c00" />
                 <Text style={[
                   styles.pillButtonText,
-                  { color: '#98fb98' }
+                  { color: '#ff8c00' }
                 ]}>Files</Text>
               </TouchableOpacity>
             </>

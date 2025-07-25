@@ -19,7 +19,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
 import { Header } from '../components/ui/Header';
 import { PageBackground } from '../components/ui/PageBackground';
-import { areFontsLoaded } from '../utils/fonts';
+import { areFontsLoaded, TextStyles } from '../utils/fonts';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,17 +28,15 @@ const numinaSmileImage = require('../../assets/unknownuser.jpg');
 const numinaMoonImage = require('../../assets/unknownuser2.jpg');
 
 interface HeroLandingScreenProps {
-  onNavigateToTutorial: () => void;
+  onNavigateToExperience: () => void;
   onNavigateToSignIn: () => void;
-  onNavigateToSignUp: () => void;
 }
 
 export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
-  onNavigateToTutorial,
+  onNavigateToExperience,
   onNavigateToSignIn,
-  onNavigateToSignUp,
 }) => {
-  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   
   // Main content animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -51,8 +49,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   const exploreButtonOpacity = useRef(new Animated.Value(0)).current;
   const exploreButtonY = useRef(new Animated.Value(16)).current;
   
-  const signUpButtonOpacity = useRef(new Animated.Value(0)).current;
-  const signUpButtonY = useRef(new Animated.Value(16)).current;
   
   const signInButtonOpacity = useRef(new Animated.Value(0)).current;
   const signInButtonY = useRef(new Animated.Value(16)).current;
@@ -66,16 +62,10 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   
   // Button press animations (kept separate)
   const exploreButtonPressScale = useRef(new Animated.Value(1)).current;
-  const signUpButtonPressScale = useRef(new Animated.Value(1)).current;
   const signInButtonPressScale = useRef(new Animated.Value(1)).current;
   
-  // Dark mode toggle animations
-  const toggleScale = useRef(new Animated.Value(1)).current;
-  const toggleGlow = useRef(new Animated.Value(0)).current;
-  const toggleRotate = useRef(new Animated.Value(0)).current;
-  
-  // Debounce ref to prevent rapid toggling issues
-  const toggleDebounceRef = useRef(false);
+  // Pastel RGB moving glow animation for explore button
+  const exploreGlowAnim = useRef(new Animated.Value(0)).current;
 
 
 
@@ -91,8 +81,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     brandY.setValue(0);
     exploreButtonOpacity.setValue(1);
     exploreButtonY.setValue(0);
-    signUpButtonOpacity.setValue(1);
-    signUpButtonY.setValue(0);
     signInButtonOpacity.setValue(1);
     signInButtonY.setValue(0);
     characterOpacity.setValue(1);
@@ -162,19 +150,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           }),
         ]),
         
-        // Sign Up button
-        Animated.parallel([
-          Animated.timing(signUpButtonOpacity, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(signUpButtonY, {
-            toValue: 0,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ]),
         
         // Sign In button
         Animated.parallel([
@@ -191,87 +166,35 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         ]),
       ]),
     ]).start();
+
+    // Start continuous RGB glow animation for explore button
+    Animated.loop(
+      Animated.timing(exploreGlowAnim, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: false, // Can't use native driver for color interpolation
+      })
+    ).start();
   }, []);
 
-  const handleToggleDarkMode = () => {
-    // Prevent rapid toggling to avoid rendering issues (500ms rate limit)
-    if (toggleDebounceRef.current) return;
-    
-    toggleDebounceRef.current = true;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    
-    // Toggle theme immediately
-    toggleTheme();
-    
-    // Run animations in parallel without blocking theme change
-    Animated.parallel([
-      // Button press effect
-      Animated.sequence([
-        Animated.timing(toggleScale, {
-          toValue: 0.92,
-          duration: 80,
-          useNativeDriver: true,
-        }),
-        Animated.spring(toggleScale, {
-          toValue: 1,
-          tension: 200,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Glow effect
-      Animated.sequence([
-        Animated.timing(toggleGlow, {
-          toValue: 1,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-        Animated.timing(toggleGlow, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]),
-      // Icon rotation
-      Animated.timing(toggleRotate, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      // Character change animation
-      Animated.sequence([
-        Animated.timing(characterOpacity, {
-          toValue: 0,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(characterOpacity, {
-          toValue: 1,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]),
-    ]).start(() => {
-      // Reset animation values and allow next toggle
-      toggleRotate.setValue(0);
-      rotateAnim.setValue(0);
-      
-      // Release debounce after animations complete (500ms rate limit)
-      setTimeout(() => {
-        toggleDebounceRef.current = false;
-      }, 500);
+  // Create animated pastel RGB glow for explore button
+  const getExploreGlowColor = () => {
+    return exploreGlowAnim.interpolate({
+      inputRange: [0, 0.33, 0.66, 1],
+      outputRange: [
+        'rgba(255, 182, 193, 0.4)', // Pastel pink
+        'rgba(173, 216, 230, 0.4)', // Pastel blue  
+        'rgba(144, 238, 144, 0.4)', // Pastel green
+        'rgba(255, 182, 193, 0.4)', // Back to pastel pink
+      ],
     });
   };
+
 
   const handleExploreButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     // Navigate immediately, run animation in background
-    onNavigateToTutorial();
+    onNavigateToExperience();
     Animated.sequence([
       Animated.timing(exploreButtonPressScale, {
         toValue: 0.95,
@@ -279,25 +202,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         useNativeDriver: true,
       }),
       Animated.spring(exploreButtonPressScale, {
-        toValue: 1,
-        tension: 200,
-        friction: 6,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const handleSignUpButtonPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Navigate immediately, run animation in background
-    onNavigateToSignUp();
-    Animated.sequence([
-      Animated.timing(signUpButtonPressScale, {
-        toValue: 0.95,
-        duration: 50,
-        useNativeDriver: true,
-      }),
-      Animated.spring(signUpButtonPressScale, {
         toValue: 1,
         tension: 200,
         friction: 6,
@@ -330,15 +234,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     outputRange: ['0deg', '360deg'],
   });
 
-  const toggleIconRotation = toggleRotate.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '180deg'],
-  });
-
-  const toggleGlowOpacity = toggleGlow.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.6],
-  });
 
 
   // Remove font loading dependency - just proceed with system fonts initially
@@ -359,49 +254,6 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         </View>
       )}
 
-      {/* Dark Mode Toggle Button - Top Right */}
-      <View style={styles.toggleContainer}>
-        <TouchableOpacity
-          onPress={handleToggleDarkMode}
-          activeOpacity={0.8}
-          style={styles.toggleButton}
-        >
-          <Animated.View
-            style={[
-              styles.toggleButtonInner,
-              {
-                backgroundColor: isDarkMode ? '#2a2a2a' : '#ffffff',
-                borderColor: isDarkMode ? '#404040' : '#e0e0e0',
-                transform: [{ scale: toggleScale }],
-              },
-            ]}
-          >
-            {/* Glow effect */}
-            <Animated.View
-              style={[
-                styles.toggleGlow,
-                {
-                  opacity: toggleGlowOpacity,
-                  backgroundColor: isDarkMode ? '#87ebde' : '#0099ff',
-                },
-              ]}
-            />
-            
-            {/* Icon */}
-            <Animated.View
-              style={{
-                transform: [{ rotate: toggleIconRotation }],
-              }}
-            >
-              <Feather
-                name={isDarkMode ? 'sun' : 'moon'}
-                size={18}
-                color={isDarkMode ? '#87ebde' : '#0099ff'}
-              />
-            </Animated.View>
-          </Animated.View>
-        </TouchableOpacity>
-      </View>
 
 
 
@@ -436,7 +288,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
           styles.welcomeText, 
           { 
             color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
-            fontFamily: 'System'
+            fontFamily: 'Nunito_600SemiBold' // Use proper font but keep original sizing
           }
         ]}>
           <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#a3c3ff' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#c6ade6' : '#7972ff' }}>patterns</Text>
@@ -452,7 +304,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 transform: [
                   { translateY: brandY }
                 ],
-                fontFamily: 'System'
+                fontFamily: 'CrimsonPro_700Bold' // Use Crimson Pro but keep original responsive sizing
               }
             ]}
           >
@@ -485,24 +337,19 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               }
             ]}
           >
+            <Animated.View style={[
+              styles.primaryButtonContainer,
+              {
+                width: '88%',
+                shadowColor: getExploreGlowColor(),
+                shadowOpacity: 1,
+                shadowRadius: 4,
+                shadowOffset: { width: 0, height: 0 },
+                elevation: 15,
+              }
+            ]}>
             <TouchableOpacity
-              style={[
-                styles.primaryButtonContainer,
-                isDarkMode ? {
-                  width: '88%',
-                  shadowColor: 'rgba(139, 92, 246, 0.8)', // Soft purple glow
-                  shadowOpacity: 0.4,
-                  shadowRadius: 40,
-                  shadowOffset: { width: 0, height: 0 },
-                } : {
-                  width: '88%',
-                  shadowColor: '#1f2937',
-                  shadowOpacity: 0.15,
-                  shadowRadius: 20,
-                  shadowOffset: { width: 0, height: 8 },
-                  elevation: 15,
-                },
-              ]}
+              style={{ width: '100%' }}
               onPress={handleExploreButtonPress}
               activeOpacity={0.9}
             >
@@ -557,7 +404,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
                         textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
                         textShadowRadius: isDarkMode ? 2 : 1,
-                        fontFamily: 'System'
+                        fontFamily: 'Nunito_500Medium' // Use proper font but keep original sizing
                       }
                     ]}>
                       Explore
@@ -566,103 +413,9 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 </View>
               </View>
               </TouchableOpacity>
+            </Animated.View>
           </Animated.View>
 
-          {/* Create Account Button */}
-          <Animated.View 
-            style={[
-              styles.stackedButtonContainer,
-              { 
-                opacity: signUpButtonOpacity,
-                transform: [
-                  { scale: signUpButtonPressScale },
-                  { translateY: signUpButtonY }
-                ]
-              }
-            ]}
-          >
-            <TouchableOpacity
-              style={[
-                styles.primaryButtonContainer,
-                isDarkMode ? {
-                  width: '88%',
-                  shadowColor: 'rgba(6, 182, 212, 0.8)', // Vibrant blue-green glow
-                  shadowOpacity: 0.4,
-                  shadowRadius: 40,
-                  shadowOffset: { width: 0, height: 0 },
-                } : {
-                  width: '88%',
-                  shadowColor: '#1f2937',
-                  shadowOpacity: 0.15,
-                  shadowRadius: 20,
-                  shadowOffset: { width: 0, height: 8 },
-                  elevation: 15,
-                },
-              ]}
-                onPress={handleSignUpButtonPress}
-                activeOpacity={0.9}
-              >
-              {/* Beautiful glowing layers */}
-              <View style={[
-                styles.shadowLayerContainer,
-                isDarkMode ? {
-                  shadowColor: 'rgba(6, 182, 212, 0.6)', // Middle blue-green glow
-                  shadowOpacity: 0.3,
-                  shadowRadius: 25,
-                  shadowOffset: { width: 0, height: 0 },
-                } : {
-                  shadowColor: '#374151',
-                  shadowOpacity: 0.08,
-                  shadowRadius: 12,
-                  shadowOffset: { width: 0, height: 4 },
-                }
-              ]}>
-                <View style={[
-                  styles.innerShadowLayer,
-                  isDarkMode ? {
-                    shadowColor: 'rgba(6, 182, 212, 0.4)', // Innermost blue-green glow
-                    shadowOpacity: 0.2,
-                    shadowRadius: 15,
-                    shadowOffset: { width: 0, height: 0 },
-                  } : {
-                    shadowColor: '#6b7280',
-                    shadowOpacity: 0.05,
-                    shadowRadius: 6,
-                    shadowOffset: { width: 0, height: 2 },
-                  }
-                ]}>
-                  <View
-                    style={[
-                      styles.primaryButton,
-                      {
-                        backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-                        borderColor: isDarkMode ? 'rgba(85, 85, 85, 0.4)' : '#e5e7eb',
-                        borderWidth: isDarkMode ? 1 : 0.5,
-                        shadowColor: isDarkMode ? '#34d399' : '#f9fafb', // Green accent border glow
-                        shadowOpacity: isDarkMode ? 0.1 : 0.4,
-                        shadowRadius: isDarkMode ? 8 : 3,
-                        shadowOffset: { width: 0, height: isDarkMode ? 2 : 1 },
-                        elevation: isDarkMode ? 8 : 3,
-                      }
-                    ]}
-                  >
-                    <Text style={[
-                      styles.primaryButtonText, 
-                      { 
-                        color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[500],
-                        textShadowColor: isDarkMode ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.8)',
-                        textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
-                        textShadowRadius: isDarkMode ? 3 : 1,
-                        fontFamily: 'System'
-                      }
-                    ]}>
-                      Create Account
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              </TouchableOpacity>
-          </Animated.View>
 
           {/* Sign In Link - Underneath */}
           <Animated.View 
@@ -731,12 +484,10 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
     opacity: 0.8,  
     paddingHorizontal: Platform.OS === 'web' ? 40 : 24, 
-    fontFamily: 'System',
   },
   brandText: {
     fontSize: width < 350 ? 42 : width < 400 ? 48 : 54,
     fontWeight: 'bold',
-    fontFamily: 'System',
     letterSpacing: -4.5,
     textAlign: 'center',
     marginTop: 12,
@@ -797,7 +548,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: -0.5,
-    fontFamily: 'System',
   },
   secondaryButton: {
     width: '100%',
@@ -829,46 +579,6 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
   },
 
-  // Dark Mode Toggle Styles
-  toggleContainer: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 45,
-    right: 20,
-    zIndex: 1000,
-  },
-  toggleButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleButtonInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-    // Neumorphic shadows following app style guide
-    shadowColor: '#000000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 6,
-  },
-  toggleGlow: {
-    position: 'absolute',
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    shadowColor: 'currentColor',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 8,
-  },
 
   loadingContainer: {
     flex: 1,

@@ -34,7 +34,7 @@ const categories = [
 ];
 
 // Lottie Refresh Spinner Component
-const LottieRefreshSpinner: React.FC<{ size?: number }> = ({ size = 36 }) => {
+const LottieRefreshSpinner: React.FC<{ size?: number }> = ({ size = 40 }) => {
   return (
     <View style={{ width: size, height: size }}>
       <LottieView

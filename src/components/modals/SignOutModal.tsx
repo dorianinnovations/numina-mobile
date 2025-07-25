@@ -164,7 +164,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             styles.container,
             {
               backgroundColor: isDarkMode ? '#0f0f0f' : '#ffffff',
-              borderColor: isDarkMode ? 'rgba(255, 182, 193, 0.6)' : 'rgba(230, 230, 250, 0.8)',
+              borderColor: '#ffffff', // White border for both modes
               opacity: containerOpacity,
               transform: [{ scale: containerScale }],
             }
@@ -183,7 +183,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             <FontAwesome5 
               name="sign-out-alt" 
               size={48} 
-              color={isDarkMode ? 'rgba(230, 230, 250, 0.8)' : 'rgba(255, 182, 193, 0.9)'} 
+              color="#ef4444" // Red color for warning
             />
           </Animated.View>
           
@@ -211,7 +211,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
           >
             <Text style={[
               styles.message,
-              { color: isDarkMode ? 'rgba(152, 251, 152, 0.9)' : 'rgba(255, 182, 193, 0.8)' }
+              { color: isDarkMode ? 'rgba(255, 255, 255, 0.8)' : 'rgba(0, 0, 0, 0.7)' }
             ]}>
               Are you sure you want to sign out of your account?
             </Text>
@@ -233,7 +233,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 styles.cancelButton,
                 {
                   backgroundColor: isDarkMode ? '#1a1a1a' : '#f8fafc',
-                  borderColor: isDarkMode ? 'rgba(230, 230, 250, 0.6)' : 'rgba(152, 251, 152, 0.6)',
+                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0, 0, 0, 0.2)',
                 }
               ]}
               onPress={handleCancel}
@@ -241,7 +241,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
             >
               <Text style={[
                 styles.buttonText,
-                { color: isDarkMode ? 'rgba(230, 230, 250, 0.9)' : 'rgba(152, 251, 152, 0.9)' }
+                { color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)' }
               ]}>
                 Cancel
               </Text>
@@ -252,7 +252,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
                 styles.button,
                 styles.confirmButton,
                 {
-                  backgroundColor: isDarkMode ? 'rgba(255, 182, 193, 0.8)' : 'rgba(230, 230, 250, 0.9)',
+                  backgroundColor: '#ef4444', // Red background for destructive action
                 }
               ]}
               onPress={handleConfirm}
@@ -261,7 +261,7 @@ export const SignOutModal: React.FC<SignOutModalProps> = ({
               <Text style={[
                 styles.buttonText,
                 styles.confirmButtonText,
-                { color: isDarkMode ? '#0f0f0f' : '#ffffff' }
+                { color: '#ffffff' } // White text on red background
               ]}>
                 Sign Out
               </Text>
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   confirmButton: {
-    shadowColor: 'rgba(255, 182, 193, 0.6)',
+    shadowColor: '#ef4444', // Red shadow to match button
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

@@ -659,10 +659,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
             text: 'Upgrade to Aether for unlimited chatting. View your usage here',
             isStreaming: false,
             isSystem: true,
-            onNavigateToWallet: () => {
-              // Navigate to wallet screen
-              navigation.navigate('WalletScreen' as never);
-            },
+           
           };
           
           const errorConversation = { ...currentConversation };
@@ -808,7 +805,6 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
 
   const handleSubscriptionComplete = (plan: string) => {
     setShowSubscriptionModal(false);
-    setRateLimitInfo(null);
     // Optionally show success message
     Alert.alert('Success', `Welcome to Numina ${plan}! You now have access to more features.`);
   };

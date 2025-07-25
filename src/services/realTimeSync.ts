@@ -84,8 +84,8 @@ class RealTimeSyncService extends SimpleEventEmitter {
   private static instance: RealTimeSyncService;
   private websocket: WebSocket | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 2;
-  private reconnectDelay = 5000;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 3000;
   private heartbeatInterval: any = null;
   private isConnected = false;
   private pendingEvents: SyncEvent[] = [];
@@ -93,37 +93,25 @@ class RealTimeSyncService extends SimpleEventEmitter {
   private commentsCache: Map<string, EventComment[]> = new Map();
   private userId: string | null = null;
 
-      // Configurable WebSocket URL with proper fallbacks
+      // Configurable WebSocket URL with proper fallbacks for Render
   private getWebSocketUrl(): string {
     // Priority order: environment variable > config service > default fallback
     const envUrl = process.env.EXPO_PUBLIC_WEBSOCKET_URL;
     const configUrl = process.env.EXPO_PUBLIC_WEBSOCKET_CONFIG_URL;
     
     if (envUrl) {
-      return envUrl;
+      return envUrl.replace('http://', 'ws://').replace('https://', 'wss://');
     }
     
     if (configUrl) {
-      return configUrl;
+      return configUrl.replace('http://', 'ws://').replace('https://', 'wss://');
     }
     
-    // Environment-specific fallbacks instead of hardcoded URL
-    const isDevelopment = __DEV__;
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Environment-specific fallbacks with proper WebSocket protocol
+    const baseUrl = 'server-a7od.onrender.com';
     
-    let fallbackUrl: string;
-    
-    if (isProduction) {
-      fallbackUrl = 'https://server-a7od.onrender.com';
-    } else if (isDevelopment) {
-      // Don't use localhost in mobile app - use the same server
-      fallbackUrl = 'https://server-a7od.onrender.com';
-    } else {
-      // Staging or other environments  
-      fallbackUrl = 'https://server-a7od.onrender.com';
-    }
-    
-    return fallbackUrl;
+    // Always use secure WebSocket for Render (HTTPS -> WSS)
+    return `wss://${baseUrl}`;
   }
 
   private constructor() {
@@ -144,6 +132,29 @@ class RealTimeSyncService extends SimpleEventEmitter {
     this.userId = userId;
     await this.saveUserId(userId);
     this.connect();
+    this.setupAppStateHandling();
+  }
+
+  // Handle app state changes for better Render compatibility
+  private setupAppStateHandling() {
+    // Only available in React Native, not web
+    if (typeof global !== 'undefined' && global.AppState) {
+      const AppState = global.AppState;
+      
+      AppState.addEventListener('change', (nextAppState: string) => {
+        if (nextAppState === 'active') {
+          // App came to foreground - check connection
+          if (!this.isConnected) {
+            console.log('🔌 WebSocket: App became active, attempting reconnect');
+            this.reconnectAttempts = 0; // Reset attempts
+            this.connect();
+          }
+        } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+          // App going to background - keep connection but reduce heartbeat
+          console.log('🔌 WebSocket: App going to background, maintaining connection');
+        }
+      });
+    }
   }
 
   // Simulate WebSocket connection for demo purposes
@@ -161,7 +172,7 @@ class RealTimeSyncService extends SimpleEventEmitter {
     }, 1000);
   }
 
-      // Enhanced WebSocket connection with proper error handling
+      // Enhanced WebSocket connection with Render-optimized handling
   private connect() {
     if (this.isConnected) {
       return;
@@ -175,16 +186,28 @@ class RealTimeSyncService extends SimpleEventEmitter {
         throw new Error('Invalid WebSocket URL configuration');
       }
       
-      // Attempt real WebSocket connection
+      console.log(`🔌 WebSocket: Attempting connection to ${wsUrl} (attempt ${this.reconnectAttempts + 1})`);
+      
+      // Create connection with timeout for Render
       this.websocket = new WebSocket(wsUrl);
+      
+      // Set connection timeout for Render's slower cold starts
+      const connectionTimeout = setTimeout(() => {
+        if (this.websocket && this.websocket.readyState === WebSocket.CONNECTING) {
+          console.warn('🔌 WebSocket: Connection timeout, closing socket');
+          this.websocket.close();
+        }
+      }, 15000); // 15 second timeout for Render
 
       this.websocket.onopen = () => {
+        clearTimeout(connectionTimeout);
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
         this.authenticate();
         this.processPendingEvents();
         this.emit('connected');
+        console.log('🔌 WebSocket: Successfully connected');
       };
 
       this.websocket.onmessage = (event) => {
@@ -192,25 +215,31 @@ class RealTimeSyncService extends SimpleEventEmitter {
       };
 
       this.websocket.onclose = (event) => {
+        clearTimeout(connectionTimeout);
         this.isConnected = false;
         this.stopHeartbeat();
         this.emit('disconnected');
         
-        // Only attempt reconnect if not a clean close
-        if (event.code !== 1000) {
+        console.log(`🔌 WebSocket: Connection closed (code: ${event.code}, reason: ${event.reason})`);
+        
+        // Render specific: Always attempt reconnect unless it's a clean close
+        // Render may close connections due to inactivity
+        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          console.log('🔌 WebSocket: Scheduling reconnection...');
           this.scheduleReconnect();
+        } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+          console.warn('🔌 WebSocket: Max reconnection attempts reached, falling back to simulation');
+          this.simulateWebSocketConnection();
         }
       };
 
       this.websocket.onerror = (error) => {
+        clearTimeout(connectionTimeout);
         console.error('🔌 WebSocket: Connection error:', error);
         this.emit('error', error);
         
-        // Fallback to simulation only if connection fails completely
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-          console.warn('🔌 WebSocket: Max reconnection attempts reached, falling back to simulation');
-          this.simulateWebSocketConnection();
-        }
+        // Don't immediately fallback, let the close handler manage reconnection
+        this.isConnected = false;
       };
     } catch (error) {
       console.error('🔌 WebSocket: Failed to create connection:', error);
@@ -538,10 +567,15 @@ class RealTimeSyncService extends SimpleEventEmitter {
 
   private startHeartbeat() {
     this.heartbeatInterval = setInterval(() => {
-      if (this.isConnected) {
+      if (this.isConnected && this.websocket && this.websocket.readyState === WebSocket.OPEN) {
         this.sendMessage({ type: 'heartbeat' });
+      } else if (this.websocket && this.websocket.readyState !== WebSocket.OPEN) {
+        // Connection seems broken, attempt reconnect
+        console.warn('🔌 WebSocket: Heartbeat detected broken connection, reconnecting...');
+        this.isConnected = false;
+        this.scheduleReconnect();
       }
-    }, 30000); // Every 30 seconds
+    }, 25000); // Every 25 seconds (more frequent for Render)
   }
 
   private stopHeartbeat() {
@@ -553,11 +587,21 @@ class RealTimeSyncService extends SimpleEventEmitter {
 
   private scheduleReconnect() {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
+      // Render-optimized exponential backoff with jitter
+      const baseDelay = this.reconnectDelay;
+      const exponentialDelay = baseDelay * Math.pow(1.5, this.reconnectAttempts); // Less aggressive than 2x
+      const jitter = Math.random() * 1000; // Add randomness to prevent thundering herd
+      const delay = Math.min(exponentialDelay + jitter, 30000); // Cap at 30 seconds
+      
+      console.log(`🔌 WebSocket: Scheduling reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
+      
       setTimeout(() => {
         this.reconnectAttempts++;
         this.connect();
       }, delay);
+    } else {
+      console.warn('🔌 WebSocket: All reconnection attempts exhausted, falling back to simulation');
+      this.simulateWebSocketConnection();
     }
   }
 

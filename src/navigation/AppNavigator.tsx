@@ -19,10 +19,10 @@ import { SettingsScreen } from "../screens/SettingsScreen";
 import { BorderThemeSettingsScreen } from "../screens/BorderThemeSettingsScreen";
 import { WalletScreen } from "../screens/WalletScreen";
 import { CloudFind } from "../screens/CloudFind";
-import { TutorialScreen } from "../screens/TutorialScreen";
 import { DataManagementScreen } from "../screens/DataManagementScreen";
 import { ExperienceLevelSelector } from "../components/selectors/ExperienceLevelSelector";
 import { ExperienceLevelService } from "../services/experienceLevelService";
+import { UserOnboardingService } from "../services/userOnboardingService";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
 import { log } from "../utils/logger";
@@ -43,7 +43,6 @@ export type RootStackParamList = {
   BorderThemeSettings: undefined;
   Wallet: undefined;
   Cloud: undefined;
-  Tutorial: undefined;
   DataManagement: undefined;
 };
 
@@ -71,7 +70,7 @@ const LottieLoader: React.FC<{ size?: number; isDarkMode?: boolean }> = ({
 
 export const AppNavigator: React.FC = () => {
   const { theme, isDarkMode } = useTheme();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const navigationRef = useRef<any>(null);
   
   // Prevent navigation resets during component re-renders
@@ -196,26 +195,28 @@ export const AppNavigator: React.FC = () => {
       setTimeout(() => {
         const currentRouteAfterDelay = navigationRef.current?.getCurrentRoute()?.name;
         
-        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp') {
+        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'SignIn') {
           // Only auto-route if NOT coming from signup (signup has explicit navigation)
           log.debug('Authenticated user detected', { currentRoute: currentRouteAfterDelay }, 'AppNavigator');
           
-          // Check if user has set experience level - MANDATORY for all authenticated users
-          ExperienceLevelService.hasSetExperienceLevel().then((hasSet) => {
-            if (!hasSet) {
-              log.info('User MUST set experience level - redirecting', null, 'AppNavigator');
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [{ name: 'ExperienceLevel' }],
-              });
-            } else {
-              log.info('User authenticated with experience level, navigating to Sandbox', null, 'AppNavigator');
-              navigationRef.current?.reset({
-                index: 0,
-                routes: [{ name: 'Sandbox' }],
-              });
-            }
-          });
+          // Check if user needs experience level selection (new users only)
+          if (user?.id) {
+            UserOnboardingService.shouldShowExperienceLevel(user.id).then((shouldShow) => {
+              if (shouldShow) {
+                log.info('New user needs experience level selection - redirecting', null, 'AppNavigator');
+                navigationRef.current?.reset({
+                  index: 0,
+                  routes: [{ name: 'ExperienceLevel' }],
+                });
+              } else {
+                log.info('Existing user authenticated, navigating to Sandbox', null, 'AppNavigator');
+                navigationRef.current?.reset({
+                  index: 0,
+                  routes: [{ name: 'Sandbox' }],
+                });
+              }
+            });
+          }
         } else if (!isAuthenticated && hasNavigated.current && currentRouteAfterDelay !== 'Hero' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'ExperienceLevel') {
           log.info('User logged out, returning to Hero', null, 'AppNavigator');
           navigationRef.current?.reset({
@@ -294,11 +295,10 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => {
             return (
               <HeroLandingScreen
-                onNavigateToTutorial={() => navigation.navigate("Tutorial")}
+                onNavigateToExperience={() => navigation.navigate("ExperienceLevel")}
                 onNavigateToSignIn={() => {
                   navigation.navigate("SignIn");
                 }}
-                onNavigateToSignUp={() => navigation.navigate("SignUp")}
               />
             );
           }}
@@ -331,6 +331,11 @@ export const AppNavigator: React.FC = () => {
                 safeGoBack(navigation);
               }}
               onSignInSuccess={() => {
+                // Navigate directly to Sandbox after successful login
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Sandbox' }],
+                });
               }}
               onNavigateToSignUp={() => {
                 navigation.navigate("SignUp");
@@ -373,12 +378,20 @@ export const AppNavigator: React.FC = () => {
               onSelectionComplete={async (level) => {
                 console.log('✅ EXPERIENCE LEVEL SELECTED:', level);
                 await ExperienceLevelService.setExperienceLevel(level);
+                
+                // Mark onboarding as completed for this user
+                if (user?.id) {
+                  await UserOnboardingService.markOnboardingCompleted(user.id);
+                }
+                
                 console.log('💾 Experience level saved, navigating to Sandbox');
                 navigation.reset({
                   index: 0,
                   routes: [{ name: 'Sandbox' }],
                 });
               }}
+              onSignUp={() => navigation.navigate('SignUp')}
+              onSignIn={() => navigation.navigate('SignIn')}
               // onSkip removed - experience level selection is now MANDATORY for all users
             />
           )}
@@ -530,21 +543,6 @@ export const AppNavigator: React.FC = () => {
           )}
         </Stack.Screen>
 
-        <Stack.Screen
-          name="Tutorial"
-          options={{
-            ...mobileTransition,
-          }}
-        >
-          {({ navigation }) => (
-            <TutorialScreen 
-              onNavigateHome={() => navigation.navigate("Hero")}
-              onStartChat={() => navigation.navigate("SignUp")}
-              onTitlePress={() => navigation.navigate("Hero")}
-              onMenuPress={createMenuHandler(navigation)}
-            />
-          )}
-        </Stack.Screen>
 
       </Stack.Navigator>
     </NavigationContainer>
@@ -563,7 +561,7 @@ export const AppNavigator: React.FC = () => {
         zIndex: 1000,
         pointerEvents: 'box-none', // Allow touches to pass through when appropriate
       }}>
-        <LottieLoader size={40} isDarkMode={isDarkMode} />
+        <LottieLoader size={70} isDarkMode={isDarkMode} />
         <Animated.Text style={{
           marginTop: 16,
           fontSize: 11,

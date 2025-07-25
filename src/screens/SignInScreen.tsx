@@ -274,7 +274,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                       style={[
                         styles.title,
                         {
-                          color: isDarkMode ? '#ffffff' : '#000000',
+                          color: isDarkMode ? '#ffffff' : '#1a1a1abf',
                           transform: [{ 
                             translateX: slideAnim.interpolate({
                               inputRange: [-30, 0],
@@ -288,12 +288,20 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
                     </Animated.Text>
                     <Text style={[
                       styles.subtitle, 
-                      { color: isDarkMode ? '#888888' : '#666666' }
+                      { 
+                        color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                        fontWeight: '600',
+                        fontSize: 20,
+                        marginBottom: 8
+                      }
                     ]}>
-                      <Text style={{ color: isDarkMode ? '#87ebde' : '#6883ff' }}>Welcome </Text>
-                      <Text style={{ color: isDarkMode ? '#a3c3ff' : '#8a69ff' }}>back</Text>
-                      <Text style={{ color: isDarkMode ? '#c6ade6' : '#bb72ff' }}> to </Text>
-                      <Text style={{ color: isDarkMode ? '#ffd99f' : '#ffd18d' }}>Numina</Text>
+                      Welcome back to{' '}
+                      <Text style={{ 
+                        fontWeight: '700',
+                        fontSize: 22
+                      }}>
+                        Numina
+                      </Text>
                     </Text>
                   </View>
 

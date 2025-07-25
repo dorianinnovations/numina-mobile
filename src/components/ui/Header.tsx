@@ -469,7 +469,7 @@ export const Header: React.FC<HeaderProps> = ({
               style={[
                 styles.logo,
                 {
-                  opacity: isDarkMode ? 1 : 0.9,
+                  opacity: isDarkMode ? 0.8 : 0.6,
                 }
               ]}
               resizeMode="contain"
@@ -478,7 +478,10 @@ export const Header: React.FC<HeaderProps> = ({
             <Text style={[
               styles.numinaText,
               {
-                color: isDarkMode ? '#ffffff' : '#586266eb',
+                color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: isDarkMode ? 3 : 2,
               }
             ]}>
               {title || 'Numina'}
@@ -675,7 +678,7 @@ export const Header: React.FC<HeaderProps> = ({
                       style={[
                         styles.logo,
                         {
-                          opacity: isDarkMode ? 1 : 0.9,
+                          opacity: isDarkMode ? 0.8 : 0.6,
                         }
                       ]}
                       resizeMode="contain"
@@ -684,7 +687,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <Text style={[
                       styles.numinaText,
                       {
-                        color: isDarkMode ? '#ffffff' : '#586266eb',
+                        color: isDarkMode ? '#ffffff' : '#1a1a1a',
+                        textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: isDarkMode ? 3 : 2,
                       }
                     ]}>
                       {title || 'Numina'}
@@ -888,25 +894,38 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   logoContainer: {
-    flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
-    gap: 1,
+    justifyContent: 'center',
+    width: 80,
+    height: 36,
   },
   logo: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
     width: 36,
     borderRadius: 100,
     height: 36,
+    zIndex: 1,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   numinaText: {
+    position: 'absolute',
+    left: 18,
+    top: 0,
+    bottom: 0,
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -1.5,
     fontFamily: 'CrimsonPro_700Bold',
     textAlign: 'left',
+    textAlignVertical: 'center',
+    lineHeight: 36,
+    zIndex: 2,
   },
   headerSubtitle: {
     fontSize: 10,

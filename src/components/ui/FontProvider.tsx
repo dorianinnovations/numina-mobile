@@ -39,8 +39,31 @@ export const FontProvider: React.FC<FontProviderProps> = ({ children }) => {
     loadAppFonts();
   }, []);
 
-  // Don't block the app - load fonts in background
-  // App will start with system fonts and switch to custom fonts once loaded
+  // Block app rendering until critical fonts (especially Crimson Pro for brand) are loaded
+  if (!fontsLoaded) {
+    return (
+      <View style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center',
+        backgroundColor: isDarkMode ? '#0a0a0a' : '#ffffff'
+      }}>
+        <ActivityIndicator 
+          size="large" 
+          color={isDarkMode ? '#ffffff' : '#000000'} 
+        />
+        <Text style={{
+          marginTop: 16,
+          fontSize: 14,
+          color: isDarkMode ? '#888888' : '#666666',
+          fontFamily: 'System'
+        }}>
+          Loading brand fonts...
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1 }}>
       {React.Children.toArray(children)}

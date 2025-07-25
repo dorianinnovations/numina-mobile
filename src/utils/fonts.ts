@@ -355,12 +355,13 @@ export const loadFonts = async (): Promise<void> => {
   }
 };
 
-// Font loading status
+// Font loading status - prioritize Crimson Pro for brand text
 export const areFontsLoaded = (): boolean => {
-  return Font.isLoaded('Nunito_400Regular') && 
+  return Font.isLoaded('CrimsonPro_700Bold') && // Critical for brand text
+         Font.isLoaded('CrimsonPro_400Regular') &&
+         Font.isLoaded('Nunito_400Regular') && 
          Font.isLoaded('Inter_400Regular') && 
          Font.isLoaded('OpenSans_400Regular') &&
-         Font.isLoaded('CrimsonPro_400Regular') &&
          Font.isLoaded('SpaceMono_400Regular');
 };
 
