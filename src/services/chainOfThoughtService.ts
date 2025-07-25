@@ -1,5 +1,6 @@
 import CloudAuth from './cloudAuth';
 import ENV from '../config/environment';
+import NodeContentEnhancer from './nodeContentEnhancer';
 
 interface ChainOfThoughtStep {
   id: string;
@@ -105,6 +106,11 @@ class ChainOfThoughtService {
                     if (parsed.type === 'step_update') {
                       const llamaMessage = parsed.message || '';
                       
+                      // Capture tool executions from streaming messages
+                      if (llamaMessage.trim()) {
+                        NodeContentEnhancer.processStreamingMessage(llamaMessage.trim(), query).catch(console.error);
+                      }
+                      
                       if (llamaMessage.trim() && llamaMessage.trim().length > 0) {
                         // Send update IMMEDIATELY when received
                         onUpdate({
@@ -127,6 +133,7 @@ class ChainOfThoughtService {
                       // Patch: Always provide nodes array with sessionId
                       let finalData = parsed.data || {};
                       finalData.sessionId = sessionId; // Add sessionId for tracking
+                      finalData.originalQuery = query; // Pass original query for enhancement
                       
                       if (!Array.isArray(finalData.nodes)) {
                         // Generate sample nodes if none provided
@@ -329,23 +336,24 @@ class ChainOfThoughtService {
   }
 
   private generateMockNodes(query: string): any[] {
+    const timestamp = Date.now();
     const baseNodes = [
       {
-        id: 'node_1',
+        id: `node_${timestamp}_1`,
         title: 'Personal Growth Pattern',
         content: 'Analysis of your development journey based on behavioral data',
         category: 'insight',
         confidence: 0.87
       },
       {
-        id: 'node_2', 
+        id: `node_${timestamp}_2`, 
         title: 'Decision Making Style',
         content: 'Your unique approach to making choices in various contexts',
         category: 'behavioral',
         confidence: 0.92
       },
       {
-        id: 'node_3',
+        id: `node_${timestamp}_3`,
         title: 'Communication Preferences',
         content: 'How you prefer to express and receive information',
         category: 'social',

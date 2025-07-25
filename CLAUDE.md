@@ -28,7 +28,6 @@ npm test                          # Run Jest tests
 npm run test:watch                # Run tests in watch mode
 
 # Building
-npm run build                     # Build for production
 eas build --profile development   # Development build
 eas build --profile production    # Production build
 ```
@@ -66,38 +65,89 @@ src/
 │   ├── DataCleanupScreen.tsx     # Data management
 │   ├── WelcomeScreen.tsx         # Welcome flow
 │   └── NuminaSensesV2.tsx        # Advanced AI features
-├── components/           # Premium UI components (60+ components)
+├── components/           # Premium UI components (80+ components)
+│   ├── ui/               # Core UI components
+│   │   ├── Header.tsx            # Navigation header
+│   │   ├── HeaderMenu.tsx        # Header menu system
+│   │   ├── HeaderGradient.tsx    # Header gradient effects
+│   │   ├── PageBackground.tsx    # Background component
+│   │   ├── ScreenWrapper.tsx     # Screen layout wrapper
+│   │   ├── CustomAlert.tsx       # Custom alert system
+│   │   ├── SkeletonLoader.tsx    # Loading skeleton
+│   │   ├── OptimizedImage.tsx    # Optimized image component
+│   │   └── FontProvider.tsx      # Font management
+│   ├── animations/       # Animation components
+│   │   ├── AnimatedGradientBorder.tsx # Animated border effects
+│   │   ├── AnimatedGlowEffects.tsx    # Glow animations
+│   │   ├── AnimatedBackArrow.tsx      # Back arrow animation
+│   │   ├── AnimatedHamburger.tsx      # Hamburger menu animation
+│   │   ├── InteractiveParticles.tsx   # Particle effects
+│   │   ├── BlobBackground.tsx         # Animated blob backgrounds
+│   │   ├── FadeInDown.tsx             # Fade animation
+│   │   └── StarField.tsx              # Star field effect
+│   ├── loaders/          # Loading components
+│   │   ├── EnhancedSpinner.tsx   # Holographic loading spinner
+│   │   ├── NuminaSpinner.tsx     # Numina branded spinner
+│   │   ├── ModernLoader.tsx      # Modern loading component
+│   │   └── LiquidProgress.tsx    # Liquid progress indicator
+│   ├── cards/            # Card components
+│   │   ├── ChromaticCard.tsx     # Premium card with shine effects
+│   │   ├── WalletCard.tsx        # Wallet card components
+│   │   ├── AnalyticsCard.tsx     # Analytics display cards
+│   │   └── TierBadge.tsx         # Tier indication badge
+│   ├── modals/           # Modal components
+│   │   ├── SubscriptionModal.tsx # Subscription management
+│   │   ├── ToolExecutionModal.tsx # AI tool execution
+│   │   ├── LinkConfirmationModal.tsx # Link confirmation
+│   │   ├── SignOutModal.tsx      # Sign out confirmation
+│   │   └── QuickAnalyticsModal.tsx # Quick analytics
+│   ├── sandbox/          # Sandbox-related components
+│   │   ├── SandboxInput.tsx      # Sandbox input interface
+│   │   ├── SandboxModalManager.tsx # Modal management
+│   │   ├── SandboxNodes.tsx      # Node components
+│   │   └── SandboxNodeCanvas.tsx # Node canvas
+│   ├── nodes/            # Node canvas components
+│   │   ├── InfiniteNodeCanvas.tsx # Infinite scrolling canvas
+│   │   ├── NodeCanvas.tsx        # Main node canvas
+│   │   ├── StaticNodeCanvas.tsx  # Static node display
+│   │   └── VirtualNodeRenderer.tsx # Virtual rendering
+│   ├── analytics/        # Analytics components
+│   │   ├── LLMAnalyticsSection.tsx # Analytics display
+│   │   ├── CascadingRecommendations.tsx # AI recommendations
+│   │   └── AIInsightDisplay.tsx  # AI insights
+│   ├── ai/               # AI-related components
+│   │   ├── AIToolExecutionStream.tsx # Tool execution streaming
+│   │   ├── ChainOfThoughtProgress.tsx # CoT progress
+│   │   ├── ReasoningTreeVisualization.tsx # Reasoning display
+│   │   └── ToolStatusIndicator.tsx # Tool status
+│   ├── text/             # Text components  
+│   │   ├── StreamingMarkdown.tsx # Markdown streaming
+│   │   ├── TypewriterText.tsx    # Typewriter effect
+│   │   └── SimpleStreamingText.tsx # Simple text streaming
+│   ├── selectors/        # Selector components
+│   │   ├── ExperienceLevelSelector.tsx # User experience selection
+│   │   ├── ThemeSelector.tsx     # Theme selection
+│   │   └── BorderThemeSelector.tsx # Border theme selection
+│   ├── effects/          # Visual effects
+│   │   └── ShineEffect.tsx       # Premium shine animations
+│   ├── legal/            # Legal components
+│   │   ├── TermsOfService.tsx    # Terms of service modal
+│   │   └── PrivacyPolicy.tsx     # Privacy policy modal
+│   ├── dev/              # Development tools
+│   │   ├── DevTools.tsx          # Development utilities
+│   │   ├── ChatErrorBoundary.tsx # Error boundary
+│   │   └── UpgradePrompt.tsx     # Upgrade prompts
 │   ├── chat/             # Chat-specific components
 │   │   ├── ChatInput.tsx         # Message input
 │   │   ├── MessageBubble.tsx     # Message display
-│   │   ├── AttachmentPicker.tsx  # File attachments
 │   │   ├── AttachmentPreview.tsx # Attachment preview
 │   │   └── PhotoPreview.tsx      # Photo handling
-│   ├── Header.tsx                # Navigation header
-│   ├── HeaderMenu.tsx            # Header menu system
-│   ├── HeaderGradient.tsx        # Header gradient effects
-│   ├── PageBackground.tsx        # Background component
-│   ├── ScreenWrapper.tsx         # Screen layout wrapper
-│   ├── ChromaticCard.tsx         # Premium card with shine effects
-│   ├── WalletCard.tsx            # Wallet card components
-│   ├── BaseWalletCard.tsx        # Base wallet card styling
-│   ├── EnhancedSpinner.tsx       # Holographic loading spinner
-│   ├── ShineEffect.tsx           # Premium shine animations
-│   ├── AnimatedGradientBorder.tsx # Animated border effects
-│   ├── AnimatedGlowEffects.tsx   # Glow animations
-│   ├── TermsOfService.tsx        # Terms of service modal
-│   ├── SubscriptionModal.tsx     # Subscription management
-│   ├── ToolExecutionModal.tsx    # AI tool execution
-│   ├── StreamingMarkdown.tsx     # Markdown streaming
-│   ├── CascadingRecommendations.tsx # AI recommendations
-│   ├── LLMAnalyticsSection.tsx   # Analytics display
-│   ├── ConversationHistory.tsx   # Conversation management
-│   ├── ExperienceLevelSelector.tsx # User experience selection
-│   ├── InteractiveParticles.tsx  # Particle effects
-│   ├── BlobBackground.tsx        # Animated blob backgrounds
-│   ├── CustomAlert.tsx           # Custom alert system
-│   ├── LinkConfirmationModal.tsx # Link confirmation
-│   └── [40+ more premium components] # Additional UI components
+│   ├── charts/           # Chart components
+│   │   ├── AnalyticsChartComponents.tsx # Chart components
+│   │   └── EnhancedCharts.tsx    # Enhanced chart displays
+│   ├── premium/          # Premium UI components
+│   │   └── [Premium component examples] # Premium component demos
+│   └── ConversationHistory.tsx   # Conversation management
 ├── contexts/             # React Context providers
 │   ├── SimpleAuthContext.tsx     # Authentication state
 │   ├── ThemeContext.tsx          # Theme management
@@ -306,7 +356,7 @@ logout() → CloudAuth.logout() → Token cleared → Navigation to Hero
 ### Premium Card System
 ```typescript
 // Wallet-style cards throughout app
-import { BaseWalletCard, BalanceCard, PackageCard } from './WalletCard';
+import { BaseWalletCard, BalanceCard, PackageCard } from '../components/cards/WalletCard';
 
 // Usage in ConversationHistory with premium styling
 <BaseWalletCard
@@ -387,7 +437,7 @@ EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY=  # Stripe payment processing
 
 ### Adding Premium UI Component
 ```typescript
-1. Create component in `src/components/`
+1. Create component in appropriate `src/components/` subfolder (ui/, cards/, modals/, etc.)
 2. Use BaseWalletCard for card-style components
 3. Import ShineEffect for premium shine animations
 4. Use EnhancedSpinner for loading states

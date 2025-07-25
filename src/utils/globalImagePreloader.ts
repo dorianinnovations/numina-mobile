@@ -6,12 +6,12 @@ import { imagePreloader } from './imagePreloader';
  */
 
 // App images for immediate preloading
-const numinaLogo = require('../assets/images/chromelogo.png');
-const happyNuminaImage = require('../assets/images/happynumina.png');
-const numinaContentImage = require('../assets/images/numinacontent.png');
-const numinaShadesImage = require('../assets/images/numinashades.png');
-const numinaSmileImage = require('../assets/images/numinasmile.png');
-const numinaMoonImage = require('../assets/images/numinamoonface.png');
+const numinaLogo = require('../assets/chromelogo.png');
+const happyNuminaImage = require('../assets/happynumina.png');
+const numinaContentImage = require('../assets/numinacontent.png');
+const numinaShadesImage = require('../assets/numinashades.png');
+const numinaSmileImage = require('../assets/numinasmile.png');
+const numinaMoonImage = require('../assets/numinamoonface.png');
 
 const criticalImages = [
   numinaLogo,

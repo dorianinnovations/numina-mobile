@@ -16,17 +16,17 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { ShimmerText } from '../components/ShimmerText';
+import { ShimmerText } from '../components/loaders/ShimmerText';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Header } from '../components/Header';
-import { PageBackground } from '../components/PageBackground';
-import { SubscriptionModal } from '../components/SubscriptionModal';
+import { Header } from '../components/ui/Header';
+import { PageBackground } from '../components/ui/PageBackground';
+import { SubscriptionModal } from '../components/modals/SubscriptionModal';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ApiService from '../services/api';
-import { CustomAlert, AlertButton } from '../components/CustomAlert';
+import { CustomAlert, AlertButton } from '../components/ui/CustomAlert';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { log } from '../utils/logger';
 

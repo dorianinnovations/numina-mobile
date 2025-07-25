@@ -134,6 +134,15 @@ class EnhancedWebSocketService {
       this.connectionStatus.lastError = undefined;
 
       // Create socket with enhanced configuration
+      // Use polling-only if WebSocket upgrades consistently fail
+      const usePollingOnly = this.connectionStatus.reconnectAttempts > 2;
+      
+      if (usePollingOnly) {
+        log.info('Using polling-only mode due to WebSocket upgrade failures', { 
+          reconnectAttempts: this.connectionStatus.reconnectAttempts 
+        }, 'EnhancedWebSocketService');
+      }
+      
       this.socket = io(this.config.serverUrl, {
         auth: {
           token: authData.token,
@@ -141,16 +150,17 @@ class EnhancedWebSocketService {
           email: authData.email,
           userAgent: 'NuminaApp/Mobile'
         },
-        transports: ['polling', 'websocket'],
+        transports: usePollingOnly ? ['polling'] : ['polling', 'websocket'],
         timeout: this.config.timeout,
         reconnection: false, // We handle reconnection manually
         forceNew: true,
-        upgrade: true,
+        upgrade: !usePollingOnly, // Disable upgrade if using polling-only
         rememberUpgrade: false,
         autoConnect: true,
         query: {
           platform: 'mobile',
-          version: '1.0.0'
+          version: '1.0.0',
+          fallbackMode: usePollingOnly ? 'polling' : 'auto'
         }
       });
 
@@ -175,12 +185,15 @@ class EnhancedWebSocketService {
           this.connectionStatus.userId = authData.id;
           this.connectionPromise = null;
           
+          const connectionMode = usePollingOnly ? 'polling-only' : 'auto (polling + websocket)';
           log.info('WebSocket connected successfully', { 
             userId: authData.id,
-            socketId: this.socket?.id 
+            socketId: this.socket?.id,
+            connectionMode,
+            transport: this.socket?.io?.engine?.transport?.name || 'unknown'
           }, 'EnhancedWebSocketService');
           
-          this.emitToHandlers('connection_status', { connected: true });
+          this.emitToHandlers('connection_status', { connected: true, mode: connectionMode });
           resolve(true);
         });
 
@@ -315,13 +328,17 @@ class EnhancedWebSocketService {
       log.warn('WebSocket connection timeout - server may be slow', null, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     } else if (error.message?.includes('502') || error.message?.includes('503')) {
-      log.warn('WebSocket server temporarily unavailable', null, 'EnhancedWebSocketService');
+      log.warn('WebSocket server temporarily unavailable - will try polling-only fallback', { 
+        reconnectAttempts: this.connectionStatus.reconnectAttempts,
+        willUsePollingOnly: this.connectionStatus.reconnectAttempts >= 2
+      }, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     } else {
       log.warn('WebSocket connection failed - app will continue in offline mode', { 
         error: error.message,
         type: error.type,
-        description: error.description 
+        description: error.description,
+        reconnectAttempts: this.connectionStatus.reconnectAttempts
       }, 'EnhancedWebSocketService');
       this.scheduleReconnection();
     }
@@ -481,8 +498,16 @@ class EnhancedWebSocketService {
       currentRooms: Array.from(this.currentRooms),
       socketConnected: this.socket?.connected,
       socketId: this.socket?.id,
-      networkAvailable: this.isNetworkAvailable
+      networkAvailable: this.isNetworkAvailable,
+      transport: this.socket?.io?.engine?.transport?.name || 'unknown',
+      usingPollingOnly: this.connectionStatus.reconnectAttempts > 2
     }, 'EnhancedWebSocketService');
+  }
+
+  // Reset connection attempts to retry WebSocket mode
+  resetConnectionAttempts(): void {
+    log.info('Resetting WebSocket connection attempts - will retry full WebSocket mode', null, 'EnhancedWebSocketService');
+    this.connectionStatus.reconnectAttempts = 0;
   }
 
   // Method to be called when user logs in successfully

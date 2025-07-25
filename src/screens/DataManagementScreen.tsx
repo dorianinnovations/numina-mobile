@@ -20,10 +20,10 @@ import {
 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
-import { PageBackground } from '../components/PageBackground';
-import { ScreenWrapper } from '../components/ScreenWrapper';
-import { BaseWalletCard } from '../components/WalletCard';
-import { EnhancedSpinner } from '../components/EnhancedSpinner';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { BaseWalletCard } from '../components/cards/WalletCard';
+import { EnhancedSpinner } from '../components/loaders/EnhancedSpinner';
 import { 
   smartDataRetention, 
   RetentionPolicy, 

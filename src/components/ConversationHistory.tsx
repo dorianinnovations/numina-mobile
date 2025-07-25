@@ -20,7 +20,7 @@ import { useRefresh } from '../contexts/RefreshContext';
 import { useBorderSettings } from '../contexts/BorderSettingsContext';
 import { NuminaColors } from '../utils/colors';
 import ConversationStorageService, { Conversation } from '../services/conversationStorage';
-import { BaseWalletCard } from './WalletCard';
+import { BaseWalletCard } from './cards/WalletCard';
 
 const { width } = Dimensions.get('window');
 

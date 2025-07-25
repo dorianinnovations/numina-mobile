@@ -6,19 +6,19 @@ export const StreamingConfig = {
   // Sandbox node streaming configuration
   sandbox: {
     // Duration to show skeleton loader before streaming starts
-    skeletonDuration: 500, // 0.5 seconds for faster transition
+    skeletonDuration: 0, // No skeleton - instant display
     
     // Delay between each node appearing
-    nodeStreamDelay: 100, // 100ms for snappier streaming
+    nodeStreamDelay: 25, // 25ms for near-instant streaming
     
     // Whether to enable streaming effect
     enabled: true,
     
     // Maximum nodes to stream at once (rest appear instantly)
-    maxStreamedNodes: 10,
+    maxStreamedNodes: 50, // Show most nodes instantly
   },
   
-  // Individual node content streaming (in NodeExplorationScreen)
+  // Individual NodeBall content streaming (in NodeBallOpenedModal)
   nodeContent: {
     // Characters per interval
     charsPerInterval: 1,

@@ -19,8 +19,8 @@ import { FontAwesome5, MaterialCommunityIcons, Ionicons } from '@expo/vector-ico
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
-import { PageBackground } from '../components/PageBackground';
-import { ScreenWrapper } from '../components/ScreenWrapper';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { useRealTimeEvents } from '../hooks/useRealTimeEvents';
 import { RealTimeEvent } from '../services/realTimeSync';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';

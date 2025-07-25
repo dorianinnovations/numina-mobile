@@ -21,7 +21,7 @@ import { WalletScreen } from "../screens/WalletScreen";
 import { CloudFind } from "../screens/CloudFind";
 import { TutorialScreen } from "../screens/TutorialScreen";
 import { DataManagementScreen } from "../screens/DataManagementScreen";
-import { ExperienceLevelSelector } from "../components/ExperienceLevelSelector";
+import { ExperienceLevelSelector } from "../components/selectors/ExperienceLevelSelector";
 import { ExperienceLevelService } from "../services/experienceLevelService";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../contexts/SimpleAuthContext";
@@ -51,7 +51,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 
 const mobileTransition = TransitionPresets.SlideFromRightIOS;
 const LottieLoader: React.FC<{ size?: number; isDarkMode?: boolean }> = ({ 
-  size = 38,
+  size = 40,
   isDarkMode = false
 }) => {
   return (
@@ -121,6 +121,15 @@ export const AppNavigator: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [loading, loadingMessages.length]);
+
+  const safeGoBack = (navigation: any) => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // If can't go back, navigate to a safe default screen
+      navigation.navigate('Hero');
+    }
+  };
 
   const createMenuHandler = (navigation: any) => (key: string) => {
     switch (key) {
@@ -303,7 +312,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <WelcomeScreen
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
               onNavigateToSignUp={() => navigation.navigate("SignUp")}
             />
@@ -319,7 +328,7 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => (
             <SignInScreen
               onNavigateBack={() => {
-                navigation.goBack();
+                safeGoBack(navigation);
               }}
               onSignInSuccess={() => {
               }}
@@ -341,7 +350,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <SignUpScreen
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
               onSignUpSuccess={() => {
                 // Immediate navigation to prevent auth routing from interfering
                 navigation.reset({
@@ -383,7 +392,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <AboutScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -396,7 +405,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <ChatScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -409,7 +418,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <AnalyticsScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -422,7 +431,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <DataManagementScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -435,7 +444,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <SandboxScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -448,7 +457,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <SentimentScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -461,7 +470,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <ProfileScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -474,7 +483,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <SettingsScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
               onNavigateToSignIn={() => navigation.navigate('SignIn')}
               onNavigateToBorderThemes={() => navigation.navigate('BorderThemeSettings')}
               onNavigateToDataManagement={() => navigation.navigate('DataManagement')}
@@ -503,7 +512,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <WalletScreen 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -516,7 +525,7 @@ export const AppNavigator: React.FC = () => {
         >
           {({ navigation }) => (
             <CloudFind 
-              onNavigateBack={() => navigation.goBack()}
+              onNavigateBack={() => safeGoBack(navigation)}
             />
           )}
         </Stack.Screen>
@@ -554,7 +563,7 @@ export const AppNavigator: React.FC = () => {
         zIndex: 1000,
         pointerEvents: 'box-none', // Allow touches to pass through when appropriate
       }}>
-        <LottieLoader size={32} isDarkMode={isDarkMode} />
+        <LottieLoader size={40} isDarkMode={isDarkMode} />
         <Animated.Text style={{
           marginTop: 16,
           fontSize: 11,

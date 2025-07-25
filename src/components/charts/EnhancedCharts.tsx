@@ -4,7 +4,7 @@ import {
   BarChart, 
   LineChart, 
   PieChart, 
-  StackedBarChart,
+  // StackedBarChart, // Not available in current version
   LineChartBicolor,
   PopulationPyramid 
 } from 'react-native-gifted-charts';
@@ -446,7 +446,7 @@ export {
   BarChart as GiftedBarChart,
   LineChart as GiftedLineChart,
   PieChart as GiftedPieChart,
-  StackedBarChart as GiftedStackedBarChart,
+  // StackedBarChart as GiftedStackedBarChart, // Not available
   LineChartBicolor as GiftedLineChartBicolor,
   PopulationPyramid as GiftedPopulationPyramid
 };

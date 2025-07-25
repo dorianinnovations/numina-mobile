@@ -13,11 +13,11 @@ import {
 } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import { PageBackground } from '../components/PageBackground';
-import { ScreenWrapper } from '../components/ScreenWrapper';
-import { BaseWalletCard } from '../components/WalletCard';
-import { ShineEffect } from '../components/ShineEffect';
-import { EnhancedSpinner } from '../components/EnhancedSpinner';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { BaseWalletCard } from '../components/cards/WalletCard';
+import { ShineEffect } from '../components/effects/ShineEffect';
+import { EnhancedSpinner } from '../components/loaders/EnhancedSpinner';
 import { useAnalytics } from '../hooks/useAnalytics';
 
 interface AnalyticsScreenProps {
@@ -34,7 +34,7 @@ const categories = [
 ];
 
 // Lottie Refresh Spinner Component
-const LottieRefreshSpinner: React.FC<{ size?: number }> = ({ size = 29 }) => {
+const LottieRefreshSpinner: React.FC<{ size?: number }> = ({ size = 36 }) => {
   return (
     <View style={{ width: size, height: size }}>
       <LottieView

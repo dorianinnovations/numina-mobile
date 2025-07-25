@@ -17,8 +17,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
 import { MessageAttachment } from '../../types/message';
-import StreamingMarkdown from '../StreamingMarkdown';
-import FadeInDown from '../FadeInDown';
+import StreamingMarkdown from '../text/StreamingMarkdown';
+import FadeInDown from '../animations/FadeInDown';
 import { PhotoPreview } from './PhotoPreview';
 
 const { width } = Dimensions.get('window');

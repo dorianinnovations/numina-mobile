@@ -17,14 +17,15 @@ import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { NuminaColors } from '../utils/colors';
-import { Header } from '../components/Header';
-import { PageBackground } from '../components/PageBackground';
+import { Header } from '../components/ui/Header';
+import { PageBackground } from '../components/ui/PageBackground';
+import { areFontsLoaded } from '../utils/fonts';
 
 const { width, height } = Dimensions.get('window');
 
 // Import character images
-const numinaSmileImage = require('../assets/images/numinasmile.png');
-const numinaMoonImage = require('../assets/images/numinamoonface.png');
+const numinaSmileImage = require('../../assets/unknownuser.jpg');
+const numinaMoonImage = require('../../assets/unknownuser2.jpg');
 
 interface HeroLandingScreenProps {
   onNavigateToTutorial: () => void;
@@ -75,6 +76,8 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   
   // Debounce ref to prevent rapid toggling issues
   const toggleDebounceRef = useRef(false);
+
+
 
 
   useEffect(() => {
@@ -338,6 +341,9 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   });
 
 
+  // Remove font loading dependency - just proceed with system fonts initially
+  // The dynamic font switching will handle the transition to custom fonts
+
   return (
     <PageBackground>
       <SafeAreaView style={styles.container}>
@@ -426,12 +432,18 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             },
           ]}
         >
-          <Text style={[styles.welcomeText, { color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600] }]}>
-            <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#a3c3ff' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#c6ade6' : '#7972ff' }}>patterns</Text>
-          </Text>
-          
-          {/* Enhanced Brand Text Animation */}
-          <Animated.Text 
+                  <Text style={[
+          styles.welcomeText, 
+          { 
+            color: isDarkMode ? '#ffffff' : NuminaColors.darkMode[600],
+            fontFamily: 'System'
+          }
+        ]}>
+          <Text style={{ color: isDarkMode ? '#87ebde' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#a3c3ff' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#c6ade6' : '#7972ff' }}>patterns</Text>
+        </Text>
+        
+        {/* Enhanced Brand Text Animation */}
+                  <Animated.Text 
             style={[
               styles.brandText,
               { 
@@ -440,6 +452,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                 transform: [
                   { translateY: brandY }
                 ],
+                fontFamily: 'System'
               }
             ]}
           >
@@ -544,6 +557,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         textShadowColor: isDarkMode ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.8)',
                         textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
                         textShadowRadius: isDarkMode ? 2 : 1,
+                        fontFamily: 'System'
                       }
                     ]}>
                       Explore
@@ -639,6 +653,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                         textShadowColor: isDarkMode ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.8)',
                         textShadowOffset: { width: 0, height: isDarkMode ? 1 : -1 },
                         textShadowRadius: isDarkMode ? 3 : 1,
+                        fontFamily: 'System'
                       }
                     ]}>
                       Create Account
@@ -665,7 +680,10 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             >
               <Text style={[
                 styles.loginLinkText, 
-                { color: isDarkMode ? '#999999' : '#666666' }
+                { 
+                  color: isDarkMode ? '#999999' : '#666666',
+                  fontFamily: 'System'
+                }
               ]}>
                 Already have an account? Sign in
               </Text>
@@ -713,12 +731,12 @@ const styles = StyleSheet.create({
     letterSpacing: -1.2,
     opacity: 0.8,  
     paddingHorizontal: Platform.OS === 'web' ? 40 : 24, 
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'System',
   },
   brandText: {
     fontSize: width < 350 ? 42 : width < 400 ? 48 : 54,
     fontWeight: 'bold',
-    fontFamily: 'CrimsonPro_700Bold',
+    fontFamily: 'System',
     letterSpacing: -4.5,
     textAlign: 'center',
     marginTop: 12,
@@ -779,7 +797,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     letterSpacing: -0.5,
-    fontFamily: 'Nunito_500Medium',
+    fontFamily: 'System',
   },
   secondaryButton: {
     width: '100%',
@@ -792,7 +810,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     letterSpacing: -0.5,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'System',
   },
   buttonContent: {
     flexDirection: 'row',
@@ -808,7 +826,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     letterSpacing: -0.3,
-    fontFamily: 'Nunito_400Regular',
+    fontFamily: 'System',
   },
 
   // Dark Mode Toggle Styles
@@ -850,6 +868,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 8,
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '400',
+    fontFamily: 'System',
   },
 
 });

@@ -1,5 +1,6 @@
 import CloudAuth from './cloudAuth';
 import ApiService from './api';
+import analyticsService from './analyticsService';
 // Simple behavioral metrics type definition
 interface BehavioralMetrics {
   communicationStyle: any;
@@ -60,7 +61,7 @@ class SandboxDataService {
         insights,
         mongoData
       ] = await Promise.all([
-        Promise.resolve(null), // Behavioral metrics removed - using new analytics service
+        analyticsService.getAnalyticsData(), // Use unified analytics service
         ApiService.getUserProfile(),
         this.getConversationHistory(),
         this.getToolUsageData(),

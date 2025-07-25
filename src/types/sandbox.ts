@@ -1,8 +1,10 @@
 /**
  * Shared types for Sandbox functionality
+ * NodeBall = tappable colored dot on canvas
+ * NodeBallOpenedModal = full-screen modal when NodeBall is tapped
  */
 
-export interface SandboxNode {
+export interface NodeBall {
   id: string;
   title: string;
   content: string;
@@ -42,6 +44,9 @@ export interface SandboxNode {
     thumbnail?: string;
   }>;
 }
+
+// Legacy alias for backward compatibility
+export interface SandboxNode extends NodeBall {}
 
 export interface SandboxAction {
   id: string;

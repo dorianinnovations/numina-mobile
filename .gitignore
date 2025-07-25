@@ -47,3 +47,4 @@ dist/
 *.md
 !README.md
 !CLAUDE.md
+assets/models/

@@ -16,10 +16,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Header } from '../components/Header';
-import { PageBackground } from '../components/PageBackground';
-import { ChromaticCard, ChromaticText } from '../components/ChromaticCard';
-import { BalanceCard, PackageCard, DiscountBanner } from '../components/WalletCard';
+import { Header } from '../components/ui/Header';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ChromaticCard, ChromaticText } from '../components/cards/ChromaticCard';
+import { BalanceCard, PackageCard, DiscountBanner } from '../components/cards/WalletCard';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import ApiService from '../services/api';
 

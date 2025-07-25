@@ -18,10 +18,10 @@ import {
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
-import { Header } from '../components/Header';
+import { Header } from '../components/ui/Header';
 import { log } from '../utils/logger';
-import { PageBackground } from '../components/PageBackground';
-import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
+import { PageBackground } from '../components/ui/PageBackground';
+import { AnimatedAuthStatus } from '../components/animations/AnimatedAuthStatus';
 import { NuminaColors } from '../utils/colors';
 
 const { height } = Dimensions.get('window');

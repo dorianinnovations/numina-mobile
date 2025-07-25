@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { PageBackground } from '../components/PageBackground';
-import { Header } from '../components/Header';
+import { PageBackground } from '../components/ui/PageBackground';
+import { Header } from '../components/ui/Header';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -254,7 +254,7 @@ export const AboutScreen: React.FC<AboutScreenProps> = ({
             <View style={isNumina ? styles.numinaCardIcon : styles.cardIcon}>
               {isNumina ? (
                 <Image 
-                  source={require('../assets/images/NUMINALOGO.png')}
+                  source={require('../../assets/icon.png')}
                   style={styles.numinaLogoImage}
                   resizeMode="contain"
                 />

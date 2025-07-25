@@ -22,11 +22,11 @@ import LottieView from 'lottie-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from "../contexts/SimpleAuthContext";
-import { Header } from '../components/Header';
-import { PageBackground } from '../components/PageBackground';
-import { AnimatedAuthStatus } from '../components/AnimatedAuthStatus';
-import { TermsOfService } from '../components/TermsOfService';
-import { PrivacyPolicy } from '../components/PrivacyPolicy';
+import { Header } from '../components/ui/Header';
+import { PageBackground } from '../components/ui/PageBackground';
+import { AnimatedAuthStatus } from '../components/animations/AnimatedAuthStatus';
+import { TermsOfService } from '../components/legal/TermsOfService';
+import { PrivacyPolicy } from '../components/legal/PrivacyPolicy';
 import AppInitializer from '../services/appInitializer';
 
 const { width } = Dimensions.get('window');
@@ -777,8 +777,8 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
                               autoPlay
                               loop={false}
                               style={{
-                                width: 29,
-                                height: 29,
+                                width: 36,
+                                height: 36,
                               }}
                             />
                             <Text style={[styles.successText, { color: '#10b981' }]}>

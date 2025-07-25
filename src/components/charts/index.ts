@@ -8,7 +8,7 @@ export {
   GiftedBarChart,
   GiftedLineChart,
   GiftedPieChart,
-  GiftedStackedBarChart,
+  // GiftedStackedBarChart, // Not available
   GiftedLineChartBicolor,
   GiftedPopulationPyramid
 } from './EnhancedCharts';

@@ -20,11 +20,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/SimpleAuthContext';
-import { PageBackground } from '../components/PageBackground';
-import { ScreenWrapper } from '../components/ScreenWrapper';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { useNavigation } from '@react-navigation/native';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
-import { TierBadge } from '../components/TierBadge';
+import { TierBadge } from '../components/cards/TierBadge';
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;

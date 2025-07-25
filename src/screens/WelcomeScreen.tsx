@@ -18,14 +18,14 @@ import { NuminaColors } from '../utils/colors';
 import { NuminaAnimations } from '../utils/animations';
 import { Styling } from '../utils/styling';
 import { TextStyles } from '../utils/fonts';
-import { Header } from '../components/Header';
-import { PageBackground } from '../components/PageBackground';
+import { Header } from '../components/ui/Header';
+import { PageBackground } from '../components/ui/PageBackground';
 
 
 const { width, height } = Dimensions.get('window');
 
-// Import the cloud character image
-const happyNuminaImage = require('../assets/images/happynumina.png');
+// Import the cloud character image - using existing asset
+const happyNuminaImage = require('../../assets/unknownuser.jpg');
 
 interface WelcomeScreenProps {
   onNavigateBack: () => void;

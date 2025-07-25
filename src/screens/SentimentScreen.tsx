@@ -17,8 +17,8 @@ import { FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Svg, { Path, Circle, G, Text as SvgText, Line, Polygon, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useTheme } from '../contexts/ThemeContext';
-import { ScreenWrapper } from '../components/ScreenWrapper';
-import { PageBackground } from '../components/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { PageBackground } from '../components/ui/PageBackground';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 const { width, height } = Dimensions.get('window');

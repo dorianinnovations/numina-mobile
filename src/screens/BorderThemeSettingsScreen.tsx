@@ -17,9 +17,9 @@ import {
 import { useTheme } from '../contexts/ThemeContext';
 import { useBorderTheme } from '../contexts/BorderThemeContext';
 import { useBorderSettings } from '../contexts/BorderSettingsContext';
-import { BorderThemeSelector } from '../components/BorderThemeSelector';
+import { BorderThemeSelector } from '../components/selectors/BorderThemeSelector';
 import { BorderTheme } from '../constants/borderThemes';
-import { AnimatedGradientBorder } from '../components/AnimatedGradientBorder';
+import { AnimatedGradientBorder } from '../components/animations/AnimatedGradientBorder';
 import { FontAwesome5 } from '@expo/vector-icons';
 
 interface BorderThemeSettingsScreenProps {
@@ -75,7 +75,11 @@ export const BorderThemeSettingsScreen: React.FC<BorderThemeSettingsScreenProps>
   };
 
   const handleBack = () => {
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Settings');
+    }
   };
 
   return (

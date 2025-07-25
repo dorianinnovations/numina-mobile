@@ -10,19 +10,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
-import { PageBackground } from '../components/PageBackground';
-import { ScreenWrapper } from '../components/ScreenWrapper';
-import { EnhancedSpinner } from '../components/EnhancedSpinner';
-import { ModernLoader } from '../components/ModernLoader';
-import { SandboxModalManager, SandboxModalManagerRef } from '../components/SandboxModalManager';
-import { SandboxInput } from '../components/SandboxInput';
-import { SandboxNodes } from '../components/SandboxNodes';
+import { PageBackground } from '../components/ui/PageBackground';
+import { ScreenWrapper } from '../components/ui/ScreenWrapper';
+import { EnhancedSpinner } from '../components/loaders/EnhancedSpinner';
+import { ModernLoader } from '../components/loaders/ModernLoader';
+import { SandboxModalManager, SandboxModalManagerRef } from '../components/sandbox/SandboxModalManager';
+import { SandboxInput } from '../components/sandbox/SandboxInput';
+import { SandboxNodes } from '../components/sandbox/SandboxNodes';
 import { useSandboxData } from '../hooks/useSandboxData';
 import { useStableSandboxState } from '../hooks/useStableSandboxState';
 import { ANIMATION_DURATIONS, ERROR_MESSAGES, PROCESSING_MESSAGES } from '../constants/sandbox';
 import { useResourceManager } from '../utils/resourceManager';
 import { useExtremeAnimations } from '../utils/extremeAnimationSystem';
-import NodeCanvas from '../components/NodeCanvas';
+import NodeCanvas from '../components/nodes/NodeCanvas';
 import getOptimizedWebSocketService from '../services/optimizedWebSocketService';
 import type { SandboxNode } from '../types/sandbox';
 
@@ -287,12 +287,12 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       // Check if UBPM pill is selected
       const useUBPM = selectedActions.includes('ubpm');
       
-      // Mandatory 3s delay for cohesion, then start processing
+      // Brief delay for UI cohesion, then start processing
       createTimeout(() => {
         setShowImmediateLoader(false);
         setIsProcessing(true);
         startChainOfThoughtProcess(useUBPM);
-      }, 3000, 'high');
+      }, 500, 'high'); // Reduced from 3000ms to 500ms
     }
   };
 

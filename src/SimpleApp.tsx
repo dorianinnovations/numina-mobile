@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './contexts/SimpleAuthContext';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { BorderThemeProvider } from './contexts/BorderThemeContext';
 import { BorderSettingsProvider } from './contexts/BorderSettingsContext';
-import { FontProvider } from './components/FontProvider';
+import { FontProvider } from './components/ui/FontProvider';
 // import { DevTools } from './components/DevTools'; // TEMP DISABLED
 import { NuminaColors } from './utils/colors';
 import AppInitializer from './services/appInitializer';
