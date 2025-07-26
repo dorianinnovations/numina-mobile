@@ -75,7 +75,7 @@ class AnalyticsService {
       ]);
 
       return {
-        ubmp: ubmpResult.status === 'fulfilled' ? ubmpResult.value : null,
+        ubpm: ubmpResult.status === 'fulfilled' ? ubmpResult.value : null,
         llmInsights: llmResult.status === 'fulfilled' ? llmResult.value : [],
         growthSummary: growthResult.status === 'fulfilled' ? growthResult.value : null,
         lastUpdated: new Date().toISOString()
@@ -339,3 +339,4 @@ class AnalyticsService {
 }
 
 export const analyticsService = AnalyticsService.getInstance();
+export default analyticsService;

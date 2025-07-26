@@ -15,6 +15,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { NuminaAnimations } from '../../utils/animations';
 import { useGhostTyping } from '../../hooks/useGhostTyping';
 import { SandboxAction } from '../../types/sandbox';
+import pillButtonService from '../../services/pillButtonService';
 
 interface SandboxInputProps {
   inputText: string;
@@ -81,7 +82,7 @@ const SANDBOX_ACTIONS: SandboxAction[] = [
   },
   {
     id: 'ubpm',
-    label: 'UBPM',
+    label: 'SynthUBPM',
     icon: 'user',
     color: '#8B5CF6',
     description: 'Use behavioral profile'
@@ -127,6 +128,11 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
   const tooltipScale = useRef(new Animated.Value(0.8)).current;
+
+  // Pill recommendations state
+  const [pillRecommendations, setPillRecommendations] = useState<any[]>([]);
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [pillSynergy, setPillSynergy] = useState({ score: 0.75, description: 'Custom combination' });
 
   const {
     ghostText,
@@ -286,7 +292,7 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
     }
   };
 
-  const handleActionSelect = (actionId: string) => {
+  const handleActionSelect = async (actionId: string) => {
     NuminaAnimations.haptic.medium();
     
     const animations = pillAnimations.get(actionId);
@@ -307,6 +313,8 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
         useNativeDriver: true,
       })
     ]).start();
+
+    let newSelectedActions: string[];
     
     if (isSelecting) {
       Animated.sequence([
@@ -323,7 +331,8 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
         })
       ]).start();
       
-      setSelectedActions((prev: string[]) => [...prev, actionId]);
+      newSelectedActions = [...selectedActions, actionId];
+      setSelectedActions(newSelectedActions);
     } else {
       Animated.spring(animations.scale, {
         toValue: 1,
@@ -332,7 +341,28 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
         useNativeDriver: true,
       }).start();
       
-      setSelectedActions((prev: string[]) => prev.filter((id: string) => id !== actionId));
+      newSelectedActions = selectedActions.filter((id: string) => id !== actionId);
+      setSelectedActions(newSelectedActions);
+    }
+
+    // Update synergy score
+    if (newSelectedActions.length > 0) {
+      const synergy = pillButtonService.calculateSynergyScore(newSelectedActions);
+      setPillSynergy(synergy);
+    }
+
+    // Get recommendations if query exists
+    if (inputText.trim() && newSelectedActions.length > 0) {
+      try {
+        const recommendations = await pillButtonService.getPillRecommendations(
+          inputText, 
+          newSelectedActions
+        );
+        setPillRecommendations(recommendations);
+        setShowRecommendations(recommendations.length > 0);
+      } catch (error) {
+        console.warn('Failed to get pill recommendations:', error);
+      }
     }
   };
 
@@ -472,10 +502,38 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
       <Text style={[styles.pillsLabel, { color: isDarkMode ? '#888' : '#666' }]}>
         How should I help?
       </Text>
+      
+      {/* Synergy indicator */}
+      {selectedActions.length > 1 && (
+        <View style={styles.synergyIndicator}>
+          <View style={[
+            styles.synergyBar,
+            { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }
+          ]}>
+            <Animated.View 
+              style={[
+                styles.synergyFill,
+                { 
+                  width: `${pillSynergy.score * 100}%`,
+                  backgroundColor: pillSynergy.score > 0.85 ? '#10B981' : pillSynergy.score > 0.75 ? '#F59E0B' : '#6B7280'
+                }
+              ]} 
+            />
+          </View>
+          <Text style={[
+            styles.synergyText, 
+            { color: isDarkMode ? '#ccc' : '#666' }
+          ]}>
+            {pillSynergy.description} ({Math.round(pillSynergy.score * 100)}%)
+          </Text>
+        </View>
+      )}
+
       <View style={styles.pillsGrid}>
         {SANDBOX_ACTIONS.map((action) => {
           const animations = pillAnimations.get(action.id);
           const isSelected = selectedActions.includes(action.id);
+          const isRecommended = pillRecommendations.some(rec => rec.pill === action.id);
           
           return (
             <Animated.View
@@ -495,7 +553,10 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                       : (isDarkMode ? 'rgba(255,255,255,0.05)' : (isInputFocused ? '#ffffff' : 'rgba(0,0,0,0.05)')),
                     borderColor: isSelected
                       ? action.color
-                      : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                      : isRecommended
+                        ? action.color
+                        : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'),
+                    borderWidth: isRecommended && !isSelected ? 2 : 1,
                   }
                 ]}
                 onPress={() => handleActionSelect(action.id)}
@@ -520,11 +581,40 @@ export const SandboxInput: React.FC<SandboxInputProps> = ({
                 >
                   {action.label}
                 </Text>
+                {isRecommended && !isSelected && (
+                  <View style={styles.recommendedDot}>
+                    <View style={[styles.recommendedDotInner, { backgroundColor: action.color }]} />
+                  </View>
+                )}
               </Pressable>
             </Animated.View>
           );
         })}
       </View>
+
+      {/* Pill validation warnings */}
+      {selectedActions.length > 0 && (
+        <View style={styles.pillValidation}>
+          {(() => {
+            const validation = pillButtonService.validatePillCombination(selectedActions);
+            if (validation.warnings.length > 0) {
+              return (
+                <View style={styles.validationWarnings}>
+                  {validation.warnings.map((warning, index) => (
+                    <Text key={index} style={[
+                      styles.validationText,
+                      { color: isDarkMode ? '#FCD34D' : '#D97706' }
+                    ]}>
+                      ⚠️ {warning}
+                    </Text>
+                  ))}
+                </View>
+              );
+            }
+            return null;
+          })()}
+        </View>
+      )}
     </Animated.View>
   );
 
@@ -1008,5 +1098,54 @@ const styles = StyleSheet.create({
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
     marginTop: -1,
+  },
+  synergyIndicator: {
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  synergyBar: {
+    width: 120,
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  synergyFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  synergyText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
+  recommendedDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recommendedDotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  pillValidation: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  validationWarnings: {
+    alignItems: 'center',
+  },
+  validationText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: 2,
   },
 }); 

@@ -127,6 +127,110 @@ class SandboxDataService {
     };
   }
 
+  /**
+   * Generate discovery nodes based on user query and context
+   * This is the core method that was missing from the mobile implementation
+   */
+  async generateNodes(
+    query: string, 
+    selectedActions: string[] = ['explore', 'research'], 
+    lockedContext: any[] = [],
+    useUBPM: boolean = true
+  ): Promise<{success: boolean, data?: any, error?: string}> {
+    try {
+      const token = CloudAuth.getInstance().getToken();
+      if (!token) {
+        return { success: false, error: 'Authentication required' };
+      }
+
+      // Get user data for personalization if UBPM is enabled
+      let userData = null;
+      if (useUBPM) {
+        try {
+          userData = await this.getComprehensiveUserData();
+        } catch (error) {
+          console.warn('Failed to get user data for node generation:', error);
+        }
+      }
+
+      const requestBody = {
+        query,
+        selectedActions,
+        lockedContext,
+        useUBPM,
+        userData: userData ? {
+          ubpmData: userData.ubpmData,
+          behavioralMetrics: userData.behavioralMetrics,
+          emotionalProfile: userData.emotionalProfile,
+          temporalPatterns: userData.temporalPatterns,
+          interests: userData.ubpmData?.preferences?.interests || [],
+          learningStyle: userData.behavioralMetrics?.learningStyle
+        } : null
+      };
+
+      // Create AbortController for timeout support in React Native
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutes
+
+      const response = await fetch(`${this.baseURL}/sandbox/generate-nodes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { 
+          success: false, 
+          error: errorData.error || `Server error: ${response.status}` 
+        };
+      }
+
+      const result = await response.json();
+      
+      // Validate the response structure
+      if (!result.success || !result.data || !Array.isArray(result.data.nodes)) {
+        return { 
+          success: false, 
+          error: 'Invalid response format from server' 
+        };
+      }
+
+      // Track analytics
+      analyticsService.trackEvent('sandbox_nodes_generated', {
+        query: query.substring(0, 100),
+        nodeCount: result.data.nodes.length,
+        actionsCount: selectedActions.length,
+        lockedNodesCount: lockedContext.length,
+        useUBPM
+      });
+
+      return result;
+
+    } catch (error) {
+      console.error('Error generating nodes:', error);
+      
+      if (error.name === 'TimeoutError') {
+        return { success: false, error: 'Request timed out. Please try a simpler query.' };
+      }
+      
+      if (error.name === 'NetworkError' || !navigator.onLine) {
+        return { success: false, error: 'Network error. Please check your connection.' };
+      }
+
+      return { 
+        success: false, 
+        error: 'Failed to generate nodes. Please try again.' 
+      };
+    }
+  }
+
   async enhanceNodeWithUserData(node: any, userData: UserDataSnapshot): Promise<NodeEnhancementData> {
     try {
       // Try to get real UBPM enhancement from backend first

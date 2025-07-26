@@ -43,10 +43,15 @@ export class UserOnboardingService {
     }
   }
 
-  static async shouldShowExperienceLevel(userId: string): Promise<boolean> {
+  static async shouldShowExploration(userId: string): Promise<boolean> {
     const isNew = await this.isNewUser(userId);
     const hasCompletedOnboarding = await this.hasCompletedOnboarding(userId);
     
     return isNew && !hasCompletedOnboarding;
+  }
+
+  // Backward compatibility alias
+  static async shouldShowExperienceLevel(userId: string): Promise<boolean> {
+    return this.shouldShowExploration(userId);
   }
 }

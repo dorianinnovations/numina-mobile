@@ -456,6 +456,23 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
   const sendMessage = async (messageAttachments?: MessageAttachment[]) => {
     if ((!inputText.trim() && !messageAttachments?.length) || !conversation) return;
 
+    // Validate conversation creation for empty conversations
+    if (conversation.messages.length === 0 || conversation.messages.every(m => m.sender === 'numina')) {
+      const testMessage: Message = {
+        id: Date.now().toString(),
+        text: inputText.trim(),
+        sender: 'user',
+        timestamp: new Date().toISOString(),
+        attachments: messageAttachments,
+        hasFileContext: messageAttachments && messageAttachments.length > 0,
+      };
+      
+      if (!ConversationStorageService.shouldCreateConversation(testMessage)) {
+        // Message too short or empty, don't proceed
+        return;
+      }
+    }
+
     // Reset search state for new message
     // Search state removed
 
@@ -500,13 +517,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
       }
     }
     
-    // Pre-detect potential tool executions
-    const potentialTools = detectPotentialTools(messageText);
-    if (potentialTools.length > 0) {
-      potentialTools.forEach(tool => {
-        toolExecutionService.startExecution(tool.name, tool.parameters);
-      });
-    }
+    // Let the AI determine tool usage naturally through conversation
 
     // Save conversation with user message
     await saveConversation(updatedConversation);
@@ -528,75 +539,68 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     setConversation(currentConversation);
 
     try {
-      // Use standard chat service
+      // Use adaptive chat service with proper streaming
       let finalResponseText = '';
       
-      // Create chat message for API
-      const chatMessage: any = {
+      // Create adaptive chat message for API
+      const adaptiveChatMessage: any = {
+        message: userMessage.text,
         prompt: userMessage.text,
-        stream: true,
-        files: userMessage.attachments?.map(attachment => ({
+        attachments: userMessage.attachments?.map(attachment => ({
           url: attachment.url,
           type: attachment.type,
           name: attachment.name
         }))
       };
       
-      // Send streaming chat message with optimized handler
-      let accumulatedContent = '';
-      
-      finalResponseText = await ApiService.sendChatMessageStreaming(
-        chatMessage,
-        (partialResponse: string) => {
-          // Process streaming content with intelligent batching
-          processStreamingContent(partialResponse, (bufferedContent) => {
-            // Accumulate content
-            accumulatedContent += bufferedContent;
-            
-            // Update current AI message for tool execution
-            setCurrentAIMessage(accumulatedContent);
-            
-            // Hide header during streaming (only once)
-            if (!headerPermanentlyHidden) {
-              setHeaderVisible(false);
-              setHeaderPermanentlyHidden(true);
-            }
-            
-            // Process tool executions from accumulated response
-            toolExecutionService.processStreamingToolResponse(accumulatedContent);
-            toolExecutionService.detectToolExecutionsInMessage(accumulatedContent);
-            
-            // Update the AI message with optimized batching
-            const updatedAIMessage = {
-              ...aiMessage,
-              text: accumulatedContent,
-              isStreaming: true,
+      // Send adaptive streaming chat message
+      const result = await ApiService.sendAdaptiveChatMessage(
+        adaptiveChatMessage,
+        (fullContentSoFar: string) => {
+          // Update current AI message for tool execution
+          setCurrentAIMessage(fullContentSoFar);
+          
+          // Hide header during streaming (only once)
+          if (!headerPermanentlyHidden) {
+            setHeaderVisible(false);
+            setHeaderPermanentlyHidden(true);
+          }
+          
+          // Process tool executions from response
+          toolExecutionService.processStreamingToolResponse(fullContentSoFar);
+          toolExecutionService.detectToolExecutionsInMessage(fullContentSoFar);
+          
+          // Update the AI message with the full content DIRECTLY
+          const updatedAIMessage = {
+            ...aiMessage,
+            text: fullContentSoFar,
+            isStreaming: true,
+          };
+          
+          // Update conversation state efficiently
+          if (currentConversation.messages && currentConversation.messages.length > 0) {
+            const updatedConversation = {
+              ...currentConversation,
+              messages: [...currentConversation.messages.slice(0, -1), updatedAIMessage],
+              updatedAt: new Date().toISOString()
             };
             
-            // Update conversation state efficiently
-            if (currentConversation.messages && currentConversation.messages.length > 0) {
-              const updatedConversation = {
-                ...currentConversation,
-                messages: [...currentConversation.messages.slice(0, -1), updatedAIMessage],
-                updatedAt: new Date().toISOString()
-              };
-              
-              setConversation(updatedConversation);
-              
-              // Throttled scroll
-              scrollToEnd(() => {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }, false);
-            }
-          });
+            setConversation(updatedConversation);
+            
+            // Throttled scroll
+            scrollToEnd(() => {
+              flatListRef.current?.scrollToEnd({ animated: false });
+            }, false);
+          }
         }
       );
+      
+      finalResponseText = result.content;
       
       // Flush any remaining buffered content
       flushBuffer((remainingContent) => {
         if (remainingContent) {
-          accumulatedContent += remainingContent;
-          setCurrentAIMessage(accumulatedContent);
+          setCurrentAIMessage(finalResponseText);
         }
       });
       
@@ -745,32 +749,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({
     }
   };
   
-  // Detect potential tools from user message - STRICT detection to avoid false positives
-  const detectPotentialTools = (message: string): Array<{name: string, parameters: any}> => {
-    const tools = [];
-    const lowerMessage = message.toLowerCase();
-    
-    // Web search detection - only explicit search requests
-    if (lowerMessage.includes('search for') || lowerMessage.includes('google') || 
-        lowerMessage.includes('look up online') || lowerMessage.includes('find on the web')) {
-      tools.push({ name: 'web_search', parameters: { query: message } });
-    }
-    
-    // Music detection - only explicit music requests
-    if ((lowerMessage.includes('play music') || lowerMessage.includes('music recommendation') || 
-         lowerMessage.includes('find songs') || lowerMessage.includes('spotify playlist')) && 
-         !lowerMessage.includes('what is music') && !lowerMessage.includes('how does music')) {
-      tools.push({ name: 'music_recommendations', parameters: { query: message } });
-    }
-    
-    // Calculator - only explicit calculations
-    if (lowerMessage.includes('calculate') || lowerMessage.includes('what is') && 
-        (lowerMessage.includes('+') || lowerMessage.includes('-') || lowerMessage.includes('*') || lowerMessage.includes('/'))) {
-      tools.push({ name: 'calculator', parameters: { query: message } });
-    }
-    
-    return tools;
-  };
+  // Tool execution is now handled by the AI backend automatically
   
   // Handle input changes with typing indicators
   const handleInputChange = (text: string) => {

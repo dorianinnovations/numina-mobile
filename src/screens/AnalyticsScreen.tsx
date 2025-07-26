@@ -174,7 +174,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
     return (
       <View style={styles.sectionContainer}>
         <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
-          Behavioral Analysis (UBPM)
+          Behavioral Analysis (SynthUBPM)
         </Text>
         
         <BaseWalletCard style={styles.ubmpCard}>
@@ -451,7 +451,7 @@ export const AnalyticsScreen: React.FC<AnalyticsScreenProps> = ({
         Weaving insights from your patterns...
       </Text>
       <Text style={[styles.loadingSubtext, { color: isDarkMode ? '#666' : '#999' }]}>
-        Mapping behavioral resonance through UBPM
+        Mapping behavioral resonance through SynthUBPM
       </Text>
     </View>
   );

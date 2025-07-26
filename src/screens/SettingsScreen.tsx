@@ -31,6 +31,7 @@ interface SettingsScreenProps {
   onNavigateToSignIn?: () => void;
   onNavigateToBorderThemes?: () => void;
   onNavigateToDataManagement?: () => void;
+  onNavigateToUploadTest?: () => void; // DEV ONLY
 }
 
 export const SettingsScreen: React.FC<SettingsScreenProps> = ({
@@ -38,6 +39,7 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
   onNavigateToSignIn,
   onNavigateToBorderThemes,
   onNavigateToDataManagement,
+  onNavigateToUploadTest, // DEV ONLY
 }) => {
   const { isDarkMode, toggleTheme } = useTheme();
   const { logout, isAuthenticated } = useAuth();
@@ -204,6 +206,12 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
         case 'dataManagement':
           if (onNavigateToDataManagement) {
             onNavigateToDataManagement();
+          }
+          break;
+          
+        case 'uploadTest': // DEV ONLY
+          if (onNavigateToUploadTest) {
+            onNavigateToUploadTest();
           }
           break;
           
@@ -441,7 +449,15 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({
               type: 'navigate',
               action: 'dataManagement'
             },
-          ]
+            // DEV ONLY - Upload Test Button
+            __DEV__ ? { 
+              icon: 'upload', 
+              title: 'Upload Test (DEV)', 
+              desc: 'Test image upload functionality', 
+              type: 'navigate',
+              action: 'uploadTest'
+            } : null,
+          ].filter(Boolean)
         },
         {
           title: 'Support',

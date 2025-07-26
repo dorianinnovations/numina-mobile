@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useRe
 import { log } from '../utils/logger';
 import CloudAuth, { AuthState, User } from '../services/cloudAuth';
 import ApiService from '../services/api';
-import { ExperienceLevelService } from '../services/experienceLevelService';
 import { UserOnboardingService } from '../services/userOnboardingService';
 import { FEATURE_FLAGS } from '../config/environment';
 
@@ -177,13 +176,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const result = await cloudAuth.login(credentials.email, credentials.password);
       
       if (result.success) {
-        // For existing users logging in, mark onboarding as completed if they have experience level
+        // For existing users logging in, mark onboarding as completed
         const currentUser = cloudAuth.getCurrentUser();
         if (currentUser?.id) {
-          const hasExperienceLevel = await ExperienceLevelService.hasSetExperienceLevel();
-          if (hasExperienceLevel) {
-            await UserOnboardingService.markOnboardingCompleted(currentUser.id);
-          }
+          await UserOnboardingService.markOnboardingCompleted(currentUser.id);
         }
       } else {
         // console.error('[AuthContext] Login failed:', result.error);
@@ -215,9 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Mark user as new signup for onboarding flow
           await UserOnboardingService.markSignupCompleted(currentUser.id);
           
-          // MANDATORY: Clear any existing experience level for new users
-          await ExperienceLevelService.clearExperienceLevel();
-          // console.log('🔄 AUTH CONTEXT: Experience level cleared for new user - three-tier system now mandatory');
+          // New users will go through exploration screen
         }
       } else {
         // console.error('[AuthContext] Sign up failed:', result.error);

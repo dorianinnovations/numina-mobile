@@ -1,8 +1,7 @@
-import React, { useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useCallback, useRef, forwardRef, useImperativeHandle, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { ChainOfThoughtProgress } from '../ai/ChainOfThoughtProgress';
 import { InfiniteNodeCanvas } from '../nodes/InfiniteNodeCanvas';
-import { NodeBallOpenedModal } from '../modals/NodeBallOpenedModal';
 import ChainOfThoughtService from '../../services/chainOfThoughtService';
 import NodeContentEnhancer from '../../services/nodeContentEnhancer';
 import { SandboxNode } from '../../types/sandbox';
@@ -21,12 +20,11 @@ interface SandboxModalManagerProps {
   onError?: (error: any) => void;
   onStreamingMessage?: (message: string) => void;
   onProcessComplete?: () => void;
+  onNavigateToNodePortal?: (node: SandboxNode) => void;
 }
 
 export interface SandboxModalManagerRef {
   startSandboxProcess: (query: string, options: any) => Promise<void>;
-  showNode: (node: SandboxNode) => void;
-  showNodeWithSkeleton: (node: SandboxNode) => void;
   stopProcess: () => void;
 }
 
@@ -35,6 +33,7 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
   onError,
   onStreamingMessage,
   onProcessComplete,
+  onNavigateToNodePortal,
 }, ref) => {
   // Progress Modal State
   const [showProgress, setShowProgress] = useState(false);
@@ -45,27 +44,37 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
   // Node Canvas State
   const [showNodeCanvas, setShowNodeCanvas] = useState(false);
   const [nodes, setNodes] = useState<SandboxNode[]>([]);
-  
-  // Node Exploration State
-  const [showNodeExploration, setShowNodeExploration] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<SandboxNode | null>(null);
-  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [streamingComplete, setStreamingComplete] = useState(false);
+  const [allNodesForCallback, setAllNodesForCallback] = useState<SandboxNode[]>([]);
+  const [isStreamingActive, setIsStreamingActive] = useState(false);
   
   // Active session tracking
   const activeSessionRef = useRef<string | null>(null);
   const latestSessionRef = useRef<string | null>(null);
 
+  // Handle onNodesGenerated callback when streaming is complete
+  useEffect(() => {
+    if (streamingComplete && allNodesForCallback.length > 0 && onNodesGenerated) {
+      console.log('🎯 Calling onNodesGenerated with', allNodesForCallback.length, 'nodes');
+      onNodesGenerated(allNodesForCallback);
+      setStreamingComplete(false); // Reset for next time
+    }
+  }, [streamingComplete, allNodesForCallback, onNodesGenerated]);
+
   const startSandboxProcess = useCallback(async (query: string, options: any) => {
     // Schedule state updates for next tick to avoid render cycle conflicts
     setTimeout(() => {
       try {
-        // Initialize progress state
+        // Initialize progress state - Expanded for more detailed process visibility
         const initialSteps: ChainStep[] = [
-          { id: '1', title: 'Analyzing core sources', status: 'pending' },
-          { id: '2', title: 'Checking additional scenarios', status: 'pending' },
-          { id: '3', title: 'Cross-referencing patterns', status: 'pending' },
-          { id: '4', title: 'Synthesizing insights', status: 'pending' },
-          { id: '5', title: 'Generating nodes', status: 'pending' },
+          { id: '1', title: 'Analyzing request', status: 'pending' },
+          { id: '2', title: 'Evaluating context', status: 'pending' },
+          { id: '3', title: 'Processing data', status: 'pending' },
+          { id: '4', title: 'Cross-referencing', status: 'pending' },
+          { id: '5', title: 'Synthesizing insights', status: 'pending' },
+          { id: '6', title: 'Generating connections', status: 'pending' },
+          { id: '7', title: 'Validating results', status: 'pending' },
+          { id: '8', title: 'Finalizing output', status: 'pending' },
         ];
         
         setSteps(initialSteps);
@@ -122,7 +131,13 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
 
   // Simulate node streaming effect
   const simulateNodeStreaming = useCallback((allNodes: SandboxNode[]) => {
+    if (isStreamingActive) {
+      console.log('⚠️ Streaming already active, skipping duplicate call');
+      return;
+    }
+    
     console.log('🌊 Starting node streaming simulation with', allNodes.length, 'nodes');
+    setIsStreamingActive(true);
     
     // Check if streaming is enabled
     if (!StreamingConfig.sandbox.enabled) {
@@ -132,9 +147,9 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       // Small delay to ensure progress modal is fully hidden before showing canvas
       setTimeout(() => {
         setShowNodeCanvas(true);
-        if (onNodesGenerated) {
-          onNodesGenerated(allNodes);
-        }
+        setAllNodesForCallback(allNodes);
+        setStreamingComplete(true);
+        setIsStreamingActive(false);
       }, 100);
       return;
     }
@@ -164,27 +179,41 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       nodesToStream.forEach((node, index) => {
         setTimeout(() => {
           setNodes(prevNodes => {
+            // Check if node already exists to prevent duplicates
+            const nodeExists = prevNodes.some(existingNode => existingNode.id === node.id);
+            if (nodeExists) {
+              console.log(`⚠️ Node ${node.id} already exists, skipping duplicate`);
+              return prevNodes;
+            }
+            
             const newNodes = [...prevNodes, node];
             console.log(`🎯 Streaming node ${index + 1}/${nodesToStream.length}: ${node.title}`);
             
             // Check if this is the last streamed node
             if (index === nodesToStream.length - 1) {
-              // Add any remaining nodes instantly
+              // Add any remaining nodes instantly, filtering for duplicates
               if (instantNodes.length > 0) {
                 console.log(`⚡ Adding ${instantNodes.length} remaining nodes instantly`);
-                const finalNodes = [...newNodes, ...instantNodes];
+                const filteredInstantNodes = instantNodes.filter(instantNode => 
+                  !newNodes.some(existingNode => existingNode.id === instantNode.id)
+                );
+                const finalNodes = [...newNodes, ...filteredInstantNodes];
                 
-                // Notify parent with all nodes when streaming is complete
-                if (onNodesGenerated) {
-                  onNodesGenerated(allNodes);
-                }
+                // Complete streaming after state update
+                setTimeout(() => {
+                  setAllNodesForCallback(allNodes);
+                  setStreamingComplete(true);
+                  setIsStreamingActive(false);
+                }, 0);
                 
                 return finalNodes;
               } else {
-                // Notify parent with all nodes when streaming is complete
-                if (onNodesGenerated) {
-                  onNodesGenerated(allNodes);
-                }
+                // Complete streaming after state update
+                setTimeout(() => {
+                  setAllNodesForCallback(allNodes);
+                  setStreamingComplete(true);
+                  setIsStreamingActive(false);
+                }, 0);
               }
             }
             
@@ -192,8 +221,17 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
           });
         }, index * NODE_STREAM_DELAY);
       });
+      
+      // Handle edge case where no nodes need streaming
+      if (nodesToStream.length === 0) {
+        setTimeout(() => {
+          setAllNodesForCallback(allNodes);
+          setStreamingComplete(true);
+          setIsStreamingActive(false);
+        }, 0);
+      }
     }, SKELETON_DURATION);
-  }, [onNodesGenerated]);
+  }, []);
 
   const handleChainComplete = useCallback(async (finalData: any) => {
     const completingSessionId = finalData?.sessionId;
@@ -206,8 +244,7 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       hasFinalData: !!finalData,
       hasNodes: !!finalData?.nodes,
       nodesLength: finalData?.nodes?.length,
-      firstNode: finalData?.nodes?.[0],
-      fullData: finalData
+      isStreamingCurrentlyActive: isStreamingActive
     });
     
     // Only process completion if it's from the latest session or no session is currently active
@@ -216,11 +253,18 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       return;
     }
     
+    // Prevent duplicate processing if already streaming
+    if (isStreamingActive) {
+      console.log('🚫 Streaming already active, ignoring duplicate completion');
+      return;
+    }
+    
     // Process the generated nodes
     if (finalData.nodes && finalData.nodes.length > 0) {
-      // First, process basic node structure
+      // First, process basic node structure - ensure unique IDs
       const basicNodes = finalData.nodes.map((node: any, index: number) => ({
         ...node,
+        id: node.id || `node_${completingSessionId || Date.now()}_${index}`, // Ensure unique ID
         // Add position for canvas display if not present
         position: node.position || {
           x: 100 + Math.random() * 200,
@@ -242,7 +286,6 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
         );
 
         console.log('🌟 SandboxModalManager: Enhanced nodes with tool data');
-        console.log('📋 First enhanced node:', enhancedNodes[0]);
 
         // Simulate streaming with enhanced nodes
         simulateNodeStreaming(enhancedNodes);
@@ -253,11 +296,10 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       
     } else {
       console.error('❌ SandboxModalManager: No nodes found in final data!');
-      console.error('💥 This will cause blank screen - finalData structure:', finalData);
       
       // Create fallback node to prevent blank screen
       const fallbackNode = {
-        id: `fallback_${Date.now()}`,
+        id: `fallback_${completingSessionId || Date.now()}`,
         title: 'Processing Complete',
         content: 'Your request has been processed, but no specific insights were generated. Please try rephrasing your query or adding more context.',
         category: 'system',
@@ -283,11 +325,12 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
 
     activeSessionRef.current = null;
     latestSessionRef.current = null; // Clear latest session after successful completion
-  }, [onNodesGenerated, simulateNodeStreaming]);
+  }, [simulateNodeStreaming, isStreamingActive]);
 
   const handleChainError = useCallback((error: any) => {
     console.error('Chain of thought error:', error);
     setShowProgress(false);
+    setIsStreamingActive(false); // Reset streaming state on error
     activeSessionRef.current = null;
     latestSessionRef.current = null; // Clear latest session on error
     
@@ -301,27 +344,13 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
     // The actual completion is handled by handleChainComplete
   }, []);
 
-  // Method to show node exploration screen
-  const showNode = useCallback((node: SandboxNode) => {
-    setSelectedNode(node);
-    setShowNodeExploration(true);
-  }, []);
-
-  const showNodeWithSkeleton = useCallback((node: SandboxNode) => {
-    setSelectedNode(node);
-    setShowNodeExploration(true);
-    setShowSkeleton(true);
-
-    setTimeout(() => {
-      setShowSkeleton(false);
-    }, 400);
-  }, []);
 
   // Handle node press from canvas
   const handleNodePress = useCallback((node: SandboxNode) => {
-    setSelectedNode(node);
-    setShowNodeExploration(true);
-  }, []);
+    if (onNavigateToNodePortal) {
+      onNavigateToNodePortal(node);
+    }
+  }, [onNavigateToNodePortal]);
   
   // Handle node lock
   const handleNodeLock = useCallback((node: SandboxNode) => {
@@ -339,19 +368,6 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
     // You can add additional lock handling here (e.g., API call, analytics)
   }, []);
 
-  // Handle closing node exploration
-  const handleCloseNodeExploration = useCallback(() => {
-    setShowNodeExploration(false);
-    setSelectedNode(null);
-  }, []);
-
-  // Handle navigation between nodes in exploration
-  const handleNavigateToNode = useCallback((nodeId: string) => {
-    const targetNode = nodes.find(n => n.id === nodeId);
-    if (targetNode) {
-      setSelectedNode(targetNode);
-    }
-  }, [nodes]);
 
   const handleCloseNodeCanvas = useCallback(() => {
     console.log('🎨 Closing node canvas');
@@ -370,15 +386,15 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
       activeSessionRef.current = null;
     }
     setShowProgress(false);
+    setIsStreamingActive(false); // Reset streaming state when stopping
+    latestSessionRef.current = null; // Clear latest session reference
   }, []);
 
   // Expose methods via ref
   useImperativeHandle(ref, () => ({
     startSandboxProcess,
-    showNode,
-    showNodeWithSkeleton,
     stopProcess,
-  }), [startSandboxProcess, showNode, showNodeWithSkeleton, stopProcess]);
+  }), [startSandboxProcess, stopProcess]);
 
   return (
     <View style={styles.container} pointerEvents={showNodeCanvas ? 'auto' : 'box-none'}>
@@ -400,15 +416,6 @@ export const SandboxModalManager = forwardRef<SandboxModalManagerRef, SandboxMod
         onClose={handleCloseNodeCanvas}
       />
 
-      {/* NodeBall Opened Modal - Full Page Experience */}
-      <NodeBallOpenedModal
-        visible={showNodeExploration}
-        nodeBall={selectedNode}
-        onClose={handleCloseNodeExploration}
-        onNavigateToNodeBall={handleNavigateToNode}
-        connectedNodeBalls={nodes.filter(n => n.id !== selectedNode?.id)}
-        showSkeleton={showSkeleton}
-      />
     </View>
   );
 });

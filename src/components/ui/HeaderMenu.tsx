@@ -11,10 +11,11 @@ const { width: screenWidth } = Dimensions.get('window');
 const getAllMenuActions = (isDarkMode: boolean) => [
   { icon: <MaterialCommunityIcons name="chat-outline" size={16} color={isDarkMode ? "#87ebde" : "#00d4ff"} />, label: 'Chat', key: 'chat', requiresAuth: true },
   { icon: <Feather name="bar-chart-2" size={16} color={isDarkMode ? "#ff9ff3" : "#ec4899"} />, label: 'Analytics', key: 'analytics', requiresAuth: true },
-  { icon: <Feather name="map" size={16} color={isDarkMode ? "#87ceeb" : "#06b6d4"} />, label: 'Sandbox', key: 'sandbox', requiresAuth: true },
+  { icon: <Feather name="map" size={16} color={isDarkMode ? "#87ceeb" : "#06b6d4"} />, label: 'Sandbox', key: 'sandbox', requiresAuth: false },
   { icon: <Feather name="compass" size={16} color={isDarkMode ? "#b4a7d6" : "#a78bfa"} />, label: 'Discover', key: 'cloud', requiresAuth: true },
   { icon: <MaterialCommunityIcons name="credit-card-outline" size={16} color={isDarkMode ? "#98fb98" : "#22c55e"} />, label: 'Wallet', key: 'wallet', requiresAuth: true },
   { icon: <Feather name="user" size={16} color={isDarkMode ? "#ffd700" : "#f59e0b"} />, label: 'Profile', key: 'profile', requiresAuth: true },
+  { icon: <Feather name="user-plus" size={16} color={isDarkMode ? "#90EE90" : "#10b981"} />, label: 'Create Account/Login', key: 'auth', requiresAuth: false, isAuthAction: true },
   { icon: <Feather name="settings" size={16} color={isDarkMode ? "#ffa07a" : "#f97316"} />, label: 'Settings', key: 'settings', requiresAuth: false },
   { icon: <Feather name="info" size={16} color={isDarkMode ? "#dda0dd" : "#8b5cf6"} />, label: 'About', key: 'about', requiresAuth: false },
   { icon: <FontAwesome5 name="sign-out-alt" size={16} color={isDarkMode ? "#ff6b6b" : "#ef4444"} />, label: 'Sign Out', key: 'signout', requiresAuth: true },
@@ -22,7 +23,14 @@ const getAllMenuActions = (isDarkMode: boolean) => [
 
 const getMenuActions = (isDarkMode: boolean, showAuthOptions: boolean = true) => {
   const allActions = getAllMenuActions(isDarkMode);
-  return showAuthOptions ? allActions : allActions.filter(action => !action.requiresAuth);
+  
+  if (showAuthOptions) {
+    // For authenticated users - show auth-required actions, hide auth action
+    return allActions.filter(action => !action.isAuthAction);
+  } else {
+    // For non-authenticated users - show non-auth actions including the auth action
+    return allActions.filter(action => !action.requiresAuth);
+  }
 };
 
 interface HeaderMenuProps {

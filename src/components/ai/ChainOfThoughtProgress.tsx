@@ -105,9 +105,9 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
     }
   }, [allTextRendered, capturedMessages.length]);
 
-  // Capture streaming messages with staggered animations
+  // Capture streaming messages with staggered animations - Updated for simplified narration
   useEffect(() => {
-    console.log('🎯 ChainOfThoughtProgress: Received streamingMessage:', {
+    console.log('🎯 ChainOfThoughtProgress: Received narration:', {
       message: streamingMessage,
       trimmed: streamingMessage?.trim(),
       length: streamingMessage?.length,
@@ -116,13 +116,8 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
     
     // Only process non-empty messages to prevent flickering
     if (streamingMessage && streamingMessage.trim() && streamingMessage.trim().length > 0) {
-      // Check if this looks like a LLAMA contextual report (2-5 words, no generic phrases)
-      const words = streamingMessage.trim().split(' ').filter(w => w.length > 0);
-      if (words.length >= 2 && words.length <= 6) {
-        console.log('✅ LLAMA CONTEXTUAL REPORT DISPLAYING:', streamingMessage.trim());
-      } else {
-        console.log('⚠️ Generic message detected (likely fallback):', streamingMessage.trim());
-      }
+      const trimmed = streamingMessage.trim();
+      console.log('✅ Chain of thought message:', trimmed);
     }
     
     if (streamingMessage && streamingMessage.trim() && streamingMessage.trim().length > 0) {
@@ -136,7 +131,7 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
         
         const newMessages = [...prev, trimmedMessage];
         const messageIndex = newMessages.length - 1;
-        console.log('✅ Adding new LLAMA message to display:', trimmedMessage);
+        console.log('✅ Adding new narration to display:', trimmedMessage);
         
         // Create animation value for this message if it doesn't exist
         if (!messageAnims.has(messageIndex)) {
@@ -210,14 +205,14 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
               </View>
             ) : (
               // Animated Lottie loader for LLAMA processing
-              <View style={{ width: 20, height: 20 }}>
+              <View style={{ width: 40, height: 40 }}>
                 <LottieView
                   source={require('../../../assets/Loading.json')}
                   autoPlay
                   loop
                   style={{
-                    width: 20,
-                    height: 20,
+                    width: 40,
+                    height: 40,
                   }}
                 />
               </View>
@@ -229,7 +224,7 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
               color: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.6)' 
             }
           ]}>
-            Processing your request...
+            Observing Numina...
           </Text>
         </View>
 
@@ -337,8 +332,8 @@ const styles = StyleSheet.create({
   },
   loaderContainer: {
     marginRight: 12,
-    width: 16,
-    height: 16,
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
   },

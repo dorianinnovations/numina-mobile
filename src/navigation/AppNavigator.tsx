@@ -13,6 +13,7 @@ import { AboutScreen } from "../screens/AboutScreen";
 import { ChatScreen } from "../screens/ChatScreen";
 import { AnalyticsScreen } from "../screens/AnalyticsScreen";
 import { SandboxScreen } from "../screens/SandboxScreen";
+// NodePortalScreen removed - replaced with research AI experience
 import { SentimentScreen } from "../screens/SentimentScreen";
 import { ProfileScreen } from "../screens/ProfileScreen";
 import { SettingsScreen } from "../screens/SettingsScreen";
@@ -20,8 +21,8 @@ import { BorderThemeSettingsScreen } from "../screens/BorderThemeSettingsScreen"
 import { WalletScreen } from "../screens/WalletScreen";
 import { CloudFind } from "../screens/CloudFind";
 import { DataManagementScreen } from "../screens/DataManagementScreen";
-import { ExperienceLevelSelector } from "../components/selectors/ExperienceLevelSelector";
-import { ExperienceLevelService } from "../services/experienceLevelService";
+import { ExplorationScreen } from "../screens/ExplorationScreen";
+import UploadTestScreen from "../screens/UploadTestScreen"; // DEV ONLY
 import { UserOnboardingService } from "../services/userOnboardingService";
 import { UserChoiceService } from "../services/userChoiceService";
 import { useTheme } from "../contexts/ThemeContext";
@@ -33,11 +34,15 @@ export type RootStackParamList = {
   Welcome: undefined;
   SignIn: undefined;
   SignUp: undefined;
-  ExperienceLevel: undefined;
+  Exploration: undefined;
   About: undefined;
   Chat: undefined;
   Analytics: undefined;
-  Sandbox: undefined;
+  Sandbox: {
+    diveQuery?: string;
+    diveContext?: any;
+    diveType?: string;
+  } | undefined;
   Sentiment: undefined;
   Profile: undefined;
   Settings: undefined;
@@ -45,6 +50,7 @@ export type RootStackParamList = {
   Wallet: undefined;
   Cloud: undefined;
   DataManagement: undefined;
+  UploadTest: undefined; // DEV ONLY
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -171,6 +177,9 @@ export const AppNavigator: React.FC = () => {
           navigation.navigate('Hero'); // Redirect to choice screen
         }
         break;
+      case 'auth': 
+        navigation.navigate('Hero'); // Navigate to hero screen for auth options
+        break;
       case 'settings': 
         navigation.navigate('Settings'); // Always allow settings
         break;
@@ -216,18 +225,18 @@ export const AppNavigator: React.FC = () => {
       setTimeout(() => {
         const currentRouteAfterDelay = navigationRef.current?.getCurrentRoute()?.name;
         
-        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'ExperienceLevel' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'SignIn' && currentRouteAfterDelay !== 'Sandbox') {
+        if (isAuthenticated && currentRouteAfterDelay !== 'Chat' && currentRouteAfterDelay !== 'Exploration' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'SignIn' && currentRouteAfterDelay !== 'Sandbox') {
           // Only auto-route if NOT coming from signup (signup has explicit navigation)
           log.debug('Authenticated user detected', { currentRoute: currentRouteAfterDelay }, 'AppNavigator');
           
-          // Check if user needs experience level selection (new users only)
+          // Check if user needs exploration screen (new users only)
           if (user?.id) {
             UserOnboardingService.shouldShowExperienceLevel(user.id).then((shouldShow) => {
               if (shouldShow) {
-                log.info('New user needs experience level selection - redirecting', null, 'AppNavigator');
+                log.info('New user needs exploration screen - redirecting', null, 'AppNavigator');
                 navigationRef.current?.reset({
                   index: 0,
-                  routes: [{ name: 'ExperienceLevel' }],
+                  routes: [{ name: 'Exploration' }],
                 });
               } else {
                 log.info('Existing authenticated user, navigating to Chat', null, 'AppNavigator');
@@ -238,7 +247,7 @@ export const AppNavigator: React.FC = () => {
               }
             });
           }
-        } else if (!isAuthenticated && hasNavigated.current && currentRouteAfterDelay !== 'Hero' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'ExperienceLevel') {
+        } else if (!isAuthenticated && hasNavigated.current && currentRouteAfterDelay !== 'Hero' && currentRouteAfterDelay !== 'SignUp' && currentRouteAfterDelay !== 'Exploration') {
           log.info('User logged out, returning to Hero', null, 'AppNavigator');
           navigationRef.current?.reset({
             index: 0,
@@ -316,7 +325,7 @@ export const AppNavigator: React.FC = () => {
           {({ navigation }) => {
             return (
               <HeroLandingScreen
-                onNavigateToExperience={() => navigation.navigate("ExperienceLevel")}
+                onNavigateToExperience={() => navigation.navigate("Exploration")}
                 onNavigateToSignIn={() => {
                   navigation.navigate("SignIn");
                 }}
@@ -329,12 +338,9 @@ export const AppNavigator: React.FC = () => {
                   navigation.navigate("SignUp");
                 }}
                 onChooseJustForMe={async () => {
-                  // Save choice and go directly to sandbox (no auth required)
+                  // Save choice and go directly to exploration first, then sandbox
                   await UserChoiceService.setUserChoice('just_for_me');
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Sandbox' }],
-                  });
+                  navigation.navigate("Exploration");
                 }}
               />
             );
@@ -352,6 +358,7 @@ export const AppNavigator: React.FC = () => {
               onNavigateBack={() => safeGoBack(navigation)}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
               onNavigateToSignUp={() => navigation.navigate("SignUp")}
+              onMenuPress={createMenuHandler(navigation)}
             />
           )}
         </Stack.Screen>
@@ -380,6 +387,7 @@ export const AppNavigator: React.FC = () => {
               onNavigateToHero={() => {
                 navigation.navigate("Hero");
               }}
+              onMenuPress={createMenuHandler(navigation)}
             />
           )}
         </Stack.Screen>
@@ -397,39 +405,55 @@ export const AppNavigator: React.FC = () => {
                 // Immediate navigation to prevent auth routing from interfering
                 navigation.reset({
                   index: 0,
-                  routes: [{ name: 'ExperienceLevel' }],
+                  routes: [{ name: 'Exploration' }],
                 });
               }}
               onNavigateToSignIn={() => navigation.navigate("SignIn")}
+              onMenuPress={createMenuHandler(navigation)}
             />
           )}
         </Stack.Screen>
         <Stack.Screen
-          name="ExperienceLevel"
+          name="Exploration"
           options={{
             ...mobileTransition,
           }}
         >
           {({ navigation }) => (
-            <ExperienceLevelSelector
-              onSelectionComplete={async (level) => {
-                console.log('✅ EXPERIENCE LEVEL SELECTED:', level);
-                await ExperienceLevelService.setExperienceLevel(level);
+            <ExplorationScreen
+              onExplorationComplete={async () => {
+                console.log('✅ EXPLORATION COMPLETED');
                 
                 // Mark onboarding as completed for this user
                 if (user?.id) {
                   await UserOnboardingService.markOnboardingCompleted(user.id);
+                  // Navigate to Chat for authenticated users
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Chat' }],
+                  });
+                } else {
+                  // Navigate to Sandbox for non-authenticated users
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Sandbox' }],
+                  });
                 }
-                
-                console.log('💾 Experience level saved, navigating to Chat');
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Chat' }],
-                });
               }}
-              onSignUp={() => navigation.navigate('SignUp')}
-              onSignIn={() => navigation.navigate('SignIn')}
-              // onSkip removed - experience level selection is now MANDATORY for all users
+              onSkip={() => {
+                // Allow skipping exploration
+                if (user?.id) {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Chat' }],
+                  });
+                } else {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Sandbox' }],
+                  });
+                }
+              }}
             />
           )}
         </Stack.Screen>
@@ -487,14 +511,28 @@ export const AppNavigator: React.FC = () => {
         </Stack.Screen>
 
         <Stack.Screen
-          name="Sandbox"
+          name="UploadTest"
           options={{
             ...mobileTransition,
           }}
         >
           {({ navigation }) => (
+            <UploadTestScreen />
+          )}
+        </Stack.Screen>
+
+        <Stack.Screen
+          name="Sandbox"
+          options={{
+            ...mobileTransition,
+          }}
+        >
+          {({ navigation, route }) => (
             <SandboxScreen 
               onNavigateBack={() => safeGoBack(navigation)}
+              diveQuery={route.params?.diveQuery}
+              diveContext={route.params?.diveContext}
+              diveType={route.params?.diveType}
             />
           )}
         </Stack.Screen>
@@ -537,6 +575,7 @@ export const AppNavigator: React.FC = () => {
               onNavigateToSignIn={() => navigation.navigate('SignIn')}
               onNavigateToBorderThemes={() => navigation.navigate('BorderThemeSettings')}
               onNavigateToDataManagement={() => navigation.navigate('DataManagement')}
+              onNavigateToUploadTest={() => navigation.navigate('UploadTest')} // DEV ONLY
             />
           )}
         </Stack.Screen>

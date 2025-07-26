@@ -31,6 +31,7 @@ interface SignInScreenProps {
   onSignInSuccess: () => void;
   onNavigateToSignUp: () => void;
   onNavigateToHero?: () => void;
+  onMenuPress?: (key: string) => void;
 }
 
 export const SignInScreen: React.FC<SignInScreenProps> = ({
@@ -38,6 +39,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
   onSignInSuccess,
   onNavigateToSignUp,
   onNavigateToHero,
+  onMenuPress,
 }) => {
   
   const { isDarkMode } = useTheme();
@@ -275,7 +277,7 @@ export const SignInScreen: React.FC<SignInScreenProps> = ({
             onNavigateBack();
           }}
           onTitlePress={onNavigateToHero}
-          onMenuPress={(key: string) => {}}
+          onMenuPress={onMenuPress || ((key: string) => {})}
         />
       </Animated.View>
 

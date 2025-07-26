@@ -143,7 +143,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
   };
 
 
-  const handleCloudButtonPress = () => {
+  const handleGetStartedButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onChooseCloud();
     Animated.sequence([
@@ -161,7 +161,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
     ]).start();
   };
 
-  const handleJustForMeButtonPress = () => {
+  const handleTryDemoButtonPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     onChooseJustForMe();
     Animated.sequence([
@@ -242,7 +242,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             fontFamily: 'Nunito_600SemiBold' // Use proper font but keep original sizing
           }
         ]}>
-          <Text style={{ color: isDarkMode ? '#cccccc' : '#0099ff' }}>Decode </Text><Text style={{ color: isDarkMode ? '#999999' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#666666' : '#7972ff' }}>patterns</Text>
+          <Text style={{ color: isDarkMode ? '#cccccc' : '#0099ff' }}>Welcome to </Text><Text style={{ color: isDarkMode ? '#999999' : '#6999ff' }}>your</Text> <Text style={{ color: isDarkMode ? '#666666' : '#7972ff' }}>AI companion</Text>
         </Text>
         
         {/* Enhanced Brand Text Animation */}
@@ -266,7 +266,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
         <View style={styles.buttonsContainer}>
           {/* Button Row */}
           <View style={styles.buttonRow}>
-            {/* Cloud Button */}
+            {/* Get Started Button */}
             <Animated.View 
               style={[
                 styles.halfWidth,
@@ -288,7 +288,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               ]}>
               <TouchableOpacity
                 style={{ width: '100%' }}
-                onPress={handleCloudButtonPress}
+                onPress={handleGetStartedButtonPress}
                 activeOpacity={0.9}
               >
                 <View style={[
@@ -344,7 +344,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                           fontFamily: 'Nunito_500Medium'
                         }
                       ]}>
-                        Cloud
+                        Sign Up
                       </Text>
                     </View>
                   </View>
@@ -353,7 +353,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               </Animated.View>
             </Animated.View>
 
-            {/* Just for Me Button */}
+            {/* Try Demo Button */}
             <Animated.View 
               style={[
                 styles.halfWidth,
@@ -375,7 +375,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
               ]}>
               <TouchableOpacity
                 style={{ width: '100%' }}
-                onPress={handleJustForMeButtonPress}
+                onPress={handleTryDemoButtonPress}
                 activeOpacity={0.9}
               >
                 <View style={[
@@ -431,7 +431,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
                           fontFamily: 'Nunito_500Medium'
                         }
                       ]}>
-                        Just for me
+                        Try First
                       </Text>
                     </View>
                   </View>
@@ -441,20 +441,7 @@ export const HeroLandingScreen: React.FC<HeroLandingScreenProps> = ({
             </Animated.View>
           </View>
 
-          {/* Contextual Tip */}
-          <Animated.View 
-            style={{ 
-              opacity: signInButtonOpacity,
-              marginTop: 8,
-            }}
-          >
-            <Text style={[
-              styles.contextualTip,
-              { color: isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)' }
-            ]}>
-              You can change this later
-            </Text>
-          </Animated.View>
+
 
           {/* Sign In Link - Underneath */}
           <Animated.View 
@@ -581,7 +568,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '500',
     letterSpacing: -0.5,
   },
@@ -593,7 +580,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '400',
     letterSpacing: -0.5,
     fontFamily: 'System',
@@ -615,7 +602,7 @@ const styles = StyleSheet.create({
     fontFamily: 'System',
   },
   contextualTip: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: '400',
     textAlign: 'center',
     fontFamily: 'Nunito_400Regular',

@@ -24,15 +24,24 @@ import { useResourceManager } from '../utils/resourceManager';
 import { useExtremeAnimations } from '../utils/extremeAnimationSystem';
 import NodeCanvas from '../components/nodes/NodeCanvas';
 import getOptimizedWebSocketService from '../services/optimizedWebSocketService';
+import sandboxDataService from '../services/sandboxDataService';
+import pillButtonService from '../services/pillButtonService';
 import type { SandboxNode } from '../types/sandbox';
 
 interface SandboxScreenProps {
   onNavigateBack?: () => void;
+  // Optional dive parameters for deep research
+  diveQuery?: string;
+  diveContext?: any;
+  diveType?: string;
 }
 
 
 export const SandboxScreen: React.FC<SandboxScreenProps> = ({ 
-  onNavigateBack 
+  onNavigateBack,
+  diveQuery,
+  diveContext,
+  diveType
 }) => {
   const { isDarkMode } = useTheme();
   const componentId = 'sandbox-screen';
@@ -71,6 +80,30 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   // Modal Manager ref
   const modalManagerRef = useRef<SandboxModalManagerRef>(null);
+
+  // Handle dive parameters from NodePortal
+  useEffect(() => {
+    if (diveQuery && modalManagerRef.current) {
+      console.log('🌊 Auto-triggering dive generation:', { diveQuery, diveType, diveContext });
+      
+      // Set the query (updateQuery doesn't exist, we'll use input state directly)
+      setInputText(diveQuery);
+      setIsProcessing(true);
+      setShowImmediateLoader(true);
+      
+      // Start the sandbox process with dive context
+      modalManagerRef.current.startSandboxProcess(diveQuery, {
+        selectedActions: ['research', 'explore'],
+        diveContext,
+        diveType,
+        isDive: true
+      }).catch((error) => {
+        console.error('🌊 Dive generation failed:', error);
+        setIsProcessing(false);
+        setShowImmediateLoader(false);
+      });
+    }
+  }, [diveQuery, diveContext, diveType]);
 
   // Initial animations
   useEffect(() => {
@@ -287,12 +320,50 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       // Check if UBPM pill is selected
       const useUBPM = selectedActions.includes('ubpm');
       
-      // Brief delay for UI cohesion, then start processing
+      // Brief delay for UI cohesion, then start research AI experience
       createTimeout(() => {
         setShowImmediateLoader(false);
         setIsProcessing(true);
-        startChainOfThoughtProcess(useUBPM);
-      }, 500, 'high'); // Reduced from 3000ms to 500ms
+        startResearchExperience(useUBPM);
+      }, 500, 'high');
+    }
+  };
+
+  const startResearchExperience = async (useUBPM: boolean) => {
+    try {
+      console.log('🔬 Starting Research AI Experience');
+      console.log('📝 Query:', inputText.trim());
+      console.log('🎯 Actions:', selectedActions);
+      console.log('🧠 UBPM Mode:', useUBPM);
+      
+      // Process pill actions with backend service
+      const pillConfig = await pillButtonService.processPillActions(
+        selectedActions,
+        inputText.trim(),
+        { useUBPM }
+      );
+      
+      console.log('💊 Pill configuration:', pillConfig);
+      
+      // Start sandbox process with pill configuration via modal manager
+      if (modalManagerRef.current) {
+        await modalManagerRef.current.startSandboxProcess(inputText.trim(), {
+          selectedActions,
+          pillConfig: pillConfig.data,
+          useUBPM,
+          includeUserData: true,
+          generateConnections: true,
+        });
+      }
+      
+      // Clear input
+      setInputText('');
+      setSelectedActions([]);
+      setIsProcessing(false);
+      
+    } catch (error) {
+      console.error('Error in research experience:', error);
+      setIsProcessing(false);
     }
   };
 
@@ -338,7 +409,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
   const renderProcessingState = () => (
     <View style={styles.processingContainer}>
-      <EnhancedSpinner type="holographic" size={24} />
+      <EnhancedSpinner type="holographic" size={40} />
       <Text style={[styles.processingText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
         {PROCESSING_MESSAGES.WEAVING_CONNECTIONS}
       </Text>
@@ -371,7 +442,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                 },
               ]}
             >
-              {!isProcessing && !showNodes && (
+              {!isProcessing && (
                 <SandboxInput
                   inputText={inputText}
                   setInputText={setInputText}
@@ -394,22 +465,7 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
 
               {isProcessing && renderProcessingState()}
 
-              {showNodes && (
-                <NodeCanvas 
-                  nodes={nodes}
-                  onNodePress={handleNodePress}
-                  onLockNode={(node) => {
-                    sandboxActions.lockNode(node.id);
-                    handleLockNode(node);
-                  }}
-                  onUnlockNode={(nodeId) => {
-                    sandboxActions.lockNode(nodeId);
-                    handleUnlockNode(nodeId);
-                  }}
-                  lockedNodes={lockedNodes}
-                  nodeConnections={nodeConnections}
-                />
-              )}
+              {/* TODO: Add Research AI Experience UI components here */}
 
 
 

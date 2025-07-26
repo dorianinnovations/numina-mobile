@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/SimpleAuthContext';
 import { NuminaColors } from '../../utils/colors';
 import { TextStyles } from '../../utils/fonts';
 import ToolExecutionService, { ToolExecution } from '../../services/toolExecutionService';
@@ -131,6 +132,7 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
   maxAttachments = 5,
 }) => {
   const { theme, isDarkMode } = useTheme();
+  const { userData, hasActiveSubscription } = useAuth();
   const [isVoiceActive, setIsVoiceActive] = useState(false);
   const [showEmotionNotification, setShowEmotionNotification] = useState(false);
   const [currentEmotion, setCurrentEmotion] = useState<string>('');
@@ -163,6 +165,18 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
   const inputFocusAnim = useRef(new Animated.Value(0)).current;
   const emotionSlideAnim = useRef(new Animated.Value(120)).current; // Start at bottom of phone
   const emotionOpacityAnim = useRef(new Animated.Value(0)).current; // Start invisible
+  
+  // User tier-based limits
+  const getUserTier = () => {
+    if (hasActiveSubscription) return 'aether';
+    if (userData?.tierInfo?.tier) return userData.tierInfo.tier.toLowerCase();
+    return 'core';
+  };
+  
+  const userTier = getUserTier();
+  const isAetherUser = userTier === 'aether' || hasActiveSubscription;
+  const maxPhotosPerUpload = isAetherUser ? 5 : 1; // Aether: 5 photos, Core: 1 photo
+  const effectiveMaxAttachments = Math.min(maxAttachments, maxPhotosPerUpload);
   
   // Computed values
   const isInputEmpty = !value.trim();
@@ -608,12 +622,56 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
         setIsUploading(true);
         
         try {
-          const processedAttachments = await fileUploadService.uploadFiles(
-            pendingAttachments,
-            (overall, individual) => {
-              setUploadProgress(individual);
+          // Process attachments individually with proper vision detection
+          const processedAttachments: MessageAttachment[] = [];
+          
+          for (const attachment of pendingAttachments) {
+            try {
+              // Determine if this image should use vision processing
+              // For now, all images in chat use vision processing for GPT-4o
+              const forVision = attachment.type === 'image';
+              
+              setUploadProgress(prev => [
+                ...prev.filter(p => p.attachmentId !== attachment.id),
+                {
+                  attachmentId: attachment.id,
+                  progress: 25,
+                  status: 'uploading'
+                }
+              ]);
+              
+              const processed = await fileUploadService.processAttachmentForSending(attachment, forVision);
+              
+              setUploadProgress(prev => [
+                ...prev.filter(p => p.attachmentId !== attachment.id),
+                {
+                  attachmentId: attachment.id,
+                  progress: 100,
+                  status: 'uploaded'
+                }
+              ]);
+              
+              processedAttachments.push(processed);
+            } catch (error) {
+              console.error(`Failed to process attachment ${attachment.name}:`, error);
+              
+              setUploadProgress(prev => [
+                ...prev.filter(p => p.attachmentId !== attachment.id),
+                {
+                  attachmentId: attachment.id,
+                  progress: 0,
+                  status: 'error',
+                  error: error instanceof Error ? error.message : 'Upload failed'
+                }
+              ]);
+              
+              // Add failed attachment to results for user to see
+              processedAttachments.push({
+                ...attachment,
+                uploadStatus: 'error'
+              });
             }
-          );
+          }
           
           // Update attachments with processed versions
           finalAttachments = attachments.map(attachment => {
@@ -676,12 +734,11 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
         return;
       }
 
-      // Launch camera with optimized settings
+      // Launch camera with full-sized photo support
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8, // Balance quality vs performance
+        allowsEditing: false, // Allow full-sized photos
+        quality: 0.9, // Higher quality for full photos
         presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
       });
 
@@ -700,17 +757,26 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
     setAttachmentButtonsVisible(false);
 
     try {
-      // Launch gallery with optimized settings for speed
+      // Launch gallery with full-sized photo support
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
+        allowsEditing: false, // Allow full-sized photos
+        quality: 0.9, // Higher quality for full photos
         presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+        allowsMultipleSelection: isAetherUser, // Aether users can select multiple photos
+        selectionLimit: isAetherUser ? Math.min(5, effectiveMaxAttachments - attachments.length) : 1,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        await handleNewAttachment(result.assets[0]);
+      if (!result.canceled && result.assets?.length > 0) {
+        if (isAetherUser && result.assets.length > 1) {
+          // Handle multiple photos for Aether users
+          for (const asset of result.assets) {
+            await handleNewAttachment(asset);
+          }
+        } else {
+          // Handle single photo
+          await handleNewAttachment(result.assets[0]);
+        }
       }
     } catch (error) {
       Alert.alert('Gallery Error', 'Unable to access photo library. Please try again.');
@@ -738,8 +804,11 @@ export const ChatInput: React.FC<ChatInputProps> = React.memo(({
   };
 
   const handleNewAttachment = async (asset: any) => {
-    if (attachments.length >= maxAttachments) {
-      Alert.alert('Maximum Attachments', `You can only attach up to ${maxAttachments} files.`);
+    if (attachments.length >= effectiveMaxAttachments) {
+      const tierMessage = isAetherUser 
+        ? `Aether users can attach up to ${effectiveMaxAttachments} files.`
+        : `Core users can attach up to ${effectiveMaxAttachments} file. Upgrade to Aether for multiple photo uploads.`;
+      Alert.alert('Photo Limit Reached', tierMessage);
       return;
     }
 

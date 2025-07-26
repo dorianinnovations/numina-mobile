@@ -15,8 +15,11 @@ const isDev = __DEV__;
 const releaseChannel = Constants.expoConfig?.updates?.requestHeaders?.['expo-channel-name'] || 'development';
 
 const getEnvironmentConfig = (): EnvironmentConfig => {
+  // Use localhost for development testing
+  const useLocalhost = isDev && process.env.EXPO_PUBLIC_USE_LOCALHOST === 'true';
+  
   return {
-    API_BASE_URL: 'https://server-a7od.onrender.com',
+    API_BASE_URL: useLocalhost ? 'http://localhost:5000' : 'https://server-a7od.onrender.com',
     STRIPE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
     ENVIRONMENT: 'development',
     ENABLE_LOGGING: true,

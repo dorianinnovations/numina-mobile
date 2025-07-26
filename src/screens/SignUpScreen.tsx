@@ -35,12 +35,14 @@ interface SignUpScreenProps {
   onNavigateBack: () => void;
   onSignUpSuccess: () => void;
   onNavigateToSignIn: () => void;
+  onMenuPress?: (key: string) => void;
 }
 
 export const SignUpScreen: React.FC<SignUpScreenProps> = ({
   onNavigateBack,
   onSignUpSuccess,
   onNavigateToSignIn,
+  onMenuPress,
 }) => {
   const { theme, isDarkMode } = useTheme();
   const { signUp, loading: authLoading } = useAuth();
@@ -355,7 +357,7 @@ export const SignUpScreen: React.FC<SignUpScreenProps> = ({
             onBackPress={() => {
               onNavigateBack();
             }}
-            onMenuPress={(key: string) => {}}
+            onMenuPress={onMenuPress || ((key: string) => {})}
           />
         </Animated.View>
 

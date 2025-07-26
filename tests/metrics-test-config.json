@@ -1,0 +1,111 @@
+{
+  "testEnvironment": {
+    "serverUrl": "http://localhost:5000",
+    "timeout": 10000,
+    "retries": 1
+  },
+  "testUser": {
+    "email": "test@metrics.com",
+    "password": "TestPassword123!",
+    "id": "test-user-metrics-001"
+  },
+  "endpoints": {
+    "authentication": [
+      { "method": "POST", "endpoint": "/login", "category": "Authentication & User Management" },
+      { "method": "POST", "endpoint": "/signup", "category": "Authentication & User Management" },
+      { "method": "POST", "endpoint": "/logout", "category": "Authentication & User Management" },
+      { "method": "DELETE", "endpoint": "/user/delete", "category": "Authentication & User Management" }
+    ],
+    "emotionalData": [
+      { "method": "POST", "endpoint": "/emotions", "category": "Emotional & Sentiment Data" },
+      { "method": "POST", "endpoint": "/social/share-emotion", "category": "Emotional & Sentiment Data" },
+      { "method": "POST", "endpoint": "/social/request-support", "category": "Emotional & Sentiment Data" },
+      { "method": "PUT", "endpoint": "/user/emotional-profile", "category": "Emotional & Sentiment Data" }
+    ],
+    "chatData": [
+      { "method": "POST", "endpoint": "/ai/adaptive-chat", "category": "AI Chat & Conversation Data" },
+      { "method": "POST", "endpoint": "/completion", "category": "AI Chat & Conversation Data" },
+      { "method": "POST", "endpoint": "/upload", "category": "AI Chat & Conversation Data" }
+    ],
+    "analytics": [
+      { "method": "POST", "endpoint": "/analytics/llm", "category": "Analytics & LLM Insights" },
+      { "method": "POST", "endpoint": "/analytics/llm/insights", "category": "Analytics & LLM Insights" },
+      { "method": "POST", "endpoint": "/analytics/llm/weekly-digest", "category": "Analytics & LLM Insights" },
+      { "method": "POST", "endpoint": "/analytics/llm/recommendations", "category": "Analytics & LLM Insights" },
+      { "method": "POST", "endpoint": "/analytics/llm/patterns", "category": "Analytics & LLM Insights" }
+    ],
+    "socialMatching": [
+      { "method": "POST", "endpoint": "/cloud/events/match", "category": "Cloud Events & Social Matching" },
+      { "method": "POST", "endpoint": "/cloud/compatibility/users", "category": "Cloud Events & Social Matching" },
+      { "method": "POST", "endpoint": "/cloud/events", "category": "Cloud Events & Social Matching" },
+      { "method": "POST", "endpoint": "/cloud/events/{eventId}/join", "category": "Cloud Events & Social Matching" },
+      { "method": "POST", "endpoint": "/cloud/events/{eventId}/leave", "category": "Cloud Events & Social Matching" }
+    ],
+    "aiTools": [
+      { "method": "POST", "endpoint": "/tools/execute", "category": "AI Tools Execution & Credit Management", "tools": [
+        "web_search", "weather_check", "calculator", "academic_search", "code_generator",
+        "credit_management", "crypto_lookup", "currency_converter", "email_assistant",
+        "fitness_tracker", "image_search", "itinerary_generator", "linkedin_helper",
+        "music_recommendations", "news_search", "nutrition_lookup", "password_generator",
+        "qr_generator", "reservation_booking", "social_search", "spotify_playlist",
+        "stock_lookup", "text_generator", "timezone_converter", "translation"
+      ]}
+    ],
+    "subscription": [
+      { "method": "POST", "endpoint": "/subscription/numina-trace/subscribe", "category": "Subscription & Payment Tracking" },
+      { "method": "POST", "endpoint": "/subscription/numina-trace/cancel", "category": "Subscription & Payment Tracking" }
+    ],
+    "spotify": [
+      { "method": "POST", "endpoint": "/auth/spotify/connect", "category": "Spotify Integration Data" },
+      { "method": "POST", "endpoint": "/auth/spotify/disconnect", "category": "Spotify Integration Data" },
+      { "method": "POST", "endpoint": "/integration/spotify/refresh", "category": "Spotify Integration Data" }
+    ],
+    "mobile": [
+      { "method": "POST", "endpoint": "/mobile/batch", "category": "Mobile-Specific Data Collection" },
+      { "method": "POST", "endpoint": "/mobile/offline-queue", "category": "Mobile-Specific Data Collection" },
+      { "method": "POST", "endpoint": "/mobile/push-token", "category": "Mobile-Specific Data Collection" },
+      { "method": "POST", "endpoint": "/sync/process", "category": "Mobile-Specific Data Collection" }
+    ],
+    "advancedAnalytics": [
+      { "method": "POST", "endpoint": "/ai/personalized-insights", "category": "Advanced Analytics & Behavioral Tracking" },
+      { "method": "POST", "endpoint": "/test-ubpm/trigger-analysis", "category": "Advanced Analytics & Behavioral Tracking" },
+      { "method": "POST", "endpoint": "/ai/upgrade-message", "category": "Advanced Analytics & Behavioral Tracking" },
+      { "method": "POST", "endpoint": "/personal-insights/milestones/{milestoneId}/celebrate", "category": "Advanced Analytics & Behavioral Tracking" }
+    ],
+    "sandbox": [
+      { "method": "POST", "endpoint": "/sandbox/chain-of-thought", "category": "Sandbox & Chain-of-Thought Data" },
+      { "method": "POST", "endpoint": "/sandbox/save-session", "category": "Sandbox & Chain-of-Thought Data" },
+      { "method": "POST", "endpoint": "/sandbox/enhance-node", "category": "Sandbox & Chain-of-Thought Data" },
+      { "method": "POST", "endpoint": "/sandbox/contextual-search", "category": "Sandbox & Chain-of-Thought Data" }
+    ],
+    "cloudStorage": [
+      { "method": "POST", "endpoint": "/api/cloud/upload-image", "category": "Secure Cloud Storage" },
+      { "method": "POST", "endpoint": "/api/cloud/upload-profile-image", "category": "Secure Cloud Storage" },
+      { "method": "DELETE", "endpoint": "/api/cloud/delete-image", "category": "Secure Cloud Storage" }
+    ]
+  },
+  "expectedResults": {
+    "totalEndpoints": 50,
+    "categories": {
+      "Authentication & User Management": 4,
+      "Emotional & Sentiment Data": 4,
+      "AI Chat & Conversation Data": 3,
+      "Analytics & LLM Insights": 5,
+      "Cloud Events & Social Matching": 5,
+      "AI Tools Execution & Credit Management": 25,
+      "Subscription & Payment Tracking": 2,
+      "Spotify Integration Data": 3,
+      "Mobile-Specific Data Collection": 4,
+      "Advanced Analytics & Behavioral Tracking": 4,
+      "Sandbox & Chain-of-Thought Data": 4,
+      "Secure Cloud Storage": 3
+    }
+  },
+  "testMetadata": {
+    "purpose": "Comprehensive validation of all MongoDB metrics collection endpoints",
+    "coverage": "100% of identified data collection points",
+    "environment": "localhost:5000 for testing",
+    "authentication": "JWT tokens with mocked CloudAuth service",
+    "validationCriteria": "Endpoint existence and data structure validation"
+  }
+}

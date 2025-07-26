@@ -149,111 +149,33 @@ export class OptimizedChatService {
     options: { temperature: number; n_predict: number },
     attachments?: any[]
   ): Promise<string> {
-    const token = CloudAuth.getInstance().getToken();
-    
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      let fullContent = '';
-      let buffer = '';
-      let hasReceivedToolResult = false;
-      let initialResponseLength = 0;
-      let isResolved = false;
+    try {
+      // Use unified API service for React Native compatibility
+      const { sendAdaptiveChatMessage } = await import('./api');
       
-      // Cleanup function to prevent memory leaks
-      const cleanup = () => {
-        if (xhr.readyState !== XMLHttpRequest.DONE) {
-          xhr.abort();
-        }
-        xhr.onreadystatechange = null;
-        xhr.onerror = null;
-        xhr.ontimeout = null;
-        xhr.onabort = null;
-      };
+      let accumulatedContent = '';
       
-      const safeResolve = (value: string) => {
-        if (!isResolved) {
-          isResolved = true;
-          cleanup();
-          resolve(value);
-        }
-      };
-      
-      const safeReject = (error: Error) => {
-        if (!isResolved) {
-          isResolved = true;
-          cleanup();
-          reject(error);
-        }
-      };
-      
-      xhr.open('POST', CHAT_API_CONFIG.PRODUCTION_URL, true);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-      xhr.setRequestHeader('Accept', 'text/event-stream');
-      xhr.setRequestHeader('Cache-Control', 'no-cache');
-      xhr.timeout = 30000; // 30 second timeout
-      
-      xhr.onreadystatechange = () => {
-        if (isResolved) return;
-        
-        if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
-          const chunk = xhr.responseText.substring(buffer.length);
-          buffer = xhr.responseText;
+      const result = await sendAdaptiveChatMessage(
+        message,
+        (chunk: string) => {
+          // Process each chunk for tool detection
+          this.detectAndTriggerToolExecution(chunk);
           
-          if (chunk) {
-            this.processStreamChunk(chunk, (content) => {
-              if (isResolved) return;
-              
-              if (content.includes('🔧 **') && !hasReceivedToolResult) {
-                hasReceivedToolResult = true;
-                initialResponseLength = fullContent.length;
-              }
-              
-              const shouldUpdate = this.shouldUpdateUI(content, fullContent.length);
-              
-              if (shouldUpdate) {
-                fullContent += content;
-                
-                this.detectAndTriggerToolExecution(content);
-                
-                onUpdate(fullContent); // Pass accumulated content to UI
-              }
-            });
+          // Check if we should update UI
+          const shouldUpdate = this.shouldUpdateUI(chunk, accumulatedContent.length);
+          if (shouldUpdate) {
+            accumulatedContent += chunk;
+            onUpdate(accumulatedContent);
           }
-          
-          if (xhr.readyState === XMLHttpRequest.DONE) {
-            if (xhr.status === 200) {
-              safeResolve(fullContent);
-            } else {
-              safeReject(new Error(`Stream error: ${xhr.status}`));
-            }
-          }
-        }
-      };
+        },
+        attachments || []
+      );
       
-      xhr.onerror = () => safeReject(new Error('Network error'));
-      xhr.ontimeout = () => safeReject(new Error('Request timeout'));
-      xhr.onabort = () => safeReject(new Error('Request aborted'));
+      return result;
       
-      const payload: any = {
-        message: message.trim(),
-        prompt: message.trim(),
-        stream: true,
-        temperature: options.temperature,
-        n_predict: options.n_predict,
-        stop: CHAT_API_CONFIG.REQUEST_DEFAULTS.stop
-      };
-      
-      if (attachments && attachments.length > 0) {
-        payload.attachments = attachments;
-      }
-      
-      try {
-        xhr.send(JSON.stringify(payload));
-      } catch (error) {
-        safeReject(new Error(`Send failed: ${error}`));
-      }
-    });
+    } catch (error: any) {
+      throw new Error(`Streaming request failed: ${error.message}`);
+    }
   }
 
   private shouldUpdateUI(newContent: string, currentLength: number): boolean {

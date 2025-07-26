@@ -109,7 +109,7 @@ export const ModernLoader: React.FC<ModernLoaderProps> = ({
     >
       {showSpinner && (
         <NuminaSpinner 
-          size={36} 
+          size={40} 
           visible={visible}
         />
       )}

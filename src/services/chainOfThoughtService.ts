@@ -112,11 +112,30 @@ class ChainOfThoughtService {
                       }
                       
                       if (llamaMessage.trim() && llamaMessage.trim().length > 0) {
+                        // Clean up truncated messages and make them more user-friendly
+                        let cleanMessage = llamaMessage.trim();
+                        
+                        // Fix common truncation patterns
+                        if (cleanMessage.includes('Generate 2-3 discovery nodes for:')) {
+                          const queryPart = query.toLowerCase();
+                          if (queryPart.includes('mood') || queryPart.includes('emotion')) {
+                            cleanMessage = 'Analyzing your emotional patterns and mood data...';
+                          } else if (queryPart.includes('productivity') || queryPart.includes('work')) {
+                            cleanMessage = 'Examining your productivity patterns and work habits...';
+                          } else if (queryPart.includes('health') || queryPart.includes('fitness')) {
+                            cleanMessage = 'Processing your health and fitness data...';
+                          } else {
+                            cleanMessage = 'Analyzing your request and gathering insights...';
+                          }
+                        } else if (cleanMessage.includes('Completed analysis of:')) {
+                          cleanMessage = 'Analysis complete - generating personalized insights...';
+                        }
+                        
                         // Send update IMMEDIATELY when received
                         onUpdate({
                           currentStep: parsed.currentStep,
                           steps: parsed.steps,
-                          streamingMessage: llamaMessage.trim(),
+                          streamingMessage: cleanMessage,
                           completed: false
                         });
                       } else {
@@ -129,46 +148,26 @@ class ChainOfThoughtService {
                         });
                       }
                     } else if (parsed.type === 'connection') {
-                    } else if (parsed.type === 'final_result') {
-                      // Patch: Always provide nodes array with sessionId
+                    } else if (parsed.type === 'narration_complete') {
+                      // Handle new simplified narration completion format
                       let finalData = parsed.data || {};
-                      finalData.sessionId = sessionId; // Add sessionId for tracking
-                      finalData.originalQuery = query; // Pass original query for enhancement
+                      finalData.sessionId = sessionId;
+                      finalData.originalQuery = query;
+                      
+                      // Since this is narration only, indicate Numina should take over
+                      finalData.narrationComplete = true;
+                      finalData.message = finalData.message || 'Observation complete - Numina will now process your request';
+                      
+                      onComplete(finalData);
+                      this.activeStreams.delete(sessionId);
+                    } else if (parsed.type === 'final_result') {
+                      // Legacy support for old format during transition
+                      let finalData = parsed.data || {};
+                      finalData.sessionId = sessionId;
+                      finalData.originalQuery = query;
                       
                       if (!Array.isArray(finalData.nodes)) {
-                        // Generate sample nodes if none provided
-                        finalData.nodes = [
-                          {
-                            id: `insight_${Date.now()}_1`,
-                            title: "Core Analysis Complete",
-                            content: "Your request has been processed. Here are the key insights discovered.",
-                            category: "insight",
-                            confidence: 0.85,
-                            personalHook: "Based on your query, we've identified several interesting patterns.",
-                            deepInsights: {
-                              summary: "Processing completed successfully with actionable insights.",
-                              keyPatterns: ["Pattern analysis", "Data correlation", "Insight generation"],
-                              personalizedContext: "These insights are tailored to your specific query context.",
-                              dataConnections: [],
-                              relevanceScore: 0.8
-                            }
-                          },
-                          {
-                            id: `behavioral_${Date.now()}_2`,
-                            title: "Behavioral Patterns",
-                            content: "Discovered behavioral patterns in your query context.",
-                            category: "behavioral",
-                            confidence: 0.75,
-                            personalHook: "Your interaction patterns suggest specific areas of interest.",
-                            deepInsights: {
-                              summary: "Behavioral analysis reveals interesting engagement patterns.",
-                              keyPatterns: ["User engagement", "Query complexity", "Response depth"],
-                              personalizedContext: "Your behavioral patterns indicate deep analytical thinking.",
-                              dataConnections: [],
-                              relevanceScore: 0.7
-                            }
-                          }
-                        ];
+                        finalData.nodes = [];
                       }
                       
                       onComplete(finalData);
@@ -281,56 +280,155 @@ class ChainOfThoughtService {
     onComplete: (finalData: any) => void,
     sessionId?: string
   ): Promise<void> {
-    const steps: ChainOfThoughtStep[] = [
-      { id: '1', title: 'Analyzing core sources', status: 'pending' },
-      { id: '2', title: 'Checking additional scenarios', status: 'pending' },
-      { id: '3', title: 'Cross-referencing patterns', status: 'pending' },
-      { id: '4', title: 'Synthesizing insights', status: 'pending' },
-      { id: '5', title: 'Generating nodes', status: 'pending' },
+    // DYNAMIC: Start with base steps and add more as LLAMA continues processing
+    const baseSteps: ChainOfThoughtStep[] = [
+      { id: '1', title: 'Analyzing request', status: 'pending' },
+      { id: '2', title: 'Evaluating context', status: 'pending' },
+      { id: '3', title: 'Processing data', status: 'pending' },
     ];
 
-    const messages = [
-      'Examining your personal data patterns...',
-      'Looking for connections across different data sources...',
-      'Finding behavioral correlations...',
-      'Creating personalized insights...',
-      'Building your knowledge network...'
+    // DYNAMIC: Pool of additional steps that can be added during processing
+    const additionalSteps = [
+      { id: '4', title: 'Cross-referencing information', status: 'pending' },
+      { id: '5', title: 'Synthesizing insights', status: 'pending' },
+      { id: '6', title: 'Generating connections', status: 'pending' },
+      { id: '7', title: 'Validating results', status: 'pending' },
+      { id: '8', title: 'Optimizing output', status: 'pending' },
+      { id: '9', title: 'Finalizing analysis', status: 'pending' },
+      { id: '10', title: 'Quality checking', status: 'pending' },
+      { id: '11', title: 'Preparing response', status: 'pending' },
+      { id: '12', title: 'Final optimization', status: 'pending' },
     ];
 
-    for (let i = 0; i < steps.length; i++) {
+    // Start with base steps - more will be added dynamically
+    let steps = [...baseSteps];
+
+    // Create contextual base messages - more will be generated dynamically
+    const queryLower = query.toLowerCase();
+    let baseMessages = [
+      'Understanding your request...',
+      'Evaluating context and parameters...',
+      'Processing available data sources...',
+    ];
+
+    // Additional messages pool for dynamic addition
+    let additionalMessages = [
+      'Cross-referencing information...',
+      'Synthesizing insights and patterns...',
+      'Generating knowledge connections...',
+      'Validating results and accuracy...',
+      'Optimizing response quality...',
+      'Finalizing comprehensive analysis...',
+      'Performing quality validation...',
+      'Preparing detailed response...',
+      'Completing final optimization...'
+    ];
+
+    // Customize additional messages based on query content
+    if (queryLower.includes('mood') || queryLower.includes('emotion')) {
+      additionalMessages = [
+        'Analyzing your emotional patterns...',
+        'Processing mood data and trends...',
+        'Examining behavioral correlations...',
+        'Cross-referencing emotional states...',
+        'Generating personalized insights...',
+        'Creating emotional connections...',
+        'Validating mood predictions...',
+        'Preparing recommendations...',
+        'Fine-tuning emotional analysis...'
+      ];
+    } else if (queryLower.includes('productivity') || queryLower.includes('work')) {
+      additionalMessages = [
+        'Examining your productivity patterns...',
+        'Analyzing work habits and efficiency...',
+        'Processing performance metrics...',
+        'Cross-referencing productivity data...',
+        'Identifying improvement opportunities...',
+        'Generating optimization strategies...',
+        'Validating effectiveness measures...',
+        'Creating comprehensive action plan...',
+        'Finalizing productivity insights...'
+      ];
+    } else if (queryLower.includes('weather') || queryLower.includes('news')) {
+      additionalMessages = [
+        'Searching for current information...',
+        'Gathering relevant data sources...',
+        'Processing real-time updates...',
+        'Cross-referencing multiple sources...',
+        'Synthesizing current events...',
+        'Connecting related information...',
+        'Validating source reliability...',
+        'Formatting comprehensive results...',
+        'Completing information synthesis...'
+      ];
+    }
+
+    // Start with base messages, then add additional ones dynamically
+    let messages = [...baseMessages];
+    let currentStepIndex = 0;
+    let additionalStepsAdded = 0;
+    
+    // DYNAMIC PROCESSING: Keep adding steps until LLAMA processing is complete
+    const maxSteps = 15; // Safety limit to prevent infinite loops
+    const baseProcessingTime = 4000; // 4 seconds minimum processing
+    const startTime = Date.now();
+    
+    while (currentStepIndex < steps.length && currentStepIndex < maxSteps) {
       // Update current step to active
-      steps[i].status = 'active';
-      steps[i].message = messages[i];
+      steps[currentStepIndex].status = 'active';
+      steps[currentStepIndex].message = messages[currentStepIndex];
       
       onUpdate({
-        currentStep: steps[i].id,
+        currentStep: steps[currentStepIndex].id,
         steps: [...steps],
-        streamingMessage: messages[i],
+        streamingMessage: messages[currentStepIndex],
         completed: false
       });
 
-      // Simulate processing time
-      await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
+      // Simulate realistic processing time (1-3 seconds per step)
+      const stepProcessingTime = 1000 + Math.random() * 2000;
+      await new Promise(resolve => setTimeout(resolve, stepProcessingTime));
 
       // Complete current step
-      steps[i].status = 'completed';
-      steps[i].message = undefined;
+      steps[currentStepIndex].status = 'completed';
+      steps[currentStepIndex].message = undefined;
       
       onUpdate({
-        currentStep: steps[i].id,
+        currentStep: steps[currentStepIndex].id,
         steps: [...steps],
         streamingMessage: '',
         completed: false
       });
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      currentStepIndex++;
+      
+      // DYNAMIC: Add more steps if processing continues and we haven't reached safety limit
+      const elapsedTime = Date.now() - startTime;
+      const shouldContinueProcessing = elapsedTime < baseProcessingTime || (Math.random() > 0.3 && currentStepIndex < 6);
+      
+      if (shouldContinueProcessing && currentStepIndex >= steps.length && additionalStepsAdded < additionalSteps.length) {
+        // Add next step dynamically
+        const nextStep = additionalSteps[additionalStepsAdded];
+        const nextMessage = additionalMessages[additionalStepsAdded] || `Processing step ${steps.length + 1}...`;
+        
+        steps.push(nextStep);
+        messages.push(nextMessage);
+        additionalStepsAdded++;
+        
+        console.log(`🔄 Dynamically added step ${steps.length}: ${nextStep.title}`);
+      }
+
+      // Brief pause between steps
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
 
-    // Simulate final result
+    // Simulate narration completion
     await new Promise(resolve => setTimeout(resolve, 1000));
     onComplete({
       sessionId: sessionId || `sim_${Date.now()}`,
-      nodes: this.generateMockNodes(query),
+      narrationComplete: true,
+      message: 'Observation complete - Numina will now process your request',
+      originalQuery: query,
       completed: true
     });
   }

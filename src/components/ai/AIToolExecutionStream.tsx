@@ -586,7 +586,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
           <Text style={styles.toolIcon}>{getUBPMIcon(insight.significance)}</Text>
           <View style={styles.toolDetails}>
             <Text style={[styles.toolName, isDarkMode ? styles.textDark : styles.textLight]}>
-              UBPM Pattern Insight
+              SynthUBPM Pattern Insight
             </Text>
             <Text style={[styles.executionDetails, isDarkMode ? styles.textSecondaryDark : styles.textSecondaryLight]}>
               {insight.summary}
@@ -674,7 +674,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
                 </Text>
               </View>
               <Text style={[styles.headerTitle, isDarkMode ? { color: '#FFFFFF' } : { color: NuminaColors.darkMode[500] }]}>
-                {hasNewUBPM ? 'UBPM Insights' : 'Numina Tools'}
+                {hasNewUBPM ? 'SynthUBPM Insights' : 'Numina Tools'}
                 {hasActiveTools && <Text> ({activeExecutions.length} active)</Text>}
                 {hasNewUBPM && <Text> ({newUBPMInsights.length} new)</Text>}
               </Text>
@@ -738,7 +738,7 @@ export const AIToolExecutionStream: React.FC<AIToolExecutionStreamProps> = ({
             <View style={styles.quickStats}>
               <Text style={[styles.quickStatsText, isDarkMode ? styles.textSecondaryDark : styles.textSecondaryLight]}>
                 {executions.filter(e => e.status === 'completed').length} completed • {activeExecutions.length} active
-                {ubpmInsights.length > 0 && <Text> • {ubpmInsights.length} UBPM insights</Text>}
+                {ubpmInsights.length > 0 && <Text> • {ubpmInsights.length} SynthUBPM insights</Text>}
               </Text>
             </View>
           )}

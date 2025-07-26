@@ -1,7 +1,10 @@
 /**
  * AI-Powered Insight Generation Engine
  * Generates dynamic, personalized insights using OpenRouter API
+ * Now uses hybrid analytics processing for both speed AND AI comprehension
  */
+
+import HybridAnalyticsProcessor, { HybridAnalyticsData } from './hybridAnalyticsProcessor';
 
 // Analytics category type definition
 interface AnalyticsCategory {
@@ -41,10 +44,12 @@ class AIInsightEngine {
   private cooldowns: Map<string, InsightCooldown> = new Map();
   private apiKey: string;
   private baseUrl: string = 'https://openrouter.ai/api/v1/chat/completions';
+  private hybridProcessor: HybridAnalyticsProcessor;
 
   constructor() {
     // In production, this would come from secure environment variables
     this.apiKey = process.env.EXPO_PUBLIC_OPENROUTER_API_KEY || '';
+    this.hybridProcessor = HybridAnalyticsProcessor.getInstance();
   }
 
   /**
@@ -107,8 +112,8 @@ class AIInsightEngine {
     }
 
     try {
-      // Craft precise prompt for the category
-      const prompt = this.craftCategoryPrompt(category, userContext);
+      // Craft precise prompt for the category using hybrid analytics
+      const prompt = await this.craftCategoryPrompt(category, userContext);
       
       // Call OpenRouter API
       const aiResponse = await this.callAIAPI(prompt);
@@ -128,16 +133,22 @@ class AIInsightEngine {
   }
 
   /**
-   * Craft precise, category-specific prompts
+   * Craft precise, category-specific prompts using hybrid analytics
    */
-  private craftCategoryPrompt(category: AnalyticsCategory, userContext: any): string {
+  private async craftCategoryPrompt(category: AnalyticsCategory, userContext: any): Promise<string> {
+    // Process the category data using hybrid analytics
+    const hybridData = await this.hybridProcessor.processAnalyticsData(category, userContext.userId || 'unknown');
+    
+    // Get readable context for AI instead of raw JSON
+    const readableContext = this.hybridProcessor.formatForAIPrompt(hybridData);
+    
     const baseContext = `User has sent ${userContext.totalMessages} messages over ${userContext.daysSinceFirstChat} days. Most active ${userContext.mostActiveTimeOfDay}. Communication style: ${userContext.communicationStyle}.`;
     
     switch (category.id) {
       case 'communication':
         return `${baseContext}
 
-COMMUNICATION DATA: ${JSON.stringify(category.subCategories)}
+${readableContext}
 
 Write a 2-sentence insight about this person's communication intelligence. Focus on:
 1. Their unique communication signature (what makes them distinctive)
@@ -148,7 +159,7 @@ Be specific, personal, and revealing. Use "you" and present tense. No hedging wo
       case 'personality':
         return `${baseContext}
 
-PERSONALITY DATA: ${JSON.stringify(category.subCategories)}
+${readableContext}
 
 Write a 2-sentence insight about this person's core personality. Focus on:
 1. Their dominant personality trait and what drives them
@@ -159,7 +170,7 @@ Be confident and specific. Reveal something meaningful about who they are as a p
       case 'behavioral':
         return `${baseContext}
 
-BEHAVIORAL DATA: ${JSON.stringify(category.subCategories)}
+${readableContext}
 
 Write a 2-sentence insight about this person's behavioral patterns. Focus on:
 1. Their unique behavioral signature (timing, decision-making, social style)
@@ -170,7 +181,7 @@ Be observant and specific about their patterns.`;
       case 'emotional':
         return `${baseContext}
 
-EMOTIONAL DATA: ${JSON.stringify(category.subCategories)}
+${readableContext}
 
 Write a 2-sentence insight about this person's emotional intelligence. Focus on:
 1. Their emotional regulation style and stability
@@ -181,7 +192,7 @@ Be supportive but honest about their emotional patterns.`;
       case 'growth':
         return `${baseContext}
 
-GROWTH DATA: ${JSON.stringify(category.subCategories)}
+${readableContext}
 
 Write a 2-sentence insight about this person's growth trajectory. Focus on:
 1. Their current development phase and learning style

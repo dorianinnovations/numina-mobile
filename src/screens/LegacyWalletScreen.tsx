@@ -165,7 +165,7 @@ export const LegacyWalletScreen: React.FC<WalletScreenProps> = ({ onNavigateBack
         color: '#10b981',
         features: [
           'Core AI Chat with standard models',
-          'Standard UBPM updates (24 hours)',
+          'Standard SynthUBPM updates (24 hours)',
           'Analytics Overview tab access',
           'Teaser analytics (1 trait, 1 pattern)',
           'Limited tool use (10/month)',

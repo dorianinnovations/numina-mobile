@@ -31,12 +31,14 @@ interface WelcomeScreenProps {
   onNavigateBack: () => void;
   onNavigateToSignUp: () => void;
   onNavigateToSignIn: () => void;
+  onMenuPress?: (key: string) => void;
 }
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onNavigateBack,
   onNavigateToSignUp,
   onNavigateToSignIn,
+  onMenuPress,
 }) => {
   const { theme, isDarkMode } = useTheme();
   
@@ -145,7 +147,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           onBackPress={() => {
             onNavigateBack();
           }}
-          onMenuPress={(key: string) => {}}
+          onMenuPress={onMenuPress || ((key: string) => {})}
         />
       
       {/* Main Content */}
@@ -291,8 +293,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingHorizontal: 32,
+    paddingVertical: 48,
   },
   welcomeWrapper: {
     position: 'relative',
@@ -301,14 +303,14 @@ const styles = StyleSheet.create({
   },
   welcomeCard: {
     width: '100%',
-    borderRadius: 16,
-    padding: 40,
+    borderRadius: 24,
+    padding: 48,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
   },
   glassmorphic: {
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
@@ -322,7 +324,7 @@ const styles = StyleSheet.create({
 
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
     position: 'relative',
     zIndex: 10,
   },

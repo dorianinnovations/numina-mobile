@@ -588,7 +588,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({
         prompt,
-        model: 'openai/gpt-4o-mini',
+        model: 'openai/gpt-4o', // Use full GPT-4o for better comprehension
         maxTokens: 1000,
         temperature: 0.3
       }),
@@ -784,9 +784,6 @@ class ApiService {
     if (!messageText.trim() && !hasAttachments) {
       throw new Error('Cannot send empty message without attachments to adaptive chat');
     }
-    
-    if (!messageText.trim() && hasAttachments) {
-    }
 
     // Create personality context from the personalityStyle that was already determined
     const defaultPersonalityContext: any = {
@@ -799,78 +796,83 @@ class ApiService {
       responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`,
     };
 
-
+    // Use XMLHttpRequest for proper SSE handling in React Native
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      let lastProcessedIndex = 0;
       let fullContent = '';
       let personalityContext: any = defaultPersonalityContext;
-      let chunkCounter = 0;
+      let lastProcessedIndex = 0;
       
       xhr.open('POST', chatUrl, true);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
       xhr.setRequestHeader('Accept', 'text/event-stream');
+      xhr.setRequestHeader('Cache-Control', 'no-cache');
       
       xhr.onreadystatechange = () => {
         try {
-          
           if (xhr.readyState === XMLHttpRequest.LOADING || xhr.readyState === XMLHttpRequest.DONE) {
             const responseText = xhr.responseText || '';
-            const currentLength = responseText.length;
             const newText = responseText.slice(lastProcessedIndex);
-            
+            lastProcessedIndex = responseText.length;
             
             if (newText) {
-              lastProcessedIndex = currentLength;
               const lines = newText.split('\n');
               
               for (const line of lines) {
                 if (line && line.trim() && line.startsWith('data: ')) {
-                  const content = line.substring(6).trim();
+                  const dataStr = line.substring(6).trim();
                   
-                  if (content && content !== '[DONE]') {
+                  if (dataStr === '[DONE]') {
+                    resolve({ content: fullContent, personalityContext });
+                    return;
+                  }
+                  
+                  if (dataStr && !dataStr.includes('keepAlive')) {
                     try {
-                      const parsed = JSON.parse(content);
-                      
-                      if (parsed && parsed.content) {
-                        const newContent = parsed.content;
-                        fullContent += newContent;
-                        chunkCounter++;
-                        
-                        // Log content chunks to understand server response
+                      const data = JSON.parse(dataStr);
+                      if (data.content) {
+                        fullContent += data.content;
                         
                         // Detect tool execution patterns from server response
-                        this.detectAndTriggerToolExecution(newContent);
+                        this.detectAndTriggerToolExecution(data.content);
                         
-                        // Send only accumulated content, not just the chunk
+                        // Send accumulated content like the original working version
                         onChunk(fullContent, personalityContext || undefined);
                       }
-                      if (parsed && parsed.personalityContext) {
-                        personalityContext = parsed.personalityContext;
+                      if (data.personalityContext) {
+                        personalityContext = data.personalityContext;
                       }
                     } catch (parseError) {
-                      // For non-JSON content (like plain text streaming), add directly
-                      if (content && content.length > 0) {
-                        const newContent = content;
-                        fullContent += newContent;
-                        chunkCounter++;
-                        
+                      // Handle raw text fallback
+                      if (dataStr !== '[DONE]' && !dataStr.match(/^\s*[{]/)) {
+                        fullContent += dataStr;
                         
                         // Detect tool execution patterns from server response
-                        this.detectAndTriggerToolExecution(newContent);
+                        this.detectAndTriggerToolExecution(dataStr);
                         
+                        // Send accumulated content like the original working version
                         onChunk(fullContent, personalityContext || undefined);
                       }
                     }
-                  } else if (content === '[DONE]') {
-                    // DON'T close connection here - wait for onload to handle completion
                   }
                 }
               }
             }
           }
+          
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              // Success case already handled above by [DONE] message
+              if (!fullContent) {
+                resolve({ content: '', personalityContext });
+              }
+            } else {
+              reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`));
+            }
+          }
         } catch (error) {
+          console.error('Error processing streaming response:', error);
         }
       };
       
@@ -881,85 +883,23 @@ class ApiService {
       xhr.ontimeout = () => {
         reject(new Error('Adaptive chat request timed out'));
       };
-
-      xhr.onload = () => {
-        try {
-          
-          if (xhr.status >= 200 && xhr.status < 300) {
-            // Check for streaming content first
-            if (fullContent) {
-              resolve({
-                content: fullContent,
-                personalityContext: personalityContext || defaultPersonalityContext
-              });
-            } else {
-              // Handle JSON response format
-              try {
-                const jsonResponse = JSON.parse(xhr.responseText);
-                
-                if (jsonResponse.success && jsonResponse.data && jsonResponse.data.response) {
-                  resolve({
-                    content: jsonResponse.data.response,
-                    personalityContext: {
-                      communicationStyle: jsonResponse.data.tone || defaultPersonalityContext.communicationStyle,
-                      emotionalTone: jsonResponse.data.tone || defaultPersonalityContext.emotionalTone,
-                      adaptedResponse: true,
-                      userMoodDetected: message.emotionalContext?.mood,
-                      responsePersonalization: `Adapted for ${message.emotionalContext?.mood || 'current'} mood`
-                    }
-                  });
-                } else {
-                  reject(new Error('Invalid response format from adaptive chat service'));
-                }
-              } catch (parseError) {
-                reject(new Error('Failed to parse adaptive chat response'));
-              }
-            }
-          } else if (xhr.status === 429) {
-            try {
-              const errorResponse = JSON.parse(xhr.responseText);
-              const rateLimitError: RateLimitError = Object.assign(
-                new Error(errorResponse.message || 'Rate limit exceeded'),
-                {
-                  status: 429,
-                  tier: errorResponse.tier,
-                  upgradeOptions: errorResponse.upgradeOptions,
-                  isRateLimit: true
-                }
-              );
-              reject(rateLimitError);
-            } catch (parseError) {
-              const rateLimitError: RateLimitError = Object.assign(
-                new Error('Rate limit exceeded'),
-                {
-                  status: 429,
-                  isRateLimit: true
-                }
-              );
-              reject(rateLimitError);
-            }
-          } else {
-            reject(new Error(`Adaptive chat request failed: ${xhr.status}`));
-          }
-        } catch (error) {
-          reject(error);
-        }
-      };
       
-      // Set aggressive timeout for mobile UX - tools should be fast
-      xhr.timeout = 30000; // 30 seconds max for mobile chat (reduced from 2 minutes)
-      
-      // Get location context for AI tools
-      const locationContext = LocationContextService.getInstance().getCurrentLocationContext();
+      xhr.timeout = 30000; // 30 second timeout
       
       const requestPayload = {
-        ...message,
+        message: messageText.trim(),
         stream: true,
-        userContext: locationContext
+        temperature: 0.8,
+        n_predict: 1024,
+        stop: ['<|im_end|>', '\n<|im_start|>'],
+        ...(hasAttachments && { attachments: message.attachments })
       };
       
-      
-      xhr.send(JSON.stringify(requestPayload));
+      try {
+        xhr.send(JSON.stringify(requestPayload));
+      } catch (error: any) {
+        reject(new Error(`Failed to send request: ${error.message}`));
+      }
     });
   }
 
@@ -2066,6 +2006,68 @@ class ApiService {
     }
   }
 
+  // Vision Image Upload API (for GPT-4o vision processing)
+  static async uploadImageForVision(imageData: {
+    imageData: string;
+    fileName: string;
+    mimeType: string;
+  }): Promise<ApiResponse<{ url: string; extractedText?: string }>> {
+    try {
+      // Get token from AuthManager
+      const token = CloudAuth.getInstance().getToken();
+      
+      if (!token) {
+        return {
+          success: false,
+          error: 'Authentication required for vision upload'
+        };
+      }
+
+      const visionUrl = `${this.baseURL}/upload/vision`;
+
+      const response = await fetch(visionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(imageData),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        const errorData = await this.parseJsonSafely(response).catch(() => ({ message: errorText }));
+        
+        console.error('Vision upload failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          errorText: errorText.substring(0, 200)
+        });
+        
+        return {
+          success: false,
+          error: errorData.message || errorText || `Vision upload failed with status ${response.status}`
+        };
+      }
+
+      const data = await this.parseJsonSafely(response);
+      return {
+        success: true,
+        data: {
+          url: data.url,
+          extractedText: data.extractedText
+        }
+      };
+    } catch (error) {
+      this.logError('uploadImageForVision', error, '/upload/vision');
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Vision upload failed'
+      };
+    }
+  }
+
       // Chat message with file support
   static async sendChatMessageWithFiles(
     message: ChatMessage & { files?: FileAttachment[] },
@@ -2208,6 +2210,95 @@ class ApiService {
     });
   }
 }
+
+// UNIFIED STREAMING FUNCTION - React Native Compatible
+export const sendAdaptiveChatMessage = async (
+  message: string,
+  onChunk: (chunk: string) => void,
+  attachments: any[] = []
+): Promise<string> => {
+  ensureEnvironmentValid();
+  
+  const token = CloudAuth.getInstance().getToken();
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+
+  const url = CHAT_API_CONFIG.PRODUCTION_URL;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      },
+      body: JSON.stringify({
+        message: message.trim(),
+        stream: true,
+        temperature: 0.8,
+        n_predict: 1024,
+        stop: ['<|im_end|>', '\n<|im_start|>'],
+        ...(attachments.length > 0 && { attachments })
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    if (!response.body) {
+      throw new Error('No response body for streaming');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullContent = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const dataStr = line.slice(6).trim();
+          if (dataStr === '[DONE]') {
+            return fullContent;
+          }
+          
+          if (dataStr && !dataStr.includes('keepAlive')) {
+            try {
+              const data = JSON.parse(dataStr);
+              if (data.content) {
+                fullContent += data.content;
+                onChunk(data.content);
+              }
+            } catch (e) {
+              // Handle raw text fallback
+              if (dataStr !== '[DONE]' && !dataStr.match(/^\s*[{]/)) {
+                fullContent += dataStr;
+                onChunk(dataStr);
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    return fullContent;
+    
+  } catch (error: any) {
+    log.error('Streaming failed', error, 'sendAdaptiveChatMessage');
+    throw new Error(`Streaming failed: ${error.message}`);
+  }
+};
 
 // Export API service and types
 export default ApiService;

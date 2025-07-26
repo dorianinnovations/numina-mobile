@@ -25,6 +25,8 @@ import { ScreenWrapper } from '../components/ui/ScreenWrapper';
 import { useNavigation } from '@react-navigation/native';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 import { TierBadge } from '../components/cards/TierBadge';
+import { BaseWalletCard } from '../components/cards/WalletCard';
+import { ChromaticCard } from '../components/cards/ChromaticCard';
 
 interface ProfileScreenProps {
   onNavigateBack: () => void;
@@ -36,6 +38,8 @@ interface UserProfile {
   bio: string;
   location: string;
   email?: string;
+  joinDate?: string;
+  status?: 'online' | 'away' | 'offline';
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -55,7 +59,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   
   // Staggered load-in animations
-  const headerOpacity = useRef(new Animated.Value(0)).current;
   const editButtonOpacity = useRef(new Animated.Value(0)).current;
   const profileContentOpacity = useRef(new Animated.Value(0)).current;
   
@@ -78,37 +81,30 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     bio: '',
     location: '',
     email: userData?.email || '',
+    joinDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    status: 'online'
   });
 
   useEffect(() => {
     // Staggered load-in sequence
     const animateSequence = () => {
-      // Header first (200ms delay)
-      setTimeout(() => {
-        Animated.timing(headerOpacity, {
-          toValue: 1,
-          duration: 600,
-          useNativeDriver: true,
-        }).start();
-      }, 200);
-
-      // Edit button second (500ms delay)
+      // Edit button first (200ms delay)
       setTimeout(() => {
         Animated.timing(editButtonOpacity, {
           toValue: 1,
           duration: 600,
           useNativeDriver: true,
         }).start();
-      }, 500);
+      }, 200);
 
-      // Profile content third (800ms delay)
+      // Profile content second (500ms delay)
       setTimeout(() => {
         Animated.timing(profileContentOpacity, {
           toValue: 1,
           duration: 600,
           useNativeDriver: true,
         }).start();
-      }, 800);
+      }, 500);
     };
 
     animateSequence();
@@ -302,6 +298,61 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       // Light haptic for image picker
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       
+      // Show action sheet for camera or library
+      Alert.alert(
+        'Update Profile Picture',
+        'Choose how you\'d like to update your profile picture',
+        [
+          {
+            text: 'Camera',
+            onPress: () => takePhoto(),
+          },
+          {
+            text: 'Photo Library',
+            onPress: () => selectFromLibrary(),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    } catch (error) {
+      console.error('Error in pickImage:', error);
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera permissions.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setProfile(prev => ({
+          ...prev,
+          profileImage: result.assets[0].uri
+        }));
+        // Auto-save when photo is updated
+        setTimeout(() => saveProfile(), 100);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo.');
+    }
+  };
+
+  const selectFromLibrary = async () => {
+    try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Please grant photo library permissions.');
@@ -320,9 +371,11 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
           ...prev,
           profileImage: result.assets[0].uri
         }));
+        // Auto-save when photo is updated
+        setTimeout(() => saveProfile(), 100);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
+      console.error('Error selecting from library:', error);
       Alert.alert('Error', 'Failed to select image.');
     }
   };
@@ -334,6 +387,167 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
     }));
   };
 
+  const StatusIndicator: React.FC<{ status: 'online' | 'away' | 'offline' }> = ({ status }) => {
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    
+    useEffect(() => {
+      if (status === 'online') {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.3,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 1000,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      }
+    }, [status]);
+
+    const getStatusColor = () => {
+      switch (status) {
+        case 'online': return '#10b981';
+        case 'away': return '#f59e0b';
+        case 'offline': return '#6b7280';
+        default: return '#6b7280';
+      }
+    };
+
+    return (
+      <View style={styles.statusContainer}>
+        <Animated.View 
+          style={[
+            styles.statusDot,
+            { 
+              backgroundColor: getStatusColor(),
+              transform: [{ scale: status === 'online' ? pulseAnim : 1 }]
+            }
+          ]} 
+        />
+        <Text style={[styles.statusText, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+          {status.charAt(0).toUpperCase() + status.slice(1)}
+        </Text>
+      </View>
+    );
+  };
+
+  const SocialStatsCard: React.FC = () => {
+    return (
+      <BaseWalletCard style={styles.socialCard}>
+        <View style={styles.socialStats}>
+          <View style={styles.socialStatItem}>
+            <Text style={[styles.socialNumber, { color: isDarkMode ? '#fff' : '#000' }]}>
+              {Math.floor(Math.random() * 50) + 5}
+            </Text>
+            <Text style={[styles.socialLabel, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+              Conversations
+            </Text>
+          </View>
+          <View style={styles.socialDivider} />
+          <View style={styles.socialStatItem}>
+            <Text style={[styles.socialNumber, { color: isDarkMode ? '#fff' : '#000' }]}>
+              {Math.floor(Math.random() * 100) + 10}
+            </Text>
+            <Text style={[styles.socialLabel, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+              Connections
+            </Text>
+          </View>
+          <View style={styles.socialDivider} />
+          <View style={styles.socialStatItem}>
+            <Text style={[styles.socialNumber, { color: isDarkMode ? '#fff' : '#000' }]}>
+              {Math.floor(Math.random() * 20) + 2}
+            </Text>
+            <Text style={[styles.socialLabel, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+              Credits
+            </Text>
+          </View>
+        </View>
+      </BaseWalletCard>
+    );
+  };
+
+  const ActivityCard: React.FC = () => {
+    return (
+      <BaseWalletCard style={styles.activityCard}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+          Recent Activity
+        </Text>
+        <View style={styles.activityItem}>
+          <FontAwesome5 name="comment-dots" size={16} color={isDarkMode ? '#6ec5ff' : '#3e98ff'} />
+          <Text style={[styles.activityText, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+            Had a great chat about creativity
+          </Text>
+          <Text style={[styles.activityTime, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+            2h ago
+          </Text>
+        </View>
+        <View style={styles.activityItem}>
+          <FontAwesome5 name="lightbulb" size={16} color={isDarkMode ? '#6ec5ff' : '#3e98ff'} />
+          <Text style={[styles.activityText, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+            Explored new AI tools
+          </Text>
+          <Text style={[styles.activityTime, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+            1d ago
+          </Text>
+        </View>
+      </BaseWalletCard>
+    );
+  };
+
+  const InterestsCard: React.FC = () => {
+    const interests = ['AI & Tech', 'Creative Writing', 'Philosophy', 'Music'];
+    
+    return (
+      <BaseWalletCard style={styles.interestsCard}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+          Interests
+        </Text>
+        <View style={styles.interestsContainer}>
+          {interests.map((interest, index) => (
+            <View key={index} style={[styles.interestTag, { 
+              backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+              borderColor: isDarkMode ? '#4b5563' : '#e5e7eb'
+            }]}>
+              <Text style={[styles.interestText, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+                {interest}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </BaseWalletCard>
+    );
+  };
+
+  const DiscoveriesCard: React.FC = () => {
+    const interests = ['AI & Tech', 'Creative Writing', 'Philosophy', 'Music'];
+    
+    return (
+      <BaseWalletCard style={styles.interestsCard}>
+        <Text style={[styles.sectionTitle, { color: isDarkMode ? '#fff' : '#000' }]}>
+          Discoveries
+        </Text>
+        <View style={styles.interestsContainer}>
+          {interests.map((interest, index) => (
+            <View key={index} style={[styles.interestTag, { 
+              backgroundColor: isDarkMode ? '#374151' : '#f3f4f6',
+              borderColor: isDarkMode ? '#4b5563' : '#e5e7eb'
+            }]}>
+              <Text style={[styles.interestText, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+                {interest}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </BaseWalletCard>
+    );
+  };
+
+
   return (
     <ScreenWrapper
       showHeader={true}
@@ -341,7 +555,6 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       showMenuButton={true}
       title={editMode ? 'Edit Profile' : 'Profile'}
       onBackPress={onNavigateBack}
-      headerOpacity={headerOpacity}
     >
       <PageBackground>
         <SafeAreaView style={styles.container}>
@@ -395,32 +608,54 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
             }
           >
             <Animated.View style={{ opacity: profileContentOpacity }}>
-            {/* Profile Header */}
-            <View style={styles.profileHeader}>
-            <TouchableOpacity 
-              style={styles.profileImageContainer}
-              onPress={editMode ? pickImage : undefined}
-              disabled={!editMode}
-            >
-              {profile.profileImage ? (
-                <Image source={{ uri: profile.profileImage }} style={styles.profileImage} />
-              ) : (
-                <View style={[styles.profileImage, styles.placeholderImage, { backgroundColor: isDarkMode ? '#374151' : '#e5e7eb' }]}>
-                  <FontAwesome5 
-                    name="user" 
-                    size={40} 
-                    color={isDarkMode ? '#9ca3af' : '#6b7280'} 
-                  />
+            {/* NEW: Rectangular Header with Profile Picture */}
+            <View style={[styles.rectangularHeader, { backgroundColor: isDarkMode ? '#1a1a2e' : '#667eea' }]}>
+              {/* Header Background Pattern */}
+              <View style={[styles.headerPattern, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.1)' }]} />
+              
+              {/* Left-aligned Profile Picture */}
+              <TouchableOpacity 
+                style={styles.headerProfileContainer}
+                onPress={pickImage}
+                activeOpacity={0.8}
+              >
+                {profile.profileImage ? (
+                  <Image source={{ uri: profile.profileImage }} style={styles.headerProfileImage} />
+                ) : (
+                  <View style={[styles.headerProfileImage, styles.headerPlaceholderImage, { backgroundColor: isDarkMode ? '#374151' : 'rgba(255,255,255,0.2)' }]}>
+                    <FontAwesome5 
+                      name="user" 
+                      size={32} 
+                      color={isDarkMode ? '#9ca3af' : 'rgba(255,255,255,0.8)'} 
+                    />
+                  </View>
+                )}
+                {/* Upload Overlay - Always visible for upload */}
+                <View style={styles.uploadOverlay}>
+                  <FontAwesome5 name="camera" size={14} color="white" />
                 </View>
-              )}
-              {editMode && (
-                <View style={styles.editImageOverlay}>
-                  <FontAwesome5 name="camera" size={16} color="white" />
-                </View>
-              )}
-            </TouchableOpacity>
+              </TouchableOpacity>
 
-            {/* Display Name */}
+              {/* Profile Info - Right side */}
+              <View style={styles.headerProfileInfo}>
+                <Text style={[styles.headerDisplayName, { color: isDarkMode ? '#fff' : '#fff' }]}>
+                  {profile.displayName}
+                </Text>
+                <Text style={[styles.headerUsername, { color: isDarkMode ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.9)' }]}>
+                  @{profile.displayName.toLowerCase().replace(/\s/g, '')}
+                </Text>
+                {userData?.tierInfo && (
+                  <View style={styles.headerTierBadge}>
+                    <TierBadge tier={userData.tierInfo.tier} size="small" />
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Traditional Profile Header - Keep for editing fields */}
+            <View style={styles.profileFieldsContainer}>
+
+            {/* Display Name with Status */}
             <View style={styles.fieldContainer}>
               <Text style={[styles.fieldLabel, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
                 Display Name
@@ -438,10 +673,23 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                   placeholderTextColor={isDarkMode ? '#9ca3af' : '#6b7280'}
                 />
               ) : (
-                <Text style={[styles.fieldValue, { color: isDarkMode ? '#fff' : '#000' }]}>
-                  {profile.displayName}
-                </Text>
+                <View style={styles.nameStatusRow}>
+                  <Text style={[styles.fieldValue, { color: isDarkMode ? '#fff' : '#000' }]}>
+                    {profile.displayName}
+                  </Text>
+                  <StatusIndicator status={profile.status || 'online'} />
+                </View>
               )}
+            </View>
+
+            {/* Join Date */}
+            <View style={styles.fieldContainer}>
+              <Text style={[styles.fieldLabel, { color: isDarkMode ? '#d1d5db' : '#374151' }]}>
+                Member Since
+              </Text>
+              <Text style={[styles.fieldValue, { color: isDarkMode ? '#9ca3af' : '#6b7280' }]}>
+                {profile.joinDate}
+              </Text>
             </View>
 
             {/* Email (Read-only) */}
@@ -508,7 +756,16 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
                 </Text>
               )}
             </View>
-          </View>
+            </View>
+
+            {/* Social Stats */}
+            <SocialStatsCard />
+
+            {/* Recent Activity */}
+            <ActivityCard />
+
+            {/* Interests */}
+            <InterestsCard />
             </Animated.View>
           </ScrollView>
         </View>
@@ -654,10 +911,94 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 40,
   },
+  
+  // NEW: Rectangular Header Styles
+  rectangularHeader: {
+    position: 'relative',
+    width: '100%',
+    height: 160,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerPattern: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 120,
+    height: '100%',
+    transform: [{ skewX: '-15deg' }],
+  },
+  headerProfileContainer: {
+    position: 'relative',
+    zIndex: 2,
+  },
+  headerProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerPlaceholderImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  uploadOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  headerProfileInfo: {
+    flex: 1,
+    marginLeft: 20,
+    zIndex: 2,
+  },
+  headerDisplayName: {
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  headerUsername: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    marginBottom: 8,
+  },
+  headerTierBadge: {
+    alignSelf: 'flex-start',
+  },
+  
   profileHeader: {
     padding: 20,
     alignItems: 'center',
     
+  },
+  profileFieldsContainer: {
+    paddingHorizontal: 20,
   },
   profileImageContainer: {
     marginBottom: 20,
@@ -772,5 +1113,116 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'Nunito_600SemiBold',
+  },
+
+  // New styles for enhanced profile features
+  nameStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: 'Nunito_700Bold',
+    marginBottom: 16,
+  },
+  socialCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+  },
+  socialStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  socialStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  socialNumber: {
+    fontSize: 28,
+    fontWeight: '800',
+    fontFamily: 'Nunito_800ExtraBold',
+    marginBottom: 4,
+  },
+  socialLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+    textAlign: 'center',
+  },
+  socialDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(107, 114, 128, 0.3)',
+    marginHorizontal: 20,
+  },
+  activityCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+  },
+  activityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(107, 114, 128, 0.1)',
+  },
+  activityText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: 'Nunito_400Regular',
+  },
+  activityTime: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
+  },
+  interestsCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+  },
+  discoveriesCard: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+  },
+
+  
+  interestsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  interestTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  interestText: {
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'Nunito_500Medium',
   },
 });

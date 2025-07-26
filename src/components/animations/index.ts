@@ -10,3 +10,4 @@ export { default as FadeInDown } from './FadeInDown';
 export { BlobBackground } from './BlobBackground';
 export { InteractiveParticles } from './InteractiveParticles';
 export { StarField } from './StarField';
+export { PortalParticles } from './PortalParticles';

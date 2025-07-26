@@ -107,6 +107,18 @@ class ConversationStorageService {
     return conversation;
   }
 
+  // Check if conversation should be created (prevent empty conversations)
+  static shouldCreateConversation(firstMessage?: Message): boolean {
+    if (!firstMessage) return false;
+    if (firstMessage.sender !== 'user') return false;
+    if (!firstMessage.text || !firstMessage.text.trim()) return false;
+    
+    // Don't create conversations for very short messages (likely accidental)
+    if (firstMessage.text.trim().length < 2) return false;
+    
+    return true;
+  }
+
   // Add message to conversation
   static addMessageToConversation(
     conversation: Conversation, 
@@ -245,7 +257,7 @@ class ConversationStorageService {
   private static generateTitle(message?: Message): string {
     // Don't use bot/system messages for title generation
     if (!message || message.sender === 'numina') {
-      return `✨ New Chat • ${new Date().toLocaleDateString()}`;
+      return `New Chat • ${new Date().toLocaleDateString()}`;
     }
     
     const text = message.text.trim();
@@ -335,7 +347,7 @@ class ConversationStorageService {
       return essence;
     }
     if (lowerText.includes('confused') || lowerText.includes('stuck') || lowerText.includes("don't understand")) {
-      return `🤯 ${this.extractEssence(text)}`;
+      return `Help: ${this.extractEssence(text)}`;
     }
     
     return null;

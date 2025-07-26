@@ -26,6 +26,14 @@ export class FileUploadService {
     enableTextExtraction: true,
   };
 
+  private visionOptions: FileUploadOptions = {
+    maxSizeBytes: 10 * 1024 * 1024, // 10MB for vision processing
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    compressionQuality: 0.95, // Higher quality for vision
+    enableImageProcessing: true,
+    enableTextExtraction: false,
+  };
+
   // Request permissions for camera and media library
   public async requestPermissions(): Promise<boolean> {
     try {
@@ -199,7 +207,94 @@ export class FileUploadService {
     }
   }
 
-  // Convert image to base64 data URL for GPT-4o vision
+  // Upload image for GPT-4o vision processing via new backend endpoint
+  public async uploadImageForVision(attachment: MessageAttachment): Promise<MessageAttachment> {
+    try {
+      if (attachment.type !== 'image') {
+        throw new Error('Only image attachments can be converted for vision');
+      }
+
+      // Validate for vision processing
+      const visionValidation = this.validateFile(attachment, this.visionOptions);
+      if (visionValidation) {
+        throw new Error(`Vision processing validation failed: ${visionValidation}`);
+      }
+
+      console.log('👁️ Uploading image for vision processing:', attachment.name);
+
+      // Check file size and compress if needed
+      const fileInfo = await FileSystem.getInfoAsync(attachment.uri);
+      let processedUri = attachment.uri;
+      
+      if (fileInfo.exists && fileInfo.size && fileInfo.size > 3 * 1024 * 1024) { // > 3MB
+        console.log('🗜️ Compressing large image for vision processing');
+        processedUri = await this.compressImage(attachment.uri, this.visionOptions.compressionQuality);
+      }
+
+      // Read file as base64
+      const base64String = await FileSystem.readAsStringAsync(processedUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Validate base64 size (base64 is ~33% larger than binary)
+      const estimatedSize = (base64String.length * 3) / 4;
+      if (estimatedSize > this.visionOptions.maxSizeBytes) {
+        throw new Error(`Image too large after compression (${Math.round(estimatedSize / 1024 / 1024)}MB). Max size: ${this.visionOptions.maxSizeBytes / 1024 / 1024}MB`);
+      }
+
+      // Create data URL
+      const dataUrl = `data:${attachment.mimeType};base64,${base64String}`;
+
+      // Upload to vision endpoint with retry logic
+      let retryCount = 0;
+      const maxRetries = 2;
+      let lastError: Error | null = null;
+
+      while (retryCount <= maxRetries) {
+        try {
+          const result = await ApiService.uploadImageForVision({
+            imageData: dataUrl,
+            fileName: attachment.name,
+            mimeType: attachment.mimeType
+          });
+
+          if (result.success) {
+            return {
+              ...attachment,
+              uploadStatus: 'uploaded',
+              serverUrl: result.data?.url,
+              url: result.data?.url,
+              processedText: result.data?.extractedText,
+            };
+          } else {
+            throw new Error(result.error || 'Vision upload failed');
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          
+          // Check if it's a server error that might be retryable
+          if (lastError.message.includes('502') || lastError.message.includes('503') || lastError.message.includes('504')) {
+            retryCount++;
+            if (retryCount <= maxRetries) {
+              console.log(`🔄 Retrying vision upload (attempt ${retryCount}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, 1000 * retryCount)); // Exponential backoff
+              continue;
+            }
+          }
+          
+          throw lastError;
+        }
+      }
+
+      throw lastError || new Error('Vision upload failed after retries');
+
+    } catch (error) {
+      console.error('Vision upload failed:', error);
+      throw error;
+    }
+  }
+
+  // Convert image to base64 data URL for GPT-4o vision (legacy method)
   public async convertImageToBase64(attachment: MessageAttachment): Promise<MessageAttachment> {
     try {
       if (attachment.type !== 'image') {
@@ -331,12 +426,18 @@ export class FileUploadService {
   }
 
   // Smart upload that chooses the right method for each file type
-  public async processAttachmentForSending(attachment: MessageAttachment): Promise<MessageAttachment> {
+  public async processAttachmentForSending(attachment: MessageAttachment, forVision: boolean = false): Promise<MessageAttachment> {
     try {
       if (attachment.type === 'image') {
-        // For images, convert to base64 for GPT-4o vision
-        console.log('📸 Processing image for GPT-4o vision:', attachment.name);
-        return await this.convertImageToBase64(attachment);
+        if (forVision) {
+          // For images used in vision processing, use vision endpoint
+          console.log('👁️ Processing image for GPT-4o vision:', attachment.name);
+          return await this.uploadImageForVision(attachment);
+        } else {
+          // For regular image uploads, use FormData upload
+          console.log('📸 Uploading image file to server:', attachment.name);
+          return await this.uploadFile(attachment);
+        }
       } else {
         // For other files, use traditional server upload
         console.log('📎 Uploading file to server:', attachment.name);
