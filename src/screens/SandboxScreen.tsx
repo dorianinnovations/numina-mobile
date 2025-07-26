@@ -16,16 +16,9 @@ import { EnhancedSpinner } from '../components/loaders/EnhancedSpinner';
 import { ModernLoader } from '../components/loaders/ModernLoader';
 import { SandboxModalManager, SandboxModalManagerRef } from '../components/sandbox/SandboxModalManager';
 import { SandboxInput } from '../components/sandbox/SandboxInput';
-import { SandboxNodes } from '../components/sandbox/SandboxNodes';
-import { useSandboxData } from '../hooks/useSandboxData';
-import { useStableSandboxState } from '../hooks/useStableSandboxState';
 import { ANIMATION_DURATIONS, ERROR_MESSAGES, PROCESSING_MESSAGES } from '../constants/sandbox';
-import { useResourceManager } from '../utils/resourceManager';
-import { useExtremeAnimations } from '../utils/extremeAnimationSystem';
-import NodeCanvas from '../components/nodes/NodeCanvas';
-import getOptimizedWebSocketService from '../services/optimizedWebSocketService';
-import sandboxDataService from '../services/sandboxDataService';
 import pillButtonService from '../services/pillButtonService';
+import ApiService from '../services/api';
 import type { SandboxNode } from '../types/sandbox';
 
 interface SandboxScreenProps {
@@ -44,9 +37,6 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   diveType
 }) => {
   const { isDarkMode } = useTheme();
-  const componentId = 'sandbox-screen';
-  const { createTimeout, createInterval, createAbortController } = useResourceManager(componentId);
-  const { createBoundedAnimation, createSafeLoop, startAnimation } = useExtremeAnimations(componentId);
   
   // Animation refs
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -66,17 +56,10 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showImmediateLoader, setShowImmediateLoader] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [showSubmitIndicator, setShowSubmitIndicator] = useState(false);
 
-  // Custom hooks - Static mode (no animations)
-  const [sandboxState, sandboxActions] = useStableSandboxState();
-  const { nodes, lockedNodes, nodeConnections, showNodes } = sandboxState;
-  const { 
-    handleNodesGenerated,
-    handleLockNode,
-    handleUnlockNode,
-    saveSandboxSession,
-    buildContextFromLockedNodes,
-  } = useSandboxData();
+  // Simplified state management
+  const [nodes, setNodes] = useState<SandboxNode[]>([]);
 
   // Modal Manager ref
   const modalManagerRef = useRef<SandboxModalManagerRef>(null);
@@ -247,55 +230,6 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     }).start();
   }, [isInputFocused, headerOpacityAnim]);
 
-  // WebSocket integration for real-time insight nodes - Fixed dependencies
-  useEffect(() => {
-    let cleanup: (() => void) | undefined;
-    
-    const setupInsightNodeListener = async () => {
-      try {
-        const webSocketService = getOptimizedWebSocketService('https://server-a7od.onrender.com');
-        
-        await webSocketService.initialize();
-        
-        const handleInsightNodeArrival = (data: any) => {
-          console.log('🔮 Insight Node arriving:', data);
-          
-          if (data.type === 'insight_discovery' && data.insightNode) {
-            const insightNode: SandboxNode = {
-              ...data.insightNode,
-              isInsightNode: true,
-              position: data.insightNode.position || {
-                x: Math.random() * 200 + 100,
-                y: Math.random() * 300 + 150,
-              }
-            };
-            
-            // Direct state update without timeout to prevent loops
-            sandboxActions.addNode(insightNode);
-          }
-        };
-        
-        const handlerId = webSocketService.addEventListener(
-          'insight_discovery', 
-          handleInsightNodeArrival,
-          { priority: 'high', timeout: 300000 }
-        );
-        
-        cleanup = () => {
-          webSocketService.removeEventListener('insight_discovery', handlerId);
-        };
-        
-      } catch (error) {
-        console.warn('WebSocket setup failed:', error);
-      }
-    };
-    
-    setupInsightNodeListener();
-    
-    return () => {
-      if (cleanup) cleanup();
-    };
-  }, [sandboxActions]);
 
   // Cleanup on unmount - Static mode cleanup
   useEffect(() => {
@@ -305,27 +239,85 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
     };
   }, []);
 
-  const handleSubmit = () => {
-    if (inputText.trim() && !isProcessing && !showImmediateLoader) {
-      // Dismiss keyboard immediately
-      Keyboard.dismiss();
+  const handleSubmit = async () => {
+    // Pre-flight systems check before any query submission
+    try {
+      console.log('🔍 Starting pre-flight validation...');
       
-      // Show immediate loader right away
-      setShowImmediateLoader(true);
-      
-      if (selectedActions.length === 0) {
-        setSelectedActions(['explore']);
+      // Step 1: Basic input validation
+      if (!inputText?.trim()) {
+        console.error('❌ Pre-flight failed: Empty query');
+        return;
       }
       
-      // Check if UBPM pill is selected
-      const useUBPM = selectedActions.includes('ubpm');
+      if (isProcessing || showImmediateLoader) {
+        console.error('❌ Pre-flight failed: Already processing');
+        return;
+      }
+      
+      // Step 2: Query content validation
+      const trimmedQuery = inputText.trim();
+      if (trimmedQuery.length < 3) {
+        console.error('❌ Pre-flight failed: Query too short');
+        return;
+      }
+      
+      if (trimmedQuery.length > 2000) {
+        console.error('❌ Pre-flight failed: Query too long');
+        return;
+      }
+      
+      // Step 3: Pill configuration validation
+      let validatedActions = [...selectedActions];
+      if (validatedActions.length === 0) {
+        validatedActions = ['explore'];
+        setSelectedActions(validatedActions);
+      }
+      
+      // Validate pill combination
+      const pillValidation = pillButtonService.validatePillCombination(validatedActions);
+      if (!pillValidation.isValid) {
+        console.error('❌ Pre-flight failed: Invalid pill combination', pillValidation.warnings);
+        return;
+      }
+      
+      // Step 4: Network connectivity check (basic)
+      try {
+        const healthCheck = await ApiService.get('/health');
+        if (!healthCheck.success) {
+          console.error('❌ Pre-flight failed: Server health check failed');
+          return;
+        }
+      } catch (networkError) {
+        console.warn('⚠️ Network check failed, proceeding anyway:', networkError);
+      }
+      
+      // Step 5: Modal manager validation
+      if (!modalManagerRef.current) {
+        console.error('❌ Pre-flight failed: Modal manager not ready');
+        return;
+      }
+      
+      console.log('✅ Pre-flight validation passed');
+      
+      // All systems clear - proceed with submission
+      Keyboard.dismiss();
+      setShowSubmitIndicator(true); // Show submit indicator immediately
+      setShowImmediateLoader(true);
+      
+      const useUBPM = validatedActions.includes('ubpm');
       
       // Brief delay for UI cohesion, then start research AI experience
-      createTimeout(() => {
+      setTimeout(() => {
         setShowImmediateLoader(false);
         setIsProcessing(true);
         startResearchExperience(useUBPM);
-      }, 500, 'high');
+      }, 500);
+      
+    } catch (error) {
+      console.error('❌ Pre-flight validation failed with error:', error);
+      setShowImmediateLoader(false);
+      setIsProcessing(false);
     }
   };
 
@@ -336,63 +328,66 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       console.log('🎯 Actions:', selectedActions);
       console.log('🧠 UBPM Mode:', useUBPM);
       
-      // Process pill actions with backend service
+      // Additional runtime validation
+      if (!inputText?.trim()) {
+        throw new Error('Query became empty during processing');
+      }
+      
+      if (!selectedActions || selectedActions.length === 0) {
+        throw new Error('No actions selected during processing');
+      }
+      
+      // Process pill actions with backend service and USE the result
       const pillConfig = await pillButtonService.processPillActions(
         selectedActions,
         inputText.trim(),
         { useUBPM }
       );
       
-      console.log('💊 Pill configuration:', pillConfig);
-      
-      // Start sandbox process with pill configuration via modal manager
-      if (modalManagerRef.current) {
-        await modalManagerRef.current.startSandboxProcess(inputText.trim(), {
-          selectedActions,
-          pillConfig: pillConfig.data,
-          useUBPM,
-          includeUserData: true,
-          generateConnections: true,
-        });
+      if (!pillConfig || !pillConfig.success) {
+        throw new Error(`Pill configuration failed: ${pillConfig?.error || 'Unknown error'}`);
       }
       
-      // Clear input
+      console.log('💊 Pill configuration successful:', pillConfig);
+      
+      // Final modal manager validation
+      if (!modalManagerRef.current) {
+        throw new Error('Modal manager became unavailable during processing');
+      }
+      
+      // Start sandbox process with ACTUAL pill configuration integration
+      await modalManagerRef.current.startSandboxProcess(inputText.trim(), {
+        selectedActions,
+        pillConfig: pillConfig.data, // This is now properly used
+        useUBPM,
+        includeUserData: true,
+        generateConnections: true,
+      });
+      
+      // Clear input only on success
       setInputText('');
       setSelectedActions([]);
-      setIsProcessing(false);
       
     } catch (error) {
-      console.error('Error in research experience:', error);
+      console.error('❌ Research experience failed:', error);
+      
+      // Show user-friendly error handling
+      if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        console.error('Network error detected - check connection');
+      } else if (error.message?.includes('pill') || error.message?.includes('configuration')) {
+        console.error('Configuration error - resetting pills');
+        setSelectedActions([]);
+      } else {
+        console.error('Unknown error occurred during processing');
+      }
+      
+      // Always reset processing state on error
       setIsProcessing(false);
+      setShowImmediateLoader(false);
     }
   };
 
 
-  const startChainOfThoughtProcess = async (useUBPM: boolean) => {
-    try {
-      // Build enhanced query with locked context
-      const lockedContext = buildContextFromLockedNodes();
-      const enhancedQuery = lockedContext + inputText + ' ' + selectedActions.join(' ');
-      
-      // Start process via modal manager (original working approach)
-      if (modalManagerRef.current) {
-        await modalManagerRef.current.startSandboxProcess(enhancedQuery, {
-          actions: selectedActions,
-          useUBPM,
-          includeUserData: true,
-          generateConnections: true,
-        });
-      }
-      
-      // Clear input
-      setInputText('');
-      setSelectedActions([]);
-      setIsProcessing(false);
-    } catch (error) {
-      console.error(ERROR_MESSAGES.CHAIN_OF_THOUGHT_FAILED, error);
-      setIsProcessing(false);
-    }
-  };
 
 
   const handleModalError = (error: any) => {
@@ -407,14 +402,6 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
   };
 
 
-  const renderProcessingState = () => (
-    <View style={styles.processingContainer}>
-      <EnhancedSpinner type="holographic" size={40} />
-      <Text style={[styles.processingText, { color: isDarkMode ? '#fff' : '#1a1a1a' }]}>
-        {PROCESSING_MESSAGES.WEAVING_CONNECTIONS}
-      </Text>
-    </View>
-  );
 
   return (
     <ScreenWrapper
@@ -463,7 +450,6 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
                 />
               )}
 
-              {isProcessing && renderProcessingState()}
 
               {/* TODO: Add Research AI Experience UI components here */}
 
@@ -478,21 +464,23 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
       <SandboxModalManager
         ref={modalManagerRef}
         onNodesGenerated={(newNodes) => {
-          // Immediate node display without processing state
-          sandboxActions.batchUpdate({
-            nodes: newNodes,
-            showNodes: true,
-          });
-          setIsProcessing(false); // Clear processing immediately
-          handleNodesGenerated(newNodes);
+          // Simple node display
+          setNodes(newNodes);
+          setIsProcessing(false);
+          console.log('✅ Nodes received and displayed:', newNodes.length);
         }}
         onError={handleModalError}
         onStreamingMessage={(message) => {
           console.log('🎯 SandboxScreen: Received LLAMA message:', message);
+          // Hide submit indicator when streaming starts
+          if (message && showSubmitIndicator) {
+            setShowSubmitIndicator(false);
+          }
         }}
         onProcessComplete={() => {
           setIsProcessing(false);
           setShowImmediateLoader(false);
+          setShowSubmitIndicator(false); // Ensure submit indicator is hidden
         }}
       />
 
@@ -502,6 +490,24 @@ export const SandboxScreen: React.FC<SandboxScreenProps> = ({
         showSpinner={true}
         message=""
       />
+
+      {/* Submit indicator overlay */}
+      {showSubmitIndicator && (
+        <View style={styles.submitIndicatorOverlay}>
+          <View style={[
+            styles.submitIndicatorContainer,
+            { backgroundColor: isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.9)' }
+          ]}>
+            <EnhancedSpinner size={40} color={isDarkMode ? '#fff' : '#000'} />
+            <Text style={[
+              styles.submitIndicatorText,
+              { color: isDarkMode ? '#fff' : '#000' }
+            ]}>
+              Processing...
+            </Text>
+          </View>
+        </View>
+      )}
     </ScreenWrapper>
   );
 };
@@ -538,5 +544,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     letterSpacing: 0.3,
+  },
+  submitIndicatorOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  submitIndicatorContainer: {
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  submitIndicatorText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginTop: 12,
   },
 }); 

@@ -135,7 +135,8 @@ class SandboxDataService {
     query: string, 
     selectedActions: string[] = ['explore', 'research'], 
     lockedContext: any[] = [],
-    useUBPM: boolean = true
+    useUBPM: boolean = true,
+    pillConfig?: any
   ): Promise<{success: boolean, data?: any, error?: string}> {
     try {
       const token = CloudAuth.getInstance().getToken();
@@ -158,6 +159,7 @@ class SandboxDataService {
         selectedActions,
         lockedContext,
         useUBPM,
+        pillConfig, // NOW PROPERLY INCLUDED!
         userData: userData ? {
           ubpmData: userData.ubpmData,
           behavioralMetrics: userData.behavioralMetrics,
@@ -202,14 +204,7 @@ class SandboxDataService {
         };
       }
 
-      // Track analytics
-      analyticsService.trackEvent('sandbox_nodes_generated', {
-        query: query.substring(0, 100),
-        nodeCount: result.data.nodes.length,
-        actionsCount: selectedActions.length,
-        lockedNodesCount: lockedContext.length,
-        useUBPM
-      });
+      // Note: Analytics tracking removed - trackEvent method doesn't exist in current analyticsService
 
       return result;
 

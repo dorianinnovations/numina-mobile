@@ -10,6 +10,7 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { StreamingMarkdown } from '../text/StreamingMarkdown';
 import LottieView from 'lottie-react-native';
+import { getWebSocketService } from '../../services/websocketService';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -19,6 +20,26 @@ interface ChainStep {
   status: 'pending' | 'active' | 'completed';
   message?: string;
   timestamp?: string;
+}
+
+interface WorkflowStep {
+  id: string;
+  name: string;
+  progress: number;
+  status: 'pending' | 'active' | 'completed';
+}
+
+interface WorkflowData {
+  type: 'workflow_started' | 'step_progress' | 'workflow_completed';
+  workflow?: {
+    name: string;
+    description: string;
+    totalSteps: number;
+  };
+  currentStep?: WorkflowStep;
+  overallProgress: number;
+  message: string;
+  completionTime?: number;
 }
 
 interface ChainOfThoughtProgressProps {
@@ -45,6 +66,10 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
   const [showCompleted, setShowCompleted] = useState(false);
   const [allTextRendered, setAllTextRendered] = useState(false);
   const messageAnims = useRef<Map<number, Animated.Value>>(new Map()).current;
+  
+  // Workflow progress state
+  const [workflowData, setWorkflowData] = useState<WorkflowData | null>(null);
+  const [workflowComplete, setWorkflowComplete] = useState(false);
 
 
   // Fade in/out animation
@@ -69,7 +94,7 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
 
   // Loader rotation animation
   useEffect(() => {
-    if (visible && !showCompleted) {
+    if (visible && !showCompleted && !workflowComplete) {
       loaderRotation.setValue(0);
       Animated.loop(
         Animated.timing(loaderRotation, {
@@ -79,7 +104,53 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
         })
       ).start();
     }
-  }, [visible, showCompleted, loaderRotation]);
+  }, [visible, showCompleted, workflowComplete, loaderRotation]);
+
+  // WebSocket listener for workflow progress
+  useEffect(() => {
+    if (!visible) return;
+
+    const wsService = getWebSocketService();
+    
+    const handleWorkflowMessage = (data: any) => {
+      console.log('🎯 ChainOfThoughtProgress: Received workflow message:', data);
+      
+      if (data.updateData) {
+        const workflowUpdate: WorkflowData = {
+          type: data.updateData.type,
+          workflow: data.updateData.workflow,
+          currentStep: data.updateData.currentStep,
+          overallProgress: data.updateData.overallProgress || 0,
+          message: data.updateData.message || '',
+          completionTime: data.updateData.completionTime
+        };
+        
+        setWorkflowData(workflowUpdate);
+        
+        // Mark as complete when workflow is finished
+        if (workflowUpdate.type === 'workflow_completed') {
+          setWorkflowComplete(true);
+          setTimeout(() => {
+            if (onComplete) {
+              onComplete();
+            }
+          }, 2000); // Give 2 seconds to show completion before fading
+        }
+      }
+    };
+
+    // Listen for workflow messages
+    wsService.addEventListener('sandbox_workflow', handleWorkflowMessage);
+    
+    // Also try to connect if not connected
+    if (!wsService.isConnected()) {
+      wsService.initialize().catch(console.warn);
+    }
+
+    return () => {
+      wsService.removeEventListener('sandbox_workflow', handleWorkflowMessage);
+    };
+  }, [visible, onComplete]);
 
   // Detect when all text has finished rendering - INCREASED DELAY TO ENSURE VISIBILITY
   useEffect(() => {
@@ -167,6 +238,8 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
       setIsFirstMessage(true);
       setShowCompleted(false);
       setAllTextRendered(false);
+      setWorkflowData(null);
+      setWorkflowComplete(false);
       loaderRotation.setValue(0);
       messageAnims.clear(); // Clear all message animations
     }
@@ -188,7 +261,7 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
         {/* Always show placeholder with loader - keep it consistent */}
         <View style={styles.placeholderRow}>
           <View style={styles.loaderContainer}>
-            {showCompleted ? (
+            {(showCompleted || workflowComplete) ? (
               // Completed checkmark
               <View style={[
                 styles.completedCircle,
@@ -224,12 +297,73 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
               color: isDarkMode ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.6)' 
             }
           ]}>
-            Observing Numina...
+            {workflowData?.workflow?.name || 'Observing Numina...'}
           </Text>
         </View>
 
-        {/* Show captured messages in same unified format with staggered animations */}
-        {capturedMessages.length > 0 && (
+        {/* Show workflow progress */}
+        {workflowData && (
+          <View style={styles.workflowContainer}>
+            {/* Current step info */}
+            {workflowData.currentStep && (
+              <View style={styles.stepContainer}>
+                <Text style={[
+                  styles.stepName,
+                  { color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)' }
+                ]}>
+                  {workflowData.currentStep.name}
+                </Text>
+                <View style={[
+                  styles.progressBar,
+                  { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }
+                ]}>
+                  <View style={[
+                    styles.progressFill,
+                    { 
+                      width: `${workflowData.currentStep.progress}%`,
+                      backgroundColor: workflowData.currentStep.status === 'completed' ? '#10B981' : '#3B82F6'
+                    }
+                  ]} />
+                </View>
+              </View>
+            )}
+            
+            {/* Current message */}
+            {workflowData.message && (
+              <Text style={[
+                styles.workflowMessage,
+                { color: isDarkMode ? 'rgba(255, 255, 255, 0.75)' : 'rgba(0, 0, 0, 0.65)' }
+              ]}>
+                {workflowData.message}
+              </Text>
+            )}
+            
+            {/* Overall progress */}
+            <View style={styles.overallProgressContainer}>
+              <Text style={[
+                styles.progressLabel,
+                { color: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.5)' }
+              ]}>
+                Overall Progress: {workflowData.overallProgress}%
+              </Text>
+              <View style={[
+                styles.overallProgressBar,
+                { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)' }
+              ]}>
+                <View style={[
+                  styles.overallProgressFill,
+                  { 
+                    width: `${workflowData.overallProgress}%`,
+                    backgroundColor: workflowData.type === 'workflow_completed' ? '#10B981' : '#8B5CF6'
+                  }
+                ]} />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Fallback to captured messages if no workflow data */}
+        {!workflowData && capturedMessages.length > 0 && (
           <View style={styles.messagesContainer}>
             {capturedMessages.map((message, index) => {
               const animValue = messageAnims.get(index) || new Animated.Value(0);
@@ -249,57 +383,17 @@ export const ChainOfThoughtProgress: React.FC<ChainOfThoughtProgressProps> = ({
                     }
                   ]}
                 >
-                  <View style={styles.loaderContainer}>
-                    {/* Empty space to align with loader above */}
-                  </View>
-                  <Animated.Text style={[
-                    styles.messagePrefix,
-                    { 
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.4)',
-                      opacity: animValue
-                    }
-                  ]}>
-                    {index + 1}.
-                  </Animated.Text>
-                  <Animated.Text style={[
+                  <Text style={[
                     styles.unifiedText,
                     { 
-                      color: isDarkMode ? 'rgba(255, 255, 255, 0.98)' : 'rgba(0, 0, 0, 0.9)',
-                      opacity: animValue
+                      color: isDarkMode ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)' 
                     }
                   ]}>
                     {message}
-                  </Animated.Text>
+                  </Text>
                 </Animated.View>
               );
             })}
-            
-            {/* Show current streaming message */}
-            {streamingMessage && 
-             streamingMessage.trim() && 
-             !capturedMessages.includes(streamingMessage.trim()) && (
-              <View style={styles.messageRow}>
-                <View style={styles.loaderContainer}>
-                  {/* Empty space to align with loader above */}
-                </View>
-                <Text style={[
-                  styles.messagePrefix,
-                  { 
-                    color: isDarkMode ? 'rgba(255, 255, 255, 0.7)' : 'rgba(0, 0, 0, 0.4)' 
-                  }
-                ]}>
-                  {capturedMessages.length + 1}.
-                </Text>
-                <Text style={[
-                  styles.unifiedText,
-                  { 
-                    color: isDarkMode ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.7)' 
-                  }
-                ]}>
-                  {streamingMessage.trim()}
-                </Text>
-              </View>
-            )}
           </View>
         )}
       </View>
@@ -378,5 +472,56 @@ const styles = StyleSheet.create({
     marginRight: 8,
     minWidth: 20,
     textAlign: 'right',
+  },
+  // Workflow progress styles
+  workflowContainer: {
+    width: '100%',
+    maxWidth: screenWidth * 0.85,
+    marginTop: 16,
+    paddingHorizontal: 12,
+  },
+  stepContainer: {
+    marginBottom: 12,
+  },
+  stepName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  progressBar: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 2,
+    transition: 'width 0.3s ease',
+  },
+  workflowMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+    fontStyle: 'italic',
+  },
+  overallProgressContainer: {
+    marginTop: 8,
+  },
+  progressLabel: {
+    fontSize: 12,
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  overallProgressBar: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  overallProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+    transition: 'width 0.5s ease',
   },
 });
