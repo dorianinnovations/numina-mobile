@@ -2236,7 +2236,7 @@ export const sendAdaptiveChatMessage = async (
         'Cache-Control': 'no-cache',
       },
       body: JSON.stringify({
-        message: message.trim(),
+        message: message.trim() || (attachments.length > 0 ? null : ''),
         stream: true,
         temperature: 0.8,
         n_predict: 1024,
