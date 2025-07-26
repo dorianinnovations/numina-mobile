@@ -2227,6 +2227,22 @@ export const sendAdaptiveChatMessage = async (
   const url = CHAT_API_CONFIG.PRODUCTION_URL;
   
   try {
+    // Log attachment sizes for debugging
+    if (attachments && attachments.length > 0) {
+      const totalSize = attachments.reduce((sum, att) => {
+        const size = att.url ? att.url.length : 0;
+        return sum + size;
+      }, 0);
+      console.log(`📊 Sending ${attachments.length} attachments, total size: ${totalSize} characters`);
+      
+      attachments.forEach((att, index) => {
+        if (att.url) {
+          const sizeKB = Math.round(att.url.length / 1024);
+          console.log(`📎 Attachment ${index + 1}: ${att.type}, ${sizeKB}KB`);
+        }
+      });
+    }
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -2246,7 +2262,18 @@ export const sendAdaptiveChatMessage = async (
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      // Try to get more detailed error information
+      let errorText = response.statusText || 'Unknown error';
+      try {
+        const errorBody = await response.text();
+        if (errorBody) {
+          console.error('Error response body:', errorBody);
+          errorText = errorBody;
+        }
+      } catch (e) {
+        console.error('Could not read error response body:', e);
+      }
+      throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
     if (!response.body) {
