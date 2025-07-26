@@ -81,14 +81,14 @@ class PillButtonService {
         context
       });
 
-      if (response.data.success) {
+      if (response.success) {
         logger.info('Pill actions processed successfully', { 
-          actionsCount: response.data.data.processedActions.length,
-          synergyScore: response.data.data.synergy.score
+          actionsCount: response.data.processedActions.length,
+          synergyScore: response.data.synergy.score
         });
       }
 
-      return response.data;
+      return response;
     } catch (error) {
       logger.error('Error processing pill actions', { error });
       throw new Error('Failed to process pill actions');
@@ -112,14 +112,14 @@ class PillButtonService {
         context
       });
 
-      if (response.data.success) {
+      if (response.success) {
         logger.info('Pill combinations analyzed', { 
-          synergyScore: response.data.data.currentCombination.synergy.synergy,
-          recommendationsCount: response.data.data.recommendations.length
+          synergyScore: response.data.currentCombination.synergy.synergy,
+          recommendationsCount: response.data.recommendations.length
         });
       }
 
-      return response.data;
+      return response;
     } catch (error) {
       logger.error('Error analyzing pill combinations', { error });
       throw new Error('Failed to analyze pill combinations');
@@ -155,14 +155,14 @@ class PillButtonService {
         userData: options?.userData
       });
 
-      if (response.data.success) {
+      if (response.success) {
         logger.info('Nodes generated with pill configuration', { 
-          nodeCount: response.data.data.nodes.length,
+          nodeCount: response.data.nodes.length,
           pillActions: selectedActions
         });
       }
 
-      return response.data;
+      return response;
     } catch (error) {
       logger.error('Error generating nodes with pills', { error });
       throw new Error('Failed to generate nodes with pill configuration');

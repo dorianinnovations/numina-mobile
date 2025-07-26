@@ -96,17 +96,13 @@ class AnalyticsService {
 
     try {
       // Use the UBPM analysis tool via server
-      const response = await ApiService.executeToolRequest({
-        tool: 'ubpm_analysis',
-        parameters: {
-          include_recommendations: true,
-          detail_level: 'comprehensive'
-        },
-        credits: 1 // UBPM analysis costs 1 credit
+      const response = await ApiService.executeToolWithPayment('ubpm_analysis', {
+        include_recommendations: true,
+        detail_level: 'comprehensive'
       });
 
-      if (response.success && response.result) {
-        const ubmpData = this.parseUBPMResponse(response.result);
+      if (response.success && response.data) {
+        const ubmpData = this.parseUBPMResponse(response.data);
         this.setCachedData(cacheKey, ubmpData, 15 * 60 * 1000);
         return ubmpData;
       }

@@ -307,12 +307,18 @@ export const useLLMAnalytics = () => {
         }));
       }
     } catch (error: any) {
+      // Handle rate limit errors more gracefully
+      let errorMessage = error.message || 'Failed to generate recommendations';
+      if (errorMessage.includes('per hour per user')) {
+        errorMessage = 'Recommendations are rate-limited to 1 per hour. Please try again later.';
+      }
+      
       // Set error state instead of mock data
       setState(prev => ({ 
         ...prev, 
         llmRecommendations: null,
         isGeneratingRecommendations: false,
-        recommendationsError: error.message || 'Failed to generate recommendations'
+        recommendationsError: errorMessage
       }));
     }
   }, []);
