@@ -199,8 +199,46 @@ class AnalyticsService {
 
   private parseUBPMResponse(result: any): UBPMAnalysis {
     try {
+      // Handle different response formats
+      let textContent = '';
+      
+      if (typeof result === 'string') {
+        textContent = result;
+      } else if (result && typeof result === 'object') {
+        // Try common response property names
+        textContent = result.content || result.response || result.text || result.message || result.analysis || '';
+        
+        // If it's already a structured object, try to use it directly
+        if (result.behavioralInsights || result.insights) {
+          return {
+            behavioralInsights: result.behavioralInsights || result.insights || [],
+            recommendations: result.recommendations || [],
+            vectorSpace: result.rawMetrics?.vectorSpace || result.vectorSpace || { curiosity: 0, technical_depth: 0, interaction_complexity: 0, emotional_variance: 0 },
+            confidenceFactors: result.rawMetrics?.confidenceFactors || result.confidenceFactors || [],
+            patterns: result.patterns || []
+          };
+        }
+        
+        // Handle the specific UBPM tool response format
+        if (result.analysis && (result.behavioralInsights || result.recommendations)) {
+          return {
+            behavioralInsights: Array.isArray(result.behavioralInsights) ? result.behavioralInsights : [],
+            recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+            vectorSpace: result.rawMetrics?.vectorSpace || { curiosity: 0, technical_depth: 0, interaction_complexity: 0, emotional_variance: 0 },
+            confidenceFactors: result.rawMetrics?.confidenceFactors || [],
+            patterns: []
+          };
+        }
+      }
+      
+      // If we still don't have text content, return empty analysis
+      if (!textContent) {
+        console.warn('UBPM response has no parseable text content:', result);
+        return this.getEmptyUBPMAnalysis();
+      }
+      
       // Parse the UBPM analysis result from server
-      const lines = result.split('\n');
+      const lines = textContent.split('\n');
       const insights: string[] = [];
       const recommendations: string[] = [];
       let vectorSpace = { curiosity: 0, technical_depth: 0, interaction_complexity: 0, emotional_variance: 0 };
@@ -244,6 +282,8 @@ class AnalyticsService {
       };
     } catch (error) {
       console.error('Failed to parse UBPM response:', error);
+      console.error('Original result was:', result);
+      console.error('Result type:', typeof result);
       return this.getEmptyUBPMAnalysis();
     }
   }
